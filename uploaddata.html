@@ -721,14 +721,37 @@
         };
         
         // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const storage = getStorage(app);
+        console.log('Initializing Firebase...');
+        console.log('Firebase config:', firebaseConfig);
         
-        // Make Firebase available globally
-        window.db = db;
-        window.storage = storage;
-        window.firebaseModules = { collection, addDoc, doc, setDoc, ref, uploadBytes, getDownloadURL };
+        try {
+            const app = initializeApp(firebaseConfig);
+            console.log('Firebase app initialized:', app);
+            
+            const db = getFirestore(app);
+            console.log('Firestore initialized:', db);
+            
+            const storage = getStorage(app);
+            console.log('Storage initialized:', storage);
+            
+            // Make Firebase available globally
+            window.db = db;
+            window.storage = storage;
+            window.firebaseModules = { collection, addDoc, doc, setDoc, ref, uploadBytes, getDownloadURL };
+            
+            console.log('✅ Firebase fully initialized and ready!');
+        } catch (error) {
+            console.error('❌ Firebase initialization error:', error);
+            console.error('Error message:', error.message);
+            console.error('Error code:', error.code);
+            
+            // Show error to user
+            setTimeout(() => {
+                const status = document.getElementById('status-message');
+                status.textContent = 'Firebase initialization failed: ' + error.message + '. Please check console for details.';
+                status.className = 'status-message error show';
+            }, 1000);
+        }
     </script>
     
     <script>
@@ -1005,20 +1028,41 @@
             btn.disabled = true;
             btn.textContent = 'Uploading...';
             
+            console.log('Starting upload process...');
+            console.log('Files to upload:', uploadedFiles);
+            
             try {
+                // Check if Firebase is initialized
+                if (!window.db || !window.storage) {
+                    throw new Error('Firebase not initialized. Please refresh the page.');
+                }
+                
+                console.log('Firebase initialized successfully');
+                
                 // Upload Job CSV to Firestore
                 if (uploadedFiles['job-csv']) {
+                    console.log('Uploading Job CSV to Firestore...');
+                    
+                    // Check if mapping exists
+                    if (Object.keys(columnMapping).length === 0) {
+                        throw new Error('Please map CSV columns before uploading');
+                    }
+                    
                     await uploadJobCSV();
+                    console.log('Job CSV uploaded successfully');
                 }
                 
                 // Upload other files to Firebase Storage
                 for (const [type, file] of Object.entries(uploadedFiles)) {
                     if (file && type !== 'job-csv') {
+                        console.log(`Uploading ${type}...`);
                         await uploadFileToStorage(file, type);
+                        console.log(`${type} uploaded successfully`);
                     }
                 }
                 
                 showStatus('All files uploaded successfully!', 'success');
+                console.log('Upload complete!');
                 
                 // Reset after 2 seconds
                 setTimeout(() => {
@@ -1027,6 +1071,8 @@
                 
             } catch (error) {
                 console.error('Upload error:', error);
+                console.error('Error details:', error.message);
+                console.error('Error stack:', error.stack);
                 showStatus('Upload failed: ' + error.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Upload All Files';
@@ -1035,6 +1081,10 @@
         
         async function uploadJobCSV() {
             const { collection, addDoc } = window.firebaseModules;
+            
+            console.log('Processing CSV data...');
+            console.log('Column mapping:', columnMapping);
+            console.log('CSV rows:', csvData.length);
             
             // Transform CSV data according to mapping
             const transformedData = csvData.map(row => {
@@ -1046,30 +1096,44 @@
                 return job;
             });
             
+            console.log('Transformed data sample:', transformedData[0]);
+            console.log('Total jobs to upload:', transformedData.length);
+            
             // Upload to Firestore
             const batch = [];
             for (const job of transformedData) {
-                batch.push(addDoc(collection(window.db, 'jobs'), job));
+                try {
+                    const docRef = await addDoc(collection(window.db, 'jobs'), job);
+                    console.log('Added job with ID:', docRef.id);
+                } catch (error) {
+                    console.error('Error adding job:', error);
+                    throw error;
+                }
             }
             
-            await Promise.all(batch);
-            console.log(`Uploaded ${transformedData.length} jobs to Firestore`);
+            console.log(`Successfully uploaded ${transformedData.length} jobs to Firestore`);
         }
         
         async function uploadFileToStorage(file, type) {
             const { ref, uploadBytes, getDownloadURL } = window.firebaseModules;
             const { collection, addDoc } = window.firebaseModules;
             
+            console.log(`Uploading ${file.name} to storage...`);
+            
             // Create storage reference
             const timestamp = Date.now();
             const storageRef = ref(window.storage, `${type}/${timestamp}_${file.name}`);
             
             // Upload file
+            console.log('Uploading bytes...');
             const snapshot = await uploadBytes(storageRef, file);
+            console.log('Getting download URL...');
             const downloadURL = await getDownloadURL(snapshot.ref);
+            console.log('Download URL:', downloadURL);
             
             // Save metadata to Firestore
-            await addDoc(collection(window.db, type), {
+            console.log('Saving metadata to Firestore...');
+            const docRef = await addDoc(collection(window.db, type), {
                 fileName: file.name,
                 fileSize: file.size,
                 fileType: file.type,
@@ -1077,7 +1141,7 @@
                 uploadDate: new Date().toISOString()
             });
             
-            console.log(`Uploaded ${file.name} to ${type}`);
+            console.log(`Uploaded ${file.name} to ${type}, doc ID: ${docRef.id}`);
         }
         
         function showStatus(message, type) {
