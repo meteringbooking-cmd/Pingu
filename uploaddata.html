@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -239,12 +240,19 @@
             padding: 1rem;
             background: var(--dark-lighter);
             border-radius: 8px;
-            align-items: center;
-            gap: 1rem;
+            flex-direction: column;
+            gap: 0.5rem;
         }
         
         .file-info.show {
             display: flex;
+        }
+        
+        .file-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
         }
         
         .file-name {
@@ -257,6 +265,36 @@
         .file-size {
             color: var(--text-dim);
             font-size: 0.85rem;
+        }
+        
+        .job-number-input {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 0.5rem;
+        }
+        
+        .job-number-input label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        .job-number-input select,
+        .job-number-input input {
+            flex: 1;
+            background: var(--dark);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .job-number-input select:focus,
+        .job-number-input input:focus {
+            outline: none;
+            border-color: var(--primary);
         }
         
         .remove-btn {
@@ -605,8 +643,10 @@
                         <input type="file" id="job-csv-input" accept=".csv" />
                     </div>
                     <div class="file-info" id="job-csv-info">
-                        <span class="file-name"></span>
-                        <span class="file-size"></span>
+                        <div class="file-info-row">
+                            <span class="file-name"></span>
+                            <span class="file-size"></span>
+                        </div>
                         <button class="remove-btn" onclick="removeFile('job-csv')">Remove</button>
                     </div>
                 </div>
@@ -624,8 +664,14 @@
                         <input type="file" id="scaffolding-csv-input" accept=".csv" />
                     </div>
                     <div class="file-info" id="scaffolding-csv-info">
-                        <span class="file-name"></span>
-                        <span class="file-size"></span>
+                        <div class="file-info-row">
+                            <span class="file-name"></span>
+                            <span class="file-size"></span>
+                        </div>
+                        <div class="job-number-input" id="scaffolding-job-number">
+                            <label>Job Number:</label>
+                            <select id="scaffolding-job-select"></select>
+                        </div>
                         <button class="remove-btn" onclick="removeFile('scaffolding-csv')">Remove</button>
                     </div>
                 </div>
@@ -643,8 +689,14 @@
                         <input type="file" id="schletter-pdf-input" accept=".pdf" />
                     </div>
                     <div class="file-info" id="schletter-pdf-info">
-                        <span class="file-name"></span>
-                        <span class="file-size"></span>
+                        <div class="file-info-row">
+                            <span class="file-name"></span>
+                            <span class="file-size"></span>
+                        </div>
+                        <div class="job-number-input" id="schletter-job-number">
+                            <label>Job Number:</label>
+                            <select id="schletter-job-select"></select>
+                        </div>
                         <button class="remove-btn" onclick="removeFile('schletter-pdf')">Remove</button>
                     </div>
                 </div>
@@ -662,8 +714,14 @@
                         <input type="file" id="design-pdf-input" accept=".pdf" />
                     </div>
                     <div class="file-info" id="design-pdf-info">
-                        <span class="file-name"></span>
-                        <span class="file-size"></span>
+                        <div class="file-info-row">
+                            <span class="file-name"></span>
+                            <span class="file-size"></span>
+                        </div>
+                        <div class="job-number-input" id="design-job-number">
+                            <label>Job Number:</label>
+                            <select id="design-job-select"></select>
+                        </div>
                         <button class="remove-btn" onclick="removeFile('design-pdf')">Remove</button>
                     </div>
                 </div>
@@ -763,9 +821,16 @@
             'design-pdf': null
         };
         
+        let fileJobNumbers = {
+            'scaffolding-csv': null,
+            'schletter-pdf': null,
+            'design-pdf': null
+        };
+        
         let csvHeaders = [];
         let csvData = [];
         let columnMapping = {};
+        let jobNumbers = [];
         
         const requiredFields = [
             'Job Number',
@@ -836,6 +901,9 @@
             // If Job CSV, parse and show mapping modal
             if (type === 'job-csv') {
                 parseCSV(file);
+            } else {
+                // For other files, populate job number dropdown
+                populateJobNumberDropdown(type);
             }
             
             updateUploadButton();
@@ -844,6 +912,10 @@
         
         function removeFile(type) {
             uploadedFiles[type] = null;
+            
+            if (type !== 'job-csv') {
+                fileJobNumbers[type] = null;
+            }
             
             const card = document.getElementById(`${type}-card`);
             const info = document.getElementById(`${type}-info`);
@@ -859,11 +931,71 @@
                 csvHeaders = [];
                 csvData = [];
                 columnMapping = {};
+                jobNumbers = [];
+                
+                // Clear all other job number dropdowns
+                updateAllJobNumberDropdowns();
             }
             
             updateUploadButton();
         }
         
+        function populateJobNumberDropdown(type) {
+            const selectId = `${type.replace('-', '-job-')}-select`;
+            const select = document.getElementById(selectId);
+            
+            if (!select) return;
+            
+            // Clear existing options
+            select.innerHTML = '';
+            
+            if (jobNumbers.length > 0) {
+                // Add job numbers from CSV
+                jobNumbers.forEach(jobNum => {
+                    const option = document.createElement('option');
+                    option.value = jobNum;
+                    option.textContent = jobNum;
+                    select.appendChild(option);
+                });
+                
+                // Auto-select first job number
+                fileJobNumbers[type] = jobNumbers[0];
+            } else {
+                // No job CSV uploaded - allow manual entry
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Enter job number manually';
+                select.appendChild(option);
+                
+                // Convert select to input
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = 'Enter job number';
+                input.className = select.className;
+                input.id = select.id;
+                input.addEventListener('input', (e) => {
+                    fileJobNumbers[type] = e.target.value;
+                });
+                
+                select.parentNode.replaceChild(input, select);
+            }
+            
+            // Add change listener for select
+            if (jobNumbers.length > 0) {
+                select.addEventListener('change', (e) => {
+                    fileJobNumbers[type] = e.target.value;
+                });
+            }
+        }
+        
+        function updateAllJobNumberDropdowns() {
+            ['scaffolding-csv', 'schletter-pdf', 'design-pdf'].forEach(type => {
+                if (uploadedFiles[type]) {
+                    populateJobNumberDropdown(type);
+                }
+            });
+        }
+
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
             const k = 1024;
@@ -1018,6 +1150,15 @@
                 return;
             }
             
+            // Extract job numbers from the Job Number column
+            if (columnMapping['Job Number'] !== undefined) {
+                jobNumbers = csvData.map(row => row[columnMapping['Job Number']]).filter(jn => jn && jn.trim());
+                console.log('Extracted job numbers:', jobNumbers);
+                
+                // Update dropdowns for already uploaded files
+                updateAllJobNumberDropdowns();
+            }
+            
             closeMappingModal();
             showStatus('Column mapping saved successfully', 'success');
         }
@@ -1039,6 +1180,13 @@
                 
                 console.log('Firebase initialized successfully');
                 
+                // Validate job numbers for non-CSV files
+                for (const type of ['scaffolding-csv', 'schletter-pdf', 'design-pdf']) {
+                    if (uploadedFiles[type] && !fileJobNumbers[type]) {
+                        throw new Error(`Please enter a job number for ${type.replace('-', ' ')}`);
+                    }
+                }
+                
                 // Upload Job CSV to Firestore
                 if (uploadedFiles['job-csv']) {
                     console.log('Uploading Job CSV to Firestore...');
@@ -1056,7 +1204,7 @@
                 for (const [type, file] of Object.entries(uploadedFiles)) {
                     if (file && type !== 'job-csv') {
                         console.log(`Uploading ${type}...`);
-                        await uploadFileToStorage(file, type);
+                        await uploadFileToStorage(file, type, fileJobNumbers[type]);
                         console.log(`${type} uploaded successfully`);
                     }
                 }
@@ -1100,7 +1248,6 @@
             console.log('Total jobs to upload:', transformedData.length);
             
             // Upload to Firestore
-            const batch = [];
             for (const job of transformedData) {
                 try {
                     const docRef = await addDoc(collection(window.db, 'jobs'), job);
@@ -1114,11 +1261,11 @@
             console.log(`Successfully uploaded ${transformedData.length} jobs to Firestore`);
         }
         
-        async function uploadFileToStorage(file, type) {
+        async function uploadFileToStorage(file, type, jobNumber) {
             const { ref, uploadBytes, getDownloadURL } = window.firebaseModules;
             const { collection, addDoc } = window.firebaseModules;
             
-            console.log(`Uploading ${file.name} to storage...`);
+            console.log(`Uploading ${file.name} to storage with job number: ${jobNumber}...`);
             
             // Create storage reference
             const timestamp = Date.now();
@@ -1138,10 +1285,11 @@
                 fileSize: file.size,
                 fileType: file.type,
                 downloadURL: downloadURL,
-                uploadDate: new Date().toISOString()
+                uploadDate: new Date().toISOString(),
+                jobNumber: jobNumber
             });
             
-            console.log(`Uploaded ${file.name} to ${type}, doc ID: ${docRef.id}`);
+            console.log(`Uploaded ${file.name} to ${type}, doc ID: ${docRef.id}, job number: ${jobNumber}`);
         }
         
         function showStatus(message, type) {
