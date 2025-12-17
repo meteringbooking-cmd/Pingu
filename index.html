@@ -270,6 +270,113 @@
             0%, 100% { opacity: 0.3; }
             50% { opacity: 0.8; }
         }
+        
+        /* Stats Section */
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0 3rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+        
+        .stat-card {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, var(--primary), var(--accent));
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+        
+        .stat-card:hover::before {
+            transform: scaleY(1);
+        }
+        
+        .stat-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-icon {
+            font-size: 2.5rem;
+            filter: drop-shadow(0 4px 8px var(--shadow));
+        }
+        
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-breakdown {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--dark);
+        }
+        
+        .stat-item {
+            flex: 1;
+        }
+        
+        .stat-item-label {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .stat-item-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+        
+        .stat-item-value.completed {
+            color: var(--success);
+        }
+        
+        .loading-stats {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 1rem;
+        }
     </style>
 </head>
 <body>
@@ -281,6 +388,60 @@
             <p class="subtitle">Project Management Hub</p>
             <div class="deco-line"></div>
         </header>
+        
+        <!-- Stats Section -->
+        <section class="stats-section" id="stats-section">
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">📊</span>
+                    <div class="stat-label">All Time</div>
+                </div>
+                <div class="stat-breakdown">
+                    <div class="stat-item">
+                        <div class="stat-item-label">Total</div>
+                        <div class="stat-item-value" id="all-total">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">Completed</div>
+                        <div class="stat-item-value completed" id="all-completed">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">📅</span>
+                    <div class="stat-label">This Week</div>
+                </div>
+                <div class="stat-breakdown">
+                    <div class="stat-item">
+                        <div class="stat-item-label">Total</div>
+                        <div class="stat-item-value" id="week-total">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">Completed</div>
+                        <div class="stat-item-value completed" id="week-completed">0</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-header">
+                    <span class="stat-icon">🗓️</span>
+                    <div class="stat-label">This Month</div>
+                </div>
+                <div class="stat-breakdown">
+                    <div class="stat-item">
+                        <div class="stat-item-label">Total</div>
+                        <div class="stat-item-value" id="month-total">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-item-label">Completed</div>
+                        <div class="stat-item-value completed" id="month-completed">0</div>
+                    </div>
+                </div>
+            </div>
+        </section>
         
         <main>
             <nav class="nav-grid">
@@ -324,11 +485,118 @@
         
         <footer>
             <p>
-                <a href="https://github.com" class="github-link"></a> 
-                Pingu - Solar 2025. Barry Dixon
+                <a href="https://github.com" class="github-link">View on GitHub</a> | 
+                Pingu - Solar © 2024
             </p>
         </footer>
     </div>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.appspot.com",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+        
+        // Initialize Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            
+            // Make Firebase available globally
+            window.db = db;
+            window.firebaseModules = { collection, getDocs, query, orderBy };
+            
+            // Load stats on page load
+            window.addEventListener('DOMContentLoaded', () => {
+                loadStats();
+            });
+            
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+            document.getElementById('loading-all').textContent = 'Error loading stats';
+        }
+        
+        async function loadStats() {
+            try {
+                const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
+                
+                // Query all jobs
+                const jobsQuery = query(
+                    collection(window.db, 'jobs'),
+                    orderByFn('uploadDate', 'desc')
+                );
+                
+                const querySnapshot = await getDocs(jobsQuery);
+                
+                let allJobs = [];
+                querySnapshot.forEach((doc) => {
+                    allJobs.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                // Calculate stats
+                const now = new Date();
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
+                startOfWeek.setHours(0, 0, 0, 0);
+                
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                
+                let weekTotal = 0;
+                let weekCompleted = 0;
+                let monthTotal = 0;
+                let monthCompleted = 0;
+                
+                allJobs.forEach(job => {
+                    const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                    
+                    if (installDate) {
+                        const isPast = installDate <= now;
+                        
+                        // This week
+                        if (installDate >= startOfWeek) {
+                            weekTotal++;
+                            if (isPast) weekCompleted++;
+                        }
+                        
+                        // This month
+                        if (installDate >= startOfMonth) {
+                            monthTotal++;
+                            if (isPast) monthCompleted++;
+                        }
+                    }
+                });
+                
+                // Update UI
+                document.getElementById('total-jobs-all').textContent = allJobs.length;
+                document.getElementById('loading-all').style.display = 'none';
+                
+                document.getElementById('total-jobs-week').textContent = weekTotal;
+                document.getElementById('week-total').textContent = weekTotal;
+                document.getElementById('week-completed').textContent = weekCompleted;
+                
+                document.getElementById('total-jobs-month').textContent = monthTotal;
+                document.getElementById('month-total').textContent = monthTotal;
+                document.getElementById('month-completed').textContent = monthCompleted;
+                
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                document.getElementById('loading-all').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
     
     <script>
         // Add smooth scroll behavior
