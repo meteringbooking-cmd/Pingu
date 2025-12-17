@@ -789,8 +789,11 @@
             window.storage = getStorage(app);
             window.firebaseModules = { collection, addDoc, ref, uploadBytes, getDownloadURL };
             console.log('✅ Firebase initialized');
+            console.log('Storage bucket:', window.storage.app.options.storageBucket);
+            console.log('Firestore:', window.db.type);
         } catch (error) {
             console.error('❌ Firebase error:', error);
+            showStatus('Firebase initialization failed: ' + error.message, 'error');
         }
     </script>
     
@@ -1076,20 +1079,33 @@
             }
             
             try {
+                console.log('Starting upload for job:', selectedJobNumber);
+                console.log('Files to upload:', filesToUpload.map(([type, file]) => `${type}: ${file.name}`));
+                
                 showStatus('Uploading files...', 'success');
                 
                 const { ref, uploadBytes, getDownloadURL, collection, addDoc } = window.firebaseModules;
                 
                 for (const [type, file] of filesToUpload) {
+                    console.log(`Uploading ${type}: ${file.name}`);
+                    
                     const timestamp = Date.now();
                     const collectionName = type === 'scaffolding' ? 'scaffolding-csv' : 
                                           type === 'schletter' ? 'schletter-pdf' : 'design-pdf';
                     
-                    const storageRef = ref(window.storage, `${collectionName}/${timestamp}_${file.name}`);
-                    const snapshot = await uploadBytes(storageRef, file);
-                    const downloadURL = await getDownloadURL(snapshot.ref);
+                    console.log(`Collection name: ${collectionName}`);
                     
-                    await addDoc(collection(window.db, collectionName), {
+                    // Upload to Storage
+                    const storageRef = ref(window.storage, `${collectionName}/${timestamp}_${file.name}`);
+                    console.log('Uploading to storage...');
+                    const snapshot = await uploadBytes(storageRef, file);
+                    console.log('Upload complete, getting download URL...');
+                    const downloadURL = await getDownloadURL(snapshot.ref);
+                    console.log('Download URL:', downloadURL);
+                    
+                    // Save metadata to Firestore
+                    console.log('Saving metadata to Firestore...');
+                    const docRef = await addDoc(collection(window.db, collectionName), {
                         fileName: file.name,
                         fileSize: file.size,
                         fileType: file.type,
@@ -1097,9 +1113,11 @@
                         jobNumber: selectedJobNumber,
                         uploadDate: new Date().toISOString()
                     });
+                    console.log(`Saved to Firestore with ID: ${docRef.id}`);
                 }
                 
                 showStatus('Files uploaded successfully!', 'success');
+                console.log('All files uploaded successfully');
                 
                 // Reset and go back to job list
                 deselectJob();
@@ -1107,6 +1125,9 @@
                 
             } catch (error) {
                 console.error('Upload error:', error);
+                console.error('Error message:', error.message);
+                console.error('Error code:', error.code);
+                console.error('Error stack:', error.stack);
                 showStatus('Upload failed: ' + error.message, 'error');
             }
         }
