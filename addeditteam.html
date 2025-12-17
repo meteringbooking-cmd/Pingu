@@ -724,6 +724,17 @@
                         </div>
                         
                         <div class="form-group">
+                            <label for="member-password">Password *</label>
+                            <input 
+                                type="password" 
+                                id="member-password" 
+                                class="form-input" 
+                                placeholder="Enter password for this engineer"
+                                required
+                            />
+                        </div>
+                        
+                        <div class="form-group">
                             <label class="checkbox-group">
                                 <input 
                                     type="checkbox" 
@@ -809,6 +820,19 @@
                         class="form-input" 
                         required
                     />
+                </div>
+                
+                <div class="form-group">
+                    <label for="edit-password">Password</label>
+                    <input 
+                        type="password" 
+                        id="edit-password" 
+                        class="form-input" 
+                        placeholder="Leave blank to keep current password"
+                    />
+                    <small style="color: var(--text-dim); font-size: 0.8rem; margin-top: 0.5rem; display: block;">
+                        Only enter a new password if you want to change it
+                    </small>
                 </div>
                 
                 <div class="form-group">
@@ -937,6 +961,7 @@
             const name = document.getElementById('member-name').value.trim();
             const phone = document.getElementById('member-phone').value.trim();
             const email = document.getElementById('member-email').value.trim();
+            const password = document.getElementById('member-password').value.trim();
             const isLead = document.getElementById('member-lead').checked;
             
             const submitBtn = document.getElementById('submit-btn');
@@ -950,6 +975,7 @@
                     name: name,
                     phone: phone,
                     email: email,
+                    password: password,
                     isLeadEngineer: isLead,
                     assignedLead: null,
                     createdAt: new Date().toISOString()
@@ -1048,6 +1074,7 @@
             document.getElementById('edit-name').value = member.name;
             document.getElementById('edit-phone').value = member.phone;
             document.getElementById('edit-email').value = member.email;
+            document.getElementById('edit-password').value = ''; // Don't show current password
             document.getElementById('edit-lead').checked = member.isLeadEngineer;
             
             // Show/hide assign section
@@ -1093,6 +1120,7 @@
             const name = document.getElementById('edit-name').value.trim();
             const phone = document.getElementById('edit-phone').value.trim();
             const email = document.getElementById('edit-email').value.trim();
+            const newPassword = document.getElementById('edit-password').value.trim();
             const isLead = document.getElementById('edit-lead').checked;
             const assignedLead = document.getElementById('assigned-lead').value || null;
             
@@ -1107,6 +1135,11 @@
                     assignedLead: isLead ? null : assignedLead,
                     updatedAt: new Date().toISOString()
                 };
+                
+                // Only update password if a new one was provided
+                if (newPassword) {
+                    memberData.password = newPassword;
+                }
                 
                 await updateDoc(doc(window.db, 'team-members', currentEditingId), memberData);
                 
