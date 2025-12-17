@@ -624,14 +624,8 @@
                         <input type="file" id="scaffolding-csv-input" accept=".csv" />
                     </div>
                     <div class="file-info" id="scaffolding-csv-info">
-                        <div class="file-info-row">
-                            <span class="file-name"></span>
-                            <span class="file-size"></span>
-                        </div>
-                        <div class="job-number-input" id="scaffolding-csv-job-number">
-                            <label>Job Number:</label>
-                            <input type="text" id="scaffolding-job-select" placeholder="Enter job number" />
-                        </div>
+                        <span class="file-name"></span>
+                        <span class="file-size"></span>
                         <button class="remove-btn" onclick="removeFile('scaffolding-csv')">Remove</button>
                     </div>
                 </div>
@@ -649,14 +643,8 @@
                         <input type="file" id="schletter-pdf-input" accept=".pdf" />
                     </div>
                     <div class="file-info" id="schletter-pdf-info">
-                        <div class="file-info-row">
-                            <span class="file-name"></span>
-                            <span class="file-size"></span>
-                        </div>
-                        <div class="job-number-input" id="schletter-pdf-job-number">
-                            <label>Job Number:</label>
-                            <input type="text" id="schletter-job-select" placeholder="Enter job number" />
-                        </div>
+                        <span class="file-name"></span>
+                        <span class="file-size"></span>
                         <button class="remove-btn" onclick="removeFile('schletter-pdf')">Remove</button>
                     </div>
                 </div>
@@ -674,14 +662,8 @@
                         <input type="file" id="design-pdf-input" accept=".pdf" />
                     </div>
                     <div class="file-info" id="design-pdf-info">
-                        <div class="file-info-row">
-                            <span class="file-name"></span>
-                            <span class="file-size"></span>
-                        </div>
-                        <div class="job-number-input" id="design-pdf-job-number">
-                            <label>Job Number:</label>
-                            <input type="text" id="design-job-select" placeholder="Enter job number" />
-                        </div>
+                        <span class="file-name"></span>
+                        <span class="file-size"></span>
                         <button class="remove-btn" onclick="removeFile('design-pdf')">Remove</button>
                     </div>
                 </div>
@@ -732,7 +714,7 @@
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
             authDomain: "pingu-solar.firebaseapp.com",
             projectId: "pingu-solar",
-            storageBucket: "pingu-solar.appspot.com",  // Use .appspot.com format
+            storageBucket: "pingu-solar.firebasestorage.app",
             messagingSenderId: "232764952866",
             appId: "1:232764952866:web:5923b7f419de6355d6157b",
             measurementId: "G-PFH059DZ64"
@@ -854,96 +836,14 @@
             // If Job CSV, parse and show mapping modal
             if (type === 'job-csv') {
                 parseCSV(file);
-            } else {
-                // For other files, show job number input
-                populateJobNumberDropdown(type);
             }
             
             updateUploadButton();
             showStatus('File added successfully', 'success');
         }
         
-        function populateJobNumberDropdown(type) {
-            const container = document.getElementById(`${type}-job-number`);
-            if (!container) {
-                console.log(`Container not found for ${type}`);
-                return;
-            }
-            
-            // Find the existing input/select element
-            const inputId = type === 'scaffolding-csv' ? 'scaffolding-job-select' : 
-                           type === 'schletter-pdf' ? 'schletter-job-select' : 
-                           'design-job-select';
-            
-            let existingElement = document.getElementById(inputId);
-            
-            if (jobNumbers.length > 0) {
-                // Create dropdown with job numbers from CSV
-                const select = document.createElement('select');
-                select.id = inputId;
-                select.style.cssText = existingElement ? existingElement.style.cssText : '';
-                
-                jobNumbers.forEach((jobNum) => {
-                    const option = document.createElement('option');
-                    option.value = jobNum;
-                    option.textContent = jobNum;
-                    select.appendChild(option);
-                });
-                
-                // Auto-select first job number
-                fileJobNumbers[type] = jobNumbers[0];
-                
-                // Add change listener
-                select.addEventListener('change', (e) => {
-                    fileJobNumbers[type] = e.target.value;
-                    console.log(`Job number for ${type} set to:`, e.target.value);
-                });
-                
-                // Replace existing element
-                if (existingElement) {
-                    existingElement.parentNode.replaceChild(select, existingElement);
-                } else {
-                    container.appendChild(select);
-                }
-            } else {
-                // Ensure it's a text input for manual entry
-                if (existingElement && existingElement.tagName === 'SELECT') {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.id = inputId;
-                    input.placeholder = 'Enter job number';
-                    input.style.cssText = existingElement.style.cssText;
-                    
-                    input.addEventListener('input', (e) => {
-                        fileJobNumbers[type] = e.target.value;
-                        console.log(`Job number for ${type} set to:`, e.target.value);
-                    });
-                    
-                    existingElement.parentNode.replaceChild(input, existingElement);
-                } else if (existingElement) {
-                    // Add event listener if not already added
-                    existingElement.addEventListener('input', (e) => {
-                        fileJobNumbers[type] = e.target.value;
-                        console.log(`Job number for ${type} set to:`, e.target.value);
-                    });
-                }
-            }
-        }
-        
-        function updateAllJobNumberDropdowns() {
-            ['scaffolding-csv', 'schletter-pdf', 'design-pdf'].forEach(type => {
-                if (uploadedFiles[type]) {
-                    populateJobNumberDropdown(type);
-                }
-            });
-        }
-        
         function removeFile(type) {
             uploadedFiles[type] = null;
-            
-            if (type !== 'job-csv') {
-                fileJobNumbers[type] = null;
-            }
             
             const card = document.getElementById(`${type}-card`);
             const info = document.getElementById(`${type}-info`);
@@ -959,10 +859,6 @@
                 csvHeaders = [];
                 csvData = [];
                 columnMapping = {};
-                jobNumbers = [];
-                
-                // Update all other job number inputs to manual entry
-                updateAllJobNumberDropdowns();
             }
             
             updateUploadButton();
@@ -1122,20 +1018,8 @@
                 return;
             }
             
-            // Extract job numbers from the Job Number column
-            if (columnMapping['Job Number'] !== undefined) {
-                jobNumbers = csvData.map(row => row[columnMapping['Job Number']]).filter(jn => jn && jn.trim());
-                console.log('Extracted job numbers:', jobNumbers);
-                
-                // Update dropdowns for already uploaded files
-                updateAllJobNumberDropdowns();
-                
-                showStatus(`Mapping saved! ${jobNumbers.length} job numbers available`, 'success');
-            } else {
-                showStatus('Column mapping saved successfully', 'success');
-            }
-            
             closeMappingModal();
+            showStatus('Column mapping saved successfully', 'success');
         }
         
         // Upload to Firebase
@@ -1155,13 +1039,6 @@
                 
                 console.log('Firebase initialized successfully');
                 
-                // Validate job numbers for non-CSV files
-                for (const type of ['scaffolding-csv', 'schletter-pdf', 'design-pdf']) {
-                    if (uploadedFiles[type] && !fileJobNumbers[type]) {
-                        throw new Error(`Please enter a job number for ${type.replace('-csv', '').replace('-pdf', '').replace('-', ' ')}`);
-                    }
-                }
-                
                 // Upload Job CSV to Firestore
                 if (uploadedFiles['job-csv']) {
                     console.log('Uploading Job CSV to Firestore...');
@@ -1178,8 +1055,8 @@
                 // Upload other files to Firebase Storage
                 for (const [type, file] of Object.entries(uploadedFiles)) {
                     if (file && type !== 'job-csv') {
-                        console.log(`Uploading ${type} with job number ${fileJobNumbers[type]}...`);
-                        await uploadFileToStorage(file, type, fileJobNumbers[type]);
+                        console.log(`Uploading ${type}...`);
+                        await uploadFileToStorage(file, type);
                         console.log(`${type} uploaded successfully`);
                     }
                 }
@@ -1237,11 +1114,11 @@
             console.log(`Successfully uploaded ${transformedData.length} jobs to Firestore`);
         }
         
-        async function uploadFileToStorage(file, type, jobNumber) {
+        async function uploadFileToStorage(file, type) {
             const { ref, uploadBytes, getDownloadURL } = window.firebaseModules;
             const { collection, addDoc } = window.firebaseModules;
             
-            console.log(`Uploading ${file.name} to storage with job number: ${jobNumber}...`);
+            console.log(`Uploading ${file.name} to storage...`);
             
             // Create storage reference
             const timestamp = Date.now();
@@ -1261,12 +1138,8 @@
                 fileSize: file.size,
                 fileType: file.type,
                 downloadURL: downloadURL,
-                jobNumber: jobNumber,
                 uploadDate: new Date().toISOString()
             });
-            
-            console.log(`Uploaded ${file.name} to ${type}, doc ID: ${docRef.id}, job number: ${jobNumber}`);
-        }
             
             console.log(`Uploaded ${file.name} to ${type}, doc ID: ${docRef.id}`);
         }
