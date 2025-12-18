@@ -1324,25 +1324,25 @@
                     <div class="status-buttons">
                         <button 
                             class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'upcoming')"
+                            onclick="updateJobStatus('${jobId}', 'upcoming', this)"
                         >
                             Upcoming
                         </button>
                         <button 
                             class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'survey-complete')"
+                            onclick="updateJobStatus('${jobId}', 'survey-complete', this)"
                         >
                             Survey Complete
                         </button>
                         <button 
                             class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'install-started')"
+                            onclick="updateJobStatus('${jobId}', 'install-started', this)"
                         >
                             Install Started
                         </button>
                         <button 
                             class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'install-complete')"
+                            onclick="updateJobStatus('${jobId}', 'install-complete', this)"
                         >
                             Install Complete
                         </button>
@@ -1363,10 +1363,11 @@
             await loadJobFiles(job['Job Number']);
         }
         
-        async function updateJobStatus(jobId, newStatus) {
+        async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
             
             try {
+                console.log('Updating job status:', jobId, newStatus);
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'jobs', jobId);
                 
@@ -1388,7 +1389,9 @@
                 
                 const buttons = document.querySelectorAll('.status-update-btn');
                 buttons.forEach(btn => btn.classList.remove('current'));
-                event.target.classList.add('current');
+                if (buttonElement) {
+                    buttonElement.classList.add('current');
+                }
                 
                 updateStats();
                 
@@ -1400,11 +1403,23 @@
                 
             } catch (error) {
                 console.error('Error updating status:', error);
-                messageDiv.innerHTML = '<div class="status-update-message error">✗ Failed to update status. Please try again.</div>';
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                
+                let errorMsg = '✗ Failed to update status. ';
+                if (error.code === 'permission-denied') {
+                    errorMsg += 'Permission denied. Check Firebase security rules.';
+                } else if (error.code === 'not-found') {
+                    errorMsg += 'Job not found.';
+                } else {
+                    errorMsg += error.message || 'Please try again.';
+                }
+                
+                messageDiv.innerHTML = `<div class="status-update-message error">${errorMsg}</div>`;
                 
                 setTimeout(() => {
                     messageDiv.innerHTML = '';
-                }, 3000);
+                }, 5000);
             }
         }
         
