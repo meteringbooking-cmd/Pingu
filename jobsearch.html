@@ -1212,6 +1212,9 @@
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
             
+            currentJobId = jobId;
+            isEditingEngineer = false;
+            
             const modal = document.getElementById('job-modal');
             const modalBody = document.getElementById('modal-body');
             const modalTitle = document.getElementById('modal-job-number');
@@ -1251,7 +1254,10 @@
                 
                 <div class="detail-group">
                     <div class="detail-label">Lead Engineer</div>
-                    <div class="detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</div>
+                    <div class="detail-value editable" id="lead-engineer-container">
+                        <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
+                        <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
+                    </div>
                 </div>
                 
                 <div class="detail-group">
@@ -1271,6 +1277,78 @@
             
             // Load associated files
             await loadJobFiles(job['Job Number']);
+        }
+        
+        // Edit lead engineer
+        function editLeadEngineer() {
+            if (isEditingEngineer) return;
+            
+            isEditingEngineer = true;
+            const job = allJobs.find(j => j.id === currentJobId);
+            const container = document.getElementById('lead-engineer-container');
+            
+            // Build options for lead engineers
+            const options = leadEngineers.map(engineer => 
+                `<option value="${escapeHtml(engineer.name)}" ${engineer.name === job['Lead Engineer'] ? 'selected' : ''}>
+                    ${escapeHtml(engineer.name)}
+                </option>`
+            ).join('');
+            
+            container.innerHTML = `
+                <select class="engineer-select" id="engineer-select">
+                    <option value="">-- Unassigned --</option>
+                    ${options}
+                </select>
+                <div class="save-cancel-btns">
+                    <button class="save-btn" onclick="saveLeadEngineer()">Save</button>
+                    <button class="cancel-btn" onclick="cancelEditEngineer()">Cancel</button>
+                </div>
+            `;
+        }
+        
+        // Cancel editing lead engineer
+        function cancelEditEngineer() {
+            isEditingEngineer = false;
+            const job = allJobs.find(j => j.id === currentJobId);
+            const container = document.getElementById('lead-engineer-container');
+            
+            container.innerHTML = `
+                <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
+                <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
+            `;
+        }
+        
+        // Save lead engineer change
+        async function saveLeadEngineer() {
+            const select = document.getElementById('engineer-select');
+            const newEngineer = select.value;
+            
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                
+                // Update in Firebase
+                await updateDoc(doc(window.db, 'jobs', currentJobId), {
+                    'Lead Engineer': newEngineer || 'Unassigned'
+                });
+                
+                // Update local data
+                const job = allJobs.find(j => j.id === currentJobId);
+                job['Lead Engineer'] = newEngineer || 'Unassigned';
+                
+                // Update UI
+                isEditingEngineer = false;
+                const container = document.getElementById('lead-engineer-container');
+                container.innerHTML = `
+                    <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'])}</span>
+                    <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
+                `;
+                
+                showStatus('Lead engineer updated successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Error updating lead engineer:', error);
+                showStatus('Error updating lead engineer: ' + error.message, 'error');
+            }
         }
         
         // Load files associated with a job number
