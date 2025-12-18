@@ -855,6 +855,43 @@
             box-shadow: 0 5px 15px var(--shadow);
         }
         
+        .missing-file-item {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 2px dashed var(--text-dim);
+        }
+        
+        .missing-file-item:hover {
+            border-color: var(--accent);
+        }
+        
+        .upload-file-btn {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            color: var(--dark);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-family: 'Syne', sans-serif;
+        }
+        
+        .upload-file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        
+        .upload-file-input {
+            display: none;
+        }
+        
         .no-attachments {
             text-align: center;
             padding: 2rem;
@@ -866,6 +903,19 @@
             text-align: center;
             padding: 1rem;
             color: var(--text-dim);
+        }
+        
+        .uploading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+        
+        .uploading-indicator::after {
+            content: '...';
+            animation: dots 1.5s infinite;
         }
         
         @media (max-width: 768px) {
@@ -959,7 +1009,8 @@
                             id="search-input" 
                             class="search-input" 
                             placeholder="e.g. 12345, SW1A 1AA, or John Smith..."
-                            onkeypress="handleSearchKeypress(event)"
+                            onkeypress="handleSearchKeypress
+                            (event)"
                         />
                     </div>
                     <button class="search-btn" onclick="performSearch()">Search</button>
@@ -992,8 +1043,7 @@
     <div class="modal" id="job-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title"
-                    id="modal-job-number">Job #12345</h2>
+                <h2 class="modal-title" id="modal-job-number">Job #12345</h2>
                 <button class="close-btn" onclick="closeJobModal()">×</button>
             </div>
             <div class="modal-body" id="modal-body">
@@ -1008,7 +1058,8 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Firebase configuration
         const firebaseConfig = {
@@ -1027,10 +1078,12 @@
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
+            const storage = getStorage(app);
             
             // Make Firebase available globally
             window.db = db;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc };
+            window.storage = storage;
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
             
             console.log('✅ Firebase initialized successfully');
             
@@ -1052,6 +1105,7 @@
         let currentView = 'grid';
         let currentFilter = 'all';
         let currentJobId = null;
+        let currentJobNumber = null;
         let leadEngineers = [];
         let isEditingEngineer = false;
         
@@ -1118,14 +1172,12 @@
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
             
             if (!searchTerm) {
-                // If empty, show all jobs based on current filter
                 applyFilter();
                 return;
             }
             
             console.log('Searching for:', searchTerm);
             
-            // Filter jobs locally
             filteredJobs = allJobs.filter(job => {
                 const jobNumber = (job['Job Number'] || '').toLowerCase();
                 const postcode = (job['Postcode'] || '').toLowerCase();
@@ -1151,13 +1203,11 @@
         function setFilter(filter) {
             currentFilter = filter;
             
-            // Update UI
             document.querySelectorAll('.filter-tag').forEach(tag => {
                 tag.classList.remove('active');
             });
             event.target.classList.add('active');
             
-            // Apply filter
             applyFilter();
         }
         
@@ -1166,7 +1216,6 @@
             const now = new Date();
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
             
-            // Start with all jobs or search results
             let jobs = searchTerm ? 
                 allJobs.filter(job => {
                     const jobNumber = (job['Job Number'] || '').toLowerCase();
@@ -1179,7 +1228,6 @@
                 }) : 
                 [...allJobs];
             
-            // Apply time filter
             if (currentFilter !== 'all') {
                 jobs = jobs.filter(job => {
                     const uploadDate = new Date(job.uploadDate);
@@ -1206,7 +1254,6 @@
         function setView(view) {
             currentView = view;
             
-            // Update UI
             document.querySelectorAll('.view-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
@@ -1351,6 +1398,7 @@
             if (!job) return;
             
             currentJobId = jobId;
+            currentJobNumber = job['Job Number'];
             isEditingEngineer = false;
             
             const modal = document.getElementById('job-modal');
@@ -1481,7 +1529,6 @@
                     buttonElement.classList.add('current');
                 }
                 
-                // Refresh the display
                 displayResults();
                 
             } catch (error) {
@@ -1573,12 +1620,13 @@
                 const { collection, getDocs, query, where } = window.firebaseModules;
                 
                 const fileCollections = [
-                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV' },
-                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report' },
-                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF' }
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' }
                 ];
                 
                 let allFiles = [];
+                let missingFiles = [];
                 
                 for (const fileCollection of fileCollections) {
                     const filesQuery = query(
@@ -1588,21 +1636,28 @@
                     
                     const querySnapshot = await getDocs(filesQuery);
                     
-                    querySnapshot.forEach((doc) => {
-                        const data = doc.data();
-                        allFiles.push({
-                            id: doc.id,
-                            ...data,
-                            collectionType: fileCollection.type,
-                            icon: fileCollection.icon
+                    if (querySnapshot.empty) {
+                        missingFiles.push(fileCollection);
+                    } else {
+                        querySnapshot.forEach((doc) => {
+                            const data = doc.data();
+                            allFiles.push({
+                                id: doc.id,
+                                ...data,
+                                collectionType: fileCollection.type,
+                                icon: fileCollection.icon
+                            });
                         });
-                    });
+                    }
                 }
                 
-                if (allFiles.length === 0) {
+                if (allFiles.length === 0 && missingFiles.length === 0) {
                     attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
                 } else {
-                    attachmentsList.innerHTML = allFiles.map(file => `
+                    let html = '';
+                    
+                    // Show existing files
+                    html += allFiles.map(file => `
                         <div class="attachment-item">
                             <div class="attachment-icon">${file.icon}</div>
                             <div class="attachment-info">
@@ -1614,6 +1669,29 @@
                             </a>
                         </div>
                     `).join('');
+                    
+                    // Show missing files with upload option
+                    html += missingFiles.map((fileCollection, index) => `
+                        <div class="missing-file-item">
+                            <div class="attachment-icon">${fileCollection.icon}</div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">${fileCollection.type}</div>
+                                <div class="attachment-type">Not uploaded yet</div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="file-input-${index}" 
+                                class="upload-file-input" 
+                                accept="${fileCollection.accept}"
+                                onchange="handleFileUpload(event, '${fileCollection.name}', '${jobNumber}')"
+                            />
+                            <button class="upload-file-btn" onclick="document.getElementById('file-input-${index}').click()">
+                                Upload
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    attachmentsList.innerHTML = html;
                 }
                 
             } catch (error) {
@@ -1621,6 +1699,50 @@
                 attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
             }
         }
+        
+        // Handle file upload
+        async function handleFileUpload(event, collectionName, jobNumber) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const attachmentsList = document.getElementById('attachments-list');
+            const uploadButton = event.target.nextElementSibling;
+            const originalButtonText = uploadButton.textContent;
+            
+            uploadButton.innerHTML = '<div class="uploading-indicator">Uploading</div>';
+            uploadButton.disabled = true;
+            
+            try {
+                const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
+                
+                // Upload file to Firebase Storage
+                const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                
+                // Add file metadata to Firestore
+                await addDoc(collection(window.db, collectionName), {
+                    jobNumber: jobNumber,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    downloadURL: downloadURL,
+                    uploadDate: new Date().toISOString()
+                });
+                
+                showStatus('File uploaded successfully!', 'success');
+                
+                // Reload files
+                await loadJobFiles(jobNumber);
+                
+            } catch (error) {
+                console.error('Error uploading file:', error);
+                showStatus('Error uploading file: ' + error.message, 'error');
+                uploadButton.textContent = originalButtonText;
+                uploadButton.disabled = false;
+            }
+        }
+        
+        window.handleFileUpload = handleFileUpload;
         
         // Format file size
         function formatFileSize(bytes) {
@@ -1642,12 +1764,6 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
-        }
-        
-        function decodeHtml(html) {
-            const txt = document.createElement('textarea');
-            txt.innerHTML = html;
-            return txt.value;
         }
         
         function formatDate(dateString) {
