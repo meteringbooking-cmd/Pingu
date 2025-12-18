@@ -302,6 +302,12 @@
             box-shadow: 0 10px 30px var(--shadow);
         }
         
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .btn-secondary {
             background: var(--dark-lighter);
             color: var(--text);
@@ -624,6 +630,22 @@
             color: white;
         }
         
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 0.5rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .container { padding: 1rem; }
@@ -641,7 +663,7 @@
                 <a href="index.html" class="back-btn">← Back to Home</a>
             </div>
             <h1>Upload Data</h1>
-            <p class="subtitle">Sequential upload process: Job CSV first, then additional files</p>
+            <p class="subtitle">Sequential upload process: Job CSV first, then additional files (automated emails sent to customers)</p>
         </header>
         
         <!-- Step Indicator -->
@@ -660,7 +682,7 @@
         <div class="upload-section active" id="section-job-csv">
             <div class="upload-card">
                 <h2>Step 1: Upload Job CSV</h2>
-                <p>Upload your job CSV file and map the columns to proceed.</p>
+                <p>Upload your job CSV file and map the columns to proceed. Confirmation emails will be sent automatically to customers.</p>
                 
                 <div class="file-drop-zone" id="job-csv-drop">
                     <div class="drop-icon">📊</div>
@@ -680,7 +702,7 @@
                     </div>
                     <div class="file-actions">
                         <button class="btn btn-danger" onclick="removeJobCSV()">Remove</button>
-                        <button class="btn btn-primary" onclick="uploadJobCSV()">Upload & Continue</button>
+                        <button class="btn btn-primary" id="upload-btn" onclick="uploadJobCSV()">Upload & Continue</button>
                     </div>
                 </div>
             </div>
@@ -767,6 +789,9 @@
     <!-- Status Message -->
     <div class="status-message" id="status-message"></div>
     
+    <!-- EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -789,12 +814,14 @@
             window.storage = getStorage(app);
             window.firebaseModules = { collection, addDoc, ref, uploadBytes, getDownloadURL };
             console.log('✅ Firebase initialized');
-            console.log('Storage bucket:', window.storage.app.options.storageBucket);
-            console.log('Firestore:', window.db.type);
         } catch (error) {
             console.error('❌ Firebase error:', error);
             showStatus('Firebase initialization failed: ' + error.message, 'error');
         }
+        
+        // Initialize EmailJS
+        // YOU NEED TO SIGN UP AT https://www.emailjs.com/ AND REPLACE THESE VALUES
+        emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
     </script>
     
     <script>
@@ -970,14 +997,74 @@
             showStatus('Mapping saved! Ready to upload', 'success');
         }
         
+        async function sendCustomerEmail(customerData) {
+            try {
+                // Determine greeting based on time
+                const hour = new Date().getHours();
+                const greeting = hour < 12 ? 'Good morning' : 'Good afternoon';
+                
+                // Format the email body
+                const emailBody = `${greeting} ${customerData.Name},
+
+Octopus have passed on your details so that we can make arrangements to install solar.
+
+We understand that your install date is ${customerData['Install Date']}.
+
+Before this time, we will conduct a survey and walkthrough of the job at a convenient time for you.
+
+Scaffolding will go up a few days before the date above and a collection of all rubbish will be made after the install.
+
+If you wish to discuss this further please contact 07851158757, alternatively we will be in touch in due course.
+
+Please do not reply to this email.
+This inbox is not monitored.
+
+Best regards,
+Next Generation Utilities`;
+                
+                // EmailJS template parameters
+                const templateParams = {
+                    to_email: customerData['Email Address'],
+                    to_name: customerData.Name,
+                    from_name: 'Next Generation Utilities',
+                    reply_to: 'barry-dixon@next-gen.uk',
+                    message: emailBody,
+                    subject: `Solar Installation Confirmation - ${customerData['Install Date']}`
+                };
+                
+                // Send email using EmailJS
+                // NOTE: You need to configure this in EmailJS dashboard:
+                // 1. Create a service (e.g., Gmail)
+                // 2. Create an email template with variables: {{to_email}}, {{to_name}}, {{message}}, {{subject}}
+                // 3. Replace 'YOUR_SERVICE_ID' and 'YOUR_TEMPLATE_ID' below
+                
+                const response = await emailjs.send(
+                    'YOUR_SERVICE_ID',     // Replace with your EmailJS service ID
+                    'YOUR_TEMPLATE_ID',    // Replace with your EmailJS template ID
+                    templateParams
+                );
+                
+                console.log('✅ Email sent successfully to', customerData['Email Address']);
+                return { success: true };
+                
+            } catch (error) {
+                console.error('❌ Email sending failed:', error);
+                return { success: false, error: error.message };
+            }
+        }
+        
         async function uploadJobCSV() {
             if (!jobCSVFile || Object.keys(columnMapping).length === 0) {
                 showStatus('Please map columns before uploading', 'error');
                 return;
             }
             
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = 'Uploading... <span class="spinner"></span>';
+            
             try {
-                showStatus('Uploading jobs...', 'success');
+                showStatus('Uploading jobs and sending emails...', 'success');
                 
                 const { collection, addDoc } = window.firebaseModules;
                 
@@ -991,12 +1078,38 @@
                 });
                 
                 uploadedJobs = [];
+                let emailsSent = 0;
+                let emailsFailed = 0;
+                
                 for (const job of transformedData) {
+                    // Upload job to Firestore
                     const docRef = await addDoc(collection(window.db, 'jobs'), job);
                     uploadedJobs.push({ ...job, id: docRef.id });
+                    
+                    // Send email to customer
+                    if (job['Email Address'] && job['Email Address'].includes('@')) {
+                        const emailResult = await sendCustomerEmail(job);
+                        if (emailResult.success) {
+                            emailsSent++;
+                        } else {
+                            emailsFailed++;
+                            console.warn(`Failed to send email to ${job['Email Address']}:`, emailResult.error);
+                        }
+                    } else {
+                        emailsFailed++;
+                        console.warn(`Invalid email address for job ${job['Job Number']}: ${job['Email Address']}`);
+                    }
                 }
                 
-                showStatus(`${uploadedJobs.length} jobs uploaded successfully!`, 'success');
+                // Show completion message
+                let message = `${uploadedJobs.length} jobs uploaded successfully! `;
+                if (emailsSent > 0) {
+                    message += `${emailsSent} confirmation email(s) sent.`;
+                }
+                if (emailsFailed > 0) {
+                    message += ` ${emailsFailed} email(s) failed.`;
+                }
+                showStatus(message, 'success');
                 
                 // Move to step 2
                 document.getElementById('step-1').classList.remove('active');
@@ -1010,6 +1123,9 @@
             } catch (error) {
                 console.error('Upload error:', error);
                 showStatus('Upload failed: ' + error.message, 'error');
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = 'Upload & Continue';
             }
         }
         
@@ -1154,7 +1270,7 @@
             
             setTimeout(() => {
                 status.classList.remove('show');
-            }, 3000);
+            }, 5000);
         }
     </script>
 </body>
