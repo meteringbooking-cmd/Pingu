@@ -653,6 +653,92 @@
             border-radius: 8px;
         }
         
+        /* File Attachments */
+        .attachments-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+        
+        .attachments-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .attachments-grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .attachment-item {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .attachment-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+        
+        .attachment-icon {
+            font-size: 2rem;
+        }
+        
+        .attachment-info {
+            flex: 1;
+        }
+        
+        .attachment-name {
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+        
+        .attachment-type {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        
+        .attachment-download {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        
+        .attachment-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        
+        .no-attachments {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+        
+        .loading-attachments {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-dim);
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .container {
@@ -816,7 +902,7 @@
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
             authDomain: "pingu-solar.firebaseapp.com",
             projectId: "pingu-solar",
-            storageBucket: "pingu-solar.appspot.com",
+            storageBucket: "pingu-solar.firebasestorage.app",
             messagingSenderId: "232764952866",
             appId: "1:232764952866:web:5923b7f419de6355d6157b",
             measurementId: "G-PFH059DZ64"
@@ -1073,7 +1159,7 @@
         }
         
         // Show job details
-        function showJobDetails(jobId) {
+        async function showJobDetails(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
             
@@ -1118,9 +1204,88 @@
                     <div class="detail-label">Lead Engineer</div>
                     <div class="detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</div>
                 </div>
+                
+                <div class="attachments-section">
+                    <div class="attachments-header">📎 Associated Files</div>
+                    <div class="attachments-grid" id="attachments-list">
+                        <div class="loading-attachments">Loading files...</div>
+                    </div>
+                </div>
             `;
             
             modal.classList.add('show');
+            
+            // Load associated files
+            await loadJobFiles(job['Job Number']);
+        }
+        
+        // Load files associated with a job number
+        async function loadJobFiles(jobNumber) {
+            const attachmentsList = document.getElementById('attachments-list');
+            
+            try {
+                const { collection, getDocs, query, where } = window.firebaseModules;
+                
+                const fileCollections = [
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF' }
+                ];
+                
+                let allFiles = [];
+                
+                // Query each collection for files with matching job number
+                for (const fileCollection of fileCollections) {
+                    const filesQuery = query(
+                        collection(window.db, fileCollection.name),
+                        where('jobNumber', '==', jobNumber)
+                    );
+                    
+                    const querySnapshot = await getDocs(filesQuery);
+                    
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        allFiles.push({
+                            id: doc.id,
+                            ...data,
+                            collectionType: fileCollection.type,
+                            icon: fileCollection.icon
+                        });
+                    });
+                }
+                
+                // Display files
+                if (allFiles.length === 0) {
+                    attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
+                } else {
+                    attachmentsList.innerHTML = allFiles.map(file => `
+                        <div class="attachment-item">
+                            <div class="attachment-icon">${file.icon}</div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                                <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                            </div>
+                            <a href="${file.downloadURL}" target="_blank" class="attachment-download">
+                                Download
+                            </a>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error loading files:', error);
+                attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
+            }
+        }
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown size';
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
         
         // Close modal
