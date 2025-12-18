@@ -527,75 +527,106 @@
         }
         
         async function loadStats() {
-            try {
-                const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
-                
-                // Query all jobs
-                const jobsQuery = query(
-                    collection(window.db, 'jobs'),
-                    orderByFn('uploadDate', 'desc')
-                );
-                
-                const querySnapshot = await getDocs(jobsQuery);
-                
-                let allJobs = [];
-                querySnapshot.forEach((doc) => {
-                    allJobs.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                // Calculate stats
-                const now = new Date();
-                const startOfWeek = new Date(now);
-                startOfWeek.setDate(now.getDate() - now.getDay()); // Start of this week (Sunday)
-                startOfWeek.setHours(0, 0, 0, 0);
-                
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                
-                let weekTotal = 0;
-                let weekCompleted = 0;
-                let monthTotal = 0;
-                let monthCompleted = 0;
-                
-                allJobs.forEach(job => {
-                    const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
-                    
-                    if (installDate) {
-                        const isPast = installDate <= now;
-                        
-                        // This week
-                        if (installDate >= startOfWeek) {
-                            weekTotal++;
-                            if (isPast) weekCompleted++;
-                        }
-                        
-                        // This month
-                        if (installDate >= startOfMonth) {
-                            monthTotal++;
-                            if (isPast) monthCompleted++;
-                        }
-                    }
-                });
-                
-                // Update UI
-                document.getElementById('total-jobs-all').textContent = allJobs.length;
-                document.getElementById('loading-all').style.display = 'none';
-                
-                document.getElementById('total-jobs-week').textContent = weekTotal;
-                document.getElementById('week-total').textContent = weekTotal;
-                document.getElementById('week-completed').textContent = weekCompleted;
-                
-                document.getElementById('total-jobs-month').textContent = monthTotal;
-                document.getElementById('month-total').textContent = monthTotal;
-                document.getElementById('month-completed').textContent = monthCompleted;
-                
-            } catch (error) {
-                console.error('Error loading stats:', error);
-                document.getElementById('loading-all').textContent = 'Error: ' + error.message;
+    try {
+        const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
+        
+        // Query all jobs
+        const jobsQuery = query(
+            collection(window.db, 'jobs'),
+            orderByFn('uploadDate', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(jobsQuery);
+        
+        let allJobs = [];
+        querySnapshot.forEach((doc) => {
+            allJobs.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        // Calculate stats
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay());
+        startOfWeek.setHours(0, 0, 0, 0);
+        
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 7);
+        
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        
+        // Initialize counters
+        let allTotal = 0;
+        let allStarted = 0;
+        let allCompleted = 0;
+        
+        let weekTotal = 0;
+        let weekStarted = 0;
+        let weekCompleted = 0;
+        
+        let monthTotal = 0;
+        let monthStarted = 0;
+        let monthCompleted = 0;
+        
+        allJobs.forEach(job => {
+            const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+            const status = job.status || '';
+            
+            // All time stats
+            allTotal++;
+            if (status === 'install-started') {
+                allStarted++;
             }
-        }
+            if (status === 'install-complete') {
+                allCompleted++;
+            }
+            
+            // This week stats (based on install date)
+            if (installDate && installDate >= startOfWeek && installDate < endOfWeek) {
+                weekTotal++;
+                if (status === 'install-started') {
+                    weekStarted++;
+                }
+                if (status === 'install-complete') {
+                    weekCompleted++;
+                }
+            }
+            
+            // This month stats (based on install date)
+            if (installDate && installDate >= startOfMonth && installDate <= endOfMonth) {
+                monthTotal++;
+                if (status === 'install-started') {
+                    monthStarted++;
+                }
+                if (status === 'install-complete') {
+                    monthCompleted++;
+                }
+            }
+        });
+        
+        // Update All Time
+        document.getElementById('all-total').textContent = allTotal;
+        document.getElementById('all-completed').textContent = allCompleted;
+        
+        // Update This Week
+        document.getElementById('week-total').textContent = weekTotal;
+        document.getElementById('week-completed').textContent = weekCompleted;
+        
+        // Update This Month
+        document.getElementById('month-total').textContent = monthTotal;
+        document.getElementById('month-completed').textContent = monthCompleted;
+        
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        // Update all stat values to show error
+        document.querySelectorAll('.stat-item-value').forEach(el => {
+            el.textContent = 'Error';
+        });
+    }
+}
     </script>
     
     <script>
