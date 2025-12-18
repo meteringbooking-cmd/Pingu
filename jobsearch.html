@@ -603,6 +603,89 @@
             border-radius: 8px;
         }
         
+        .detail-value.editable {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+        
+        .edit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+        
+        .edit-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .engineer-select {
+            background: var(--dark);
+            border: 2px solid var(--primary);
+            color: var(--text);
+            padding: 0.6rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            cursor: pointer;
+            flex: 1;
+        }
+        
+        .engineer-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .save-cancel-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .save-btn {
+            background: var(--success);
+            color: var(--dark);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+        
+        .save-btn:hover {
+            background: #3DB88D;
+            transform: scale(1.05);
+        }
+        
+        .cancel-btn {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+        
+        .cancel-btn:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
         /* File Attachments */
         .attachments-section {
             margin-top: 2rem;
@@ -829,7 +912,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         // Firebase configuration
         const firebaseConfig = {
@@ -851,7 +934,7 @@
             
             // Make Firebase available globally
             window.db = db;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit };
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc };
             
             console.log('✅ Firebase initialized successfully');
             
@@ -872,12 +955,15 @@
         let filteredJobs = [];
         let currentView = 'grid';
         let currentFilter = 'all';
+        let currentJobId = null;
+        let leadEngineers = [];
+        let isEditingEngineer = false;
         
         // Load all jobs from Firebase
         async function loadAllJobs() {
             try {
                 console.log('Loading all jobs...');
-                const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
+                const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
                 
                 // Query all jobs, ordered by upload date
                 const jobsQuery = query(
@@ -896,6 +982,23 @@
                 });
                 
                 console.log(`Loaded ${allJobs.length} jobs`);
+                
+                // Load lead engineers
+                const engineersQuery = query(
+                    collection(window.db, 'team-members'),
+                    where('isLeadEngineer', '==', true)
+                );
+                
+                const engineersSnapshot = await getDocs(engineersQuery);
+                leadEngineers = [];
+                engineersSnapshot.forEach((doc) => {
+                    leadEngineers.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`Loaded ${leadEngineers.length} lead engineers`);
                 
                 filteredJobs = [...allJobs];
                 displayResults();
