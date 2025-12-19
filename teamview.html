@@ -1425,6 +1425,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -1441,11 +1442,36 @@
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
+            const messaging = getMessaging(app);
             
             window.db = db;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc };
+            window.messaging = messaging;
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc, getToken, onMessage };
             
             console.log('✅ Firebase initialized successfully');
+            
+            // Handle foreground messages (when app is open)
+            onMessage(messaging, (payload) => {
+                console.log('Received foreground message:', payload);
+                
+                // Show notification even when app is open
+                if (Notification.permission === 'granted') {
+                    const notificationTitle = payload.notification.title;
+                    const notificationOptions = {
+                        body: payload.notification.body,
+                        icon: '/icon-192x192.png',
+                        tag: payload.data?.tag || 'pingu-notification',
+                        requireInteraction: true
+                    };
+                    
+                    new Notification(notificationTitle, notificationOptions);
+                }
+                
+                // Optionally refresh job list
+                if (currentUser && payload.data?.type === 'new-job') {
+                    loadAllJobs();
+                }
+            });
             
             window.addEventListener('DOMContentLoaded', () => {
                 checkExistingLogin();
@@ -1531,7 +1557,7 @@
             }
         }
         
-        // Request notification permission
+        // Request notification permission and get FCM token
         async function enablePushNotifications() {
             try {
                 const permission = await Notification.requestPermission();
@@ -1540,24 +1566,44 @@
                     console.log('Notification permission granted');
                     document.getElementById('notifications-banner').style.display = 'none';
                     
-                    // Save push token to Firebase
-                    await savePushToken();
+                    // Get FCM token
+                    const { getToken } = window.firebaseModules;
                     
-                    // Show success message
-                    alert('Push notifications enabled! You\'ll now receive updates about new jobs and requests.');
+                    try {
+                        // Request FCM token
+                        const fcmToken = await getToken(window.messaging, {
+                            vapidKey: 'YOUR_VAPID_KEY_HERE' // You'll need to generate this in Firebase Console
+                        });
+                        
+                        if (fcmToken) {
+                            console.log('FCM Token:', fcmToken);
+                            
+                            // Save token to Firebase
+                            await savePushToken(fcmToken);
+                            
+                            // Show success message
+                            alert('✅ Push notifications enabled! You\'ll now receive updates about new jobs and requests even when the app is closed.');
+                        } else {
+                            console.warn('No FCM token available');
+                            alert('⚠️ Notifications enabled but push may not work. Please refresh and try again.');
+                        }
+                    } catch (tokenError) {
+                        console.error('Error getting FCM token:', tokenError);
+                        alert('⚠️ Notifications enabled but push may not work properly. Error: ' + tokenError.message);
+                    }
                 } else {
-                    alert('Notification permission denied. You can enable it later in your browser settings.');
+                    alert('❌ Notification permission denied. You can enable it later in your browser settings.');
                 }
             } catch (error) {
                 console.error('Error requesting notification permission:', error);
-                alert('Failed to enable notifications. Please try again.');
+                alert('❌ Failed to enable notifications. Please try again.');
             }
         }
         
         window.enablePushNotifications = enablePushNotifications;
         
         // Save push notification token to Firebase
-        async function savePushToken() {
+        async function savePushToken(fcmToken) {
             if (!currentUser) return;
             
             try {
@@ -1568,14 +1614,18 @@
                 await setDoc(tokenDoc, {
                     engineerId: currentUser.id,
                     engineerName: currentUser.name,
+                    fcmToken: fcmToken,
                     enabled: true,
                     enabledAt: new Date().toISOString(),
-                    lastUpdated: new Date().toISOString()
+                    lastUpdated: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform
                 }, { merge: true });
                 
-                console.log('Push token saved successfully');
+                console.log('✅ FCM token saved successfully');
             } catch (error) {
-                console.error('Error saving push token:', error);
+                console.error('❌ Error saving FCM token:', error);
+                throw error;
             }
         }
         
