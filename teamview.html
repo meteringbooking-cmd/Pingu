@@ -1136,12 +1136,12 @@
                     <div class="stat-card">
                         <div class="stat-label">This Week</div>
                         <div class="stat-value" id="week-jobs">0</div>
-                        <div class="stat-detail">Next 7 days</div>
+                        <div class="stat-detail">Current week</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-label">This Month</div>
                         <div class="stat-value" id="month-jobs">0</div>
-                        <div class="stat-detail">Next 30 days</div>
+                        <div class="stat-detail">Current month</div>
                     </div>
                 </div>
                 
@@ -1492,8 +1492,24 @@
         
         function updateStats() {
             const now = new Date();
-            const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-            const monthFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            
+            // Get start and end of current week (Monday to Sunday)
+            const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const startOfWeek = new Date(now);
+            const daysToMonday = currentDay === 0 ? -6 : 1 - currentDay; // If Sunday, go back 6 days
+            startOfWeek.setDate(now.getDate() + daysToMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+            endOfWeek.setHours(23, 59, 59, 999);
+            
+            // Get start and end of current month
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            endOfMonth.setHours(23, 59, 59, 999);
             
             let upcomingStatus = 0;
             let thisWeek = 0;
@@ -1508,13 +1524,13 @@
                     upcomingStatus++;
                 }
                 
-                // Count jobs scheduled this week (next 7 days)
-                if (installDate && installDate >= now && installDate <= weekFromNow) {
+                // Count jobs scheduled this week (current week - Monday to Sunday)
+                if (installDate && installDate >= startOfWeek && installDate <= endOfWeek) {
                     thisWeek++;
                 }
                 
-                // Count jobs scheduled this month (next 30 days)
-                if (installDate && installDate >= now && installDate <= monthFromNow) {
+                // Count jobs scheduled this month (current calendar month)
+                if (installDate && installDate >= startOfMonth && installDate <= endOfMonth) {
                     thisMonth++;
                 }
             });
@@ -1523,9 +1539,9 @@
             document.getElementById('total-jobs').textContent = myJobs.length;
             // Jobs with status "upcoming"
             document.getElementById('upcoming-jobs').textContent = upcomingStatus;
-            // Jobs in the next 7 days
+            // Jobs in the current week
             document.getElementById('week-jobs').textContent = thisWeek;
-            // Jobs in the next 30 days
+            // Jobs in the current month
             document.getElementById('month-jobs').textContent = thisMonth;
         }
         
