@@ -18,6 +18,7 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
+            --warning: #FFC857;
             --shadow: rgba(255, 107, 53, 0.3);
         }
         
@@ -357,6 +358,176 @@
             border-color: var(--primary);
         }
         
+        .history-section {
+            margin-top: 3rem;
+        }
+        
+        .history-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .history-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .toggle-history-btn {
+            padding: 0.8rem 1.5rem;
+            background: var(--dark-light);
+            color: var(--text);
+            border: 2px solid var(--text-dim);
+            border-radius: 10px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .toggle-history-btn:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .history-content {
+            display: none;
+        }
+        
+        .history-content.show {
+            display: block;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        .submission-card {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .submission-card:hover {
+            border-color: var(--primary);
+        }
+        
+        .submission-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .submission-info {
+            flex: 1;
+        }
+        
+        .submission-job {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.3rem;
+        }
+        
+        .submission-date {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .submission-status {
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .submission-status.pending {
+            background: var(--warning);
+            color: var(--dark);
+        }
+        
+        .submission-status.approved {
+            background: var(--success);
+            color: var(--dark);
+        }
+        
+        .submission-status.declined {
+            background: var(--error);
+            color: white;
+        }
+        
+        .submission-details {
+            display: grid;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--dark-lighter);
+            border-radius: 12px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--dark);
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .detail-value {
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .materials-summary {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--dark);
+            border-radius: 8px;
+        }
+        
+        .materials-summary-title {
+            color: var(--accent);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .materials-count {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .no-submissions {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+        
         .status-message {
             position: fixed;
             top: 2rem;
@@ -405,6 +576,16 @@
             .btn {
                 width: 100%;
             }
+            
+            .history-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+            }
+            
+            .toggle-history-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -420,6 +601,7 @@
         </header>
         
         <main>
+            <!-- New Request Form -->
             <div class="form-card">
                 <h2>Job Selection</h2>
                 
@@ -465,6 +647,22 @@
                     <button class="btn btn-primary" id="submit-btn" onclick="submitRequest()">Submit Request</button>
                 </div>
             </div>
+            
+            <!-- Previous Submissions Section -->
+            <div class="history-section">
+                <div class="history-header">
+                    <h2>📜 Previous Submissions</h2>
+                    <button class="toggle-history-btn" onclick="toggleHistory()">
+                        <span id="toggle-text">Show History</span>
+                    </button>
+                </div>
+                
+                <div class="history-content" id="history-content">
+                    <div id="submissions-container">
+                        <div class="no-submissions">Loading submissions...</div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
     
@@ -474,7 +672,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, addDoc, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, addDoc, query, orderBy, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -489,7 +687,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, addDoc, query, orderBy };
+            window.firebaseModules = { collection, getDocs, addDoc, query, orderBy, where };
             console.log('✅ Firebase initialized');
             
             // Load jobs on page load
@@ -530,6 +728,8 @@
             { name: "Tub Red W Plugs + 8 x 1.5\" Screws 400 ea", unit: "Tub" },
             { name: "Ultra Grime Multiuse 100PK", unit: "Pack" }
         ];
+        
+        let mySubmissions = [];
         
         // Load jobs from Firebase
         async function loadJobs() {
@@ -671,6 +871,15 @@
                     resetForm();
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Submit Request';
+                    
+                    // Refresh submissions if history is visible
+                    const historyContent = document.getElementById('history-content');
+                    if (historyContent.classList.contains('show')) {
+                        loadMy // Refresh submissions if history is visible
+                    const historyContent = document.getElementById('history-content');
+                    if (historyContent.classList.contains('show')) {
+                        loadMySubmissions();
+                    }
                 }, 2000);
                 
             } catch (error) {
@@ -693,7 +902,124 @@
             });
         }
         
+        // Toggle history section
+        function toggleHistory() {
+            const historyContent = document.getElementById('history-content');
+            const toggleText = document.getElementById('toggle-text');
+            
+            if (historyContent.classList.contains('show')) {
+                historyContent.classList.remove('show');
+                toggleText.textContent = 'Show History';
+            } else {
+                historyContent.classList.add('show');
+                toggleText.textContent = 'Hide History';
+                loadMySubmissions();
+            }
+        }
+        
+        // Load my submissions
+        async function loadMySubmissions() {
+            const container = document.getElementById('submissions-container');
+            container.innerHTML = '<div class="no-submissions">Loading submissions...</div>';
+            
+            try {
+                const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
+                
+                // Load all submissions (in a real app, you'd filter by current user)
+                const submissionsQuery = query(
+                    collection(window.db, 'material-requests'),
+                    orderByFn('requestDate', 'desc')
+                );
+                
+                const querySnapshot = await getDocs(submissionsQuery);
+                
+                mySubmissions = [];
+                querySnapshot.forEach((doc) => {
+                    mySubmissions.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`Loaded ${mySubmissions.length} submissions`);
+                
+                displaySubmissions();
+                
+            } catch (error) {
+                console.error('Error loading submissions:', error);
+                container.innerHTML = '<div class="no-submissions">Error loading submissions</div>';
+            }
+        }
+        
+        // Display submissions
+        function displaySubmissions() {
+            const container = document.getElementById('submissions-container');
+            
+            if (mySubmissions.length === 0) {
+                container.innerHTML = '<div class="no-submissions">No submissions yet</div>';
+                return;
+            }
+            
+            container.innerHTML = mySubmissions.map(submission => {
+                const statusClass = submission.status || 'pending';
+                const statusText = statusClass === 'pending' ? 'Pending' : 
+                                  statusClass === 'approved' ? 'Approved' : 'Declined';
+                
+                const materialsCount = submission.materials ? submission.materials.length : 0;
+                
+                return `
+                    <div class="submission-card">
+                        <div class="submission-header">
+                            <div class="submission-info">
+                                <div class="submission-job">${escapeHtml(submission.jobName || 'Unknown Job')}</div>
+                                <div class="submission-date">Submitted: ${formatDate(submission.requestDate)}</div>
+                            </div>
+                            <div class="submission-status ${statusClass}">${statusText}</div>
+                        </div>
+                        
+                        <div class="submission-details">
+                            <div class="detail-row">
+                                <span class="detail-label">Additional Day Required:</span>
+                                <span class="detail-value">${submission.additionalDay ? 'Yes' : 'No'}</span>
+                            </div>
+                            ${submission.additionalDay && submission.reason ? `
+                                <div class="detail-row">
+                                    <span class="detail-label">Reason:</span>
+                                    <span class="detail-value">${escapeHtml(submission.reason)}</span>
+                                </div>
+                            ` : ''}
+                            <div class="detail-row">
+                                <span class="detail-label">Materials Requested:</span>
+                                <span class="detail-value">${materialsCount} item${materialsCount !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                        
+                        ${materialsCount > 0 ? `
+                            <div class="materials-summary">
+                                <div class="materials-summary-title">Requested Materials:</div>
+                                ${submission.materials.map(m => `
+                                    <div class="materials-count">• ${escapeHtml(m.name)}: ${m.quantity} (per ${escapeHtml(m.unit)})</div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+        
         // Utility functions
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
