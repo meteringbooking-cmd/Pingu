@@ -1511,12 +1511,30 @@
             const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             endOfMonth.setHours(23, 59, 59, 999);
             
+            console.log('Current date:', now);
+            console.log('Week range:', startOfWeek, 'to', endOfWeek);
+            console.log('Month range:', startOfMonth, 'to', endOfMonth);
+            
             let upcomingStatus = 0;
             let thisWeek = 0;
             let thisMonth = 0;
             
             myJobs.forEach(job => {
-                const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                // Parse the Install Date string from Firebase
+                const installDateStr = job['Install Date'];
+                let installDate = null;
+                
+                if (installDateStr) {
+                    // Try to parse the date string
+                    installDate = new Date(installDateStr);
+                    
+                    // Check if date is valid
+                    if (isNaN(installDate.getTime())) {
+                        console.warn('Invalid date for job:', job['Job Number'], installDateStr);
+                        installDate = null;
+                    }
+                }
+                
                 const jobStatus = job.status || 'upcoming';
                 
                 // Count jobs with status "upcoming"
@@ -1525,15 +1543,31 @@
                 }
                 
                 // Count jobs scheduled this week (current week - Monday to Sunday)
-                if (installDate && installDate >= startOfWeek && installDate <= endOfWeek) {
-                    thisWeek++;
+                if (installDate) {
+                    const dateOnly = new Date(installDate.getFullYear(), installDate.getMonth(), installDate.getDate());
+                    const startOnly = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate());
+                    const endOnly = new Date(endOfWeek.getFullYear(), endOfWeek.getMonth(), endOfWeek.getDate());
+                    
+                    if (dateOnly >= startOnly && dateOnly <= endOnly) {
+                        thisWeek++;
+                        console.log('Job in this week:', job['Job Number'], installDateStr);
+                    }
                 }
                 
                 // Count jobs scheduled this month (current calendar month)
-                if (installDate && installDate >= startOfMonth && installDate <= endOfMonth) {
-                    thisMonth++;
+                if (installDate) {
+                    const dateOnly = new Date(installDate.getFullYear(), installDate.getMonth(), installDate.getDate());
+                    const startOnly = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth(), startOfMonth.getDate());
+                    const endOnly = new Date(endOfMonth.getFullYear(), endOfMonth.getMonth(), endOfMonth.getDate());
+                    
+                    if (dateOnly >= startOnly && dateOnly <= endOnly) {
+                        thisMonth++;
+                        console.log('Job in this month:', job['Job Number'], installDateStr);
+                    }
                 }
             });
+            
+            console.log('Stats - Total:', myJobs.length, 'Upcoming:', upcomingStatus, 'This Week:', thisWeek, 'This Month:', thisMonth);
             
             // Total jobs assigned to this engineer
             document.getElementById('total-jobs').textContent = myJobs.length;
