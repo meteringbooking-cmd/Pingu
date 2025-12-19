@@ -1270,7 +1270,7 @@
             console.log('✅ Firebase initialized successfully');
             
             window.addEventListener('DOMContentLoaded', () => {
-                loadEngineers();
+                checkExistingLogin();
             });
             
         } catch (error) {
@@ -1285,6 +1285,54 @@
         let currentView = 'grid';
         let currentSection = 'none';
         let teamMembers = [];
+        
+        async function checkExistingLogin() {
+            try {
+                const loginDataStr = localStorage.getItem('loggedInEngineer');
+                
+                if (!loginDataStr) {
+                    // No existing login, show login screen
+                    await loadEngineers();
+                    return;
+                }
+                
+                const loginData = JSON.parse(loginDataStr);
+                
+                // Check if login has expired
+                if (Date.now() > loginData.expiresAt) {
+                    console.log('Login expired');
+                    localStorage.removeItem('loggedInEngineer');
+                    await loadEngineers();
+                    return;
+                }
+                
+                // Login is still valid, load team members and auto-login
+                console.log('Valid login found, auto-logging in...');
+                await loadEngineers();
+                
+                // Find the engineer in the loaded team members
+                const engineer = teamMembers.find(m => m.id === loginData.id);
+                
+                if (!engineer) {
+                    console.log('Engineer not found, clearing login');
+                    localStorage.removeItem('loggedInEngineer');
+                    return;
+                }
+                
+                // Auto-login
+                currentUser = engineer;
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-dashboard').classList.add('active');
+                document.getElementById('logged-in-user').textContent = engineer.name;
+                
+                await loadAllJobs();
+                
+            } catch (error) {
+                console.error('Error checking existing login:', error);
+                localStorage.removeItem('loggedInEngineer');
+                await loadEngineers();
+            }
+        }
         
         async function loadEngineers() {
             try {
@@ -1355,10 +1403,13 @@
                 
                 currentUser = engineer;
                 
-                sessionStorage.setItem('loggedInEngineer', JSON.stringify({
+                // Store login with 6-hour expiration
+                const loginData = {
                     id: engineer.id,
-                    name: engineer.name
-                }));
+                    name: engineer.name,
+                    expiresAt: Date.now() + (6 * 60 * 60 * 1000) // 6 hours in milliseconds
+                };
+                localStorage.setItem('loggedInEngineer', JSON.stringify(loginData));
                 
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-dashboard').classList.add('active');
@@ -1377,7 +1428,7 @@
         }
         
         function handleLogout() {
-            sessionStorage.removeItem('loggedInEngineer');
+            localStorage.removeItem('loggedInEngineer');
             currentUser = null;
             myJobs = [];
             allJobs = [];
