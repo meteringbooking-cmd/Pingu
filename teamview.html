@@ -1286,6 +1286,36 @@
         let currentSection = 'none';
         let teamMembers = [];
         
+        // Helper function to parse dates in DD/MM/YYYY format
+        function parseInstallDate(dateStr) {
+            if (!dateStr) return null;
+            
+            // Check if date is in DD/MM/YYYY format
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    // Convert DD/MM/YYYY to YYYY-MM-DD for proper parsing
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[2];
+                    const parsedDate = new Date(`${year}-${month}-${day}`);
+                    
+                    // Validate the date
+                    if (!isNaN(parsedDate.getTime())) {
+                        return parsedDate;
+                    }
+                }
+            } else {
+                // Try standard date parsing for other formats
+                const parsedDate = new Date(dateStr);
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            }
+            
+            return null;
+        }
+        
         async function checkExistingLogin() {
             try {
                 const loginDataStr = localStorage.getItem('loggedInEngineer');
@@ -1520,20 +1550,8 @@
             let thisMonth = 0;
             
             myJobs.forEach(job => {
-                // Parse the Install Date string from Firebase
-                const installDateStr = job['Install Date'];
-                let installDate = null;
-                
-                if (installDateStr) {
-                    // Try to parse the date string
-                    installDate = new Date(installDateStr);
-                    
-                    // Check if date is valid
-                    if (isNaN(installDate.getTime())) {
-                        console.warn('Invalid date for job:', job['Job Number'], installDateStr);
-                        installDate = null;
-                    }
-                }
+                // Parse the Install Date using helper function
+                const installDate = parseInstallDate(job['Install Date']);
                 
                 const jobStatus = job.status || 'upcoming';
                 
@@ -1550,7 +1568,7 @@
                     
                     if (dateOnly >= startOnly && dateOnly <= endOnly) {
                         thisWeek++;
-                        console.log('Job in this week:', job['Job Number'], installDateStr);
+                        console.log('Job in this week:', job['Job Number'], job['Install Date'], '→', installDate);
                     }
                 }
                 
@@ -1562,7 +1580,7 @@
                     
                     if (dateOnly >= startOnly && dateOnly <= endOnly) {
                         thisMonth++;
-                        console.log('Job in this month:', job['Job Number'], installDateStr);
+                        console.log('Job in this month:', job['Job Number'], job['Install Date'], '→', installDate);
                     }
                 }
             });
@@ -1597,7 +1615,9 @@
             const now = new Date();
             const historicJobs = myJobs.filter(job => {
                 if (!job['Install Date']) return false;
-                return new Date(job['Install Date']) <= now;
+                
+                const installDate = parseInstallDate(job['Install Date']);
+                return installDate && installDate <= now;
             });
             
             const container = document.getElementById('historic-results');
@@ -1669,7 +1689,7 @@
             const html = `
                 <div class="results-grid">
                     ${jobs.map(job => {
-                        const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                        const installDate = parseInstallDate(job['Install Date']);
                         const isPast = installDate && installDate <= now;
                         
                         const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
