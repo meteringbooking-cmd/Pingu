@@ -211,6 +211,156 @@
             75% { transform: translateX(10px); }
         }
         
+        /* Notifications Summary Styles */
+        .notifications-summary {
+            background: var(--dark-light);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            animation: slideDown 0.8s ease-out;
+        }
+        
+        .notifications-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .notifications-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .notifications-title h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+        
+        .notification-icon {
+            font-size: 2rem;
+        }
+        
+        .close-notifications {
+            background: none;
+            border: 2px solid var(--dark-lighter);
+            color: var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .close-notifications:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .notification-items {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .notification-item {
+            background: var(--dark-lighter);
+            padding: 1.2rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+            display: grid;
+            gap: 0.5rem;
+        }
+        
+        .notification-item.new-job {
+            border-left-color: var(--success);
+        }
+        
+        .notification-item.request-approved {
+            border-left-color: var(--success);
+        }
+        
+        .notification-item.request-denied {
+            border-left-color: var(--error);
+        }
+        
+        .notification-type {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+        }
+        
+        .notification-content {
+            font-size: 1rem;
+            color: var(--text);
+        }
+        
+        .notification-time {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        .no-notifications {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+        }
+        
+        .enable-notifications-banner {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            animation: slideDown 0.8s ease-out;
+        }
+        
+        .notification-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .notification-banner-icon {
+            font-size: 2rem;
+        }
+        
+        .notification-banner-text h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: white;
+            margin-bottom: 0.3rem;
+        }
+        
+        .notification-banner-text p {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .enable-notifications-btn {
+            background: white;
+            color: var(--primary);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .enable-notifications-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
         /* Main Dashboard Styles */
         .main-dashboard {
             display: none;
@@ -1122,6 +1272,34 @@
             </header>
             
             <main>
+                <!-- Enable Notifications Banner -->
+                <div class="enable-notifications-banner" id="notifications-banner" style="display: none;">
+                    <div class="notification-banner-content">
+                        <span class="notification-banner-icon">🔔</span>
+                        <div class="notification-banner-text">
+                            <h3>Enable Push Notifications</h3>
+                            <p>Get notified about new jobs and request updates</p>
+                        </div>
+                    </div>
+                    <button class="enable-notifications-btn" onclick="enablePushNotifications()">
+                        Enable Notifications
+                    </button>
+                </div>
+                
+                <!-- Notifications Summary -->
+                <div class="notifications-summary" id="notifications-summary" style="display: none;">
+                    <div class="notifications-header">
+                        <div class="notifications-title">
+                            <span class="notification-icon">🔔</span>
+                            <h2>What's New Since Your Last Visit</h2>
+                        </div>
+                        <button class="close-notifications" onclick="closeNotifications()">Dismiss</button>
+                    </div>
+                    <div class="notification-items" id="notification-items">
+                        <div class="loading">Checking for updates...</div>
+                    </div>
+                </div>
+                
                 <div class="quick-stats">
                     <div class="stat-card">
                         <div class="stat-label">All Jobs</div>
@@ -1164,14 +1342,15 @@
                         </div>
                     </div>
                     
-                    <a href="additionaldaymaterials.html" class="nav-card">
+                    <div class="nav-card" onclick="showView('requests')">
                         <div class="nav-card-content">
                             <span class="nav-card-icon">📝</span>
                             <h2>Additional Day/Materials Request</h2>
                             <p>Submit requests for extra workdays or additional materials. Track approval status.</p>
                             <span class="badge">Requests</span>
                         </div>
-                </a>
+                    </div>
+                </div>
                 
                 <section class="search-section" id="search-section" style="display: none;">
                     <div class="search-header">
@@ -1245,7 +1424,7 @@
     
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -1264,7 +1443,7 @@
             const db = getFirestore(app);
             
             window.db = db;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc };
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc };
             
             console.log('✅ Firebase initialized successfully');
             
@@ -1284,6 +1463,7 @@
         let currentView = 'grid';
         let currentSection = 'none';
         let teamMembers = [];
+        let lastLoginTimestamp = null;
         
         // Helper function to parse dates in DD/MM/YYYY format
         function parseInstallDate(dateStr) {
@@ -1313,6 +1493,271 @@
             }
             
             return null;
+        }
+        
+        // Format timestamp for display
+        function formatTimeAgo(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            if (minutes < 60) {
+                return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+            } else if (hours < 24) {
+                return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+            } else {
+                return `${days} day${days !== 1 ? 's' : ''} ago`;
+            }
+        }
+        
+        // Check if push notifications are supported and enabled
+        function checkNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('Push notifications not supported');
+                return false;
+            }
+            
+            if (Notification.permission === 'granted') {
+                return true;
+            } else if (Notification.permission === 'denied') {
+                return false;
+            } else {
+                // Show banner to enable notifications
+                document.getElementById('notifications-banner').style.display = 'flex';
+                return false;
+            }
+        }
+        
+        // Request notification permission
+        async function enablePushNotifications() {
+            try {
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    console.log('Notification permission granted');
+                    document.getElementById('notifications-banner').style.display = 'none';
+                    
+                    // Save push token to Firebase
+                    await savePushToken();
+                    
+                    // Show success message
+                    alert('Push notifications enabled! You\'ll now receive updates about new jobs and requests.');
+                } else {
+                    alert('Notification permission denied. You can enable it later in your browser settings.');
+                }
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+                alert('Failed to enable notifications. Please try again.');
+            }
+        }
+        
+        window.enablePushNotifications = enablePushNotifications;
+        
+        // Save push notification token to Firebase
+        async function savePushToken() {
+            if (!currentUser) return;
+            
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                
+                const tokenDoc = doc(window.db, 'push-tokens', currentUser.id);
+                
+                await setDoc(tokenDoc, {
+                    engineerId: currentUser.id,
+                    engineerName: currentUser.name,
+                    enabled: true,
+                    enabledAt: new Date().toISOString(),
+                    lastUpdated: new Date().toISOString()
+                }, { merge: true });
+                
+                console.log('Push token saved successfully');
+            } catch (error) {
+                console.error('Error saving push token:', error);
+            }
+        }
+        
+        // Check for changes since last login
+        async function checkForChanges() {
+            if (!currentUser || !lastLoginTimestamp) {
+                console.log('No last login timestamp found');
+                return;
+            }
+            
+            console.log('Checking for changes since:', new Date(lastLoginTimestamp));
+            
+            try {
+                const changes = {
+                    newJobs: [],
+                    requestUpdates: []
+                };
+                
+                // Check for new jobs assigned since last login
+                myJobs.forEach(job => {
+                    const uploadDate = job.uploadDate ? new Date(job.uploadDate).getTime() : 0;
+                    if (uploadDate > lastLoginTimestamp) {
+                        changes.newJobs.push(job);
+                    }
+                });
+                
+                // Check for request updates (approved/denied)
+                const requestUpdates = await checkRequestUpdates();
+                changes.requestUpdates = requestUpdates;
+                
+                // Display notifications if there are changes
+                if (changes.newJobs.length > 0 || changes.requestUpdates.length > 0) {
+                    displayNotifications(changes);
+                } else {
+                    console.log('No changes since last login');
+                }
+                
+            } catch (error) {
+                console.error('Error checking for changes:', error);
+            }
+        }
+        
+        // Check for additional day/material request updates
+        async function checkRequestUpdates() {
+            if (!currentUser) return [];
+            
+            try {
+                const { collection, getDocs, query, where } = window.firebaseModules;
+                
+                const requestsQuery = query(
+                    collection(window.db, 'additional-requests'),
+                    where('engineerName', '==', currentUser.name)
+                );
+                
+                const querySnapshot = await getDocs(requestsQuery);
+                const updates = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const updatedAt = data.updatedAt ? new Date(data.updatedAt).getTime() : 0;
+                    
+                    // Check if request was updated since last login
+                    if (updatedAt > lastLoginTimestamp && data.status && data.status !== 'pending') {
+                        updates.push({
+                            id: doc.id,
+                            ...data
+                        });
+                    }
+                });
+                
+                return updates;
+                
+            } catch (error) {
+                console.error('Error checking request updates:', error);
+                return [];
+            }
+        }
+        
+        // Display notifications summary
+        function displayNotifications(changes) {
+            const summaryDiv = document.getElementById('notifications-summary');
+            const itemsDiv = document.getElementById('notification-items');
+            
+            let html = '';
+            
+            // New jobs notifications
+            if (changes.newJobs.length > 0) {
+                changes.newJobs.forEach(job => {
+                    const uploadDate = job.uploadDate ? new Date(job.uploadDate).getTime() : Date.now();
+                    html += `
+                        <div class="notification-item new-job">
+                            <div class="notification-type">🆕 New Job Assigned</div>
+                            <div class="notification-content">
+                                <strong>Job #${escapeHtml(job['Job Number'] || 'N/A')}</strong> - ${escapeHtml(job['Name'] || 'Unknown')}
+                                <br>Install Date: ${escapeHtml(job['Install Date'] || 'TBD')}
+                            </div>
+                            <div class="notification-time">${formatTimeAgo(uploadDate)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Request updates notifications
+            if (changes.requestUpdates.length > 0) {
+                changes.requestUpdates.forEach(request => {
+                    const updatedAt = request.updatedAt ? new Date(request.updatedAt).getTime() : Date.now();
+                    const isApproved = request.status === 'approved';
+                    const statusClass = isApproved ? 'request-approved' : 'request-denied';
+                    const statusIcon = isApproved ? '✅' : '❌';
+                    const statusText = isApproved ? 'Approved' : 'Denied';
+                    
+                    html += `
+                        <div class="notification-item ${statusClass}">
+                            <div class="notification-type">${statusIcon} Request ${statusText}</div>
+                            <div class="notification-content">
+                                <strong>${escapeHtml(request.requestType || 'Request')}</strong> for Job #${escapeHtml(request.jobNumber || 'N/A')}
+                                ${request.adminNotes ? `<br>Note: ${escapeHtml(request.adminNotes)}` : ''}
+                            </div>
+                            <div class="notification-time">${formatTimeAgo(updatedAt)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (html) {
+                itemsDiv.innerHTML = html;
+                summaryDiv.style.display = 'block';
+            }
+        }
+        
+        // Close notifications summary
+        function closeNotifications() {
+            document.getElementById('notifications-summary').style.display = 'none';
+        }
+        
+        window.closeNotifications = closeNotifications;
+        
+        // Update last login timestamp
+        async function updateLastLogin() {
+            if (!currentUser) return;
+            
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                
+                const loginDoc = doc(window.db, 'engineer-logins', currentUser.id);
+                const now = Date.now();
+                
+                await setDoc(loginDoc, {
+                    engineerId: currentUser.id,
+                    engineerName: currentUser.name,
+                    lastLogin: now,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                
+                console.log('Last login timestamp updated');
+                
+            } catch (error) {
+                console.error('Error updating last login:', error);
+            }
+        }
+        
+        // Get last login timestamp
+        async function getLastLogin() {
+            if (!currentUser) return null;
+            
+            try {
+                const { doc, getDoc } = window.firebaseModules;
+                
+                const loginDoc = doc(window.db, 'engineer-logins', currentUser.id);
+                const docSnap = await getDoc(loginDoc);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    return data.lastLogin || null;
+                }
+                
+                return null;
+                
+            } catch (error) {
+                console.error('Error getting last login:', error);
+                return null;
+            }
         }
         
         async function checkExistingLogin() {
@@ -1350,11 +1795,26 @@
                 
                 // Auto-login
                 currentUser = engineer;
+                
+                // Get last login timestamp BEFORE updating it
+                lastLoginTimestamp = await getLastLogin();
+                
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-dashboard').classList.add('active');
                 document.getElementById('logged-in-user').textContent = engineer.name;
                 
                 await loadAllJobs();
+                
+                // Check notification permission
+                checkNotificationPermission();
+                
+                // Check for changes since last login
+                if (lastLoginTimestamp) {
+                    await checkForChanges();
+                }
+                
+                // Update last login timestamp for next time
+                await updateLastLogin();
                 
             } catch (error) {
                 console.error('Error checking existing login:', error);
@@ -1432,6 +1892,9 @@
                 
                 currentUser = engineer;
                 
+                // Get last login timestamp BEFORE updating it
+                lastLoginTimestamp = await getLastLogin();
+                
                 // Store login with 6-hour expiration
                 const loginData = {
                     id: engineer.id,
@@ -1445,6 +1908,17 @@
                 document.getElementById('logged-in-user').textContent = engineer.name;
                 
                 await loadAllJobs();
+                
+                // Check notification permission
+                checkNotificationPermission();
+                
+                // Check for changes since last login
+                if (lastLoginTimestamp) {
+                    await checkForChanges();
+                }
+                
+                // Update last login timestamp for next time
+                await updateLastLogin();
                 
             } catch (error) {
                 console.error('Login error:', error);
@@ -1461,9 +1935,12 @@
             currentUser = null;
             myJobs = [];
             allJobs = [];
+            lastLoginTimestamp = null;
             
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('main-dashboard').classList.remove('active');
+            document.getElementById('notifications-summary').style.display = 'none';
+            document.getElementById('notifications-banner').style.display = 'none';
             
             document.getElementById('password-input').value = '';
             document.getElementById('engineer-select').value = '';
