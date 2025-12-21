@@ -426,7 +426,7 @@
             font-size: 0.85rem;
         }
      
-        .holiday-item, .absence-item {
+        .holiday-item {
             padding: 1rem;
             background: var(--dark-lighter);
             border-radius: 8px;
@@ -436,10 +436,15 @@
             align-items: center;
         }
      
-        .holiday-days, .absence-days {
+        .holiday-days {
             color: var(--secondary);
             font-weight: 700;
             font-size: 1.2rem;
+        }
+     
+        .view-toggle {
+            margin: 1.5rem 0;
+            text-align: center;
         }
      
         @media (max-width: 768px) {
@@ -485,8 +490,8 @@
         </div>
      
         <div class="stats-grid" id="stats-grid">
-            <!-- Team cards remain unchanged -->
-            <div class="team-card" onclick="openTeamOverviewModal('Ali Cavan')">
+            <!-- Team cards -->
+            <div class="team-card" onclick="openTeamHolidaysModal('Ali Cavan')">
                 <div class="team-header">
                     <div class="team-name">Ali Cavan</div>
                     <div class="team-count" id="count-ali-cavan">0</div>
@@ -507,7 +512,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Craig Barnes')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Craig Barnes')">
                 <div class="team-header">
                     <div class="team-name">Craig Barnes</div>
                     <div class="team-count" id="count-craig-barnes">0</div>
@@ -528,7 +533,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Paul Simpson')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Paul Simpson')">
                 <div class="team-header">
                     <div class="team-name">Paul Simpson</div>
                     <div class="team-count" id="count-paul-simpson">0</div>
@@ -549,7 +554,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Richard Wiecko')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Richard Wiecko')">
                 <div class="team-header">
                     <div class="team-name">Richard Wiecko</div>
                     <div class="team-count" id="count-richard-wiecko">0</div>
@@ -570,7 +575,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Scott Carson')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Scott Carson')">
                 <div class="team-header">
                     <div class="team-name">Scott Carson</div>
                     <div class="team-count" id="count-scott-carson">0</div>
@@ -591,7 +596,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Stuart Whyte')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Stuart Whyte')">
                 <div class="team-header">
                     <div class="team-name">Stuart Whyte</div>
                     <div class="team-count" id="count-stuart-whyte">0</div>
@@ -612,7 +617,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Subbies')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Subbies')">
                 <div class="team-header">
                     <div class="team-name">Subbies</div>
                     <div class="team-count" id="count-subbies">0</div>
@@ -633,7 +638,7 @@
                 </div>
             </div>
          
-            <div class="team-card" onclick="openTeamOverviewModal('Back Office')">
+            <div class="team-card" onclick="openTeamHolidaysModal('Back Office')">
                 <div class="team-header">
                     <div class="team-name">Back Office</div>
                     <div class="team-count" id="count-back-office">0</div>
@@ -642,10 +647,102 @@
         </div>
     </div>
  
-    <!-- Existing Modals (Add Employee, Upload CSV, View Employees, Edit Leave) unchanged -->
-    <!-- ... (keep all previous modals up to Update Holidays modals) ... -->
-
-    <!-- Update Holidays Modal -->
+    <!-- Existing Modals -->
+    <!-- Add Employee Modal -->
+    <div class="modal" id="add-employee-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Employee</h2>
+                <button class="close-btn" onclick="closeAddEmployeeModal()">×</button>
+            </div>
+            <form id="employee-form" onsubmit="handleAddEmployee(event)">
+                <div class="form-group">
+                    <label class="form-label" for="full-name">Full Name</label>
+                    <input type="text" id="full-name" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="team-leader">Team Leader</label>
+                    <select id="team-leader" class="form-select" required>
+                        <option value="">Select Team Leader</option>
+                        <option value="Ali Cavan">Ali Cavan</option>
+                        <option value="Craig Barnes">Craig Barnes</option>
+                        <option value="Paul Simpson">Paul Simpson</option>
+                        <option value="Richard Wiecko">Richard Wiecko</option>
+                        <option value="Scott Carson">Scott Carson</option>
+                        <option value="Stuart Whyte">Stuart Whyte</option>
+                        <option value="Subbies">Subbies</option>
+                        <option value="Back Office">Back Office</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="location">Location</label>
+                    <select id="location" class="form-select" required>
+                        <option value="">Select Location</option>
+                        <option value="EDF">EDF</option>
+                        <option value="Scottish Power">Scottish Power</option>
+                        <option value="OES">OES</option>
+                        <option value="N/A">N/A (Back Office)</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">
+                    Add Employee
+                </button>
+            </form>
+        </div>
+    </div>
+ 
+    <!-- Upload CSV Modal -->
+    <div class="modal" id="upload-csv-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Upload CSV</h2>
+                <button class="close-btn" onclick="closeUploadCSVModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                    Upload a CSV file with columns: <strong>Full Name</strong>, <strong>Team Leader</strong>, <strong>Location</strong>
+                </p>
+                <div class="file-upload" onclick="document.getElementById('csv-file').click()">
+                    <div class="upload-icon">Upload</div>
+                    <div style="color: var(--text-dim);">Click to select CSV file</div>
+                    <input type="file" id="csv-file" accept=".csv" onchange="handleCSVUpload(event)">
+                </div>
+            </div>
+        </div>
+    </div>
+ 
+    <!-- View Employees Modal -->
+    <div class="modal" id="view-employees-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">All Employees</h2>
+                <button class="close-btn" onclick="closeViewEmployeesModal()">×</button>
+            </div>
+            <input type="text" id="employee-search" class="form-input search-input" placeholder="Search by name..." onkeyup="filterEmployees()">
+            <div class="employee-list" id="employee-list"></div>
+        </div>
+    </div>
+ 
+    <!-- Edit Leave Date Modal -->
+    <div class="modal" id="edit-leave-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="edit-employee-name">Edit Leave Date</h2>
+                <button class="close-btn" onclick="closeEditLeaveModal()">×</button>
+            </div>
+            <form id="leave-form" onsubmit="saveLeaveDate(event)">
+                <input type="hidden" id="edit-employee-id">
+                <div class="form-group">
+                    <label class="form-label" for="leave-date">Leave Date</label>
+                    <input type="date" id="leave-date" class="form-input">
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Save Leave Date</button>
+                <button type="button" class="btn btn-secondary" onclick="clearLeaveDate()" style="width: 100%; margin-top: 0.5rem;">Clear Leave Date</button>
+            </form>
+        </div>
+    </div>
+ 
+    <!-- Update Holidays Main Modal -->
     <div class="modal" id="update-holidays-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -658,10 +755,49 @@
             </div>
         </div>
     </div>
-
-    <!-- Single Holiday & Bulk Holiday modals unchanged -->
-
-    <!-- NEW: Update Absences Modal -->
+ 
+    <!-- Single Holiday Entry Modal -->
+    <div class="modal" id="single-holiday-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Add Holiday Entitlement</h2>
+                <button class="close-btn" onclick="closeSingleHolidayModal()">×</button>
+            </div>
+            <form id="single-holiday-form" onsubmit="handleSingleHolidaySubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Employee</label>
+                    <select id="holiday-employee" class="form-select" required>
+                        <option value="">Select Employee</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="holiday-days">Remaining Holiday Days</label>
+                    <input type="number" id="holiday-days" class="form-input" min="0" step="0.5" placeholder="e.g. 12.5" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">Save Holiday Entitlement</button>
+            </form>
+        </div>
+    </div>
+ 
+    <!-- Bulk Holiday CSV Modal -->
+    <div class="modal" id="bulk-holiday-csv-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Upload Holiday Entitlements CSV</h2>
+                <button class="close-btn" onclick="closeBulkHolidayCSVModal()">×</button>
+            </div>
+            <p style="color: var(--text-dim); margin-bottom: 1rem;">
+                CSV must have columns: <strong>Full Name</strong>, <strong>Remaining Holidays</strong>
+            </p>
+            <div class="file-upload" onclick="document.getElementById('holiday-csv-file').click()">
+                <div class="upload-icon">Upload</div>
+                <div style="color: var(--text-dim);">Click to select CSV file</div>
+                <input type="file" id="holiday-csv-file" accept=".csv" onchange="handleHolidayCSVUpload(event)">
+            </div>
+        </div>
+    </div>
+ 
+    <!-- NEW: Update Absences Main Modal -->
     <div class="modal" id="update-absences-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -674,12 +810,12 @@
             </div>
         </div>
     </div>
-
-    <!-- Single Absence Modal -->
+ 
+    <!-- NEW: Single Absence Modal -->
     <div class="modal" id="single-absence-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title">Record Absence</h2>
+                <h2 class="modal-title">Add Absence</h2>
                 <button class="close-btn" onclick="closeSingleAbsenceModal()">×</button>
             </div>
             <form id="single-absence-form" onsubmit="handleSingleAbsenceSubmit(event)">
@@ -692,11 +828,12 @@
                 <div class="form-group">
                     <label class="form-label">Type of Absence</label>
                     <select id="absence-type" class="form-select" required>
-                        <option value="Sickness absence">Sickness absence</option>
+                        <option value="">Select Type</option>
+                        <option value="Sickness">Sickness</option>
                         <option value="GA - AAUP">General Absence - Authorised Absence Unpaid</option>
                         <option value="GA - UPTOFD">General Absence - Unpaid Time off for Dependants</option>
                         <option value="GA - PCL">General Absence - Paid Compassionate Leave</option>
-                        <option value="GA - AWOL">General absence: GA - AWOL</option>
+                        <option value="GA - AWOL">General Absence - AWOL</option>
                         <option value="GA - UPMA">General Absence - Unpaid Medical Appointment</option>
                         <option value="GA - PHA">General Absence - Paid hospital 2 hrs Appointment</option>
                         <option value="GA - AAP">General Absence - Authorised Absence Paid</option>
@@ -709,19 +846,19 @@
                     <input type="date" id="absence-date" class="form-input" required>
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="absence-days">No. working days off</label>
-                    <input type="number" id="absence-days" class="form-input" min="0" step="0.5" value="0">
+                    <label class="form-label" for="absence-days">No. Working Days Off</label>
+                    <input type="number" id="absence-days" class="form-input" min="0" step="0.5" value="1">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="absence-hours">No. working hours off (used if days = 0)</label>
+                    <label class="form-label" for="absence-hours">No. Working Hours Off (if days = 0)</label>
                     <input type="number" id="absence-hours" class="form-input" min="0" step="0.5" value="0">
                 </div>
-                <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">Record Absence</button>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">Save Absence</button>
             </form>
         </div>
     </div>
-
-    <!-- Bulk Absence CSV Modal -->
+ 
+    <!-- NEW: Bulk Absence CSV Modal -->
     <div class="modal" id="bulk-absence-csv-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -729,7 +866,7 @@
                 <button class="close-btn" onclick="closeBulkAbsenceCSVModal()">×</button>
             </div>
             <p style="color: var(--text-dim); margin-bottom: 1rem;">
-                CSV columns: <strong>Full Name</strong>, <strong>Type of Absence</strong>, <strong>day</strong>, <strong>month</strong>, <strong>year</strong>, <strong>No. working days off</strong>, <strong>No. working hours off</strong>
+                CSV must have columns: <strong>Full Name</strong>, <strong>Type of Absence</strong>, <strong>day</strong>, <strong>month</strong>, <strong>year</strong>, <strong>No. working days off</strong>, <strong>No. working hours off</strong>
             </p>
             <div class="file-upload" onclick="document.getElementById('absence-csv-file').click()">
                 <div class="upload-icon">Upload</div>
@@ -738,30 +875,40 @@
             </div>
         </div>
     </div>
-
-    <!-- Team Overview Modal (replaces Team Holidays) -->
-    <div class="modal" id="team-overview-modal">
+ 
+    <!-- Team Holidays / Absences Modal -->
+    <div class="modal" id="team-holidays-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="team-overview-title">Team Overview</h2>
-                <button class="close-btn" onclick="closeTeamOverviewModal()">×</button>
+                <h2 class="modal-title" id="team-holidays-title">Team Holidays</h2>
+                <button class="close-btn" onclick="closeTeamHolidaysModal()">×</button>
             </div>
-            <div style="margin-bottom: 1rem;">
-                <label class="form-label">View:</label>
-                <select id="overview-mode" class="form-select" onchange="renderTeamOverview()">
+            <div class="view-toggle">
+                <label style="color: var(--text-dim); margin-right: 1rem;">View:</label>
+                <select id="view-mode-select" class="form-select" style="display: inline-block; width: auto;" onchange="refreshTeamView()">
                     <option value="holidays">Remaining Holidays</option>
                     <option value="absences">Absences</option>
                 </select>
+                <select id="absence-filter-select" class="form-select" style="display: inline-block; width: auto; margin-left: 1rem; display: none;" onchange="refreshTeamView()">
+                    <option value="all">All Absence Types</option>
+                    <option value="Sickness">Sickness</option>
+                    <option value="GA - AAUP">General Absence - Authorised Absence Unpaid</option>
+                    <option value="GA - UPTOFD">General Absence - Unpaid Time off for Dependants</option>
+                    <option value="GA - PCL">General Absence - Paid Compassionate Leave</option>
+                    <option value="GA - AWOL">General Absence - AWOL</option>
+                    <option value="GA - UPMA">General Absence - Unpaid Medical Appointment</option>
+                    <option value="GA - PHA">General Absence - Paid hospital 2 hrs Appointment</option>
+                    <option value="GA - AAP">General Absence - Authorised Absence Paid</option>
+                    <option value="GA - PTOFD">General Absence - Paid Time off for Dependants</option>
+                    <option value="GA UPCL">General Absence - Unpaid Compassionate Leave</option>
+                </select>
             </div>
-            <div id="team-overview-list">
+            <div id="team-holidays-list">
                 <!-- Filled dynamically -->
-            </div>
-            <div style="text-align: center; margin-top: 1rem;">
-                <button class="btn btn-secondary" onclick="document.getElementById('overview-mode').value = 'absences'; renderTeamOverview()">View Absences</button>
             </div>
         </div>
     </div>
-
+ 
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
  
@@ -779,16 +926,24 @@
             measurementId: "G-PFH059DZ64"
         };
      
-        const app = initializeApp(firebaseConfig);
-        window.db = getFirestore(app);
-        window.firebaseModules = { collection, addDoc, getDocs, doc, updateDoc, deleteField, query, where, arrayUnion };
-     
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, addDoc, getDocs, doc, updateDoc, deleteField, query, where, arrayUnion };
+            console.log('Firebase initialized');
+         
+            window.addEventListener('DOMContentLoaded', () => {
+                loadEmployees();
+            });
+        } catch (error) {
+            console.error('Firebase error:', error);
+        }
+    </script>
+ 
+    <script>
         let allEmployees = [];
+        let currentEditId = null;
         let currentTeamLeader = '';
-     
-        window.addEventListener('DOMContentLoaded', () => {
-            loadEmployees();
-        });
      
         async function loadEmployees() {
             try {
@@ -797,14 +952,10 @@
                 allEmployees = [];
                 querySnapshot.forEach((doc) => {
                     const data = doc.data();
+                    if (!data.absences) data.absences = [];
                     allEmployees.push({
                         id: doc.id,
-                        fullName: data['Full Name'] || '',
-                        teamLeader: data['Team Leader'] || data.teamLeader || '',
-                        location: data.Location || data.location || '',
-                        leaveDate: data.leaveDate || null,
-                        remainingHolidays: data.remainingHolidays || 0,
-                        absences: data.absences || []  // array of {type, date, daysOff, hoursOff}
+                        ...data
                     });
                 });
                 updateStats();
@@ -816,19 +967,25 @@
         }
      
         function updateStats() {
-            // unchanged
-            const teamLeaders = ['Ali Cavan', 'Craig Barnes', 'Paul Simpson', 'Richard Wiecko', 'Scott Carson', 'Stuart Whyte', 'Subbies', 'Back Office'];
+            const teamLeaders = [
+                'Ali Cavan', 'Craig Barnes', 'Paul Simpson', 'Richard Wiecko',
+                'Scott Carson', 'Stuart Whyte', 'Subbies', 'Back Office'
+            ];
             const locations = ['EDF', 'Scottish Power', 'OES'];
          
             teamLeaders.forEach(leader => {
-                const teamMembers = allEmployees.filter(emp => emp.teamLeader === leader && !emp.leaveDate);
+                const teamMembers = allEmployees.filter(emp =>
+                    (emp['Team Leader'] || emp.teamLeader) === leader && !emp.leaveDate
+                );
                 const leaderId = leader.toLowerCase().replace(/ /g, '-');
                 const countEl = document.getElementById(`count-${leaderId}`);
                 if (countEl) countEl.textContent = teamMembers.length;
          
                 if (leader !== 'Back Office') {
                     locations.forEach(location => {
-                        const locationMembers = teamMembers.filter(emp => emp.location === location);
+                        const locationMembers = teamMembers.filter(emp =>
+                            emp.Location === location || emp.location === location
+                        );
                         const locId = location.toLowerCase().replace(/ /g, '-');
                         const locKey = locId === 'scottish-power' ? 'scottish' : locId;
                         const locEl = document.getElementById(`loc-${leaderId}-${locKey}`);
@@ -838,92 +995,230 @@
             });
         }
      
-        // ... (renderEmployeeList, filterEmployees unchanged) ...
+        function renderEmployeeList(filter = '') {
+            const listEl = document.getElementById('employee-list');
+            const filtered = allEmployees.filter(emp =>
+                (emp['Full Name'] || '').toLowerCase().includes(filter.toLowerCase())
+            );
+         
+            if (filtered.length === 0) {
+                listEl.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No employees found</div>';
+                return;
+            }
+         
+            listEl.innerHTML = filtered.map(emp => {
+                const name = emp['Full Name'] || 'Unnamed';
+                const leader = emp['Team Leader'] || emp.teamLeader || '—';
+                const location = emp.Location || emp.location || '—';
+                const leave = emp.leaveDate ? new Date(emp.leaveDate).toLocaleDateString() : null;
+                return `
+                    <div class="employee-item" onclick="openEditLeaveModal('${emp.id}', '${name}')">
+                        <div>
+                            <div class="employee-name">${name}</div>
+                            <div class="employee-info">${leader} • ${location}</div>
+                        </div>
+                        ${leave ? `<div class="leave-date">Left: ${leave}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
      
-        function populateHolidayEmployeeSelect() {
-            const select = document.getElementById('holiday-employee');
+        function filterEmployees() {
+            const search = document.getElementById('employee-search').value;
+            renderEmployeeList(search);
+        }
+     
+        // Populate employee dropdowns
+        function populateEmployeeSelect(selectId) {
+            const select = document.getElementById(selectId);
             select.innerHTML = '<option value="">Select Employee</option>';
             allEmployees
                 .filter(emp => !emp.leaveDate)
-                .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                .sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''))
                 .forEach(emp => {
                     const option = document.createElement('option');
                     option.value = emp.id;
-                    option.textContent = emp.fullName;
+                    option.textContent = emp['Full Name'] || 'Unnamed';
                     select.appendChild(option);
                 });
         }
      
-        function populateAbsenceEmployeeSelect() {
-            const select = document.getElementById('absence-employee');
-            select.innerHTML = '<option value="">Select Employee</option>';
-            allEmployees
-                .filter(emp => !emp.leaveDate)
-                .sort((a, b) => a.fullName.localeCompare(b.fullName))
-                .forEach(emp => {
-                    const option = document.createElement('option');
-                    option.value = emp.id;
-                    option.textContent = emp.fullName;
-                    select.appendChild(option);
-                });
-        }
-     
-        // Team Overview Modal
-        async function openTeamOverviewModal(teamLeader) {
+        // Team Holidays / Absences Modal
+        async function openTeamHolidaysModal(teamLeader) {
             currentTeamLeader = teamLeader;
-            document.getElementById('team-overview-title').textContent = `${teamLeader} – Team Overview`;
-            renderTeamOverview();
-            document.getElementById('team-overview-modal').classList.add('show');
+            document.getElementById('team-holidays-title').textContent = `${teamLeader}`;
+            document.getElementById('view-mode-select').value = 'holidays';
+            document.getElementById('absence-filter-select').style.display = 'none';
+            refreshTeamView();
+            document.getElementById('team-holidays-modal').classList.add('show');
         }
      
-        function closeTeamOverviewModal() {
-            document.getElementById('team-overview-modal').classList.remove('show');
-        }
-     
-        function renderTeamOverview() {
-            const mode = document.getElementById('overview-mode').value;
-            const list = document.getElementById('team-overview-list');
+        function refreshTeamView() {
+            const viewMode = document.getElementById('view-mode-select').value;
+            const filterType = document.getElementById('absence-filter-select').value;
+            const list = document.getElementById('team-holidays-list');
          
             const teamMembers = allEmployees
-                .filter(emp => emp.teamLeader === currentTeamLeader && !emp.leaveDate)
-                .sort((a, b) => a.fullName.localeCompare(b.fullName));
+                .filter(emp => (emp['Team Leader'] || emp.teamLeader) === currentTeamLeader && !emp.leaveDate)
+                .sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || '')); // Alphabetical order
          
-            if (mode === 'holidays') {
-                const withHolidays = teamMembers.filter(emp => emp.remainingHolidays > 0);
+            if (viewMode === 'holidays') {
+                document.getElementById('team-holidays-title').textContent = `${currentTeamLeader} – Remaining Holidays`;
+                document.getElementById('absence-filter-select').style.display = 'none';
+         
+                const withHolidays = teamMembers.filter(emp => emp.remainingHolidays >= 0);
                 if (withHolidays.length === 0) {
-                    list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No remaining holidays</div>';
+                    list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No holiday data available</div>';
                 } else {
-                    list.innerHTML = withHolidays.map(emp => `
-                        <div class="holiday-item">
-                            <div class="employee-name">${emp.fullName}</div>
-                            <div class="holiday-days">${emp.remainingHolidays} days</div>
-                        </div>
-                    `).join('');
+                    list.innerHTML = withHolidays
+                        .filter(emp => emp.remainingHolidays > 0)
+                        .map(emp => `
+                            <div class="holiday-item">
+                                <div class="employee-name">${emp['Full Name']}</div>
+                                <div class="holiday-days">${emp.remainingHolidays} days</div>
+                            </div>
+                        `).join('');
+                    if (list.innerHTML === '') {
+                        list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No one has remaining holidays</div>';
+                    }
                 }
-            } else { // absences
-                const withAbsences = teamMembers.map(emp => {
-                    const totalDays = (emp.absences || []).reduce((sum, a) => {
-                        const days = parseFloat(a.daysOff) || 0;
-                        const hours = parseFloat(a.hoursOff) || 0;
-                        return sum + (days * 8 + hours) / 8;
-                    }, 0);
-                    return { ...emp, totalAbsenceDays: totalDays };
-                }).filter(emp => emp.totalAbsenceDays > 0);
+            } else {
+                document.getElementById('team-holidays-title').textContent = `${currentTeamLeader} – Absences`;
+                document.getElementById('absence-filter-select').style.display = 'inline-block';
          
-                if (withAbsences.length === 0) {
-                    list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No recorded absences</div>';
+                let absencesList = [];
+                teamMembers.forEach(emp => {
+                    if (emp.absences && emp.absences.length > 0) {
+                        emp.absences.forEach(abs => {
+                            if (filterType === 'all' || abs.type === filterType) {
+                                absencesList.push({
+                                    name: emp['Full Name'],
+                                    type: abs.type,
+                                    daysOff: abs.daysOff || 0,
+                                    hoursOff: abs.hoursOff || 0
+                                });
+                            }
+                        });
+                    }
+                });
+         
+                // Group by employee and sum total days
+                const grouped = {};
+                absencesList.forEach(item => {
+                    if (!grouped[item.name]) grouped[item.name] = 0;
+                    const totalDays = item.daysOff > 0 ? item.daysOff : (item.hoursOff / 8);
+                    grouped[item.name] += totalDays;
+                });
+         
+                const sortedEntries = Object.entries(grouped)
+                    .sort((a, b) => a[0].localeCompare(b[0])); // Alphabetical by name
+         
+                if (sortedEntries.length === 0) {
+                    list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No absences recorded</div>';
                 } else {
-                    list.innerHTML = withAbsences.map(emp => `
-                        <div class="absence-item">
-                            <div class="employee-name">${emp.fullName}</div>
-                            <div class="absence-days">${emp.totalAbsenceDays.toFixed(2)} days</div>
+                    list.innerHTML = sortedEntries.map(([name, days]) => `
+                        <div class="holiday-item">
+                            <div class="employee-name">${name}</div>
+                            <div class="holiday-days">${days.toFixed(2)} days</div>
                         </div>
                     `).join('');
                 }
             }
         }
      
-        // Absences functions
+        function closeTeamHolidaysModal() {
+            document.getElementById('team-holidays-modal').classList.remove('show');
+        }
+     
+        // Holiday Modals (unchanged)
+        function openUpdateHolidaysModal() {
+            document.getElementById('update-holidays-modal').classList.add('show');
+        }
+     
+        function closeUpdateHolidaysModal() {
+            document.getElementById('update-holidays-modal').classList.remove('show');
+        }
+     
+        function openSingleHolidayModal() {
+            closeUpdateHolidaysModal();
+            populateEmployeeSelect('holiday-employee');
+            document.getElementById('single-holiday-modal').classList.add('show');
+        }
+     
+        function closeSingleHolidayModal() {
+            document.getElementById('single-holiday-modal').classList.remove('show');
+            document.getElementById('single-holiday-form').reset();
+        }
+     
+        function openBulkHolidayCSVModal() {
+            closeUpdateHolidaysModal();
+            document.getElementById('bulk-holiday-csv-modal').classList.add('show');
+        }
+     
+        function closeBulkHolidayCSVModal() {
+            document.getElementById('bulk-holiday-csv-modal').classList.remove('show');
+            document.getElementById('holiday-csv-file').value = '';
+        }
+     
+        async function handleSingleHolidaySubmit(event) {
+            event.preventDefault();
+            const empId = document.getElementById('holiday-employee').value;
+            const days = parseFloat(document.getElementById('holiday-days').value);
+         
+            if (!empId || isNaN(days)) return;
+         
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.db, 'employees', empId), { remainingHolidays: days });
+                showToast('Holiday entitlement saved');
+                closeSingleHolidayModal();
+                loadEmployees();
+            } catch (error) {
+                console.error(error);
+                showToast('Failed to save holiday', 'error');
+            }
+        }
+     
+        function handleHolidayCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+         
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async function(results) {
+                    try {
+                        const { doc, updateDoc, getDocs, collection } = window.firebaseModules;
+                        let successCount = 0;
+                        const employeesSnap = await getDocs(collection(window.db, 'employees'));
+                        const employeeMap = {};
+                        employeesSnap.forEach(d => {
+                            employeeMap[(d.data()['Full Name'] || '').trim()] = d.id;
+                        });
+         
+                        for (const row of results.data) {
+                            const name = (row['Full Name'] || row['full name'] || '').trim();
+                            const daysStr = row['Remaining Holidays'] || row['remaining holidays'] || row['RemainingHolidays'] || '';
+                            const days = parseFloat(daysStr);
+         
+                            if (name && !isNaN(days) && employeeMap[name]) {
+                                await updateDoc(doc(window.db, 'employees', employeeMap[name]), { remainingHolidays: days });
+                                successCount++;
+                            }
+                        }
+         
+                        showToast(`${successCount} holiday records updated`);
+                        closeBulkHolidayCSVModal();
+                        loadEmployees();
+                    } catch (error) {
+                        console.error(error);
+                        showToast('Failed to import holidays CSV', 'error');
+                    }
+                }
+            });
+        }
+     
+        // Absences Modals
         function openUpdateAbsencesModal() {
             document.getElementById('update-absences-modal').classList.add('show');
         }
@@ -934,7 +1229,7 @@
      
         function openSingleAbsenceModal() {
             closeUpdateAbsencesModal();
-            populateAbsenceEmployeeSelect();
+            populateEmployeeSelect('absence-employee');
             document.getElementById('single-absence-modal').classList.add('show');
         }
      
@@ -961,24 +1256,25 @@
             const daysOff = parseFloat(document.getElementById('absence-days').value) || 0;
             const hoursOff = parseFloat(document.getElementById('absence-hours').value) || 0;
          
-            if (!empId || !date) return;
+            if (!empId || !type || !date) return;
          
             try {
                 const { doc, updateDoc, arrayUnion } = window.firebaseModules;
+                const absenceObj = {
+                    type,
+                    date,
+                    daysOff,
+                    hoursOff
+                };
                 await updateDoc(doc(window.db, 'employees', empId), {
-                    absences: arrayUnion({
-                        type,
-                        date,
-                        daysOff,
-                        hoursOff
-                    })
+                    absences: arrayUnion(absenceObj)
                 });
                 showToast('Absence recorded');
                 closeSingleAbsenceModal();
                 loadEmployees();
             } catch (error) {
                 console.error(error);
-                showToast('Failed to record absence', 'error');
+                showToast('Failed to save absence', 'error');
             }
         }
      
@@ -996,26 +1292,28 @@
                         const employeesSnap = await getDocs(collection(window.db, 'employees'));
                         const employeeMap = {};
                         employeesSnap.forEach(d => {
-                            employeeMap[(d.data()['Full Name'] || '').trim()] = d.id;
+                            employeeMap[(d.data()['Full Name'] || '').trim()] = { id: d.id, absences: d.data().absences || [] };
                         });
          
                         for (const row of results.data) {
                             const name = (row['Full Name'] || '').trim();
                             const type = row['Type of Absence'] || '';
-                            const day = parseInt(row['day']);
-                            const month = parseInt(row['month']);
-                            const year = parseInt(row['year']);
-                            const daysOff = parseFloat(row['No. working days off']) || 0;
-                            const hoursOff = parseFloat(row['No. working hours off']) || 0;
+                            const day = parseInt(row['day'] || row['Day'] || '0');
+                            const month = parseInt(row['month'] || row['Month'] || '0');
+                            const year = parseInt(row['year'] || row['Year'] || '0');
+                            const daysOff = parseFloat(row['No. working days off'] || row['No. working days off'] || '0') || 0;
+                            const hoursOff = parseFloat(row['No. working hours off'] || row['No. working hours off'] || '0') || 0;
          
-                            if (name && type && !isNaN(day) && !isNaN(month) && !isNaN(year) && employeeMap[name]) {
-                                const date = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                                await updateDoc(doc(window.db, 'employees', employeeMap[name]), {
-                                    absences: arrayUnion({ type, date, daysOff, hoursOff })
+                            if (name && type && day && month && year && employeeMap[name]) {
+                                const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                                const absenceObj = { type, date: dateStr, daysOff, hoursOff };
+                                await updateDoc(doc(window.db, 'employees', employeeMap[name].id), {
+                                    absences: arrayUnion(absenceObj)
                                 });
                                 successCount++;
                             }
                         }
+         
                         showToast(`${successCount} absences imported`);
                         closeBulkAbsenceCSVModal();
                         loadEmployees();
@@ -1027,22 +1325,179 @@
             });
         }
      
-        // Existing functions (holidays, add employee, etc.) remain unchanged
-        // ... (keep all previous functions) ...
+        // Existing functions (unchanged)
+        function openAddEmployeeModal() {
+            document.getElementById('add-employee-modal').classList.add('show');
+        }
+     
+        function closeAddEmployeeModal() {
+            document.getElementById('add-employee-modal').classList.remove('show');
+            document.getElementById('employee-form').reset();
+        }
+     
+        function openUploadCSVModal() {
+            document.getElementById('upload-csv-modal').classList.add('show');
+        }
+     
+        function closeUploadCSVModal() {
+            document.getElementById('upload-csv-modal').classList.remove('show');
+            document.getElementById('csv-file').value = '';
+        }
+     
+        function openViewEmployeesModal() {
+            renderEmployeeList();
+            document.getElementById('employee-search').value = '';
+            document.getElementById('view-employees-modal').classList.add('show');
+        }
+     
+        function closeViewEmployeesModal() {
+            document.getElementById('view-employees-modal').classList.remove('show');
+        }
+     
+        function openEditLeaveModal(id, name) {
+            currentEditId = id;
+            document.getElementById('edit-employee-name').textContent = name;
+            const emp = allEmployees.find(e => e.id === id);
+            document.getElementById('leave-date').value = emp.leaveDate || '';
+            closeViewEmployeesModal();
+            document.getElementById('edit-leave-modal').classList.add('show');
+        }
+     
+        function closeEditLeaveModal() {
+            document.getElementById('edit-leave-modal').classList.remove('show');
+            currentEditId = null;
+        }
+     
+        async function saveLeaveDate(event) {
+            event.preventDefault();
+            const leaveDate = document.getElementById('leave-date').value;
+            try {
+                const { doc, updateDoc, deleteField } = window.firebaseModules;
+                const empRef = doc(window.db, 'employees', currentEditId);
+                if (leaveDate) {
+                    await updateDoc(empRef, { leaveDate });
+                    showToast('Leave date saved');
+                } else {
+                    await updateDoc(empRef, { leaveDate: deleteField() });
+                    showToast('Leave date cleared');
+                }
+                closeEditLeaveModal();
+                loadEmployees();
+            } catch (error) {
+                showToast('Failed to save leave date', 'error');
+            }
+        }
+     
+        function clearLeaveDate() {
+            document.getElementById('leave-date').value = '';
+        }
+     
+        async function handleAddEmployee(event) {
+            event.preventDefault();
+            const fullName = document.getElementById('full-name').value.trim();
+            const teamLeader = document.getElementById('team-leader').value;
+            const location = document.getElementById('location').value;
+         
+            try {
+                const { collection, addDoc } = window.firebaseModules;
+                await addDoc(collection(window.db, 'employees'), {
+                    'Full Name': fullName,
+                    'Team Leader': teamLeader,
+                    Location: location,
+                    uploadDate: new Date().toISOString(),
+                    absences: []
+                });
+                showToast('Employee added successfully');
+                closeAddEmployeeModal();
+                loadEmployees();
+            } catch (error) {
+                showToast('Failed to add employee', 'error');
+            }
+        }
+     
+        function handleCSVUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+         
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: async function(results) {
+                    try {
+                        const { collection, addDoc } = window.firebaseModules;
+                        let successCount = 0;
+                        for (const row of results.data) {
+                            const fullName = row['Full Name'] || row['full name'] || row['FullName'] || '';
+                            const teamLeader = row['Team Leader'] || row['team leader'] || row['TeamLeader'] || '';
+                            const location = row['Location'] || row['location'] || '';
+                            if (fullName && teamLeader && location) {
+                                await addDoc(collection(window.db, 'employees'), {
+                                    'Full Name': fullName.trim(),
+                                    'Team Leader': teamLeader.trim(),
+                                    'Location': location.trim(),
+                                    uploadDate: new Date().toISOString(),
+                                    absences: []
+                                });
+                                successCount++;
+                            }
+                        }
+                        showToast(`${successCount} employees imported successfully`);
+                        closeUploadCSVModal();
+                        loadEmployees();
+                    } catch (error) {
+                        showToast('Failed to import CSV', 'error');
+                    }
+                }
+            });
+        }
+     
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (type === 'error' ? ' error' : '');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+     
+        // Close modals on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
      
         // Expose all functions to window
-        window.openTeamOverviewModal = openTeamOverviewModal;
-        window.closeTeamOverviewModal = closeTeamOverviewModal;
-        window.renderTeamOverview = renderTeamOverview;
+        window.openAddEmployeeModal = openAddEmployeeModal;
+        window.closeAddEmployeeModal = closeAddEmployeeModal;
+        window.openUploadCSVModal = openUploadCSVModal;
+        window.closeUploadCSVModal = closeUploadCSVModal;
+        window.handleAddEmployee = handleAddEmployee;
+        window.handleCSVUpload = handleCSVUpload;
+        window.openViewEmployeesModal = openViewEmployeesModal;
+        window.closeViewEmployeesModal = closeViewEmployeesModal;
+        window.openEditLeaveModal = openEditLeaveModal;
+        window.closeEditLeaveModal = closeEditLeaveModal;
+        window.saveLeaveDate = saveLeaveDate;
+        window.clearLeaveDate = clearLeaveDate;
+        window.openUpdateHolidaysModal = openUpdateHolidaysModal;
+        window.openSingleHolidayModal = openSingleHolidayModal;
+        window.closeSingleHolidayModal = closeSingleHolidayModal;
+        window.openBulkHolidayCSVModal = openBulkHolidayCSVModal;
+        window.closeBulkHolidayCSVModal = closeBulkHolidayCSVModal;
+        window.handleSingleHolidaySubmit = handleSingleHolidaySubmit;
+        window.handleHolidayCSVUpload = handleHolidayCSVUpload;
+        window.openTeamHolidaysModal = openTeamHolidaysModal;
+        window.closeTeamHolidaysModal = closeTeamHolidaysModal;
+        window.refreshTeamView = refreshTeamView;
         window.openUpdateAbsencesModal = openUpdateAbsencesModal;
+        window.closeUpdateAbsencesModal = closeUpdateAbsencesModal;
         window.openSingleAbsenceModal = openSingleAbsenceModal;
         window.closeSingleAbsenceModal = closeSingleAbsenceModal;
         window.openBulkAbsenceCSVModal = openBulkAbsenceCSVModal;
         window.closeBulkAbsenceCSVModal = closeBulkAbsenceCSVModal;
         window.handleSingleAbsenceSubmit = handleSingleAbsenceSubmit;
         window.handleAbsenceCSVUpload = handleAbsenceCSVUpload;
-     
-        // ... (rest of existing exposed functions)
     </script>
 </body>
 </html>
