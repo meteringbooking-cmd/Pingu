@@ -1111,19 +1111,38 @@
             });
         }
 
+        function parseDateDDMMYYYY(dateStr) {
+            if (!dateStr) return null;
+            // Handle DD/MM/YYYY format
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+                const year = parseInt(parts[2]);
+                return new Date(year, month, day);
+            }
+            // Fallback to standard date parsing
+            return new Date(dateStr);
+        }
+
         function countEmployeesAtDate(teamLeader, targetDate) {
             return allEmployees.filter(emp => {
                 const leader = emp['Team Leader'] || emp.teamLeader;
                 if (leader !== teamLeader) return false;
                 
-                const startDate = emp.startDate || emp['Start Date'];
-                const leaveDate = emp.leaveDate;
+                const startDateStr = emp.startDate || emp['Start Date'];
+                const leaveDateStr = emp.leaveDate;
                 
                 // Employee must have started by target date
-                if (!startDate || new Date(startDate) > targetDate) return false;
+                if (!startDateStr) return false;
+                const startDate = parseDateDDMMYYYY(startDateStr);
+                if (!startDate || startDate > targetDate) return false;
                 
                 // Employee must not have left before target date
-                if (leaveDate && new Date(leaveDate) <= targetDate) return false;
+                if (leaveDateStr) {
+                    const leaveDate = parseDateDDMMYYYY(leaveDateStr);
+                    if (leaveDate && leaveDate <= targetDate) return false;
+                }
                 
                 return true;
             }).length;
