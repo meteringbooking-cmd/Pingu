@@ -1155,26 +1155,33 @@
         }
 
         function openAbsenceDetailsModal(employeeName, details) {
-            currentAbsenceEmployee = employeeName;
-            document.getElementById('absence-details-title').textContent = `Absences – ${employeeName}`;
-            const list = document.getElementById('absence-details-list');
-            if (details.length === 0) {
-                list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No absence records</div>';
-            } else {
-                list.innerHTML = details.map(abs => {
-                    const dateFormatted = abs.date ? new Date(abs.date).toLocaleDateString() : 'Unknown date';
-                    return `
-                        <div class="absence-detail-item">
-                            <div><strong>Date:</strong> ${dateFormatted}</div>
-                            <div><strong>Type:</strong> ${abs.type}</div>
-                            <div><strong>Days off:</strong> ${abs.daysOff}</div>
-                            <div><strong>Hours off:</strong> ${abs.hoursOff}</div>
-                        </div>
-                    `;
-                }).join('');
+    currentAbsenceEmployee = employeeName;
+    document.getElementById('absence-details-title').textContent = `Absences – ${employeeName}`;
+    const list = document.getElementById('absence-details-list');
+    if (details.length === 0) {
+        list.innerHTML = '<div style="text-align:center; color:var(--text-dim);">No absence records</div>';
+    } else {
+        list.innerHTML = details.map(abs => {
+            let dateFormatted = 'Unknown date';
+            if (abs.date) {
+                const d = new Date(abs.date);
+                const day = String(d.getDate()).padStart(2, '0');
+                const month = String(d.getMonth() + 1).padStart(2, '0'); // Months are 0-based
+                const year = d.getFullYear();
+                dateFormatted = `${day}/${month}/${year}`;
             }
-            document.getElementById('absence-details-modal').classList.add('show');
-        }
+            return `
+                <div class="absence-detail-item">
+                    <div><strong>Date:</strong> ${dateFormatted}</div>
+                    <div><strong>Type:</strong> ${abs.type}</div>
+                    <div><strong>Days off:</strong> ${abs.daysOff}</div>
+                    <div><strong>Hours off:</strong> ${abs.hoursOff}</div>
+                </div>
+            `;
+        }).join('');
+    }
+    document.getElementById('absence-details-modal').classList.add('show');
+}
 
         function closeAbsenceDetailsModal() {
             document.getElementById('absence-details-modal').classList.remove('show');
