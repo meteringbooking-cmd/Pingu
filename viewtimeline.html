@@ -304,11 +304,8 @@
         .day-column {
             background: var(--dark);
             border-radius: 4px;
-            padding: 0.5rem;
             min-height: 80px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
+            position: relative;
         }
         
         .job-card {
@@ -319,12 +316,20 @@
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
+            position: absolute;
+            top: 0.5rem;
+            height: calc(100% - 1rem);
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .job-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px var(--shadow);
             border-color: white;
+            z-index: 2;
         }
         
         .job-number {
@@ -346,6 +351,14 @@
             font-size: 0.7rem;
             color: var(--dark);
             opacity: 0.8;
+        }
+        
+        .job-days {
+            font-size: 0.7rem;
+            color: var(--dark);
+            opacity: 0.9;
+            margin-top: 0.2rem;
+            font-weight: 600;
         }
         
         .empty-state {
@@ -642,10 +655,20 @@
                     const installDate = parseInstallDate(data['Install Date']);
                     
                     if (installDate) {
+                        // Parse job length - default to 1 day if not specified
+                        let jobLength = 1;
+                        if (data['Job Length (Days)']) {
+                            const parsed = parseInt(data['Job Length (Days)']);
+                            if (!isNaN(parsed) && parsed > 0) {
+                                jobLength = parsed;
+                            }
+                        }
+                        
                         allJobs.push({
                             id: doc.id,
                             ...data,
-                            parsedDate: installDate
+                            parsedDate: installDate,
+                            jobLength: jobLength
                         });
                     }
                 });
@@ -687,15 +710,9 @@
             filteredJobs.forEach(job => {
                 const engineer = job['Lead Engineer'] || 'Unassigned';
                 if (!engineerJobs[engineer]) {
-                    engineerJobs[engineer] = {};
+                    engineerJobs[engineer] = [];
                 }
-                
-                const dateKey = job.parsedDate.toDateString();
-                if (!engineerJobs[engineer][dateKey]) {
-                    engineerJobs[engineer][dateKey] = [];
-                }
-                
-                engineerJobs[engineer][dateKey].push(job);
+                engineerJobs[engineer].push(job);
             });
             
             // Update stats
@@ -723,37 +740,65 @@
                     </div>
                     
                     <div class="timeline-body">
-                        ${Object.keys(engineerJobs).sort().map(engineer => `
-                            <div class="engineer-row">
-                                <div class="engineer-name">
-                                    <span class="engineer-icon">👤</span>
-                                    <span>${escapeHtml(engineer)}</span>
+                        ${Object.keys(engineerJobs).sort().map(engineer => {
+                            return `
+                                <div class="engineer-row">
+                                    <div class="engineer-name">
+                                        <span class="engineer-icon">👤</span>
+                                        <span>${escapeHtml(engineer)}</span>
+                                    </div>
+                                    <div class="timeline-grid">
+                                        ${renderEngineerJobs(engineerJobs[engineer], dates, startDate)}
+                                    </div>
                                 </div>
-                                <div class="timeline-grid">
-                                    ${dates.map(date => {
-                                        const dateKey = date.toDateString();
-                                        const dayJobs = engineerJobs[engineer][dateKey] || [];
-                                        
-                                        return `
-                                            <div class="day-column">
-                                                ${dayJobs.map(job => `
-                                                    <div class="job-card" onclick="showJobDetails('${job.id}')">
-                                                        <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                                                        <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown')}</div>
-                                                        <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-                                                    </div>
-                                                `).join('')}
-                                            </div>
-                                        `;
-                                    }).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             `;
             
             document.getElementById('timeline-content').innerHTML = html;
+        }
+        
+        // Render engineer jobs with spanning
+        function renderEngineerJobs(jobs, dates, startDate) {
+            const columnWidth = 120; // Base width in px
+            const gap = 1; // Gap between columns in px
+            
+            let html = '';
+            
+            // Create a column for each date
+            dates.forEach((date, dateIndex) => {
+                html += '<div class="day-column">';
+                
+                // Find jobs that start on this date
+                jobs.forEach(job => {
+                    if (job.parsedDate.toDateString() === date.toDateString()) {
+                        const jobLength = job.jobLength || 1;
+                        
+                        // Calculate span width
+                        const spanWidth = (columnWidth * jobLength) + (gap * (jobLength - 1));
+                        
+                        // Calculate left position
+                        const leftPos = 0.5; // rem padding
+                        
+                        html += `
+                            <div class="job-card" 
+                                 onclick="showJobDetails('${job.id}')"
+                                 style="width: ${spanWidth}px; left: 0.5rem;">
+                                <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                                <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown')}</div>
+                                <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
+                                ${jobLength > 1 ? `<div class="job-days">📅 ${jobLength} days</div>` : ''}
+                            </div>
+                        `;
+                    }
+                });
+                
+                html += '</div>';
+            });
+            
+            return html;
         }
         
         // Show job details modal
@@ -789,6 +834,10 @@
                 <div class="detail-row">
                     <div class="detail-label">Install Date</div>
                     <div class="detail-value">${escapeHtml(job['Install Date'] || 'N/A')}</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Job Length</div>
+                    <div class="detail-value">${job.jobLength} day${job.jobLength !== 1 ? 's' : ''}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Lead Engineer</div>
