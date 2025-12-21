@@ -655,12 +655,27 @@
                     const installDate = parseInstallDate(data['Install Date']);
                     
                     if (installDate) {
-                        // Parse job length - default to 1 day if not specified
+                        // Parse job length - try multiple possible field names
                         let jobLength = 1;
-                        if (data['Job Length (Days)']) {
-                            const parsed = parseInt(data['Job Length (Days)']);
-                            if (!isNaN(parsed) && parsed > 0) {
-                                jobLength = parsed;
+                        
+                        // Try different possible field names
+                        const possibleFields = [
+                            'Job Length (Days)',
+                            'Job Length',
+                            'jobLength',
+                            'job_length',
+                            'Duration',
+                            'duration'
+                        ];
+                        
+                        for (const field of possibleFields) {
+                            if (data[field]) {
+                                const parsed = parseInt(data[field]);
+                                if (!isNaN(parsed) && parsed > 0) {
+                                    jobLength = parsed;
+                                    console.log(`Job ${data['Job Number']}: Found length ${jobLength} in field "${field}"`);
+                                    break;
+                                }
                             }
                         }
                         
@@ -670,10 +685,13 @@
                             parsedDate: installDate,
                             jobLength: jobLength
                         });
+                        
+                        console.log(`Added job ${data['Job Number']} - Engineer: ${data['Lead Engineer']}, Date: ${installDate.toDateString()}, Length: ${jobLength} days`);
                     }
                 });
                 
-                console.log(`Loaded ${allJobs.length} jobs with dates`);
+                console.log(`✅ Loaded ${allJobs.length} jobs with dates`);
+                console.log(`Engineers found:`, [...new Set(allJobs.map(j => j['Lead Engineer'] || 'Unassigned'))]);
                 
                 buildTimeline();
                 
@@ -687,6 +705,7 @@
         // Build timeline
         function buildTimeline() {
             const startDate = new Date(document.getElementById('start-date').value);
+            startDate.setHours(0, 0, 0, 0);
             const daysCount = parseInt(document.getElementById('days-count').value) || 14;
             
             // Generate date range
@@ -697,13 +716,25 @@
                 dates.push(date);
             }
             
-            // Filter jobs in date range
+            // Filter jobs that START in date range OR span into it
             const endDate = new Date(dates[dates.length - 1]);
             endDate.setHours(23, 59, 59, 999);
             
-            const filteredJobs = allJobs.filter(job => 
-                job.parsedDate >= startDate && job.parsedDate <= endDate
-            );
+            const filteredJobs = allJobs.filter(job => {
+                // Job start date
+                const jobStart = new Date(job.parsedDate);
+                jobStart.setHours(0, 0, 0, 0);
+                
+                // Job end date (start + length - 1 day)
+                const jobEnd = new Date(jobStart);
+                jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
+                jobEnd.setHours(23, 59, 59, 999);
+                
+                // Include job if it starts before end of range AND ends after start of range
+                return jobStart <= endDate && jobEnd >= startDate;
+            });
+            
+            console.log(`Showing ${filteredJobs.length} jobs in date range`);
             
             // Group jobs by engineer
             const engineerJobs = {};
@@ -715,10 +746,23 @@
                 engineerJobs[engineer].push(job);
             });
             
+            console.log(`Engineers with jobs:`, Object.keys(engineerJobs));
+            
             // Update stats
             document.getElementById('total-jobs').textContent = filteredJobs.length;
             document.getElementById('total-engineers').textContent = Object.keys(engineerJobs).length;
             document.getElementById('date-range').textContent = daysCount + 'd';
+            
+            if (Object.keys(engineerJobs).length === 0) {
+                document.getElementById('timeline-content').innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
+                        <h3 style="font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">No Jobs Found</h3>
+                        <p>No jobs scheduled in this date range</p>
+                    </div>
+                `;
+                return;
+            }
             
             // Build timeline HTML
             const html = `
@@ -762,9 +806,6 @@
         
         // Render engineer jobs with spanning
         function renderEngineerJobs(jobs, dates, startDate) {
-            const columnWidth = 120; // Base width in px
-            const gap = 1; // Gap between columns in px
-            
             let html = '';
             
             // Create a column for each date
@@ -773,14 +814,23 @@
                 
                 // Find jobs that start on this date
                 jobs.forEach(job => {
-                    if (job.parsedDate.toDateString() === date.toDateString()) {
+                    const jobStart = new Date(job.parsedDate);
+                    jobStart.setHours(0, 0, 0, 0);
+                    
+                    if (jobStart.toDateString() === date.toDateString()) {
                         const jobLength = job.jobLength || 1;
                         
-                        // Calculate span width
-                        const spanWidth = (columnWidth * jobLength) + (gap * (jobLength - 1));
+                        // Calculate how many days this job spans within visible range
+                        const daysRemaining = dates.length - dateIndex;
+                        const visibleSpan = Math.min(jobLength, daysRemaining);
                         
-                        // Calculate left position
-                        const leftPos = 0.5; // rem padding
+                        // Calculate span width: each column is 120px + 1px gap
+                        // Total width = (120px * days) + (1px * (days - 1))
+                        const columnWidth = 120;
+                        const gap = 1;
+                        const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
+                        
+                        console.log(`Job ${job['Job Number']}: ${jobLength} days, spanning ${visibleSpan} visible days = ${spanWidth}px`);
                         
                         html += `
                             <div class="job-card" 
@@ -789,7 +839,7 @@
                                 <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
                                 <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown')}</div>
                                 <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-                                ${jobLength > 1 ? `<div class="job-days">📅 ${jobLength} days</div>` : ''}
+                                ${jobLength > 1 ? `<div class="job-days">📅 ${jobLength} day${jobLength !== 1 ? 's' : ''}</div>` : ''}
                             </div>
                         `;
                     }
