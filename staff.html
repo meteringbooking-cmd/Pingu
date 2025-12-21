@@ -1625,54 +1625,60 @@
             currentEditId = null;
         }
     
-        async function saveLeaveDate(event) {
-            event.preventDefault();
-            const leaveDate = document.getElementById('leave-date').value;
-            try {
-                const { doc, updateDoc, deleteField } = window.firebaseModules;
-                const empRef = doc(window.db, 'employees', currentEditId);
-                if (leaveDate) {
-                    await updateDoc(empRef, { leaveDate });
-                    showToast('Leave date saved');
-                } else {
-                    await updateDoc(empRef, { leaveDate: deleteField() });
-                    showToast('Leave date cleared');
-                }
-                closeEditLeaveModal();
-                loadEmployees();
-            } catch (error) {
-                showToast('Failed to save leave date', 'error');
-            }
-        }
+        function openEditLeaveModal(id, name) {
+    currentEditId = id;
+    document.getElementById('edit-employee-name').textContent = name;
+    const emp = allEmployees.find(e => e.id === id);
     
-        function clearLeaveDate() {
-            document.getElementById('leave-date').value = '';
+    // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+    let leaveDateValue = '';
+    if (emp.leaveDate) {
+        const parts = emp.leaveDate.split('/');
+        if (parts.length === 3) {
+            // DD/MM/YYYY -> YYYY-MM-DD
+            leaveDateValue = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        } else {
+            leaveDateValue = emp.leaveDate;
         }
+    }
     
-        async function handleAddEmployee(event) {
-            event.preventDefault();
-            const fullName = document.getElementById('full-name').value.trim();
-            const startDate = document.getElementById('start-date').value;
-            const teamLeader = document.getElementById('team-leader').value;
-            const location = document.getElementById('location').value;
-        
-            try {
-                const { collection, addDoc } = window.firebaseModules;
-                await addDoc(collection(window.db, 'employees'), {
-                    'Full Name': fullName,
-                    'startDate': startDate,
-                    'Team Leader': teamLeader,
-                    Location: location,
-                    uploadDate: new Date().toISOString(),
-                    absences: []
-                });
-                showToast('Employee added successfully');
-                closeAddEmployeeModal();
-                loadEmployees();
-            } catch (error) {
-                showToast('Failed to add employee', 'error');
-            }
+    document.getElementById('leave-date').value = leaveDateValue;
+    closeViewEmployeesModal();
+    document.getElementById('edit-leave-modal').classList.add('show');
+}
+
+async function saveLeaveDate(event) {
+    event.preventDefault();
+    const leaveDateInput = document.getElementById('leave-date').value;
+    
+    // Convert YYYY-MM-DD to DD/MM/YYYY for storage
+    let leaveDateToSave = '';
+    if (leaveDateInput) {
+        const parts = leaveDateInput.split('-');
+        if (parts.length === 3) {
+            // YYYY-MM-DD -> DD/MM/YYYY
+            leaveDateToSave = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        } else {
+            leaveDateToSave = leaveDateInput;
         }
+    }
+    
+    try {
+        const { doc, updateDoc, deleteField } = window.firebaseModules;
+        const empRef = doc(window.db, 'employees', currentEditId);
+        if (leaveDateToSave) {
+            await updateDoc(empRef, { leaveDate: leaveDateToSave });
+            showToast('Leave date saved');
+        } else {
+            await updateDoc(empRef, { leaveDate: deleteField() });
+            showToast('Leave date cleared');
+        }
+        closeEditLeaveModal();
+        loadEmployees();
+    } catch (error) {
+        showToast('Failed to save leave date', 'error');
+    }
+}
     
         function handleCSVUpload(event) {
             const file = event.target.files[0];
