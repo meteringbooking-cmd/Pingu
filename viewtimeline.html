@@ -306,6 +306,12 @@
             border-radius: 4px;
             min-height: 80px;
             position: relative;
+            transition: all 0.2s ease;
+        }
+        
+        .day-column.drag-over {
+            background: var(--dark-lighter);
+            border: 2px dashed var(--accent);
         }
         
         .job-card {
@@ -313,7 +319,7 @@
             padding: 0.6rem;
             border-radius: 6px;
             font-size: 0.8rem;
-            cursor: pointer;
+            cursor: grab;
             transition: all 0.3s ease;
             border: 2px solid transparent;
             position: absolute;
@@ -323,6 +329,16 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+            user-select: none;
+        }
+        
+        .job-card:active {
+            cursor: grabbing;
+        }
+        
+        .job-card.dragging {
+            opacity: 0.4;
+            cursor: grabbing;
         }
         
         .job-card:hover {
@@ -336,6 +352,7 @@
             font-weight: 700;
             color: var(--dark);
             margin-bottom: 0.2rem;
+            pointer-events: none;
         }
         
         .job-customer {
@@ -345,12 +362,14 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            pointer-events: none;
         }
         
         .job-postcode {
             font-size: 0.7rem;
             color: var(--dark);
             opacity: 0.8;
+            pointer-events: none;
         }
         
         .job-days {
@@ -359,6 +378,7 @@
             opacity: 0.9;
             margin-top: 0.2rem;
             font-weight: 600;
+            pointer-events: none;
         }
         
         .empty-state {
@@ -491,6 +511,35 @@
             font-weight: 500;
         }
         
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark-light);
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            display: none;
+        }
+        
+        .toast.show {
+            display: block;
+        }
+        
+        .toast.error {
+            border-color: var(--error);
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -518,7 +567,7 @@
                 <a href="index.html" class="back-btn">← Back to Home</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule of upcoming jobs by engineer</p>
+            <p class="subtitle">Visual schedule of upcoming jobs by engineer - drag to reschedule</p>
         </header>
         
         <div class="controls-card">
@@ -572,9 +621,12 @@
         </div>
     </div>
     
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -589,11 +641,11 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy };
+            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
             console.log('✅ Firebase initialized');
             
             window.addEventListener('DOMContentLoaded', () => {
-                initializeTimeline();
+                window.initializeTimeline();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
@@ -603,9 +655,12 @@
     <script>
         let allJobs = [];
         let currentJob = null;
+        let draggedJobId = null;
+        let timelineDates = [];
+        let isDragging = false;
         
         // Initialize timeline with default values
-        function initializeTimeline() {
+        window.initializeTimeline = function() {
             const today = new Date();
             document.getElementById('start-date').valueAsDate = today;
             loadJobs();
@@ -637,6 +692,14 @@
             return null;
         }
         
+        // Format date as DD/MM/YYYY
+        function formatInstallDate(date) {
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        }
+        
         // Load jobs from Firebase
         async function loadJobs() {
             try {
@@ -655,10 +718,8 @@
                     const installDate = parseInstallDate(data['Install Date']);
                     
                     if (installDate) {
-                        // Parse job length - try multiple possible field names
                         let jobLength = 1;
                         
-                        // Try different possible field names
                         const possibleFields = [
                             'Job Length (Days)',
                             'Job Length',
@@ -673,7 +734,6 @@
                                 const parsed = parseInt(data[field]);
                                 if (!isNaN(parsed) && parsed > 0) {
                                     jobLength = parsed;
-                                    console.log(`Job ${data['Job Number']}: Found length ${jobLength} in field "${field}"`);
                                     break;
                                 }
                             }
@@ -685,14 +745,10 @@
                             parsedDate: installDate,
                             jobLength: jobLength
                         });
-                        
-                        console.log(`Added job ${data['Job Number']} - Engineer: ${data['Lead Engineer']}, Date: ${installDate.toDateString()}, Length: ${jobLength} days`);
                     }
                 });
                 
                 console.log(`✅ Loaded ${allJobs.length} jobs with dates`);
-                console.log(`Engineers found:`, [...new Set(allJobs.map(j => j['Lead Engineer'] || 'Unassigned'))]);
-                
                 buildTimeline();
                 
             } catch (error) {
@@ -702,6 +758,45 @@
             }
         }
         
+        // Update job date in Firebase
+        async function updateJobDate(jobId, newDate) {
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'jobs', jobId);
+                
+                const formattedDate = formatInstallDate(newDate);
+                
+                await updateDoc(jobRef, {
+                    'Install Date': formattedDate
+                });
+                
+                // Update local data
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    job['Install Date'] = formattedDate;
+                    job.parsedDate = newDate;
+                }
+                
+                showToast(`✅ Job rescheduled to ${formattedDate}`, 'success');
+                buildTimeline();
+                
+            } catch (error) {
+                console.error('Error updating job:', error);
+                showToast('❌ Failed to update job date', 'error');
+            }
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (type === 'error' ? ' error' : '');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+        
         // Build timeline
         function buildTimeline() {
             const startDate = new Date(document.getElementById('start-date').value);
@@ -709,32 +804,27 @@
             const daysCount = parseInt(document.getElementById('days-count').value) || 14;
             
             // Generate date range
-            const dates = [];
+            timelineDates = [];
             for (let i = 0; i < daysCount; i++) {
                 const date = new Date(startDate);
                 date.setDate(date.getDate() + i);
-                dates.push(date);
+                timelineDates.push(date);
             }
             
             // Filter jobs that START in date range OR span into it
-            const endDate = new Date(dates[dates.length - 1]);
+            const endDate = new Date(timelineDates[timelineDates.length - 1]);
             endDate.setHours(23, 59, 59, 999);
             
             const filteredJobs = allJobs.filter(job => {
-                // Job start date
                 const jobStart = new Date(job.parsedDate);
                 jobStart.setHours(0, 0, 0, 0);
                 
-                // Job end date (start + length - 1 day)
                 const jobEnd = new Date(jobStart);
                 jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
                 jobEnd.setHours(23, 59, 59, 999);
                 
-                // Include job if it starts before end of range AND ends after start of range
                 return jobStart <= endDate && jobEnd >= startDate;
             });
-            
-            console.log(`Showing ${filteredJobs.length} jobs in date range`);
             
             // Group jobs by engineer
             const engineerJobs = {};
@@ -745,8 +835,6 @@
                 }
                 engineerJobs[engineer].push(job);
             });
-            
-            console.log(`Engineers with jobs:`, Object.keys(engineerJobs));
             
             // Update stats
             document.getElementById('total-jobs').textContent = filteredJobs.length;
@@ -770,7 +858,7 @@
                     <div class="timeline-header">
                         <div class="engineer-header">👷 Engineer</div>
                         <div class="dates-header">
-                            ${dates.map(date => {
+                            ${timelineDates.map(date => {
                                 const isToday = date.toDateString() === new Date().toDateString();
                                 return `
                                     <div class="date-cell ${isToday ? 'today' : ''}">
@@ -792,49 +880,48 @@
                                         <span>${escapeHtml(engineer)}</span>
                                     </div>
                                     <div class="timeline-grid">
-                                        ${renderEngineerJobs(engineerJobs[engineer], dates, startDate)}
+                                        ${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}
                                     </div>
                                 </div>
                             `;
                         }).join('')}
-                    </div>
+                        </div>
                 </div>
             `;
             
             document.getElementById('timeline-content').innerHTML = html;
+            
+            // Initialize drag and drop after HTML is added
+            setTimeout(() => {
+                initializeDragAndDrop();
+            }, 100);
         }
         
         // Render engineer jobs with spanning
         function renderEngineerJobs(jobs, dates, startDate) {
             let html = '';
             
-            // Create a column for each date
             dates.forEach((date, dateIndex) => {
-                html += '<div class="day-column">';
+                html += `<div class="day-column" data-date="${date.toISOString()}" data-date-index="${dateIndex}">`;
                 
-                // Find jobs that start on this date
                 jobs.forEach(job => {
                     const jobStart = new Date(job.parsedDate);
                     jobStart.setHours(0, 0, 0, 0);
                     
                     if (jobStart.toDateString() === date.toDateString()) {
                         const jobLength = job.jobLength || 1;
-                        
-                        // Calculate how many days this job spans within visible range
                         const daysRemaining = dates.length - dateIndex;
                         const visibleSpan = Math.min(jobLength, daysRemaining);
                         
-                        // Calculate span width: each column is 120px + 1px gap
-                        // Total width = (120px * days) + (1px * (days - 1))
                         const columnWidth = 120;
                         const gap = 1;
                         const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
                         
-                        console.log(`Job ${job['Job Number']}: ${jobLength} days, spanning ${visibleSpan} visible days = ${spanWidth}px`);
-                        
                         html += `
                             <div class="job-card" 
-                                 onclick="showJobDetails('${job.id}')"
+                                 draggable="true"
+                                 data-job-id="${job.id}"
+                                 data-engineer="${escapeHtml(job['Lead Engineer'] || 'Unassigned')}"
                                  style="width: ${spanWidth}px; left: 0.5rem;">
                                 <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
                                 <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown')}</div>
@@ -849,6 +936,109 @@
             });
             
             return html;
+        }
+        
+        // Initialize drag and drop
+        function initializeDragAndDrop() {
+            const jobCards = document.querySelectorAll('.job-card');
+            const dayColumns = document.querySelectorAll('.day-column');
+            
+            console.log(`Initializing drag for ${jobCards.length} jobs`);
+            
+            jobCards.forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+                card.addEventListener('click', function(e) {
+                    if (!isDragging) {
+                        const jobId = this.getAttribute('data-job-id');
+                        showJobDetails(jobId);
+                    }
+                });
+            });
+            
+            dayColumns.forEach(column => {
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('dragenter', handleDragEnter);
+                column.addEventListener('dragleave', handleDragLeave);
+                column.addEventListener('drop', handleDrop);
+            });
+        }
+        
+        function handleDragStart(e) {
+            isDragging = true;
+            draggedJobId = this.getAttribute('data-job-id');
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', draggedJobId);
+            console.log('Drag started:', draggedJobId);
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            
+            document.querySelectorAll('.day-column').forEach(column => {
+                column.classList.remove('drag-over');
+            });
+            
+            setTimeout(() => {
+                isDragging = false;
+            }, 100);
+        }
+        
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleDragEnter(e) {
+            if (e.target.classList.contains('day-column')) {
+                e.target.classList.add('drag-over');
+            }
+        }
+        
+        function handleDragLeave(e) {
+            if (e.target.classList.contains('day-column')) {
+                e.target.classList.remove('drag-over');
+            }
+        }
+        
+        function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            
+            let dropTarget = e.target;
+            while (dropTarget && !dropTarget.classList.contains('day-column')) {
+                dropTarget = dropTarget.parentElement;
+            }
+            
+            if (dropTarget) {
+                dropTarget.classList.remove('drag-over');
+                
+                if (draggedJobId) {
+                    const newDateStr = dropTarget.getAttribute('data-date');
+                    const newDate = new Date(newDateStr);
+                    
+                    const job = allJobs.find(j => j.id === draggedJobId);
+                    if (job) {
+                        const oldDate = job.parsedDate.toDateString();
+                        const targetDate = newDate.toDateString();
+                        
+                        if (oldDate !== targetDate) {
+                            console.log(`Moving job from ${oldDate} to ${targetDate}`);
+                            updateJobDate(draggedJobId, newDate);
+                        }
+                    }
+                }
+            }
+            
+            return false;
         }
         
         // Show job details modal
