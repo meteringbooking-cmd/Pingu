@@ -1009,8 +1009,7 @@
                             id="search-input" 
                             class="search-input" 
                             placeholder="e.g. 12345, SW1A 1AA, or John Smith..."
-                            onkeypress="handleSearchKeypress
-                            (event)"
+                            onkeypress="handleSearchKeypress(event)"
                         />
                     </div>
                     <button class="search-btn" onclick="performSearch()">Search</button>
@@ -1642,12 +1641,25 @@
                     } else {
                         querySnapshot.forEach((doc) => {
                             const data = doc.data();
-                            allFiles.push({
-                                id: doc.id,
-                                ...data,
-                                collectionType: fileCollection.type,
-                                icon: fileCollection.icon
-                            });
+                            
+                            // Handle different field names in different collections
+                            const downloadURL = data.downloadURL || data.pdfUrl || '';
+                            const fileName = data.fileName || data.filename || `${fileCollection.type}.pdf`;
+                            const fileSize = data.fileSize || data.size || 0;
+                            
+                            if (downloadURL) {
+                                allFiles.push({
+                                    id: doc.id,
+                                    fileName: fileName,
+                                    fileSize: fileSize,
+                                    downloadURL: downloadURL,
+                                    collectionType: fileCollection.type,
+                                    icon: fileCollection.icon,
+                                    uploadDate: data.uploadDate || data.timestamp || ''
+                                });
+                            } else {
+                                console.warn(`No download URL found for document in ${fileCollection.name}:`, doc.id);
+                            }
                         });
                     }
                 }
