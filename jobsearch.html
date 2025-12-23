@@ -1616,6 +1616,7 @@
             const attachmentsList = document.getElementById('attachments-list');
             
             try {
+                console.log(`🔍 Loading files for job number: "${jobNumber}"`);
                 const { collection, getDocs, query, where } = window.firebaseModules;
                 
                 const fileCollections = [
@@ -1629,59 +1630,88 @@
                 let missingFiles = [];
                 
                 for (const fileCollection of fileCollections) {
-                    const filesQuery = query(
+                    console.log(`  Checking collection: ${fileCollection.name}`);
+                    
+                    // Try querying with the exact job number
+                    let filesQuery = query(
                         collection(window.db, fileCollection.name),
                         where('jobNumber', '==', jobNumber)
                     );
                     
-                    const querySnapshot = await getDocs(filesQuery);
+                    let querySnapshot = await getDocs(filesQuery);
+                    console.log(`    Found ${querySnapshot.size} files with jobNumber == "${jobNumber}"`);
+                    
+                    // If no results, try with string conversion
+                    if (querySnapshot.empty && typeof jobNumber === 'number') {
+                        console.log(`    Retrying with string version: "${String(jobNumber)}"`);
+                        filesQuery = query(
+                            collection(window.db, fileCollection.name),
+                            where('jobNumber', '==', String(jobNumber))
+                        );
+                        querySnapshot = await getDocs(filesQuery);
+                        console.log(`    Found ${querySnapshot.size} files with string jobNumber`);
+                    }
+                    
+                    // If still no results, try without leading zeros
+                    if (querySnapshot.empty && typeof jobNumber === 'string') {
+                        const numericJobNumber = parseInt(jobNumber, 10);
+                        if (!isNaN(numericJobNumber)) {
+                            console.log(`    Retrying with numeric version: ${numericJobNumber}`);
+                            filesQuery = query(
+                                collection(window.db, fileCollection.name),
+                                where('jobNumber', '==', numericJobNumber)
+                            );
+                            querySnapshot = await getDocs(filesQuery);
+                            console.log(`    Found ${querySnapshot.size} files with numeric jobNumber`);
+                        }
+                    }
                     
                     if (querySnapshot.empty) {
+                        console.log(`    ❌ No files found in ${fileCollection.name}`);
                         missingFiles.push(fileCollection);
                     } else {
+                        console.log(`    ✅ Found files in ${fileCollection.name}`);
                         querySnapshot.forEach((doc) => {
                             const data = doc.data();
-                            
-                            // Handle different field names in different collections
-                            const downloadURL = data.downloadURL || data.pdfUrl || '';
-                            const fileName = data.fileName || data.filename || `${fileCollection.type}.pdf`;
-                            const fileSize = data.fileSize || data.size || 0;
-                            
-                            if (downloadURL) {
-                                allFiles.push({
-                                    id: doc.id,
-                                    fileName: fileName,
-                                    fileSize: fileSize,
-                                    downloadURL: downloadURL,
-                                    collectionType: fileCollection.type,
-                                    icon: fileCollection.icon,
-                                    uploadDate: data.uploadDate || data.timestamp || ''
-                                });
-                            } else {
-                                console.warn(`No download URL found for document in ${fileCollection.name}:`, doc.id);
-                            }
+                            console.log(`      File: ${data.fileName || 'unnamed'}`);
+                            allFiles.push({
+                                id: doc.id,
+                                ...data,
+                                collectionType: fileCollection.type,
+                                icon: fileCollection.icon
+                            });
                         });
                     }
                 }
+                
+                console.log(`📊 Summary: ${allFiles.length} files found, ${missingFiles.length} missing`);
                 
                 if (allFiles.length === 0 && missingFiles.length === 0) {
                     attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
                 } else {
                     let html = '';
                     
-                    // Show existing files
-                    html += allFiles.map(file => `
-                        <div class="attachment-item">
-                            <div class="attachment-icon">${file.icon}</div>
-                            <div class="attachment-info">
-                                <div class="attachment-name">${escapeHtml(file.fileName)}</div>
-                                <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                    // Show existing files with proper error handling for download URLs
+                    html += allFiles.map(file => {
+                        const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
+                        const hasValidUrl = downloadUrl !== '#';
+                        
+                        console.log(`  Rendering file: ${file.fileName}, URL: ${downloadUrl}`);
+                        
+                        return `
+                            <div class="attachment-item">
+                                <div class="attachment-icon">${file.icon}</div>
+                                <div class="attachment-info">
+                                    <div class="attachment-name">${escapeHtml(file.fileName || 'Unknown file')}</div>
+                                    <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                                </div>
+                                ${hasValidUrl ? 
+                                    `<a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" class="attachment-download">Download</a>` :
+                                    `<button class="attachment-download disabled" disabled title="Download URL missing">URL Missing</button>`
+                                }
                             </div>
-                            <a href="${file.downloadURL}" target="_blank" class="attachment-download">
-                                Download
-                            </a>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                     
                     // Show missing files with upload option
                     html += missingFiles.map((fileCollection, index) => `
@@ -1708,8 +1738,8 @@
                 }
                 
             } catch (error) {
-                console.error('Error loading files:', error);
-                attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
+                console.error('❌ Error loading files:', error);
+                attachmentsList.innerHTML = `<div class="no-attachments">Error loading files: ${error.message}</div>`;
             }
         }
         
@@ -1722,25 +1752,39 @@
             const uploadButton = event.target.nextElementSibling;
             const originalButtonText = uploadButton.textContent;
             
-            uploadButton.innerHTML = '<div class="uploading-indicator">Uploading</div>';
+            uploadButton.innerHTML = '<div class="uploading-indicator">Uploading...</div>';
             uploadButton.disabled = true;
             
             try {
                 const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
+                
+                console.log(`📤 Uploading file to ${collectionName} for job ${jobNumber}`);
                 
                 // Upload file to Firebase Storage
                 const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
                 const downloadURL = await getDownloadURL(snapshot.ref);
                 
-                // Add file metadata to Firestore
+                console.log(`✅ File uploaded, URL: ${downloadURL}`);
+                
+                // Store jobNumber in both string and numeric formats to ensure compatibility
+                const jobNumberString = String(jobNumber);
+                const jobNumberNumeric = parseInt(jobNumber, 10);
+                
+                // Add file metadata to Firestore with multiple URL field names for compatibility
                 await addDoc(collection(window.db, collectionName), {
-                    jobNumber: jobNumber,
+                    jobNumber: isNaN(jobNumberNumeric) ? jobNumberString : jobNumberNumeric,
+                    jobNumberString: jobNumberString,  // Always store string version
                     fileName: file.name,
                     fileSize: file.size,
                     downloadURL: downloadURL,
+                    downloadUrl: downloadURL,  // Alternative field name
+                    url: downloadURL,          // Another alternative
+                    pdfUrl: downloadURL,       // For PDFs specifically
                     uploadDate: new Date().toISOString()
                 });
+                
+                console.log('✅ File metadata saved to Firestore');
                 
                 showStatus('File uploaded successfully!', 'success');
                 
@@ -1748,7 +1792,7 @@
                 await loadJobFiles(jobNumber);
                 
             } catch (error) {
-                console.error('Error uploading file:', error);
+                console.error('❌ Error uploading file:', error);
                 showStatus('Error uploading file: ' + error.message, 'error');
                 uploadButton.textContent = originalButtonText;
                 uploadButton.disabled = false;
@@ -1787,7 +1831,7 @@
                 month: 'short',
                 year: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-minute'
             });
         }
         
@@ -1808,5 +1852,3 @@
             }
         });
     </script>
-</body>
-</html>
