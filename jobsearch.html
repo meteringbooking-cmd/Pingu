@@ -1212,6 +1212,7 @@
         let currentJobNumber = null;
         let leadEngineers = [];
         let isEditingEngineer = false;
+        let surveyData = {};
         
         // Load all jobs from Firebase
         async function loadAllJobs() {
@@ -1219,7 +1220,6 @@
                 console.log('Loading all jobs...');
                 const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
                 
-                // Query all jobs, ordered by upload date
                 const jobsQuery = query(
                     collection(window.db, 'jobs'),
                     orderByFn('uploadDate', 'desc')
@@ -1237,7 +1237,6 @@
                 
                 console.log(`Loaded ${allJobs.length} jobs`);
                 
-                // Load lead engineers
                 const engineersQuery = query(
                     collection(window.db, 'team-members'),
                     where('isLeadEngineer', '==', true)
@@ -1271,7 +1270,6 @@
             }
         }
         
-        // Perform search
         async function performSearch() {
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
             
@@ -1296,14 +1294,12 @@
             displayResults();
         }
         
-        // Handle Enter key in search
         function handleSearchKeypress(event) {
             if (event.key === 'Enter') {
                 performSearch();
             }
         }
         
-        // Set filter
         function setFilter(filter) {
             currentFilter = filter;
             
@@ -1315,7 +1311,6 @@
             applyFilter();
         }
         
-        // Apply filter
         function applyFilter() {
             const now = new Date();
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
@@ -1354,7 +1349,6 @@
             displayResults();
         }
         
-        // Set view
         function setView(view) {
             currentView = view;
             
@@ -1366,7 +1360,6 @@
             displayResults();
         }
         
-        // Display results
         function displayResults() {
             const container = document.getElementById('results-container');
             const countEl = document.getElementById('results-count');
@@ -1391,7 +1384,6 @@
             }
         }
         
-        // Display grid view
         function displayGridView(container) {
             const now = new Date();
             
@@ -1450,7 +1442,6 @@
             container.innerHTML = html;
         }
         
-        // Display table view
         function displayTableView(container) {
             const html = `
                 <div class="results-table">
@@ -1496,7 +1487,6 @@
             container.innerHTML = html;
         }
         
-        // Show job details modal
         async function showJobDetails(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
@@ -1599,12 +1589,9 @@
             `;
             
             modal.classList.add('show');
-            
-            // Load associated files
             await loadJobFiles(job['Job Number']);
         }
         
-        // Update job status
         async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
             
@@ -1647,7 +1634,6 @@
         
         window.updateJobStatus = updateJobStatus;
         
-        // Edit lead engineer
         function editLeadEngineer() {
             if (isEditingEngineer) return;
             
@@ -1673,7 +1659,6 @@
             `;
         }
         
-        // Cancel editing lead engineer
         function cancelEditEngineer() {
             isEditingEngineer = false;
             const job = allJobs.find(j => j.id === currentJobId);
@@ -1685,7 +1670,6 @@
             `;
         }
         
-        // Save lead engineer change
         async function saveLeadEngineer() {
             const select = document.getElementById('engineer-select');
             const newEngineer = select.value;
@@ -1716,272 +1700,260 @@
             }
         }
         
-        // Load files associated with a job number
-        // Load files associated with a job number
-// Load files associated with a job number
-async function loadJobFiles(jobNumber) {
-    const attachmentsList = document.getElementById('attachments-list');
-    
-    try {
-        console.log(`🔍 Loading files for job number: "${jobNumber}"`);
-        const { collection, getDocs, query, where } = window.firebaseModules;
-        
-        const fileCollections = [
-            { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
-            { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
-            { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' },
-            { name: 'site-surveys', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true }
-        ];
-        
-        let allFiles = [];
-        let missingFiles = [];
-        
-        for (const fileCollection of fileCollections) {
-            console.log(`  Checking collection: ${fileCollection.name}`);
+        async function loadJobFiles(jobNumber) {
+            const attachmentsList = document.getElementById('attachments-list');
             
-            let filesQuery = query(
-                collection(window.db, fileCollection.name),
-                where('jobNumber', '==', jobNumber)
-            );
-            
-            let querySnapshot = await getDocs(filesQuery);
-            console.log(`    Found ${querySnapshot.size} files with jobNumber == "${jobNumber}"`);
-            
-            if (querySnapshot.empty && typeof jobNumber === 'number') {
-                console.log(`    Retrying with string version: "${String(jobNumber)}"`);
-                filesQuery = query(
-                    collection(window.db, fileCollection.name),
-                    where('jobNumber', '==', String(jobNumber))
-                );
-                querySnapshot = await getDocs(filesQuery);
-                console.log(`    Found ${querySnapshot.size} files with string jobNumber`);
-            }
-            
-            if (querySnapshot.empty && typeof jobNumber === 'string') {
-                const numericJobNumber = parseInt(jobNumber, 10);
-                if (!isNaN(numericJobNumber)) {
-                    console.log(`    Retrying with numeric version: ${numericJobNumber}`);
-                    filesQuery = query(
-                        collection(window.db, fileCollection.name),
-                        where('jobNumber', '==', numericJobNumber)
-                    );
-                    querySnapshot = await getDocs(filesQuery);
-                    console.log(`    Found ${querySnapshot.size} files with numeric jobNumber`);
-                }
-            }
-            
-            if (querySnapshot.empty) {
-                console.log(`    ❌ No files found in ${fileCollection.name}`);
-                missingFiles.push(fileCollection);
-            } else {
-                console.log(`    ✅ Found files in ${fileCollection.name}`);
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    console.log(`      File: ${data.fileName || 'unnamed'}`);
-                    console.log(`      Available fields:`, Object.keys(data));
-                    console.log(`      Full data:`, data);
-                    allFiles.push({
-                        id: doc.id,
-                        ...data,
-                        collectionType: fileCollection.type,
-                        icon: fileCollection.icon
-                    });
-                });
-            }
-        }
-        
-        console.log(`📊 Summary: ${allFiles.length} files found, ${missingFiles.length} missing`);
-        
-        if (allFiles.length === 0 && missingFiles.length === 0) {
-            attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
-        } else {
-            let html = '';
-            
-            html += allFiles.map(file => {
-                if (file.collectionType === 'Site Survey') {
-                    console.log(`  Rendering survey data:`, file);
+            try {
+                console.log(`🔍 Loading files for job number: "${jobNumber}"`);
+                const { collection, getDocs, query, where } = window.firebaseModules;
+                
+                const fileCollections = [
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' },
+                    { name: 'site-surveys', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true }
+                ];
+                
+                let allFiles = [];
+                let missingFiles = [];
+                
+                for (const fileCollection of fileCollections) {
+                    console.log(`  Checking collection: ${fileCollection.name}`);
                     
-                    let totalPhotos = 0;
-                    if (file.photos && typeof file.photos === 'object') {
-                        totalPhotos = Object.values(file.photos).reduce((sum, urls) => {
-                            return sum + (Array.isArray(urls) ? urls.length : 0);
-                        }, 0);
+                    let filesQuery = query(
+                        collection(window.db, fileCollection.name),
+                        where('jobNumber', '==', jobNumber)
+                    );
+                    
+                    let querySnapshot = await getDocs(filesQuery);
+                    console.log(`    Found ${querySnapshot.size} files with jobNumber == "${jobNumber}"`);
+                    
+                    if (querySnapshot.empty && typeof jobNumber === 'number') {
+                        console.log(`    Retrying with string version: "${String(jobNumber)}"`);
+                        filesQuery = query(
+                            collection(window.db, fileCollection.name),
+                            where('jobNumber', '==', String(jobNumber))
+                        );
+                        querySnapshot = await getDocs(filesQuery);
+                        console.log(`    Found ${querySnapshot.size} files with string jobNumber`);
                     }
                     
-                    return `
-                        <div class="attachment-item">
-                            <div class="attachment-icon">${file.icon}</div>
-                            <div class="attachment-info">
-                                <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
-                                <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}</div>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
-                                    View Survey
-                                </button>
-                                <button class="attachment-download" onclick="downloadSurveyPDF('${file.id}', event)" style="background: #4ECCA3;">
-                                    Download PDF
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                    if (querySnapshot.empty && typeof jobNumber === 'string') {
+                        const numericJobNumber = parseInt(jobNumber, 10);
+                        if (!isNaN(numericJobNumber)) {
+                            console.log(`    Retrying with numeric version: ${numericJobNumber}`);
+                            filesQuery = query(
+                                collection(window.db, fileCollection.name),
+                                where('jobNumber', '==', numericJobNumber)
+                            );
+                            querySnapshot = await getDocs(filesQuery);
+                            console.log(`    Found ${querySnapshot.size} files with numeric jobNumber`);
+                        }
+                    }
+                    
+                    if (querySnapshot.empty) {
+                        console.log(`    ❌ No files found in ${fileCollection.name}`);
+                        missingFiles.push(fileCollection);
+                    } else {
+                        console.log(`    ✅ Found files in ${fileCollection.name}`);
+                        querySnapshot.forEach((doc) => {
+                            const data = doc.data();
+                            allFiles.push({
+                                id: doc.id,
+                                ...data,
+                                collectionType: fileCollection.type,
+                                icon: fileCollection.icon
+                            });
+                        });
+                    }
                 }
                 
-                const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
-                const hasValidUrl = downloadUrl !== '#';
+                console.log(`📊 Summary: ${allFiles.length} files found, ${missingFiles.length} missing`);
                 
-                console.log(`  Rendering file: ${file.fileName}, URL: ${downloadUrl}`);
-                
-                return `
-                    <div class="attachment-item">
-                        <div class="attachment-icon">${file.icon}</div>
-                        <div class="attachment-info">
-                            <div class="attachment-name">${escapeHtml(file.fileName || 'Unknown file')}</div>
-                            <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
-                        </div>
-                        ${hasValidUrl ? 
-                            `<a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" class="attachment-download">Download</a>` :
-                            `<button class="attachment-download disabled" disabled title="Download URL missing">URL Missing</button>`
+                if (allFiles.length === 0 && missingFiles.length === 0) {
+                    attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
+                } else {
+                    let html = '';
+                    
+                    html += allFiles.map(file => {
+                        if (file.collectionType === 'Site Survey') {
+                            let totalPhotos = 0;
+                            if (file.photos && typeof file.photos === 'object') {
+                                totalPhotos = Object.values(file.photos).reduce((sum, urls) => {
+                                    return sum + (Array.isArray(urls) ? urls.length : 0);
+                                }, 0);
+                            }
+                            
+                            return `
+                                <div class="attachment-item">
+                                    <div class="attachment-icon">${file.icon}</div>
+                                    <div class="attachment-info">
+                                        <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
+                                        <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}</div>
+                                    </div>
+                                    <div style="display: flex; gap: 8px;">
+                                        <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
+                                            View Survey
+                                        </button>
+                                        <button class="attachment-download" onclick="downloadSurveyPDF('${file.id}', event)" style="background: #4ECCA3;">
+                                            Download PDF
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
                         }
-                    </div>
-                `;
-            }).join('');
-            
-            html += missingFiles.map((fileCollection, index) => `
-                <div class="missing-file-item">
-                    <div class="attachment-icon">${fileCollection.icon}</div>
-                    <div class="attachment-info">
-                        <div class="attachment-name">${fileCollection.type}</div>
-                        <div class="attachment-type">Not uploaded yet</div>
-                    </div>
-                    <input 
-                        type="file" 
-                        id="file-input-${index}" 
-                        class="upload-file-input" 
-                        accept="${fileCollection.accept}"
-                        onchange="handleFileUpload(event, '${fileCollection.name}', '${jobNumber}')"
-                    />
-                    <button class="upload-file-btn" onclick="document.getElementById('file-input-${index}').click()">
-                        Upload
-                    </button>
-                </div>
-            `).join('');
-            
-            attachmentsList.innerHTML = html;
-        }
-        
-    } catch (error) {
-        console.error('❌ Error loading files:', error);
-        attachmentsList.innerHTML = `<div class="no-attachments">Error loading files: ${error.message}</div>`;
-    }
-}
-
-// Handle file upload
-async function handleFileUpload(event, collectionName, jobNumber) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const uploadButton = event.target.nextElementSibling;
-    const originalButtonText = uploadButton.textContent;
-    
-    uploadButton.innerHTML = '<div class="uploading-indicator">Uploading...</div>';
-    uploadButton.disabled = true;
-    
-    try {
-        const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
-        
-        console.log(`📤 Uploading file to ${collectionName} for job ${jobNumber}`);
-        
-        const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        
-        console.log(`✅ File uploaded, URL: ${downloadURL}`);
-        
-        const jobNumberString = String(jobNumber);
-        const jobNumberNumeric = parseInt(jobNumber, 10);
-        
-        await addDoc(collection(window.db, collectionName), {
-            jobNumber: isNaN(jobNumberNumeric) ? jobNumberString : jobNumberNumeric,
-            jobNumberString: jobNumberString,
-            fileName: file.name,
-            fileSize: file.size,
-            downloadURL: downloadURL,
-            downloadUrl: downloadURL,
-            url: downloadURL,
-            pdfUrl: downloadURL,
-            uploadDate: new Date().toISOString()
-        });
-        
-        console.log('✅ File metadata saved to Firestore');
-        
-        showStatus('File uploaded successfully!', 'success');
-        
-        await loadJobFiles(jobNumber);
-        
-    } catch (error) {
-        console.error('❌ Error uploading file:', error);
-        showStatus('Error uploading file: ' + error.message, 'error');
-        uploadButton.textContent = originalButtonText;
-        uploadButton.disabled = false;
-    }
-}
-
-window.handleFileUpload = handleFileUpload;
-
-// Download survey as PDF
-async function downloadSurveyPDF(surveyId, event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const button = event.target;
-    const originalText = button.textContent;
-    button.textContent = 'Generating PDF...';
-    button.disabled = true;
-    
-    try {
-        const { doc: docRef, getDoc } = window.firebaseModules;
-        const { jsPDF } = window.jspdf;
-        
-        const surveyDoc = await getDoc(docRef(window.db, 'site-surveys', surveyId));
-        if (!surveyDoc.exists()) {
-            showStatus('Survey not found', 'error');
-            return;
-        }
-        
-        const survey = surveyDoc.data();
-        
-        const pdf = new jsPDF();
-        let yPos = 20;
-        const lineHeight = 7;
-        const margin = 20;
-        
-        const addText = (text, size = 10, isBold = false) => {
-            if (yPos > 270) {
-                pdf.addPage();
-                yPos = 20;
+                        
+                        const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
+                        const hasValidUrl = downloadUrl !== '#';
+                        
+                        return `
+                            <div class="attachment-item">
+                                <div class="attachment-icon">${file.icon}</div>
+                                <div class="attachment-info">
+                                    <div class="attachment-name">${escapeHtml(file.fileName || 'Unknown file')}</div>
+                                    <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                                </div>
+                                ${hasValidUrl ? 
+                                    `<a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" class="attachment-download">Download</a>` :
+                                    `<button class="attachment-download disabled" disabled title="Download URL missing">URL Missing</button>`
+                                }
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    html += missingFiles.map((fileCollection, index) => `
+                        <div class="missing-file-item">
+                            <div class="attachment-icon">${fileCollection.icon}</div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">${fileCollection.type}</div>
+                                <div class="attachment-type">Not uploaded yet</div>
+                            </div>
+                            <input 
+                                type="file" 
+                                id="file-input-${index}" 
+                                class="upload-file-input" 
+                                accept="${fileCollection.accept}"
+                                onchange="handleFileUpload(event, '${fileCollection.name}', '${jobNumber}')"
+                            />
+                            <button class="upload-file-btn" onclick="document.getElementById('file-input-${index}').click()">
+                                Upload
+                            </button>
+                        </div>
+                    `).join('');
+                    
+                    attachmentsList.innerHTML = html;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error loading files:', error);
+                attachmentsList.innerHTML = `<div class="no-attachments">Error loading files: ${error.message}</div>`;
             }
-            pdf.setFontSize(size);
-            pdf.setFont(undefined, isBold ? 'bold' : 'normal');
-            pdf.text(text, margin, yPos);
-            yPos += lineHeight;
-        };
+        }
         
-        pdf.setFontSize(20);
-        pdf.setFont(undefined, 'bold');
-        pdf.text('Site Survey Report', margin, yPos);
-        yPos += 15;
+        async function handleFileUpload(event, collectionName, jobNumber) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const uploadButton = event.target.nextElementSibling;
+            const originalButtonText = uploadButton.textContent;
+            
+            uploadButton.innerHTML = '<div class="uploading-indicator">Uploading...</div>';
+            uploadButton.disabled = true;
+            
+            try {
+                const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
+                
+                console.log(`📤 Uploading file to ${collectionName} for job ${jobNumber}`);
+                
+                const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                
+                console.log(`✅ File uploaded, URL: ${downloadURL}`);
+                
+                const jobNumberString = String(jobNumber);
+                const jobNumberNumeric = parseInt(jobNumber, 10);
+                
+                await addDoc(collection(window.db, collectionName), {
+                    jobNumber: isNaN(jobNumberNumeric) ? jobNumberString : jobNumberNumeric,
+                    jobNumberString: jobNumberString,
+                    fileName: file.name,
+                    fileSize: file.size,
+                    downloadURL: downloadURL,
+                    downloadUrl: downloadURL,
+                    url: downloadURL,
+                    pdfUrl: downloadURL,
+                    uploadDate: new Date().toISOString()
+                });
+                
+                console.log('✅ File metadata saved to Firestore');
+                
+                showStatus('File uploaded successfully!', 'success');
+                
+                await loadJobFiles(jobNumber);
+                
+            } catch (error) {
+                console.error('❌ Error uploading file:', error);
+                showStatus('Error uploading file: ' + error.message, 'error');
+                uploadButton.textContent = originalButtonText;
+                uploadButton.disabled = false;
+            }
+        }
         
-        addText(`Job Number: ${survey.jobNumber || 'N/A'}`, 12, true);
-        addText(`Customer: ${survey.customerName || 'N/A'}`, 12);
-        addText(`Surveyor: ${survey.surveyor || 'N/A'}`, 12);
-        addText(`Date: ${formatDate(survey.conductedOn)}`, 12);
-        yPos += 5;
+        window.handleFileUpload = handleFileUpload;
         
-        addText('Survey Details', 14, true);
-        yPos += 2;
-        addText(`Customer Present: ${survey.customerPresent || 'N/A'}`);
-        yPos += 5;
+        async function downloadSurveyPDF(surveyId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Generating PDF...';
+            button.disabled = true;
+            
+            try {
+                const { doc: docRef, getDoc } = window.firebaseModules;
+                const { jsPDF } = window.jspdf;
+                
+                const surveyDoc = await getDoc(docRef(window.db, 'site-surveys', surveyId));
+                if (!surveyDoc.exists()) {
+                    showStatus('Survey not found', 'error');
+                    return;
+                }
+                
+                const survey = surveyDoc.data();
+                
+                const pdf = new jsPDF();
+                let yPos = 20;
+                const lineHeight = 7;
+                const margin = 20;
+                
+                const addText = (text, size = 10, isBold = false) => {
+                    if (yPos > 270) {
+                        pdf.addPage();
+                        yPos = 20;
+                    }
+                    pdf.setFontSize(size);
+                    pdf.setFont(undefined, isBold ? 'bold' : 'normal');
+                    pdf.text(text, margin, yPos);
+                    yPos += lineHeight;
+                };
+                
+                pdf.setFontSize(20);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Site Survey Report', margin, yPos);
+                yPos += 15;
+                
+                addText(`Job Number: ${survey.jobNumber || 'N/A'}`, 12, true);
+                addText(`Customer: ${survey.customerName || 'N/A'}`, 12);
+                addText(`Surveyor: ${survey.surveyor || 'N/A'}`, 12);
+                addText(`Date: ${formatDate(survey.conductedOn)}`, 12);
+                yPos += 5;
+                
+                addText('Survey Details', 14, true);
+                yPos += 2;
+                addText(`Customer Present: ${survey.customerPresent || 'N/A'}`);
+                y
         
         addText('Electrical System', 14, true);
         yPos += 2;
