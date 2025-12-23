@@ -1088,7 +1088,7 @@
             font-weight: 600;
         }
     </style>
-    
+</body>    
     <div class="container">
         <header>
             <div class="header-content">
@@ -1717,122 +1717,173 @@
         }
         
         // Load files associated with a job number
-        async function loadJobFiles(jobNumber) {
-            const attachmentsList = document.getElementById('attachments-list');
-            
-            try {
-                console.log(`🔍 Loading files for job number: "${jobNumber}"`);
-                const { collection, getDocs, query, where } = window.firebaseModules;
-                
-                const fileCollections = [
-                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
-                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
-                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' },
-                    { name: 'site-surveys', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true }
-                ];
-                
-                let allFiles = [];
-                let missingFiles = [];
-                
-                for (const fileCollection of fileCollections) {
-                    console.log(`  Checking collection: ${fileCollection.name}`);
-                    
-                    // Try querying with the exact job number
-                    let filesQuery = query(
-                        collection(window.db, fileCollection.name),
-                        where('jobNumber', '==', jobNumber)
-                    );
-                    
-                    let querySnapshot = await getDocs(filesQuery);
-                    console.log(`    Found ${querySnapshot.size} files with jobNumber == "${jobNumber}"`);
-                    
-                    // If no results, try with string conversion
-                    if (querySnapshot.empty && typeof jobNumber === 'number') {
-                        console.log(`    Retrying with string version: "${String(jobNumber)}"`);
-                        filesQuery = query(
-                            collection(window.db, fileCollection.name),
-                            where('jobNumber', '==', String(jobNumber))
-                        );
-                        querySnapshot = await getDocs(filesQuery);
-                        console.log(`    Found ${querySnapshot.size} files with string jobNumber`);
-                    }
-                    
-                    // If still no results, try without leading zeros
-                    if (querySnapshot.empty && typeof jobNumber === 'string') {
-                        const numericJobNumber = parseInt(jobNumber, 10);
-                        if (!isNaN(numericJobNumber)) {
-                            console.log(`    Retrying with numeric version: ${numericJobNumber}`);
-                            filesQuery = query(
-                                collection(window.db, fileCollection.name),
-                                where('jobNumber', '==', numericJobNumber)
-                            );
-                            querySnapshot = await getDocs(filesQuery);
-                            console.log(`    Found ${querySnapshot.size} files with numeric jobNumber`);
-                        }
-                    }
-                    
-                    if (querySnapshot.empty) {
-                        console.log(`    ❌ No files found in ${fileCollection.name}`);
-                        missingFiles.push(fileCollection);
-                    } else {
-                        console.log(`    ✅ Found files in ${fileCollection.name}`);
-                        querySnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            console.log(`      File: ${data.fileName || 'unnamed'}`);
-                            console.log(`      Available fields:`, Object.keys(data));
-                            console.log(`      Full data:`, data);
-                            allFiles.push({
-                                id: doc.id,
-                                ...data,
-                                collectionType: fileCollection.type,
-                                icon: fileCollection.icon
-                            });
-                        });
-                    }
-                }
-                
-                console.log(`📊 Summary: ${allFiles.length} files found, ${missingFiles.length} missing`);
-                
-                if (allFiles.length === 0 && missingFiles.length === 0) {
-                    attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
-                } else {
-                    let html = '';
-                    
-                    // Show existing files with proper error handling for download URLs
-                    // Show existing files with proper error handling for download URLs
-html += allFiles.map(file => {
-    // Handle site survey data differently
-    if (file.collectionType === 'Site Survey') {
-        console.log(`  Rendering survey data:`, file);
+        // Load files associated with a job number
+async function loadJobFiles(jobNumber) {
+    const attachmentsList = document.getElementById('attachments-list');
+    
+    try {
+        console.log(`🔍 Loading files for job number: "${jobNumber}"`);
+        const { collection, getDocs, query, where } = window.firebaseModules;
         
-        // Count total photos from the photos object
-        let totalPhotos = 0;
-        if (file.photos && typeof file.photos === 'object') {
-            totalPhotos = Object.values(file.photos).reduce((sum, urls) => {
-                return sum + (Array.isArray(urls) ? urls.length : 0);
-            }, 0);
+        const fileCollections = [
+            { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
+            { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
+            { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' },
+            { name: 'site-surveys', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true }
+        ];
+        
+        let allFiles = [];
+        let missingFiles = [];
+        
+        for (const fileCollection of fileCollections) {
+            console.log(`  Checking collection: ${fileCollection.name}`);
+            
+            // Try querying with the exact job number
+            let filesQuery = query(
+                collection(window.db, fileCollection.name),
+                where('jobNumber', '==', jobNumber)
+            );
+            
+            let querySnapshot = await getDocs(filesQuery);
+            console.log(`    Found ${querySnapshot.size} files with jobNumber == "${jobNumber}"`);
+            
+            // If no results, try with string conversion
+            if (querySnapshot.empty && typeof jobNumber === 'number') {
+                console.log(`    Retrying with string version: "${String(jobNumber)}"`);
+                filesQuery = query(
+                    collection(window.db, fileCollection.name),
+                    where('jobNumber', '==', String(jobNumber))
+                );
+                querySnapshot = await getDocs(filesQuery);
+                console.log(`    Found ${querySnapshot.size} files with string jobNumber`);
+            }
+            
+            // If still no results, try without leading zeros
+            if (querySnapshot.empty && typeof jobNumber === 'string') {
+                const numericJobNumber = parseInt(jobNumber, 10);
+                if (!isNaN(numericJobNumber)) {
+                    console.log(`    Retrying with numeric version: ${numericJobNumber}`);
+                    filesQuery = query(
+                        collection(window.db, fileCollection.name),
+                        where('jobNumber', '==', numericJobNumber)
+                    );
+                    querySnapshot = await getDocs(filesQuery);
+                    console.log(`    Found ${querySnapshot.size} files with numeric jobNumber`);
+                }
+            }
+            
+            if (querySnapshot.empty) {
+                console.log(`    ❌ No files found in ${fileCollection.name}`);
+                missingFiles.push(fileCollection);
+            } else {
+                console.log(`    ✅ Found files in ${fileCollection.name}`);
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    console.log(`      File: ${data.fileName || 'unnamed'}`);
+                    console.log(`      Available fields:`, Object.keys(data));
+                    console.log(`      Full data:`, data);
+                    allFiles.push({
+                        id: doc.id,
+                        ...data,
+                        collectionType: fileCollection.type,
+                        icon: fileCollection.icon
+                    });
+                });
+            }
         }
         
-        return `
-            <div class="attachment-item">
-                <div class="attachment-icon">${file.icon}</div>
-                <div class="attachment-info">
-                    <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
-                    <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}</div>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
-                        View Survey
+        console.log(`📊 Summary: ${allFiles.length} files found, ${missingFiles.length} missing`);
+        
+        if (allFiles.length === 0 && missingFiles.length === 0) {
+            attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
+        } else {
+            let html = '';
+            
+            // Show existing files with proper error handling for download URLs
+            html += allFiles.map(file => {
+                // Handle site survey data differently
+                if (file.collectionType === 'Site Survey') {
+                    console.log(`  Rendering survey data:`, file);
+                    
+                    // Count total photos from the photos object
+                    let totalPhotos = 0;
+                    if (file.photos && typeof file.photos === 'object') {
+                        totalPhotos = Object.values(file.photos).reduce((sum, urls) => {
+                            return sum + (Array.isArray(urls) ? urls.length : 0);
+                        }, 0);
+                    }
+                    
+                    return `
+                        <div class="attachment-item">
+                            <div class="attachment-icon">${file.icon}</div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
+                                <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}</div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
+                                    View Survey
+                                </button>
+                                <button class="attachment-download" onclick="downloadSurveyPDF('${file.id}', event)" style="background: #4ECCA3;">
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // Regular file handling
+                const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
+                const hasValidUrl = downloadUrl !== '#';
+                
+                console.log(`  Rendering file: ${file.fileName}, URL: ${downloadUrl}`);
+                
+                return `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName || 'Unknown file')}</div>
+                            <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                        </div>
+                        ${hasValidUrl ? 
+                            `<a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" class="attachment-download">Download</a>` :
+                            `<button class="attachment-download disabled" disabled title="Download URL missing">URL Missing</button>`
+                        }
+                    </div>
+                `;
+            }).join('');
+            
+            // Show missing files with upload option
+            html += missingFiles.map((fileCollection, index) => `
+                <div class="missing-file-item">
+                    <div class="attachment-icon">${fileCollection.icon}</div>
+                    <div class="attachment-info">
+                        <div class="attachment-name">${fileCollection.type}</div>
+                        <div class="attachment-type">Not uploaded yet</div>
+                    </div>
+                    <input 
+                        type="file" 
+                        id="file-input-${index}" 
+                        class="upload-file-input" 
+                        accept="${fileCollection.accept}"
+                        onchange="handleFileUpload(event, '${fileCollection.name}', '${jobNumber}')"
+                    />
+                    <button class="upload-file-btn" onclick="document.getElementById('file-input-${index}').click()">
+                        Upload
                     </button>
-                    <button class="attachment-download" onclick="downloadSurveyPDF('${file.id}', event)" style="background: #4ECCA3;">
-                        Download PDF
-                    </button>
                 </div>
-            </div>
-        `;
+            `).join('');
+            
+            attachmentsList.innerHTML = html;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading files:', error);
+        attachmentsList.innerHTML = `<div class="no-attachments">Error loading files: ${error.message}</div>`;
     }
-    
-    // Download survey as PDF
+}
+
+// Download survey as PDF - SEPARATE FUNCTION OUTSIDE loadJobFiles
 async function downloadSurveyPDF(surveyId, event) {
     event.preventDefault();
     event.stopPropagation();
@@ -1860,8 +1911,6 @@ async function downloadSurveyPDF(surveyId, event) {
         let yPos = 20;
         const lineHeight = 7;
         const margin = 20;
-        const pageWidth = pdf.internal.pageSize.width;
-        const maxWidth = pageWidth - (margin * 2);
         
         // Helper function to add text with auto page break
         const addText = (text, size = 10, isBold = false) => {
