@@ -984,6 +984,111 @@
     </style>
 </head>
 </body>
+    <style>
+        /* Survey Details Styling */
+        .survey-details {
+            padding: 20px 0;
+        }
+        
+        .survey-details h3 {
+            margin: 0 0 20px 0;
+            font-size: 1.5rem;
+            color: #1a1a1a;
+        }
+        
+        .survey-details h4 {
+            margin: 30px 0 15px 0;
+            font-size: 1.2rem;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+        
+        .survey-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .survey-info-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.95rem;
+        }
+        
+        .survey-info-item strong {
+            display: block;
+            color: #666;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+        
+        .survey-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .survey-photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #f0f0f0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .survey-photo-item:hover {
+            transform: scale(1.02);
+        }
+        
+        .survey-photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+            color: white;
+            padding: 15px 10px 10px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .survey-photo-item:hover .photo-overlay {
+            opacity: 1;
+        }
+        
+        .survey-data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .survey-data-grid > div {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        
+        .survey-data-grid strong {
+            color: #666;
+            font-weight: 600;
+        }
+    </style>
+    
     <div class="container">
         <header>
             <div class="header-content">
@@ -1057,7 +1162,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, getDoc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
         
         // Firebase configuration
@@ -1082,7 +1187,7 @@
             // Make Firebase available globally
             window.db = db;
             window.storage = storage;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, getDoc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
             
             console.log('✅ Firebase initialized successfully');
             
@@ -1695,6 +1800,26 @@
                     
                     // Show existing files with proper error handling for download URLs
                     html += allFiles.map(file => {
+                        // Handle site survey data differently (has photos array instead of single file)
+                        if (file.collectionType === 'Site Survey' && file.photos && Array.isArray(file.photos)) {
+                            console.log(`  Rendering survey with ${file.photos.length} photos`);
+                            
+                            // Create a button that shows survey details and photos
+                            return `
+                                <div class="attachment-item">
+                                    <div class="attachment-icon">${file.icon}</div>
+                                    <div class="attachment-info">
+                                        <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
+                                        <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${file.photos.length} photo${file.photos.length !== 1 ? 's' : ''}</div>
+                                    </div>
+                                    <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
+                                        View Survey
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        
+                        // Regular file handling
                         const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
                         const hasValidUrl = downloadUrl !== '#';
                         
@@ -1802,6 +1927,101 @@
         }
         
         window.handleFileUpload = handleFileUpload;
+        
+        // Store survey data globally for viewing
+        let surveyData = {};
+        
+        // View survey details
+        async function viewSurveyDetails(surveyId, event) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            try {
+                const { doc: docRef, getDoc } = window.firebaseModules;
+                
+                // Get the full survey data
+                const surveyDoc = await getDoc(docRef(window.db, 'site-surveys', surveyId));
+                
+                if (!surveyDoc.exists()) {
+                    showStatus('Survey not found', 'error');
+                    return;
+                }
+                
+                const survey = surveyDoc.data();
+                surveyData[surveyId] = survey;
+                
+                // Create modal content with survey details and photos
+                let modalContent = `
+                    <div class="survey-details">
+                        <h3>📋 Site Survey Details</h3>
+                        <div class="survey-info-grid">
+                            <div class="survey-info-item">
+                                <strong>Customer:</strong> ${escapeHtml(survey.customerName || 'N/A')}
+                            </div>
+                            <div class="survey-info-item">
+                                <strong>Surveyor:</strong> ${escapeHtml(survey.surveyor || 'N/A')}
+                            </div>
+                            <div class="survey-info-item">
+                                <strong>Date:</strong> ${formatDate(survey.conductedOn || survey.submittedAt)}
+                            </div>
+                            <div class="survey-info-item">
+                                <strong>Status:</strong> ${escapeHtml(survey.status || 'Completed')}
+                            </div>
+                        </div>
+                `;
+                
+                // Add photos if available
+                if (survey.photos && Array.isArray(survey.photos) && survey.photos.length > 0) {
+                    modalContent += `
+                        <h4>📷 Survey Photos (${survey.photos.length})</h4>
+                        <div class="survey-photos-grid">
+                            ${survey.photos.map((photoUrl, index) => `
+                                <div class="survey-photo-item">
+                                    <a href="${photoUrl}" target="_blank" rel="noopener noreferrer">
+                                        <img src="${photoUrl}" alt="Survey photo ${index + 1}" loading="lazy" />
+                                        <div class="photo-overlay">
+                                            <span>View Full Size</span>
+                                        </div>
+                                    </a>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    modalContent += '<p>No photos available for this survey.</p>';
+                }
+                
+                // Add key survey data
+                modalContent += `
+                    <h4>🏠 Property Details</h4>
+                    <div class="survey-data-grid">
+                        ${survey.roofType ? `<div><strong>Roof Type:</strong> ${escapeHtml(survey.roofType)}</div>` : ''}
+                        ${survey.roofCovering ? `<div><strong>Roof Covering:</strong> ${escapeHtml(survey.roofCovering)}</div>` : ''}
+                        ${survey.roofPitch ? `<div><strong>Roof Pitch:</strong> ${escapeHtml(survey.roofPitch)}°</div>` : ''}
+                        ${survey.propertyAge ? `<div><strong>Property Age:</strong> ${escapeHtml(survey.propertyAge)}</div>` : ''}
+                        ${survey.numberStories ? `<div><strong>Number of Stories:</strong> ${escapeHtml(survey.numberStories)}</div>` : ''}
+                    </div>
+                    
+                    <h4>⚡ Electrical Details</h4>
+                    <div class="survey-data-grid">
+                        ${survey.meterPosition ? `<div><strong>Meter Position:</strong> ${escapeHtml(survey.meterPosition)}</div>` : ''}
+                        ${survey.fuseRating ? `<div><strong>Fuse Rating:</strong> ${escapeHtml(survey.fuseRating)}A</div>` : ''}
+                        ${survey.batteryLocation ? `<div><strong>Battery Location:</strong> ${escapeHtml(survey.batteryLocation)}</div>` : ''}
+                    </div>
+                </div>
+                `;
+                
+                // Show in modal
+                const modalBody = document.getElementById('modal-body');
+                modalBody.innerHTML = modalContent;
+                
+            } catch (error) {
+                console.error('Error loading survey:', error);
+                showStatus('Error loading survey: ' + error.message, 'error');
+            }
+        }
+        
+        window.viewSurveyDetails = viewSurveyDetails;
         
         // Format file size
         function formatFileSize(bytes) {
