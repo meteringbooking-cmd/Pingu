@@ -1799,46 +1799,183 @@
                     let html = '';
                     
                     // Show existing files with proper error handling for download URLs
-                    html += allFiles.map(file => {
-                        // Handle site survey data differently (has photos array instead of single file)
-                        if (file.collectionType === 'Site Survey' && file.photos && Array.isArray(file.photos)) {
-                            console.log(`  Rendering survey with ${file.photos.length} photos`);
-                            
-                            // Create a button that shows survey details and photos
-                            return `
-                                <div class="attachment-item">
-                                    <div class="attachment-icon">${file.icon}</div>
-                                    <div class="attachment-info">
-                                        <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
-                                        <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${file.photos.length} photo${file.photos.length !== 1 ? 's' : ''}</div>
-                                    </div>
-                                    <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
-                                        View Survey
-                                    </button>
-                                </div>
-                            `;
-                        }
-                        
-                        // Regular file handling
-                        const downloadUrl = file.downloadURL || file.downloadUrl || file.url || file.pdfUrl || '#';
-                        const hasValidUrl = downloadUrl !== '#';
-                        
-                        console.log(`  Rendering file: ${file.fileName}, URL: ${downloadUrl}`);
-                        
-                        return `
-                            <div class="attachment-item">
-                                <div class="attachment-icon">${file.icon}</div>
-                                <div class="attachment-info">
-                                    <div class="attachment-name">${escapeHtml(file.fileName || 'Unknown file')}</div>
-                                    <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
-                                </div>
-                                ${hasValidUrl ? 
-                                    `<a href="${downloadUrl}" target="_blank" rel="noopener noreferrer" class="attachment-download">Download</a>` :
-                                    `<button class="attachment-download disabled" disabled title="Download URL missing">URL Missing</button>`
-                                }
-                            </div>
-                        `;
-                    }).join('');
+                    // Show existing files with proper error handling for download URLs
+html += allFiles.map(file => {
+    // Handle site survey data differently
+    if (file.collectionType === 'Site Survey') {
+        console.log(`  Rendering survey data:`, file);
+        
+        // Count total photos from the photos object
+        let totalPhotos = 0;
+        if (file.photos && typeof file.photos === 'object') {
+            totalPhotos = Object.values(file.photos).reduce((sum, urls) => {
+                return sum + (Array.isArray(urls) ? urls.length : 0);
+            }, 0);
+        }
+        
+        return `
+            <div class="attachment-item">
+                <div class="attachment-icon">${file.icon}</div>
+                <div class="attachment-info">
+                    <div class="attachment-name">Site Survey - ${escapeHtml(file.customerName || 'Customer')}</div>
+                    <div class="attachment-type">Completed ${formatDate(file.conductedOn || file.submittedAt)} • ${totalPhotos} photo${totalPhotos !== 1 ? 's' : ''}</div>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="attachment-download" onclick="viewSurveyDetails('${file.id}', event)">
+                        View Survey
+                    </button>
+                    <button class="attachment-download" onclick="downloadSurveyPDF('${file.id}', event)" style="background: #4ECCA3;">
+                        Download PDF
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Download survey as PDF
+async function downloadSurveyPDF(surveyId, event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const button = event.target;
+    const originalText = button.textContent;
+    button.textContent = 'Generating PDF...';
+    button.disabled = true;
+    
+    try {
+        const { doc: docRef, getDoc } = window.firebaseModules;
+        const { jsPDF } = window.jspdf;
+        
+        // Get survey data
+        const surveyDoc = await getDoc(docRef(window.db, 'site-surveys', surveyId));
+        if (!surveyDoc.exists()) {
+            showStatus('Survey not found', 'error');
+            return;
+        }
+        
+        const survey = surveyDoc.data();
+        
+        // Create PDF
+        const pdf = new jsPDF();
+        let yPos = 20;
+        const lineHeight = 7;
+        const margin = 20;
+        const pageWidth = pdf.internal.pageSize.width;
+        const maxWidth = pageWidth - (margin * 2);
+        
+        // Helper function to add text with auto page break
+        const addText = (text, size = 10, isBold = false) => {
+            if (yPos > 270) {
+                pdf.addPage();
+                yPos = 20;
+            }
+            pdf.setFontSize(size);
+            pdf.setFont(undefined, isBold ? 'bold' : 'normal');
+            pdf.text(text, margin, yPos);
+            yPos += lineHeight;
+        };
+        
+        // Title
+        pdf.setFontSize(20);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('Site Survey Report', margin, yPos);
+        yPos += 15;
+        
+        // Job Info
+        addText(`Job Number: ${survey.jobNumber || 'N/A'}`, 12, true);
+        addText(`Customer: ${survey.customerName || 'N/A'}`, 12);
+        addText(`Surveyor: ${survey.surveyor || 'N/A'}`, 12);
+        addText(`Date: ${formatDate(survey.conductedOn)}`, 12);
+        yPos += 5;
+        
+        // Survey Details Section
+        addText('Survey Details', 14, true);
+        yPos += 2;
+        addText(`Customer Present: ${survey.customerPresent || 'N/A'}`);
+        yPos += 5;
+        
+        // Electrical System
+        addText('Electrical System', 14, true);
+        yPos += 2;
+        addText(`Meter Position: ${survey.meterPosition || 'N/A'}`);
+        addText(`Fuse Rating: ${survey.fuseRating || 'N/A'}`);
+        addText(`Gateway Location: ${survey.gatewayLocation || 'N/A'}`);
+        addText(`Panel Run Distance: ${survey.panelRunDistance || 'N/A'} m`);
+        addText(`Battery to Gateway Distance: ${survey.batteryGatewayDistance || 'N/A'} m`);
+        addText(`WiFi Signal: ${survey.wifiSignal || 'N/A'}`);
+        yPos += 5;
+        
+        // Battery Location
+        addText('Battery Location', 14, true);
+        yPos += 2;
+        addText(`Location: ${survey.batteryLocation || 'N/A'}`);
+        addText(`Surface Type: ${survey.surfaceType || 'N/A'}`);
+        addText(`Dimensions: ${survey.batteryWidth}mm x ${survey.batteryDepth}mm x ${survey.batteryLength}mm`);
+        yPos += 5;
+        
+        // Roof Details
+        addText('Roof Details', 14, true);
+        yPos += 2;
+        addText(`Roof Type: ${survey.roofType || 'N/A'}`);
+        addText(`Roof Covering: ${survey.roofCovering || 'N/A'}`);
+        addText(`Roof Pitch: ${survey.roofPitch || 'N/A'}°`);
+        addText(`Roof Age: ${survey.roofAge || 'N/A'} years`);
+        addText(`Number of Stories: ${survey.numberStories || 'N/A'}`);
+        addText(`Building Width: ${survey.buildingWidth || 'N/A'} m`);
+        addText(`Height to Ridge: ${survey.heightToRidge || 'N/A'} m`);
+        addText(`Roof Obstructions: ${survey.roofObstructions || 'N/A'}`);
+        addText(`Shading: ${survey.roofShading || 'N/A'}`);
+        yPos += 5;
+        
+        // Loft Details
+        addText('Loft Details', 14, true);
+        yPos += 2;
+        addText(`Loft Accessible: ${survey.loftAccessible || 'N/A'}`);
+        addText(`Loft Hatch: ${survey.loftHatchWidth}mm x ${survey.loftHatchDepth}mm`);
+        addText(`Loft Ladder: ${survey.loftLadder || 'N/A'}`);
+        addText(`Loft Boarded: ${survey.loftBoarded || 'N/A'}`);
+        addText(`Ridge to Eaves: ${survey.ridgeToEaves || 'N/A'} mm`);
+        addText(`Truss Spacing: ${survey.trussSpacing || 'N/A'} mm`);
+        yPos += 5;
+        
+        // Safety Checks
+        addText('Safety Checks', 14, true);
+        yPos += 2;
+        addText(`Risk Assessment: ${survey.riskAssessment || 'N/A'}`);
+        addText(`Asbestos: ${survey.asbestos || 'N/A'}`);
+        addText(`Roof Deflection: ${survey.roofDeflection || 'N/A'}`);
+        addText(`Rot/Damage: ${survey.rotDamage || 'N/A'}`);
+        addText(`Roof Concerns: ${survey.roofConcern || 'N/A'}`);
+        addText(`Dwarf Walls/Props: ${survey.dwarfWalls || 'N/A'}`);
+        addText(`Structural Work: ${survey.structuralWork || 'N/A'}`);
+        
+        // Add photos section reference
+        if (survey.photos && typeof survey.photos === 'object') {
+            const photoCount = Object.values(survey.photos).reduce((sum, urls) => {
+                return sum + (Array.isArray(urls) ? urls.length : 0);
+            }, 0);
+            
+            if (photoCount > 0) {
+                yPos += 10;
+                addText(`Photos: ${photoCount} photos attached (view online for images)`, 10, true);
+            }
+        }
+        
+        // Save PDF
+        pdf.save(`Site_Survey_${survey.jobNumber}_${Date.now()}.pdf`);
+        
+        showStatus('PDF downloaded successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        showStatus('Error generating PDF: ' + error.message, 'error');
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
+    }
+}
+
+window.downloadSurveyPDF = downloadSurveyPDF;
                     
                     // Show missing files with upload option
                     html += missingFiles.map((fileCollection, index) => `
