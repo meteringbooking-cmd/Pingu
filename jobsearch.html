@@ -1673,14 +1673,27 @@
                 // Helper to load image as base64 (with proper error handling)
                 // Helper to load image as base64 (bypassing CORS by loading directly)
                 // Helper to load image as base64 from Firebase Storage URL
+                // Helper to load image from Firebase Storage using SDK (bypasses CORS)
                 async function loadImage(url) {
                     return new Promise(async (resolve, reject) => {
                         try {
-                            // Fetch the image as a blob using no-cors mode (gets opaque response)
-                            // Then convert to base64 using FileReader
-                            const response = await fetch(url);
-                            const blob = await response.blob();
+                            // Extract the storage path from the URL
+                            // URL format: https://firebasestorage.googleapis.com/v0/b/BUCKET/o/PATH?alt=media&token=TOKEN
+                            const urlObj = new URL(url);
+                            const pathMatch = urlObj.pathname.match(/\/o\/(.+)/);
+                            if (!pathMatch) {
+                                throw new Error('Invalid Firebase Storage URL');
+                            }
                             
+                            // Decode the path (it's URL encoded)
+                            const storagePath = decodeURIComponent(pathMatch[1]);
+                            
+                            // Get blob using Firebase Storage SDK (bypasses CORS)
+                            const { ref, getBlob } = window.firebaseModules;
+                            const storageRef = ref(window.storage, storagePath);
+                            const blob = await getBlob(storageRef);
+                            
+                            // Convert blob to base64
                             const reader = new FileReader();
                             reader.onloadend = () => {
                                 const base64data = reader.result;
@@ -1699,7 +1712,7 @@
                                         resolve(canvas.toDataURL('image/jpeg', 0.85));
                                     } catch (e) {
                                         console.error('Canvas error:', e);
-                                        // If canvas fails, just return the original base64
+                                        // If canvas fails, return original base64
                                         resolve(base64data);
                                     }
                                 };
