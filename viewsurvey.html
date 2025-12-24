@@ -475,14 +475,21 @@
             let html = '';
             
             currentSurveys.forEach((survey, index) => {
+                const date = survey.submittedDate || (survey.submittedAt ? new Date(survey.submittedAt).toLocaleDateString('en-GB') : 'Unknown');
+                const time = survey.submittedTime || (survey.submittedAt ? new Date(survey.submittedAt).toLocaleTimeString('en-GB') : 'Unknown');
+                const isOldFormat = !survey.sections || !Array.isArray(survey.sections);
+                
                 html += `
                     <div class="survey-item" onclick="displaySurvey(${index})">
                         <div class="survey-item-header">
-                            <div class="survey-item-title">Survey #${currentSurveys.length - index}</div>
-                            <div class="survey-item-date">${survey.submittedDate} at ${survey.submittedTime}</div>
+                            <div class="survey-item-title">
+                                Survey #${currentSurveys.length - index}
+                                ${isOldFormat ? '<span style="color: #FFA500; font-size: 0.8rem; margin-left: 0.5rem;">(Old Format)</span>' : ''}
+                            </div>
+                            <div class="survey-item-date">${date} at ${time}</div>
                         </div>
                         <div style="color: var(--text-dim); font-size: 0.9rem;">
-                            Customer: ${survey.customerName} | Surveyor: ${getSurveyorName(survey)}
+                            Customer: ${survey.customerName || 'Unknown'} | Surveyor: ${getSurveyorName(survey)}
                         </div>
                     </div>
                 `;
@@ -492,11 +499,20 @@
         }
         
         function getSurveyorName(survey) {
-            const surveyDetails = survey.sections.find(s => s.title === 'Survey Details');
-            if (surveyDetails) {
-                const surveyorField = surveyDetails.fields.find(f => f.question === 'Surveyor');
-                return surveyorField ? surveyorField.answer : 'Unknown';
+            // Handle new structured format
+            if (survey.sections && Array.isArray(survey.sections)) {
+                const surveyDetails = survey.sections.find(s => s.title === 'Survey Details');
+                if (surveyDetails && surveyDetails.fields) {
+                    const surveyorField = surveyDetails.fields.find(f => f.question === 'Surveyor');
+                    if (surveyorField) return surveyorField.answer;
+                }
             }
+            
+            // Handle old format (fallback)
+            if (survey.surveyor) {
+                return survey.surveyor;
+            }
+            
             return 'Unknown';
         }
         
@@ -506,6 +522,48 @@
             const viewer = document.getElementById('survey-viewer');
             const content = document.getElementById('survey-content');
             
+            // Check if this is a new format survey with sections
+            if (!currentSurvey.sections || !Array.isArray(currentSurvey.sections)) {
+                // Old format - show a message
+                content.innerHTML = `
+                    <div class="report-header">
+                        <h1>Site Survey Report</h1>
+                        <div class="metadata">
+                            <div class="metadata-item">
+                                <div class="metadata-label">Job Number</div>
+                                <div class="metadata-value">${currentSurvey.jobNumber || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Customer</div>
+                                <div class="metadata-value">${currentSurvey.customerName || 'N/A'}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Date Submitted</div>
+                                <div class="metadata-value">${currentSurvey.submittedDate || new Date(currentSurvey.submittedAt).toLocaleDateString('en-GB')}</div>
+                            </div>
+                            <div class="metadata-item">
+                                <div class="metadata-label">Status</div>
+                                <div class="metadata-value">${currentSurvey.status || 'completed'}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 2px solid #FFA500; padding: 1.5rem; border-radius: 12px; margin-top: 2rem;">
+                        <h3 style="margin-top: 0;">⚠️ Old Survey Format</h3>
+                        <p>This survey was created with the old format and doesn't include the structured questions and answers.</p>
+                        <p style="margin-bottom: 0;">To view surveys with full questions, answers, and photos, please submit new surveys using the updated survey form.</p>
+                    </div>
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px;">
+                        <h3>Raw Survey Data</h3>
+                        <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.85rem;">${JSON.stringify(currentSurvey, null, 2)}</pre>
+                    </div>
+                `;
+                
+                document.getElementById('survey-list').style.display = 'none';
+                viewer.classList.add('active');
+                return;
+            }
+            
+            // New format - display properly
             let html = `
                 <div class="report-header">
                     <h1>Site Survey Report</h1>
@@ -578,6 +636,12 @@
         
         function downloadHTML() {
             if (!currentSurvey) return;
+            
+            // Check if old format
+            if (!currentSurvey.sections || !Array.isArray(currentSurvey.sections)) {
+                showAlert('Cannot download old format surveys. Please submit a new survey with the updated form.', 'error');
+                return;
+            }
             
             const htmlContent = generateHTMLDocument(currentSurvey);
             
