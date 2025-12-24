@@ -554,33 +554,42 @@
             <div class="alert" id="alert-message"></div>
             
             <!-- Job Number Verification -->
-            <div class="section-header">
-                📋 Job Information
-            </div>
-            
-            <div class="form-group">
-                <label for="job-number" class="form-label required">Job Number</label>
-                <input 
-                    type="text" 
-                    id="job-number" 
-                    class="form-input" 
-                    placeholder="Enter job number..."
-                    required
-                />
-            </div>
-            
-            <button type="button" class="submit-btn" onclick="verifyJobNumber()" id="verify-btn">
-                Verify Job Number
-            </button>
-            
-            <div class="loading-spinner" id="loading-spinner">
-                Loading job details...
-            </div>
-            
-            <div class="job-info-card" id="job-info-card">
-                <div class="job-info-header">✓ Job Verified</div>
-                <div class="job-info-grid" id="job-info-grid"></div>
-            </div>
+            <!-- Job Search & Verification -->
+<div class="section-header">
+    📋 Job Search
+</div>
+
+<div class="form-group">
+    <label class="form-label required">Search by Job Number, Postcode or Customer Name</label>
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+        <select id="search-type" class="form-select" style="width: auto;">
+            <option value="jobNumber">Job Number</option>
+            <option value="postcode">Postcode</option>
+            <option value="name">Customer Name</option>
+        </select>
+        <input
+            type="text"
+            id="search-value"
+            class="form-input"
+            placeholder="Enter search term..."
+            style="flex: 1;"
+            required
+        />
+    </div>
+</div>
+
+<button type="button" class="submit-btn" onclick="searchAndVerifyJob()" id="search-btn">
+    Search & Verify Job
+</button>
+
+<div class="loading-spinner" id="loading-spinner">
+    Searching for job...
+</div>
+
+<div class="job-info-card" id="job-info-card">
+    <div class="job-info-header">✓ Job Verified</div>
+    <div class="job-info-grid" id="job-info-grid"></div>
+</div>
             
             <!-- Survey Form (hidden until job verified) -->
             <form id="survey-form" style="display: none;">
@@ -1611,95 +1620,118 @@
         }
         
         // Verify job number
-        async function verifyJobNumber() {
-            const jobNumber = document.getElementById('job-number').value.trim();
-            
-            if (!jobNumber) {
-                showAlert('Please enter a job number', 'error');
-                return;
-            }
-            
-            const verifyBtn = document.getElementById('verify-btn');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            
-            verifyBtn.disabled = true;
-            verifyBtn.textContent = 'Verifying...';
-            loadingSpinner.classList.add('active');
-            
-            try {
-                const { collection, getDocs, query, where } = window.firebaseModules;
-                
-                const jobsQuery = query(
-                    collection(window.db, 'jobs'),
-                    where('Job Number', '==', jobNumber)
-                );
-                
-                const querySnapshot = await getDocs(jobsQuery);
-                
-                if (querySnapshot.empty) {
-                    showAlert('Job number not found in database. Please check and try again.', 'error');
-                    verifyBtn.disabled = false;
-                    verifyBtn.textContent = 'Verify Job Number';
-                    loadingSpinner.classList.remove('active');
-                    return;
-                }
-                
-                // Job found
-                let jobData = null;
-                querySnapshot.forEach((doc) => {
-                    jobData = { id: doc.id, ...doc.data() };
-                });
-                
-                verifiedJob = jobData;
-                
-                // Display job info
-                const jobInfoGrid = document.getElementById('job-info-grid');
-                jobInfoGrid.innerHTML = `
-                    <div class="job-info-item">
-                        <div class="job-info-label">Job Number</div>
-                        <div class="job-info-value">${escapeHtml(jobData['Job Number'] || 'N/A')}</div>
-                    </div>
-                    <div class="job-info-item">
-                        <div class="job-info-label">Customer</div>
-                        <div class="job-info-value">${escapeHtml(jobData['Name'] || 'N/A')}</div>
-                    </div>
-                    <div class="job-info-item">
-                        <div class="job-info-label">Address</div>
-                        <div class="job-info-value">${escapeHtml(jobData['1st line of address'] || 'N/A')}</div>
-                    </div>
-                    <div class="job-info-item">
-                        <div class="job-info-label">Postcode</div>
-                        <div class="job-info-value">${escapeHtml(jobData['Postcode'] || 'N/A')}</div>
-                    </div>
-                    <div class="job-info-item">
-                        <div class="job-info-label">Install Date</div>
-                        <div class="job-info-value">${escapeHtml(jobData['Install Date'] || 'TBD')}</div>
-                    </div>
-                    <div class="job-info-item">
-                        <div class="job-info-label">Lead Engineer</div>
-                        <div class="job-info-value">${escapeHtml(jobData['Lead Engineer'] || 'Unassigned')}</div>
-                    </div>
-                `;
-                
-                document.getElementById('job-info-card').classList.add('show');
-                document.getElementById('survey-form').style.display = 'block';
-                verifyBtn.style.display = 'none';
-                document.getElementById('job-number').disabled = true;
-                
-                loadingSpinner.classList.remove('active');
-                
-                showAlert('Job verified successfully! Please complete the survey below.', 'success');
-                
-            } catch (error) {
-                console.error('Error verifying job:', error);
-                showAlert('Error verifying job number. Please try again.', 'error');
-                verifyBtn.disabled = false;
-                verifyBtn.textContent = 'Verify Job Number';
-                loadingSpinner.classList.remove('active');
-            }
+        // Search and verify job by Job Number, Postcode, or Name
+async function searchAndVerifyJob() {
+    const searchType = document.getElementById('search-type').value;
+    const searchValue = document.getElementById('search-value').value.trim();
+
+    if (!searchValue) {
+        showAlert('Please enter a search term', 'error');
+        return;
+    }
+
+    const searchBtn = document.getElementById('search-btn');
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    searchBtn.disabled = true;
+    searchBtn.textContent = 'Searching...';
+    loadingSpinner.classList.add('active');
+
+    try {
+        const { collection, getDocs, query, where } = window.firebaseModules;
+
+        let jobsQuery;
+
+        if (searchType === 'jobNumber') {
+            jobsQuery = query(
+                collection(window.db, 'jobs'),
+                where('Job Number', '==', searchValue)
+            );
+        } else if (searchType === 'postcode') {
+            // Case-insensitive partial match for postcode (remove spaces for flexibility)
+            const normalised = searchValue.replace(/\s/g, '').toUpperCase();
+            jobsQuery = query(
+                collection(window.db, 'jobs'),
+                where('PostcodeNormalised', '>=', normalised),
+                where('PostcodeNormalised', '<=', normalised + '\uf8ff')
+            );
+        } else if (searchType === 'name') {
+            // Case-insensitive partial name match
+            const normalised = searchValue.toUpperCase();
+            jobsQuery = query(
+                collection(window.db, 'jobs'),
+                where('NameNormalised', '>=', normalised),
+                where('NameNormalised', '<=', normalised + '\uf8ff')
+            );
         }
-        
-        window.verifyJobNumber = verifyJobNumber;
+
+        const querySnapshot = await getDocs(jobsQuery);
+
+        if (querySnapshot.empty) {
+            showAlert(`No job found matching "${searchValue}" (${searchType === 'jobNumber' ? 'Job Number' : searchType === 'postcode' ? 'Postcode' : 'Customer Name'})`, 'error');
+            searchBtn.disabled = false;
+            searchBtn.textContent = 'Search & Verify Job';
+            loadingSpinner.classList.remove('active');
+            return;
+        }
+
+        // If multiple results, pick the first (you could enhance this later to show a list)
+        let jobData = null;
+        querySnapshot.forEach((doc) => {
+            jobData = { id: doc.id, ...doc.data() };
+        });
+
+        verifiedJob = jobData;
+
+        // Display job info (same as before)
+        const jobInfoGrid = document.getElementById('job-info-grid');
+        jobInfoGrid.innerHTML = `
+            <div class="job-info-item">
+                <div class="job-info-label">Job Number</div>
+                <div class="job-info-value">${escapeHtml(jobData['Job Number'] || 'N/A')}</div>
+            </div>
+            <div class="job-info-item">
+                <div class="job-info-label">Customer</div>
+                <div class="job-info-value">${escapeHtml(jobData['Name'] || 'N/A')}</div>
+            </div>
+            <div class="job-info-item">
+                <div class="job-info-label">Address</div>
+                <div class="job-info-value">${escapeHtml(jobData['1st line of address'] || 'N/A')}</div>
+            </div>
+            <div class="job-info-item">
+                <div class="job-info-label">Postcode</div>
+                <div class="job-info-value">${escapeHtml(jobData['Postcode'] || 'N/A')}</div>
+            </div>
+            <div class="job-info-item">
+                <div class="job-info-label">Install Date</div>
+                <div class="job-info-value">${escapeHtml(jobData['Install Date'] || 'TBD')}</div>
+            </div>
+            <div class="job-info-item">
+                <div class="job-info-label">Lead Engineer</div>
+                <div class="job-info-value">${escapeHtml(jobData['Lead Engineer'] || 'Unassigned')}</div>
+            </div>
+        `;
+
+        document.getElementById('job-info-card').classList.add('show');
+        document.getElementById('survey-form').style.display = 'block';
+        searchBtn.style.display = 'none';
+        document.getElementById('search-value').disabled = true;
+        document.getElementById('search-type').disabled = true;
+
+        loadingSpinner.classList.remove('active');
+
+        showAlert('Job verified successfully! Please complete the survey below.', 'success');
+
+    } catch (error) {
+        console.error('Error searching job:', error);
+        showAlert('Error searching for job. Please try again.', 'error');
+        searchBtn.disabled = false;
+        searchBtn.textContent = 'Search & Verify Job';
+        loadingSpinner.classList.remove('active');
+    }
+}
+
+window.searchAndVerifyJob = searchAndVerifyJob;
         
         // Setup conditional field triggers
         function setupConditionalFields() {
