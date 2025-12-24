@@ -1672,40 +1672,51 @@
                 // Helper to load image as base64 (with proper error handling)
                 // Helper to load image as base64 (with proper error handling)
                 // Helper to load image as base64 (bypassing CORS by loading directly)
+                // Helper to load image as base64 from Firebase Storage URL
                 async function loadImage(url) {
-                    return new Promise((resolve, reject) => {
-                        const img = new Image();
-                        
-                        // Set a timeout in case the image never loads
-                        const timeout = setTimeout(() => {
-                            reject(new Error('Image load timeout'));
-                        }, 15000);
-                        
-                        img.onload = () => {
-                            clearTimeout(timeout);
-                            try {
-                                const canvas = document.createElement('canvas');
-                                const maxWidth = 180 * 3; // Higher resolution for PDF
-                                const scale = maxWidth / img.width;
-                                canvas.width = maxWidth;
-                                canvas.height = img.height * scale;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                resolve(canvas.toDataURL('image/jpeg', 0.85));
-                            } catch (e) {
-                                console.error('Canvas error:', e);
-                                reject(new Error('Failed to convert image to canvas'));
-                            }
-                        };
-                        
-                        img.onerror = (e) => {
-                            clearTimeout(timeout);
-                            console.error('Image load error for URL:', url, e);
-                            reject(new Error('Failed to load image'));
-                        };
-                        
-                        // Load the image directly - this works with Firebase Storage URLs
-                        img.src = url;
+                    return new Promise(async (resolve, reject) => {
+                        try {
+                            // Fetch the image as a blob using no-cors mode (gets opaque response)
+                            // Then convert to base64 using FileReader
+                            const response = await fetch(url);
+                            const blob = await response.blob();
+                            
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const base64data = reader.result;
+                                
+                                // Create image from base64 to get dimensions and resize
+                                const img = new Image();
+                                img.onload = () => {
+                                    try {
+                                        const canvas = document.createElement('canvas');
+                                        const maxWidth = 180 * 3; // Higher resolution for PDF
+                                        const scale = maxWidth / img.width;
+                                        canvas.width = maxWidth;
+                                        canvas.height = img.height * scale;
+                                        const ctx = canvas.getContext('2d');
+                                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                        resolve(canvas.toDataURL('image/jpeg', 0.85));
+                                    } catch (e) {
+                                        console.error('Canvas error:', e);
+                                        // If canvas fails, just return the original base64
+                                        resolve(base64data);
+                                    }
+                                };
+                                img.onerror = () => {
+                                    // If image load fails, resolve with base64 anyway
+                                    resolve(base64data);
+                                };
+                                img.src = base64data;
+                            };
+                            reader.onerror = () => {
+                                reject(new Error('Failed to read image blob'));
+                            };
+                            reader.readAsDataURL(blob);
+                        } catch (e) {
+                            console.error('Error loading image:', url, e);
+                            reject(e);
+                        }
                     });
                 }
           
