@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Survey | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+        }
+        
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+        
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            margin: 1rem 0 0.5rem 0;
+            color: var(--text);
+        }
+        
+        .controls {
+            background: var(--dark-light);
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+        
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .form-input {
+            flex: 1;
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-secondary {
+            background: var(--dark-lighter);
+            color: var(--text);
+        }
+        
+        .survey-list {
+            background: var(--dark-light);
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+        
+        .survey-item {
+            background: var(--dark-lighter);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .survey-item:hover {
+            border-color: var(--accent);
+            transform: translateX(5px);
+        }
+        
+        .survey-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .survey-item-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+        
+        .survey-item-date {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+        
+        .survey-viewer {
+            background: var(--dark-light);
+            padding: 2rem;
+            border-radius: 16px;
+            display: none;
+        }
+        
+        .survey-viewer.active {
+            display: block;
+        }
+        
+        .report-header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .metadata {
+            background: var(--dark-lighter);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+        
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        
+        .metadata-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        
+        .metadata-value {
+            color: var(--text);
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .section {
+            margin-bottom: 3rem;
+        }
+        
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+        
+        .field-row {
+            background: var(--dark-lighter);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .field-question {
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+        
+        .field-answer {
+            color: var(--text-dim);
+            padding-left: 1rem;
+            font-size: 0.95rem;
+        }
+        
+        .field-photos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--dark);
+        }
+        
+        .survey-photo {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid var(--dark);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .survey-photo:hover {
+            transform: scale(1.05);
+            border-color: var(--accent);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        
+        .alert.error {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--error);
+            border: 2px solid var(--error);
+        }
+        
+        .alert.success {
+            background: rgba(78, 204, 163, 0.2);
+            color: var(--success);
+            border: 2px solid var(--success);
+        }
+        
+        /* Modal for full-size images */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            max-width: 90%;
+            max-height: 90%;
+            object-fit: contain;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                color: black;
+            }
+            .controls, .action-buttons, .btn {
+                display: none;
+            }
+            .survey-viewer {
+                background: white;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="teamview.html" class="logo">Pingu - Solar</a>
+            <h1>Survey Viewer</h1>
+        </header>
+        
+        <div class="controls">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="job-number-input" 
+                    class="form-input" 
+                    placeholder="Enter Job Number (e.g., OE123456)"
+                />
+                <button class="btn" onclick="loadSurveysForJob()">Load Surveys</button>
+            </div>
+            <div id="alert-container"></div>
+        </div>
+        
+        <div id="survey-list" class="survey-list" style="display: none;">
+            <h2 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">Available Surveys</h2>
+            <div id="survey-list-items"></div>
+        </div>
+        
+        <div id="survey-viewer" class="survey-viewer">
+            <div class="action-buttons">
+                <button class="btn btn-secondary" onclick="downloadHTML()">Download HTML</button>
+                <button class="btn btn-secondary" onclick="printSurvey()">Print/PDF</button>
+                <button class="btn btn-secondary" onclick="backToList()">← Back to List</button>
+            </div>
+            
+            <div id="survey-content"></div>
+        </div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Loading surveys...
+        </div>
+    </div>
+    
+    <!-- Image Modal -->
+    <div id="image-modal" class="modal" onclick="closeModal()">
+        <span class="modal-close">&times;</span>
+        <img class="modal-content" id="modal-image">
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+        
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        
+        window.db = db;
+        window.firebaseModules = { collection, getDocs, query, where, doc, getDoc };
+    </script>
+    
+    <script>
+        let currentSurveys = [];
+        let currentSurvey = null;
+        
+        function showAlert(message, type = 'error') {
+            const container = document.getElementById('alert-container');
+            container.innerHTML = `<div class="alert ${type}">${message}</div>`;
+            
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 5000);
+        }
+        
+        async function loadSurveysForJob() {
+            const jobNumber = document.getElementById('job-number-input').value.trim();
+            
+            if (!jobNumber) {
+                showAlert('Please enter a job number', 'error');
+                return;
+            }
+            
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('survey-list').style.display = 'none';
+            document.getElementById('survey-viewer').classList.remove('active');
+            
+            try {
+                const { collection, query, where, getDocs } = window.firebaseModules;
+                
+                const surveysQuery = query(
+                    collection(window.db, 'site-surveys'),
+                    where('jobNumber', '==', jobNumber)
+                );
+                
+                const querySnapshot = await getDocs(surveysQuery);
+                
+                currentSurveys = [];
+                querySnapshot.forEach((doc) => {
+                    currentSurveys.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                if (currentSurveys.length === 0) {
+                    showAlert('No surveys found for this job number', 'error');
+                    document.getElementById('loading').style.display = 'none';
+                    return;
+                }
+                
+                // Sort by submission date, most recent first
+                currentSurveys.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+                
+                displaySurveyList();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('survey-list').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Error loading surveys:', error);
+                showAlert('Error loading surveys. Please try again.', 'error');
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        window.loadSurveysForJob = loadSurveysForJob;
+        
+        function displaySurveyList() {
+            const container = document.getElementById('survey-list-items');
+            
+            let html = '';
+            
+            currentSurveys.forEach((survey, index) => {
+                html += `
+                    <div class="survey-item" onclick="displaySurvey(${index})">
+                        <div class="survey-item-header">
+                            <div class="survey-item-title">Survey #${currentSurveys.length - index}</div>
+                            <div class="survey-item-date">${survey.submittedDate} at ${survey.submittedTime}</div>
+                        </div>
+                        <div style="color: var(--text-dim); font-size: 0.9rem;">
+                            Customer: ${survey.customerName} | Surveyor: ${getSurveyorName(survey)}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function getSurveyorName(survey) {
+            const surveyDetails = survey.sections.find(s => s.title === 'Survey Details');
+            if (surveyDetails) {
+                const surveyorField = surveyDetails.fields.find(f => f.question === 'Surveyor');
+                return surveyorField ? surveyorField.answer : 'Unknown';
+            }
+            return 'Unknown';
+        }
+        
+        function displaySurvey(index) {
+            currentSurvey = currentSurveys[index];
+            
+            const viewer = document.getElementById('survey-viewer');
+            const content = document.getElementById('survey-content');
+            
+            let html = `
+                <div class="report-header">
+                    <h1>Site Survey Report</h1>
+                    <div class="metadata">
+                        <div class="metadata-item">
+                            <div class="metadata-label">Job Number</div>
+                            <div class="metadata-value">${currentSurvey.jobNumber}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Customer</div>
+                            <div class="metadata-value">${currentSurvey.customerName}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Date Submitted</div>
+                            <div class="metadata-value">${currentSurvey.submittedDate}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Time Submitted</div>
+                            <div class="metadata-value">${currentSurvey.submittedTime}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Status</div>
+                            <div class="metadata-value">${currentSurvey.status}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            currentSurvey.sections.forEach(section => {
+                html += `
+                    <div class="section">
+                        <h2 class="section-title">${section.title}</h2>
+                `;
+                
+                section.fields.forEach(field => {
+                    html += `
+                        <div class="field-row">
+                            <div class="field-question">${field.question}</div>
+                            <div class="field-answer">${field.answer}</div>
+                    `;
+                    
+                    if (field.photos && field.photos.length > 0) {
+                        html += '<div class="field-photos">';
+                        field.photos.forEach(photo => {
+                            html += `<img src="${photo}" alt="${field.question}" class="survey-photo" onclick="openModal('${photo}')" />`;
+                        });
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                });
+                
+                html += '</div>';
+            });
+            
+            content.innerHTML = html;
+            
+            document.getElementById('survey-list').style.display = 'none';
+            viewer.classList.add('active');
+        }
+        
+        window.displaySurvey = displaySurvey;
+        
+        function backToList() {
+            document.getElementById('survey-viewer').classList.remove('active');
+            document.getElementById('survey-list').style.display = 'block';
+        }
+        
+        window.backToList = backToList;
+        
+        function downloadHTML() {
+            if (!currentSurvey) return;
+            
+            const htmlContent = generateHTMLDocument(currentSurvey);
+            
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Survey_${currentSurvey.jobNumber}_${currentSurvey.submittedDate.replace(/\//g, '-')}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showAlert('Survey downloaded successfully!', 'success');
+        }
+        
+        window.downloadHTML = downloadHTML;
+        
+        function generateHTMLDocument(survey) {
+            let html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Site Survey Report - ${survey.jobNumber}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            color: #FF6B35;
+            border-bottom: 3px solid #FF6B35;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #00D9FF;
+            margin-top: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+        }
+        .metadata {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .metadata p {
+            margin: 5px 0;
+        }
+        .field {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #FF6B35;
+            border-radius: 4px;
+        }
+        .question {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .answer {
+            color: #666;
+            padding-left: 20px;
+        }
+        .photos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .photos img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+        }
+        @media print {
+            .photos img {
+                break-inside: avoid;
+            }
+            h2 {
+                break-after: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Site Survey Report</h1>
+    
+    <div class="metadata">
+        <p><strong>Job Number:</strong> ${survey.jobNumber}</p>
+        <p><strong>Customer:</strong> ${survey.customerName}</p>
+        <p><strong>Date Submitted:</strong> ${survey.submittedDate} at ${survey.submittedTime}</p>
+        <p><strong>Status:</strong> ${survey.status}</p>
+    </div>
+`;
+            
+            survey.sections.forEach(section => {
+                html += `\n    <h2>${section.title}</h2>\n`;
+                
+                section.fields.forEach(field => {
+                    html += `
+    <div class="field">
+        <div class="question">${field.question}</div>
+        <div class="answer">${field.answer}</div>`;
+                    
+                    if (field.photos && field.photos.length > 0) {
+                        html += `
+        <div class="photos">`;
+                        field.photos.forEach(photo => {
+                            html += `
+            <img src="${photo}" alt="${field.question}" />`;
+                        });
+                        html += `
+        </div>`;
+                    }
+                    
+                    html += `
+    </div>`;
+                });
+            });
+            
+            html += `
+</body>
+</html>`;
+            
+            return html;
+        }
+        
+        function printSurvey() {
+            window.print();
+        }
+        
+        window.printSurvey = printSurvey;
+        
+        function openModal(imageSrc) {
+            const modal = document.getElementById('image-modal');
+            const modalImg = document.getElementById('modal-image');
+            modal.classList.add('active');
+            modalImg.src = imageSrc;
+        }
+        
+        window.openModal = openModal;
+        
+        function closeModal() {
+            document.getElementById('image-modal').classList.remove('active');
+        }
+        
+        window.closeModal = closeModal;
+    </script>
+</body>
+</html>
