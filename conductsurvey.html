@@ -1589,6 +1589,13 @@
         let verifiedJob = null;
         let uploadedFiles = {};
         
+        // Utility function to escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
         // Show alert message
         function showAlert(message, type = 'error') {
             const alert = document.getElementById('alert-message');
@@ -1805,7 +1812,7 @@
                         <div class="file-size">${formatFileSize(file.size)}</div>
                     </div>
                 </div>
-                <button type="button" class="remove-file-btn" onclick="removeFile('${fieldId}', '${file.name}', this)">
+                <button type="button" class="remove-file-btn" onclick="removeFile('${fieldId}', '${escapeHtml(file.name)}', this)">
                     Remove
                 </button>
             `;
@@ -1851,453 +1858,185 @@
             });
         }
         
-        // Submit survey
-        # Survey Data Structure Implementation Guide
-
-## Overview
-This guide explains how to update your survey form to save data in a structured format that includes questions with answers and photos, making it easy to retrieve and generate documents later.
-
-## What Changed
-
-### Before (Old Structure)
-```javascript
-{
-  jobNumber: "OE123456",
-  customerName: "John Smith",
-  meterPosition: "Front of house",
-  fuseRating: "100A",
-  photos: {
-    "meter-position-files": ["url1", "url2"]
-  }
-}
-```
-
-### After (New Structure)
-```javascript
-{
-  jobNumber: "OE123456",
-  customerName: "John Smith",
-  sections: [
-    {
-      title: "Electrical System",
-      fields: [
-        {
-          question: "Position of Meter Cupboard or Incoming Supply",
-          answer: "Front of house",
-          photos: ["url1", "url2"]
-        },
-        {
-          question: "What is the Fuse Rating?",
-          answer: "100A"
-        }
-      ]
-    }
-  ]
-}
-```
-
-## Implementation Steps
-
-### Step 1: Update the `submitSurvey` function in conduct-survey.html
-
-Replace the entire `async function submitSurvey(event)` in your conduct-survey.html with the version below. This is the ONLY change needed in your survey form.
-
-**Location**: Around line 1550-1650 in your conduct-survey.html file
-
-**Find this function:**
-```javascript
-async function submitSurvey(event) {
-    event.preventDefault();
-    // ... old code that creates surveyData with individual fields
-```
-
-**Replace it with:**
-```javascript
-async function submitSurvey(event) {
-    event.preventDefault();
-    
-    if (!verifiedJob) {
-        showAlert('Please verify job number first', 'error');
-        return;
-    }
-    
-    const submitBtn = document.getElementById('submit-btn');
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Submitting Survey...';
-    
-    try {
-        // Upload all files first
-        const photoUrls = {};
-        
-        for (const [fieldId, files] of Object.entries(uploadedFiles)) {
-            if (files.length > 0) {
-                const uploadPromises = files.map(async (file, index) => {
-                    const path = `surveys/${verifiedJob['Job Number']}/${fieldId}/${Date.now()}_${index}_${file.name}`;
-                    return await uploadFileToStorage(file, path);
-                });
+        // Submit survey - UPDATED VERSION WITH STRUCTURED DATA
+        async function submitSurvey(event) {
+            event.preventDefault();
+            
+            if (!verifiedJob) {
+                showAlert('Please verify job number first', 'error');
+                return;
+            }
+            
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting Survey...';
+            
+            try {
+                // Upload all files first
+                const photoUrls = {};
                 
-                photoUrls[fieldId] = await Promise.all(uploadPromises);
-            }
-        }
-        
-        // Structure data with questions and answers for easy document generation
-        const surveyData = {
-            // Metadata
-            jobNumber: verifiedJob['Job Number'],
-            jobId: verifiedJob.id,
-            customerName: verifiedJob['Name'],
-            submittedAt: new Date().toISOString(),
-            submittedDate: new Date().toLocaleDateString('en-GB'),
-            submittedTime: new Date().toLocaleTimeString('en-GB'),
-            status: 'completed',
-            
-            // Structured sections with questions and answers
-            sections: [
-                {
-                    title: 'Job Information',
-                    fields: [
-                        { question: 'Job Number', answer: verifiedJob['Job Number'] },
-                        { question: 'Customer Name', answer: verifiedJob['Name'] },
-                        { question: 'Address', answer: verifiedJob['1st line of address'] },
-                        { question: 'Postcode', answer: verifiedJob['Postcode'] },
-                        { question: 'Install Date', answer: verifiedJob['Install Date'] || 'TBD' },
-                        { question: 'Lead Engineer', answer: verifiedJob['Lead Engineer'] || 'Unassigned' }
-                    ]
-                },
-                {
-                    title: 'Survey Details',
-                    fields: [
-                        { question: 'Conducted On (Date and Time)', answer: document.getElementById('conducted-on').value },
-                        { question: 'Surveyor', answer: document.getElementById('surveyor').value },
-                        { question: 'Customer Present During Survey?', answer: document.querySelector('input[name="customer-present"]:checked')?.value }
-                    ]
-                },
-                {
-                    title: 'Electrical System',
-                    fields: [
-                        { 
-                            question: 'Position of Meter Cupboard or Incoming Supply', 
-                            answer: document.getElementById('meter-position').value,
-                            photos: photoUrls['meter-position-files'] || []
-                        },
-                        { question: 'What is the Fuse Rating?', answer: document.getElementById('fuse-rating').value },
-                        { 
-                            question: 'Location for Gateway', 
-                            answer: document.getElementById('gateway-location').value,
-                            photos: photoUrls['gateway-location-files'] || []
-                        },
-                        { question: 'Describe the Panel Run', answer: document.getElementById('panel-run').value },
-                        { question: 'Panel Run Distance (m)', answer: parseFloat(document.getElementById('panel-run-distance').value) },
-                        { 
-                            question: 'Describe the Battery to Gateway Run', 
-                            answer: document.getElementById('battery-gateway-run').value,
-                            photos: photoUrls['battery-gateway-files'] || []
-                        },
-                        { question: 'Battery to Gateway Distance (m)', answer: parseFloat(document.getElementById('battery-gateway-distance').value) },
-                        { question: 'Is there WiFi Signal at the Proposed Inverter Location?', answer: document.getElementById('wifi-signal').value },
-                        { 
-                            question: 'Photo of Meter Cupboard Interior', 
-                            answer: 'See photos',
-                            photos: photoUrls['meter-cupboard-files'] || []
-                        },
-                        { question: 'Any Signs of Render or Cladding?', answer: document.getElementById('render-cladding').value },
-                        { question: 'Type of Surface at Battery Location', answer: document.getElementById('surface-type').value },
-                        { question: 'Battery Location Width (mm)', answer: parseInt(document.getElementById('battery-width').value) },
-                        { question: 'Battery Location Depth (mm)', answer: parseInt(document.getElementById('battery-depth').value) },
-                        { question: 'Battery Location Length (mm)', answer: parseInt(document.getElementById('battery-length').value) },
-                        { question: 'Additional Notes (Battery)', answer: document.getElementById('additional-notes-battery').value || 'N/A' },
-                        { 
-                            question: 'Battery/Powerwall Location', 
-                            answer: document.getElementById('battery-location').value,
-                            photos: photoUrls['battery-location-files'] || []
-                        }
-                    ]
-                },
-                {
-                    title: 'External Measurements',
-                    fields: [
-                        { 
-                            question: 'What is the Roof Covering Type?', 
-                            answer: document.getElementById('roof-covering').value,
-                            photos: photoUrls['roof-covering-files'] || []
-                        },
-                        { question: 'Number of Stories', answer: parseInt(document.getElementById('number-stories').value) },
-                        { question: 'How Old is the Roof in Years?', answer: parseInt(document.getElementById('roof-age').value) },
-                        { question: 'How Many Years Ago was the Last Work Carried Out on the Roof?', answer: parseInt(document.getElementById('roof-work-age').value) },
-                        { question: 'Distance the Soffit Overhangs (mm)', answer: parseInt(document.getElementById('soffit-overhang').value) },
-                        { 
-                            question: 'Are there any Obstructions on the Roof?', 
-                            answer: document.querySelector('input[name="roof-obstructions"]:checked')?.value,
-                            photos: photoUrls['obstructions-files'] || []
-                        },
-                        { question: 'Building Width (m)', answer: parseFloat(document.getElementById('building-width').value) },
-                        { question: 'Height to Ridge (m)', answer: parseFloat(document.getElementById('height-to-ridge').value) },
-                        { 
-                            question: 'Is there any Form of Shading?', 
-                            answer: document.querySelector('input[name="roof-shading"]:checked')?.value,
-                            photos: photoUrls['shading-files'] || []
-                        },
-                        { question: 'Distance to Nearest Building (m)', answer: parseFloat(document.getElementById('nearest-building-distance').value) },
-                        { question: 'Height of Nearest Obstruction (m)', answer: parseFloat(document.getElementById('obstruction-height').value) },
-                        { question: 'Building Length (m)', answer: parseFloat(document.getElementById('building-length').value) }
-                    ]
-                },
-                {
-                    title: 'Main Roof',
-                    fields: [
-                        { question: 'What is the Roof Type?', answer: document.getElementById('roof-type').value },
-                        { 
-                            question: 'Is the Loft Accessible?', 
-                            answer: document.querySelector('input[name="loft-accessible"]:checked')?.value,
-                            photos: photoUrls['loft-accessible-files'] || []
-                        },
-                        { question: 'Loft Hatch Width (mm)', answer: parseInt(document.getElementById('loft-hatch-width').value) },
-                        { question: 'Loft Hatch Depth (mm)', answer: parseInt(document.getElementById('loft-hatch-depth').value) },
-                        { question: 'Is a Loft Ladder Installed?', answer: document.querySelector('input[name="loft-ladder"]:checked')?.value },
-                        { question: 'Is the Loft Boarded?', answer: document.querySelector('input[name="loft-boarded"]:checked')?.value },
-                        { question: 'Loft Hatch Clearance (mm)', answer: parseInt(document.getElementById('loft-hatch-clearance').value) },
-                        { question: 'Ridge to Eaves (mm)', answer: parseInt(document.getElementById('ridge-to-eaves').value) },
-                        { question: 'Length of Roof - Bottom (mm) (i.e. along eaves)', answer: parseInt(document.getElementById('roof-length-bottom').value) },
-                        { question: 'Roof Pitch (degrees)', answer: parseFloat(document.getElementById('roof-pitch').value) },
-                        { question: 'Length of Roof - Top (mm) (i.e. along ridge)', answer: parseInt(document.getElementById('roof-length-top').value) },
-                        { question: 'Rafter Width (mm)', answer: parseInt(document.getElementById('rafter-width').value) },
-                        { question: 'Rafter Depth (mm)', answer: parseInt(document.getElementById('rafter-depth').value) },
-                        { question: 'Web Width (mm)', answer: parseInt(document.getElementById('web-width').value) },
-                        { question: 'Web Depth (mm)', answer: parseInt(document.getElementById('web-depth').value) },
-                        { question: 'Web Length (mm)', answer: parseInt(document.getElementById('web-length').value) },
-                        { question: 'Truss Spacing (mm)', answer: parseInt(document.getElementById('truss-spacing').value) },
-                        { 
-                            question: 'Sketch Roof Diagram and Label', 
-                            answer: 'See photos',
-                            photos: photoUrls['roof-diagram-files'] || []
-                        }
-                    ]
-                },
-                {
-                    title: 'Personal Risk Assessment',
-                    fields: [
-                        { 
-                            question: 'Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?', 
-                            answer: document.querySelector('input[name="risk-assessment"]:checked')?.value 
-                        }
-                    ]
-                },
-                {
-                    title: 'Property',
-                    fields: [
-                        { 
-                            question: 'Wide Angle Shots of the Property Including All Property Faces', 
-                            answer: 'See photos',
-                            photos: photoUrls['property-photos-files'] || []
-                        },
-                        { question: 'Age of Property (years)', answer: parseInt(document.getElementById('property-age').value) },
-                        { question: 'Additional Notes (Property)', answer: document.getElementById('additional-notes-property').value || 'N/A' }
-                    ]
-                },
-                {
-                    title: 'Roof Condition',
-                    fields: [
-                        { 
-                            question: 'Are there any Signs of Asbestos?', 
-                            answer: document.querySelector('input[name="asbestos"]:checked')?.value,
-                            photos: photoUrls['asbestos-files'] || []
-                        },
-                        { 
-                            question: 'Are there any Signs of Deflection to the Existing Roof Slopes?', 
-                            answer: document.querySelector('input[name="roof-deflection"]:checked')?.value,
-                            photos: photoUrls['deflection-files'] || []
-                        },
-                        { 
-                            question: 'Are there any Signs of Rot/Damage to the Internal Roof Structure?', 
-                            answer: document.querySelector('input[name="rot-damage"]:checked')?.value,
-                            photos: photoUrls['rot-damage-files'] || []
-                        },
-                        { 
-                            question: 'Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?', 
-                            answer: document.querySelector('input[name="roof-concern"]:checked')?.value,
-                            photos: photoUrls['roof-concern-files'] || []
-                        },
-                        { 
-                            question: 'Are there any Dwarf Walls/Props Which Support the Purlins?', 
-                            answer: document.querySelector('input[name="dwarf-walls"]:checked')?.value,
-                            photos: photoUrls['dwarf-walls-files'] || []
-                        },
-                        { 
-                            question: 'Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?', 
-                            answer: document.querySelector('input[name="structural-work"]:checked')?.value,
-                            photos: photoUrls['structural-work-files'] || []
-                        },
-                        { 
-                            question: 'Wide Angle Inside the Loft Space', 
-                            answer: 'See photos',
-                            photos: photoUrls['loft-space-files'] || []
-                        }
-                    ]
+                for (const [fieldId, files] of Object.entries(uploadedFiles)) {
+                    if (files.length > 0) {
+                        const uploadPromises = files.map(async (file, index) => {
+                            const path = `surveys/${verifiedJob['Job Number']}/${fieldId}/${Date.now()}_${index}_${file.name}`;
+                            return await uploadFileToStorage(file, path);
+                        });
+                        
+                        photoUrls[fieldId] = await Promise.all(uploadPromises);
+                    }
                 }
-            ]
-        };
-        
-        // Save to Firebase
-        const { doc, setDoc } = window.firebaseModules;
-        const surveyId = `${verifiedJob['Job Number']}_${Date.now()}`;
-        const surveyRef = doc(window.db, 'site-surveys', surveyId);
-        
-        await setDoc(surveyRef, surveyData);
-        
-        console.log('✅ Survey saved with structured data:', surveyId);
-        
-        showAlert('✅ Survey submitted successfully!', 'success');
-        
-        // Reset form after 2 seconds
-        setTimeout(() => {
-            window.location.href = 'teamview.html';
-        }, 2000);
-        
-    } catch (error) {
-        console.error('Error submitting survey:', error);
-        showAlert('Error submitting survey. Please try again.', 'error');
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Submit Survey';
-    }
-}
-```
-
-### Step 2: Add the Survey Viewer Page
-
-The survey-viewer.html file I created allows you to:
-- Search for surveys by job number
-- View all surveys for a specific job
-- Display surveys with all questions, answers, and photos
-- Download surveys as HTML documents
-- Print surveys or save as PDF
-
-**Usage:**
-1. Upload survey-viewer.html to your site
-2. Navigate to it from your team view
-3. Enter a job number to see all surveys for that job
-4. Click on a survey to view it
-5. Use the download buttons to export
-
-## Data Structure Reference
-
-### Complete Survey Object
-```javascript
-{
-  // Metadata
-  jobNumber: "OE123456",
-  jobId: "firebase-doc-id",
-  customerName: "John Smith",
-  submittedAt: "2024-12-24T10:30:00.000Z",
-  submittedDate: "24/12/2024",
-  submittedTime: "10:30:00",
-  status: "completed",
-  
-  // Sections array
-  sections: [
-    {
-      title: "Section Name",
-      fields: [
-        {
-          question: "Question text",
-          answer: "Answer value",
-          photos: ["url1", "url2"] // Optional, only if photos uploaded
-        }
-      ]
-    }
-  ]
-}
-```
-
-## How to Retrieve and Use Survey Data
-
-### Example 1: Get a single survey
-```javascript
-async function getSurvey(surveyId) {
-    const { doc, getDoc } = window.firebaseModules;
-    const surveyRef = doc(window.db, 'site-surveys', surveyId);
-    const surveySnap = await getDoc(surveyRef);
-    
-    if (surveySnap.exists()) {
-        const surveyData = surveySnap.data();
-        // Now you have all questions, answers, and photos
-        console.log(surveyData);
-    }
-}
-```
-
-### Example 2: Get all surveys for a job
-```javascript
-async function getSurveysForJob(jobNumber) {
-    const { collection, query, where, getDocs } = window.firebaseModules;
-    
-    const q = query(
-        collection(window.db, 'site-surveys'),
-        where('jobNumber', '==', jobNumber)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const surveys = [];
-    
-    querySnapshot.forEach((doc) => {
-        surveys.push({
-            id: doc.id,
-            ...doc.data()
-        });
-    });
-    
-    return surveys;
-}
-```
-
-### Example 3: Loop through survey data
-```javascript
-function processSurvey(surveyData) {
-    surveyData.sections.forEach(section => {
-        console.log(`Section: ${section.title}`);
-        
-        section.fields.forEach(field => {
-            console.log(`  Q: ${field.question}`);
-            console.log(`  A: ${field.answer}`);
-            
-            if (field.photos && field.photos.length > 0) {
-                console.log(`  Photos: ${field.photos.length}`);
-                field.photos.forEach(photo => {
-                    console.log(`    - ${photo}`);
-                });
+                
+                // Structure data with questions and answers
+                const surveyData = {
+                    jobNumber: verifiedJob['Job Number'],
+                    jobId: verifiedJob.id,
+                    customerName: verifiedJob['Name'],
+                    submittedAt: new Date().toISOString(),
+                    submittedDate: new Date().toLocaleDateString('en-GB'),
+                    submittedTime: new Date().toLocaleTimeString('en-GB'),
+                    status: 'completed',
+                    
+                    sections: [
+                        {
+                            title: 'Job Information',
+                            fields: [
+                                { question: 'Job Number', answer: verifiedJob['Job Number'] },
+                                { question: 'Customer Name', answer: verifiedJob['Name'] },
+                                { question: 'Address', answer: verifiedJob['1st line of address'] },
+                                { question: 'Postcode', answer: verifiedJob['Postcode'] },
+                                { question: 'Install Date', answer: verifiedJob['Install Date'] || 'TBD' },
+                                { question: 'Lead Engineer', answer: verifiedJob['Lead Engineer'] || 'Unassigned' }
+                            ]
+                        },
+                        {
+                            title: 'Survey Details',
+                            fields: [
+                                { question: 'Conducted On (Date and Time)', answer: document.getElementById('conducted-on').value },
+                                { question: 'Surveyor', answer: document.getElementById('surveyor').value },
+                                { question: 'Customer Present During Survey?', answer: document.querySelector('input[name="customer-present"]:checked')?.value }
+                            ]
+                        },
+                        {
+                            title: 'Electrical System',
+                            fields: [
+                                { question: 'Position of Meter Cupboard or Incoming Supply', answer: document.getElementById('meter-position').value, photos: photoUrls['meter-position-files'] || [] },
+                                { question: 'What is the Fuse Rating?', answer: document.getElementById('fuse-rating').value },
+                                { question: 'Location for Gateway', answer: document.getElementById('gateway-location').value, photos: photoUrls['gateway-location-files'] || [] },
+                                { question: 'Describe the Panel Run', answer: document.getElementById('panel-run').value },
+                                { question: 'Panel Run Distance (m)', answer: parseFloat(document.getElementById('panel-run-distance').value) },
+                                { question: 'Describe the Battery to Gateway Run', answer: document.getElementById('battery-gateway-run').value, photos: photoUrls['battery-gateway-files'] || [] },
+                                { question: 'Battery to Gateway Distance (m)', answer: parseFloat(document.getElementById('battery-gateway-distance').value) },
+                                { question: 'Is there WiFi Signal at the Proposed Inverter Location?', answer: document.getElementById('wifi-signal').value },
+                                { question: 'Photo of Meter Cupboard Interior', answer: 'See photos', photos: photoUrls['meter-cupboard-files'] || [] },
+                                { question: 'Any Signs of Render or Cladding?', answer: document.getElementById('render-cladding').value },
+                                { question: 'Type of Surface at Battery Location', answer: document.getElementById('surface-type').value },
+                                { question: 'Battery Location Width (mm)', answer: parseInt(document.getElementById('battery-width').value) },
+                                { question: 'Battery Location Depth (mm)', answer: parseInt(document.getElementById('battery-depth').value) },
+                                { question: 'Battery Location Length (mm)', answer: parseInt(document.getElementById('battery-length').value) },
+                                { question: 'Additional Notes (Battery)', answer: document.getElementById('additional-notes-battery').value || 'N/A' },
+                                { question: 'Battery/Powerwall Location', answer: document.getElementById('battery-location').value, photos: photoUrls['battery-location-files'] || [] }
+                            ]
+                        },
+                        {
+                            title: 'External Measurements',
+                            fields: [
+                                { question: 'What is the Roof Covering Type?', answer: document.getElementById('roof-covering').value, photos: photoUrls['roof-covering-files'] || [] },
+                                { question: 'Number of Stories', answer: parseInt(document.getElementById('number-stories').value) },
+                                { question: 'How Old is the Roof in Years?', answer: parseInt(document.getElementById('roof-age').value) },
+                                { question: 'How Many Years Ago was the Last Work Carried Out on the Roof?', answer: parseInt(document.getElementById('roof-work-age').value) },
+                                { question: 'Distance the Soffit Overhangs (mm)', answer: parseInt(document.getElementById('soffit-overhang').value) },
+                                { question: 'Are there any Obstructions on the Roof?', answer: document.querySelector('input[name="roof-obstructions"]:checked')?.value, photos: photoUrls['obstructions-files'] || [] },
+                                { question: 'Building Width (m)', answer: parseFloat(document.getElementById('building-width').value) },
+                                { question: 'Height to Ridge (m)', answer: parseFloat(document.getElementById('height-to-ridge').value) },
+                                { question: 'Is there any Form of Shading?', answer: document.querySelector('input[name="roof-shading"]:checked')?.value, photos: photoUrls['shading-files'] || [] },
+                                { question: 'Distance to Nearest Building (m)', answer: parseFloat(document.getElementById('nearest-building-distance').value) },
+                                { question: 'Height of Nearest Obstruction (m)', answer: parseFloat(document.getElementById('obstruction-height').value) },
+                                { question: 'Building Length (m)', answer: parseFloat(document.getElementById('building-length').value) }
+                            ]
+                        },
+                        {
+                            title: 'Main Roof',
+                            fields: [
+                                { question: 'What is the Roof Type?', answer: document.getElementById('roof-type').value },
+                                { question: 'Is the Loft Accessible?', answer: document.querySelector('input[name="loft-accessible"]:checked')?.value, photos: photoUrls['loft-accessible-files'] || [] },
+                                { question: 'Loft Hatch Width (mm)', answer: parseInt(document.getElementById('loft-hatch-width').value) },
+                                { question: 'Loft Hatch Depth (mm)', answer: parseInt(document.getElementById('loft-hatch-depth').value) },
+                                { question: 'Is a Loft Ladder Installed?', answer: document.querySelector('input[name="loft-ladder"]:checked')?.value },
+                                { question: 'Is the Loft Boarded?', answer: document.querySelector('input[name="loft-boarded"]:checked')?.value },
+                                { question: 'Loft Hatch Clearance (mm)', answer: parseInt(document.getElementById('loft-hatch-clearance').value) },
+                                { question: 'Ridge to Eaves (mm)', answer: parseInt(document.getElementById('ridge-to-eaves').value) },
+                                { question: 'Length of Roof - Bottom (mm) (i.e. along eaves)', answer: parseInt(document.getElementById('roof-length-bottom').value) },
+                                { question: 'Roof Pitch (degrees)', answer: parseFloat(document.getElementById('roof-pitch').value) },
+                                { question: 'Length of Roof - Top (mm) (i.e. along ridge)', answer: parseInt(document.getElementById('roof-length-top').value) },
+                                { question: 'Rafter Width (mm)', answer: parseInt(document.getElementById('rafter-width').value) },
+                                { question: 'Rafter Depth (mm)', answer: parseInt(document.getElementById('rafter-depth').value) },
+                                { question: 'Web Width (mm)', answer: parseInt(document.getElementById('web-width').value) },
+                                { question: 'Web Depth (mm)', answer: parseInt(document.getElementById('web-depth').value) },
+                                { question: 'Web Length (mm)', answer: parseInt(document.getElementById('web-length').value) },
+                                { question: 'Truss Spacing (mm)', answer: parseInt(document.getElementById('truss-spacing').value) },
+                                { question: 'Sketch Roof Diagram and Label', answer: 'See photos', photos: photoUrls['roof-diagram-files'] || [] }
+                            ]
+                        },
+                        {
+                            title: 'Personal Risk Assessment',
+                            fields: [
+                                { question: 'Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?', answer: document.querySelector('input[name="risk-assessment"]:checked')?.value }
+                            ]
+                        },
+                        {
+                            title: 'Property',
+                            fields: [
+                                { question: 'Wide Angle Shots of the Property Including All Property Faces', answer: 'See photos', photos: photoUrls['property-photos-files'] || [] },
+                                { question: 'Age of Property (years)', answer: parseInt(document.getElementById('property-age').value) },
+                                { question: 'Additional Notes (Property)', answer: document.getElementById('additional-notes-property').value || 'N/A' }
+                            ]
+                        },
+                        {
+                            title: 'Roof Condition',
+                            fields: [
+                                { question: 'Are there any Signs of Asbestos?', answer: document.querySelector('input[name="asbestos"]:checked')?.value, photos: photoUrls['asbestos-files'] || [] },
+                                { question: 'Are there any Signs of Deflection to the Existing Roof Slopes?', answer: document.querySelector('input[name="roof-deflection"]:checked')?.value, photos: photoUrls['deflection-files'] || [] },
+                                { question: 'Are there any Signs of Rot/Damage to the Internal Roof Structure?', answer: document.querySelector('input[name="rot-damage"]:checked')?.value, photos: photoUrls['rot-damage-files'] || [] },
+                                { question: 'Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?', answer: document.querySelector('input[name="roof-concern"]:checked')?.value, photos: photoUrls['roof-concern-files'] || [] },
+                                { question: 'Are there any Dwarf Walls/Props Which Support the Purlins?', answer: document.querySelector('input[name="dwarf-walls"]:checked')?.value, photos: photoUrls['dwarf-walls-files'] || [] },
+                                { question: 'Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?', answer: document.querySelector('input[name="structural-work"]:checked')?.value, photos: photoUrls['structural-work-files'] || [] },
+                                { question: 'Wide Angle Inside the Loft Space', answer: 'See photos', photos: photoUrls['loft-space-files'] || [] }
+                            ]
+                        }
+                    ]
+                };
+                
+                // Save to Firebase
+                const { doc, setDoc } = window.firebaseModules;
+                const surveyId = `${verifiedJob['Job Number']}_${Date.now()}`;
+                const surveyRef = doc(window.db, 'site-surveys', surveyId);
+                
+                await setDoc(surveyRef, surveyData);
+                
+                console.log('✅ Survey saved with structured data:', surveyId);
+                
+                showAlert('✅ Survey submitted successfully!', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = 'teamview.html';
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error submitting survey:', error);
+                showAlert('Error submitting survey. Please try again.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Survey';
             }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupConditionalFields();
+            setupFileUploads();
+            
+            const form = document.getElementById('survey-form');
+            form.addEventListener('submit', submitSurvey);
         });
-    });
-}
-```
-
-## Benefits of This Structure
-
-1. **Easy to Display**: Loop through sections and fields to display in any format
-2. **Easy to Export**: Questions are paired with answers, perfect for documents
-3. **Photos Linked**: Photos are stored with their relevant questions
-4. **Searchable**: Can search by question text or answer
-5. **Flexible**: Easy to add new sections or fields without breaking existing code
-6. **Document Generation**: Perfect for creating Word docs, PDFs, or HTML reports
-
-## Testing
-
-1. Submit a test survey with the updated code
-2. Check Firebase Console to see the structured data
-3. Use the survey viewer to retrieve and display it
-4. Verify all questions, answers, and photos appear correctly
-
-## Files Included
-
-1. **conduct-survey-updated.html** - Reference showing the changes
-2. **survey-viewer.html** - Complete viewer page with download functionality
-3. **survey-retrieval-example.js** - Code examples for retrieving data
-4. **IMPLEMENTATION_GUIDE.md** - This file
-
-## Support
-
-If you need help implementing this:
-1. Make a backup of your original conduct-survey.html
-2. Copy the new submitSurvey function into your file
-3. Test with a sample survey
-4. Check the browser console for any errors
-5. Verify data in Firebase Console
+    </script>
+</body>
+</html>
