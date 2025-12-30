@@ -1588,6 +1588,46 @@
     <script>
         let verifiedJob = null;
         let uploadedFiles = {};
+
+// ===== ADD AUTOSAVE CODE HERE =====
+let autosaveInterval;
+let lastAutosave = null;
+
+function getFormData() {
+    // ... all the getFormData code from the artifact
+}
+
+function saveFormData() {
+    // ... all the saveFormData code
+}
+
+function loadFormData(jobNumber) {
+    // ... all the loadFormData code
+}
+
+function clearAutosave(jobNumber) {
+    // ... all the clearAutosave code
+}
+
+function updateAutosaveStatus(message) {
+    // ... all the updateAutosaveStatus code
+}
+
+function startAutosave() {
+    // ... all the startAutosave code
+}
+
+function stopAutosave() {
+    // ... all the stopAutosave code
+}
+
+window.addEventListener('beforeunload', () => {
+    const form = document.getElementById('survey-form');
+    if (form && form.style.display !== 'none') {
+        saveFormData();
+    }
+});
+// ===== END AUTOSAVE CODE =====
         
         // Utility function to escape HTML
         function escapeHtml(text) {
@@ -1687,8 +1727,16 @@
                 document.getElementById('job-number').disabled = true;
                 
                 loadingSpinner.classList.remove('active');
-                
-                showAlert('Job verified successfully! Please complete the survey below.', 'success');
+
+// Check for autosaved data
+const hasAutosave = loadFormData(jobNumber);
+
+if (!hasAutosave) {
+    showAlert('Job verified successfully! Please complete the survey below.', 'success');
+}
+
+// Start autosave
+startAutosave();
                 
             } catch (error) {
                 console.error('Error verifying job:', error);
@@ -2014,8 +2062,12 @@
                 await setDoc(surveyRef, surveyData);
                 
                 console.log('✅ Survey saved with structured data:', surveyId);
-                
-                showAlert('✅ Survey submitted successfully!', 'success');
+
+// Clear autosave and stop interval
+clearAutosave(verifiedJob['Job Number']);
+stopAutosave();
+
+showAlert('✅ Survey submitted successfully!', 'success');
                 
                 setTimeout(() => {
                     window.location.href = 'teamview.html';
