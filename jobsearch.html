@@ -1054,9 +1054,8 @@
     <!-- Status Message -->
     <div class="status-message" id="status-message"></div>
 
-    <!-- Hidden div for reliable PDF rendering using html2canvas -->
+    <!-- Hidden container for PDF rendering -->
     <div id="survey-pdf-content" style="position:absolute; left:-9999px; top:-9999px; width:210mm; background:white; padding:20mm; font-family:Arial, sans-serif; line-height:1.5; color:#000;">
-        <!-- Survey HTML will be injected here temporarily -->
     </div>
 
     <!-- jsPDF and html2canvas -->
@@ -1079,8 +1078,6 @@
             measurementId: "G-PFH059DZ64"
         };
      
-        console.log('Initializing Firebase...');
-     
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
@@ -1090,15 +1087,12 @@
             window.storage = storage;
             window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
          
-            console.log('✅ Firebase initialized successfully');
-         
             window.addEventListener('DOMContentLoaded', () => {
                 loadAllJobs();
             });
          
         } catch (error) {
-            console.error('❌ Firebase initialization error:', error);
-            showStatus('Firebase initialization failed: ' + error.message, 'error');
+            console.error('Firebase initialization error:', error);
         }
     </script>
  
@@ -1116,7 +1110,6 @@
 
         async function loadAllJobs() {
             try {
-                console.log('Loading all jobs...');
                 const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
              
                 const jobsQuery = query(
@@ -1128,10 +1121,7 @@
              
                 allJobs = [];
                 querySnapshot.forEach((doc) => {
-                    allJobs.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
+                    allJobs.push({ id: doc.id, ...doc.data() });
                 });
              
                 const engineersQuery = query(
@@ -1142,10 +1132,7 @@
                 const engineersSnapshot = await getDocs(engineersQuery);
                 leadEngineers = [];
                 engineersSnapshot.forEach((doc) => {
-                    leadEngineers.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
+                    leadEngineers.push({ id: doc.id, ...doc.data() });
                 });
              
                 filteredJobs = [...allJobs];
@@ -1358,18 +1345,19 @@
 
                 let allFiles = [];
                 let missingFiles = [];
-                let surveyData = null;
 
+                // Load site survey
                 const surveyQuery = query(collection(window.db, 'site-surveys'), where('jobNumber', '==', jobNumber), orderBy('submittedAt', 'desc'), limit(1));
                 const surveySnapshot = await getDocs(surveyQuery);
                 if (!surveySnapshot.empty) {
-                    surveyData = { id: surveySnapshot.docs[0].id, ...surveySnapshot.docs[0].data() };
-                    currentSurveyData = surveyData;
-                    allFiles.push({ id: surveyData.id, fileName: 'Site Survey Report', collectionType: 'Site Survey', icon: '📋', isSurvey: true });
+                    const surveyDoc = surveySnapshot.docs[0];
+                    currentSurveyData = { id: surveyDoc.id, ...surveyDoc.data() };
+                    allFiles.push({ id: surveyDoc.id, fileName: 'Site Survey Report', collectionType: 'Site Survey', icon: '📋', isSurvey: true });
                 } else {
                     missingFiles.push({ name: 'site-survey', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true });
                 }
 
+                // Load other files
                 for (const fc of fileCollections) {
                     const q = query(collection(window.db, fc.name), where('jobNumber', '==', jobNumber));
                     const snap = await getDocs(q);
@@ -1414,10 +1402,13 @@
             }
         }
 
-        // === FIXED PDF GENERATION USING HTML2CANVAS ===
+        // === FULLY FIXED PDF GENERATION - MATCHES conducts survey.html STRUCTURE ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
-            if (!currentSurveyData) return;
+            if (!currentSurveyData || !currentSurveyData.sections) {
+                alert("No survey data available.");
+                return;
+            }
 
             const btn = event.target;
             const originalText = btn.textContent;
@@ -1426,108 +1417,45 @@
 
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
+
                 let html = `
                     <h1 style="text-align:center; font-size:24px; margin-bottom:10px;">Site Survey Report</h1>
-                    <h2 style="text-align:center; font-size:18px; color:#555; margin-bottom:30px;">Job #${escapeHtml(currentSurveyData.jobNumber || 'N/A')}</h2>
-                    <p style="font-size:14px;"><strong>Customer:</strong> ${escapeHtml(currentSurveyData.customerName || 'N/A')}</p>
-                    <p style="font-size:14px;"><strong>Surveyor:</strong> ${escapeHtml(currentSurveyData.surveyor || 'N/A')}</p>
-                    <p style="font-size:14px;"><strong>Conducted On:</strong> ${new Date(currentSurveyData.conductedOn).toLocaleString('en-GB', {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'})}</p>
+                    <h2 style="text-align:center; font-size:18px; color:#333; margin-bottom:30px;">
+                        Job #${escapeHtml(currentSurveyData.jobNumber || 'N/A')}
+                    </h2>
+                    <p style="font-size:14px; margin-bottom:8px;"><strong>Customer:</strong> ${escapeHtml(currentSurveyData.customerName || 'N/A')}</p>
+                    <p style="font-size:14px; margin-bottom:30px;"><strong>Submitted:</strong> ${new Date(currentSurveyData.submittedAt).toLocaleString('en-GB')}</p>
                     <hr style="margin:30px 0; border-top:1px solid #ccc;">
                 `;
 
-                const sections = [
-                    { title: 'Survey Details', items: [
-                        {l:'Conducted On',v:new Date(currentSurveyData.conductedOn).toLocaleString()},
-                        {l:'Surveyor',v:currentSurveyData.surveyor},
-                        {l:'Customer Present',v:currentSurveyData.customerPresent}
-                    ]},
-                    { title: 'Electrical System', items: [
-                        {l:'Meter Position',v:currentSurveyData.meterPosition,p:currentSurveyData.photos?.['meter-position-files']},
-                        {l:'Fuse Rating',v:currentSurveyData.fuseRating},
-                        {l:'Gateway Location',v:currentSurveyData.gatewayLocation,p:currentSurveyData.photos?.['gateway-location-files']},
-                        {l:'Panel Run',v:currentSurveyData.panelRun},
-                        {l:'Panel Run Distance (m)',v:currentSurveyData.panelRunDistance},
-                        {l:'Battery to Gateway Run',v:currentSurveyData.batteryGatewayRun,p:currentSurveyData.photos?.['battery-gateway-files']},
-                        {l:'Battery to Gateway Distance (m)',v:currentSurveyData.batteryGatewayDistance},
-                        {l:'WiFi Signal',v:currentSurveyData.wifiSignal},
-                        {l:'Meter Cupboard Interior',p:currentSurveyData.photos?.['meter-cupboard-files']}
-                    ]},
-                    { title: 'Battery Location', items: [
-                        {l:'Render/Cladding',v:currentSurveyData.renderCladding},
-                        {l:'Surface Type',v:currentSurveyData.surfaceType},
-                        {l:'Dimensions (W×D×L mm)',v:`${currentSurveyData.batteryWidth||''} × ${currentSurveyData.batteryDepth||''} × ${currentSurveyData.batteryLength||''}`},
-                        {l:'Additional Notes',v:currentSurveyData.additionalNotesBattery},
-                        {l:'Location',v:currentSurveyData.batteryLocation,p:currentSurveyData.photos?.['battery-location-files']}
-                    ]},
-                    { title: 'External Measurements', items: [
-                        {l:'Roof Covering',v:currentSurveyData.roofCovering,p:currentSurveyData.photos?.['roof-covering-files']},
-                        {l:'Number of Stories',v:currentSurveyData.numberStories},
-                        {l:'Roof Age (years)',v:currentSurveyData.roofAge},
-                        {l:'Last Roof Work (years ago)',v:currentSurveyData.roofWorkAge},
-                        {l:'Soffit Overhang (mm)',v:currentSurveyData.soffitOverhang},
-                        {l:'Obstructions',v:currentSurveyData.roofObstructions,p:currentSurveyData.photos?.['obstructions-files']},
-                        {l:'Building Dimensions (W×L m)',v:`${currentSurveyData.buildingWidth||''} × ${currentSurveyData.buildingLength||''}`},
-                        {l:'Height to Ridge (m)',v:currentSurveyData.heightToRidge},
-                        {l:'Shading',v:currentSurveyData.roofShading,p:currentSurveyData.photos?.['shading-files']},
-                        {l:'Nearest Building Distance (m)',v:currentSurveyData.nearestBuildingDistance},
-                        {l:'Nearest Obstruction Height (m)',v:currentSurveyData.obstructionHeight}
-                    ]},
-                    { title: 'Main Roof', items: [
-                        {l:'Roof Type',v:currentSurveyData.roofType},
-                        {l:'Loft Accessible',v:currentSurveyData.loftAccessible,p:currentSurveyData.photos?.['loft-accessible-files']},
-                        {l:'Loft Hatch (W×D mm)',v:`${currentSurveyData.loftHatchWidth||''} × ${currentSurveyData.loftHatchDepth||''}`},
-                        {l:'Loft Ladder',v:currentSurveyData.loftLadder},
-                        {l:'Loft Boarded',v:currentSurveyData.loftBoarded},
-                        {l:'Loft Hatch Clearance (mm)',v:currentSurveyData.loftHatchClearance},
-                        {l:'Ridge to Eaves (mm)',v:currentSurveyData.ridgeToEaves},
-                        {l:'Roof Length Bottom/Top (mm)',v:`${currentSurveyData.roofLengthBottom||''} / ${currentSurveyData.roofLengthTop||''}`},
-                        {l:'Roof Pitch (degrees)',v:currentSurveyData.roofPitch},
-                        {l:'Rafter (W×D mm)',v:`${currentSurveyData.rafterWidth||''} × ${currentSurveyData.rafterDepth||''}`},
-                        {l:'Web (W×D×L mm)',v:`${currentSurveyData.webWidth||''} × ${currentSurveyData.webDepth||''} × ${currentSurveyData.webLength||''}`},
-                        {l:'Truss Spacing (mm)',v:currentSurveyData.trussSpacing},
-                        {l:'Roof Diagram',p:currentSurveyData.photos?.['roof-diagram-files']}
-                    ]},
-                    { title: 'Property Photos', items: [
-                        {l:'Wide Angle Property Photos',p:currentSurveyData.photos?.['property-photos-files']},
-                        {l:'Property Age (years)',v:currentSurveyData.propertyAge},
-                        {l:'Additional Notes',v:currentSurveyData.additionalNotesProperty}
-                    ]},
-                    { title: 'Roof Condition & Safety', items: [
-                        {l:'Risk Assessment Completed',v:currentSurveyData.riskAssessment},
-                        {l:'Asbestos',v:currentSurveyData.asbestos,p:currentSurveyData.photos?.['asbestos-files']},
-                        {l:'Roof Deflection',v:currentSurveyData.roofDeflection,p:currentSurveyData.photos?.['deflection-files']},
-                        {l:'Rot/Damage',v:currentSurveyData.rotDamage,p:currentSurveyData.photos?.['rot-damage-files']},
-                        {l:'Other Concerns',v:currentSurveyData.roofConcern,p:currentSurveyData.photos?.['roof-concern-files']},
-                        {l:'Dwarf Walls/Props',v:currentSurveyData.dwarfWalls,p:currentSurveyData.photos?.['dwarf-walls-files']},
-                        {l:'Previous Structural Work',v:currentSurveyData.structuralWork,p:currentSurveyData.photos?.['structural-work-files']},
-                        {l:'Loft Space Photos',p:currentSurveyData.photos?.['loft-space-files']}
-                    ]}
-                ];
+                currentSurveyData.sections.forEach(section => {
+                    html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
+                        ${escapeHtml(section.title)}
+                    </h3>`;
 
-                for (const section of sections) {
-                    html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee;">${section.title}</h3>`;
-                    for (const item of section.items) {
-                        if (item.v !== undefined && item.v !== null && item.v !== '') {
-                            html += `<p style="margin:8px 0;"><strong>${escapeHtml(item.l)}:</strong> ${escapeHtml(item.v)}</p>`;
+                    section.fields.forEach(field => {
+                        if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
+                            html += `<p style="margin:8px 0;"><strong>${escapeHtml(field.question)}:</strong> ${escapeHtml(field.answer.toString())}</p>`;
                         }
-                        if (item.p && item.p.length > 0) {
+
+                        if (field.photos && field.photos.length > 0) {
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
-                            item.p.forEach(url => {
-                                html += `<img src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" />`;
+                            field.photos.forEach(url => {
+                                html += `<img src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
                             });
                             html += `</div>`;
                         }
-                    }
-                }
+                    });
+                });
 
                 pdfContent.innerHTML = html;
 
                 const images = pdfContent.querySelectorAll('img');
                 await Promise.all(Array.from(images).map(img => {
-                    if (img.complete && img.naturalHeight !== 0) return;
+                    if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
                     return new Promise(resolve => {
                         img.onload = resolve;
-                        img.onerror = () => { console.warn('Image load failed:', img.src); resolve(); };
+                        img.onerror = () => { console.warn('Image failed:', img.src); resolve(); };
                     });
                 }));
 
@@ -1535,6 +1463,7 @@
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
+
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
                 const imgWidth = pageWidth - 20;
@@ -1554,9 +1483,10 @@
                 }
 
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
+
             } catch (error) {
-                console.error('PDF error:', error);
-                alert('Failed to generate PDF – check console');
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Check console.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
