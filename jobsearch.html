@@ -1066,7 +1066,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getStorage, ref, getDownloadURL, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
      
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -1085,7 +1085,7 @@
          
             window.db = db;
             window.storage = storage;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, getDownloadURL, getBlob };
          
             window.addEventListener('DOMContentLoaded', () => {
                 loadAllJobs();
@@ -1192,10 +1192,9 @@
         }
 
         function displayGridView(container) {
-            const now = new Date();
             container.innerHTML = `<div class="results-grid">${filteredJobs.map(job => {
                 const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
-                const isPast = installDate && installDate <= now;
+                const isPast = installDate && installDate <= new Date();
                 const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
                 let statusText = 'Upcoming', statusClass = 'upcoming';
                 if (jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
@@ -1341,7 +1340,7 @@
             }
         }
 
-        // === FINAL WORKING PDF - IMAGES EMBEDDED AS BASE64 ===
+        // === FINAL WORKING VERSION USING FIREBASE STORAGE SDK TO GET BLOB AND BASE64 ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1357,20 +1356,22 @@
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
 
-                // Helper to convert image URL to base64
-                async function urlToBase64(url) {
+                // Helper to convert Firebase Storage URL to base64 using SDK (bypasses CORS completely)
+                async function firebaseUrlToBase64(url) {
                     try {
-                        const response = await fetch(url, { mode: 'cors' });
-                        if (!response.ok) throw new Error('Fetch failed');
-                        const blob = await response.blob();
+                        // Extract path from signed URL
+                        const urlObj = new URL(url);
+                        const path = decodeURIComponent(urlObj.pathname.match(/\/o\/(.+?)(\?|$)/)[1]);
+                        const storageRef = ref(window.storage, path);
+                        const blob = await getBlob(storageRef);
                         return new Promise((resolve, reject) => {
                             const reader = new FileReader();
-                            reader.onloadend = () => resolve(reader.result);
+                            reader.onload = () => resolve(reader.result);
                             reader.onerror = reject;
                             reader.readAsDataURL(blob);
                         });
                     } catch (e) {
-                        console.warn('Failed to load image as base64:', url, e);
+                        console.warn('Failed to load image via Firebase SDK:', url, e);
                         return null;
                     }
                 }
@@ -1398,11 +1399,11 @@
                         if (field.photos && field.photos.length > 0) {
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
                             for (const url of field.photos) {
-                                const base64 = await urlToBase64(url);
+                                const base64 = await firebaseUrlToBase64(url);
                                 if (base64) {
                                     html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
                                 } else {
-                                    html += `<p style="color:red; font-style:italic;">[Image could not be loaded]</p>`;
+                                    html += `<p style="color:red; font-style:italic;">[Image unavailable]</p>`;
                                 }
                             }
                             html += `</div>`;
@@ -1412,7 +1413,6 @@
 
                 pdfContent.innerHTML = html;
 
-                // No need to wait for external loads — all images are base64 embedded
                 const canvas = await html2canvas(pdfContent, { scale: 2 });
 
                 const imgData = canvas.toDataURL('image/png');
@@ -1441,7 +1441,7 @@
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Check console for details.');
+                alert('Failed to generate PDF. Check console.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
@@ -1449,6 +1449,7 @@
         }
         window.generateAndDownloadSurveyPDF = generateAndDownloadSurveyPDF;
 
+        // All other functions (unchanged)
         async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
             try {
