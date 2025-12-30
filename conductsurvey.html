@@ -307,15 +307,10 @@
             font-size: 0.8rem;
         }
       
-        .file-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-shrink: 0;
-        }
-      
-        .remove-file-btn,
-        .save-file-btn {
+        .remove-file-btn {
             padding: 0.5rem 1rem;
+            background: var(--error);
+            color: white;
             border: none;
             border-radius: 6px;
             cursor: pointer;
@@ -323,22 +318,8 @@
             font-size: 0.85rem;
         }
       
-        .remove-file-btn {
-            background: var(--error);
-            color: white;
-        }
-      
         .remove-file-btn:hover {
             background: #ff4444;
-        }
-      
-        .save-file-btn {
-            background: var(--success);
-            color: white;
-        }
-      
-        .save-file-btn:hover {
-            background: #45b894;
         }
       
         .alert {
@@ -473,7 +454,6 @@
             h1 { font-size: 2rem; }
             .section-header { font-size: 1.3rem; }
             .uploaded-file { flex-direction: column; align-items: flex-start; }
-            .file-actions { width: 100%; justify-content: flex-end; }
         }
     </style>
 </head>
@@ -1061,7 +1041,7 @@
     </script>
     <script>
         let verifiedJob = null;
-        let uploadedFiles = {}; // { fieldId: [File, ...] }
+        let uploadedFiles = {};
         const PROGRESS_KEY_PREFIX = 'survey_progress_';
 
         function getProgressKey() {
@@ -1121,7 +1101,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // New: File preview + Save to Device
         function addFilePreview(file, fieldId, uploadedDiv) {
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -1133,25 +1112,14 @@
                         <div class="file-name">${escapeHtml(file.name)}</div>
                         <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
                     </div>
-                    <div class="file-actions">
-                        <button type="button" class="remove-file-btn">Remove</button>
-                    </div>
+                    <button type="button" class="remove-file-btn">Remove</button>
                 `;
 
-                // Remove button
                 fileDiv.querySelector('.remove-file-btn').addEventListener('click', () => {
-                    uploadedFiles[fieldId] = uploadedFiles[fieldId].filter(f => f.name !== file.name || f.size !== file.size || f.lastModified !== file.lastModified);
+                    uploadedFiles[fieldId] = uploadedFiles[fieldId].filter(f => 
+                        f.name !== file.name || f.size !== file.size || f.lastModified !== file.lastModified
+                    );
                     fileDiv.remove();
-                });
-
-                // Save to device button
-                fileDiv.querySelector('.save-file-btn').addEventListener('click', () => {
-                    const a = document.createElement('a');
-                    a.href = e.target.result;
-                    a.download = file.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
                 });
 
                 uploadedDiv.appendChild(fileDiv);
@@ -1182,7 +1150,7 @@
                             addFilePreview(file, fieldId, uploadedDiv);
                         }
                     });
-                    input.value = ''; // Allow re-selecting same file
+                    input.value = '';
                 });
             });
         }
