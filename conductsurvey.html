@@ -1593,33 +1593,307 @@
 let autosaveInterval;
 let lastAutosave = null;
 
+// ===== PASTE THIS ENTIRE BLOCK AFTER: let uploadedFiles = {}; =====
+
+let autosaveInterval;
+let lastAutosave = null;
+
 function getFormData() {
-    // ... all the getFormData code from the artifact
+    const formData = {
+        jobNumber: document.getElementById('job-number')?.value || '',
+        verifiedJob: verifiedJob,
+        timestamp: new Date().toISOString(),
+        
+        // Survey Details
+        conductedOn: document.getElementById('conducted-on')?.value || '',
+        surveyor: document.getElementById('surveyor')?.value || '',
+        customerPresent: document.querySelector('input[name="customer-present"]:checked')?.value || '',
+        
+        // Electrical System
+        meterPosition: document.getElementById('meter-position')?.value || '',
+        fuseRating: document.getElementById('fuse-rating')?.value || '',
+        gatewayLocation: document.getElementById('gateway-location')?.value || '',
+        panelRun: document.getElementById('panel-run')?.value || '',
+        panelRunDistance: document.getElementById('panel-run-distance')?.value || '',
+        batteryGatewayRun: document.getElementById('battery-gateway-run')?.value || '',
+        batteryGatewayDistance: document.getElementById('battery-gateway-distance')?.value || '',
+        wifiSignal: document.getElementById('wifi-signal')?.value || '',
+        renderCladding: document.getElementById('render-cladding')?.value || '',
+        surfaceType: document.getElementById('surface-type')?.value || '',
+        batteryWidth: document.getElementById('battery-width')?.value || '',
+        batteryDepth: document.getElementById('battery-depth')?.value || '',
+        batteryLength: document.getElementById('battery-length')?.value || '',
+        additionalNotesBattery: document.getElementById('additional-notes-battery')?.value || '',
+        batteryLocation: document.getElementById('battery-location')?.value || '',
+        
+        // External Measurements
+        roofCovering: document.getElementById('roof-covering')?.value || '',
+        numberStories: document.getElementById('number-stories')?.value || '',
+        roofAge: document.getElementById('roof-age')?.value || '',
+        roofWorkAge: document.getElementById('roof-work-age')?.value || '',
+        soffitOverhang: document.getElementById('soffit-overhang')?.value || '',
+        roofObstructions: document.querySelector('input[name="roof-obstructions"]:checked')?.value || '',
+        buildingWidth: document.getElementById('building-width')?.value || '',
+        heightToRidge: document.getElementById('height-to-ridge')?.value || '',
+        roofShading: document.querySelector('input[name="roof-shading"]:checked')?.value || '',
+        nearestBuildingDistance: document.getElementById('nearest-building-distance')?.value || '',
+        obstructionHeight: document.getElementById('obstruction-height')?.value || '',
+        buildingLength: document.getElementById('building-length')?.value || '',
+        
+        // Main Roof
+        roofType: document.getElementById('roof-type')?.value || '',
+        loftAccessible: document.querySelector('input[name="loft-accessible"]:checked')?.value || '',
+        loftHatchWidth: document.getElementById('loft-hatch-width')?.value || '',
+        loftHatchDepth: document.getElementById('loft-hatch-depth')?.value || '',
+        loftLadder: document.querySelector('input[name="loft-ladder"]:checked')?.value || '',
+        loftBoarded: document.querySelector('input[name="loft-boarded"]:checked')?.value || '',
+        loftHatchClearance: document.getElementById('loft-hatch-clearance')?.value || '',
+        ridgeToEaves: document.getElementById('ridge-to-eaves')?.value || '',
+        roofLengthBottom: document.getElementById('roof-length-bottom')?.value || '',
+        roofPitch: document.getElementById('roof-pitch')?.value || '',
+        roofLengthTop: document.getElementById('roof-length-top')?.value || '',
+        rafterWidth: document.getElementById('rafter-width')?.value || '',
+        rafterDepth: document.getElementById('rafter-depth')?.value || '',
+        webWidth: document.getElementById('web-width')?.value || '',
+        webDepth: document.getElementById('web-depth')?.value || '',
+        webLength: document.getElementById('web-length')?.value || '',
+        trussSpacing: document.getElementById('truss-spacing')?.value || '',
+        
+        // Risk Assessment
+        riskAssessment: document.querySelector('input[name="risk-assessment"]:checked')?.value || '',
+        
+        // Property
+        propertyAge: document.getElementById('property-age')?.value || '',
+        additionalNotesProperty: document.getElementById('additional-notes-property')?.value || '',
+        
+        // Roof Condition
+        asbestos: document.querySelector('input[name="asbestos"]:checked')?.value || '',
+        roofDeflection: document.querySelector('input[name="roof-deflection"]:checked')?.value || '',
+        rotDamage: document.querySelector('input[name="rot-damage"]:checked')?.value || '',
+        roofConcern: document.querySelector('input[name="roof-concern"]:checked')?.value || '',
+        dwarfWalls: document.querySelector('input[name="dwarf-walls"]:checked')?.value || '',
+        structuralWork: document.querySelector('input[name="structural-work"]:checked')?.value || ''
+    };
+    
+    return formData;
 }
 
 function saveFormData() {
-    // ... all the saveFormData code
+    try {
+        const formData = getFormData();
+        const autosaveKey = `survey_autosave_${formData.jobNumber || 'temp'}`;
+        
+        localStorage.setItem(autosaveKey, JSON.stringify(formData));
+        lastAutosave = new Date();
+        
+        updateAutosaveStatus('Autosaved at ' + lastAutosave.toLocaleTimeString('en-GB'));
+        
+        console.log('✅ Form autosaved:', autosaveKey);
+    } catch (error) {
+        console.error('❌ Autosave error:', error);
+    }
 }
 
 function loadFormData(jobNumber) {
-    // ... all the loadFormData code
+    try {
+        const autosaveKey = `survey_autosave_${jobNumber}`;
+        const savedData = localStorage.getItem(autosaveKey);
+        
+        if (!savedData) return false;
+        
+        const formData = JSON.parse(savedData);
+        
+        // Restore form values
+        if (formData.conductedOn) document.getElementById('conducted-on').value = formData.conductedOn;
+        if (formData.surveyor) document.getElementById('surveyor').value = formData.surveyor;
+        if (formData.customerPresent) {
+            const radio = document.querySelector(`input[name="customer-present"][value="${formData.customerPresent}"]`);
+            if (radio) radio.checked = true;
+        }
+        
+        // Electrical System
+        if (formData.meterPosition) document.getElementById('meter-position').value = formData.meterPosition;
+        if (formData.fuseRating) document.getElementById('fuse-rating').value = formData.fuseRating;
+        if (formData.gatewayLocation) document.getElementById('gateway-location').value = formData.gatewayLocation;
+        if (formData.panelRun) document.getElementById('panel-run').value = formData.panelRun;
+        if (formData.panelRunDistance) document.getElementById('panel-run-distance').value = formData.panelRunDistance;
+        if (formData.batteryGatewayRun) document.getElementById('battery-gateway-run').value = formData.batteryGatewayRun;
+        if (formData.batteryGatewayDistance) document.getElementById('battery-gateway-distance').value = formData.batteryGatewayDistance;
+        if (formData.wifiSignal) document.getElementById('wifi-signal').value = formData.wifiSignal;
+        if (formData.renderCladding) document.getElementById('render-cladding').value = formData.renderCladding;
+        if (formData.surfaceType) document.getElementById('surface-type').value = formData.surfaceType;
+        if (formData.batteryWidth) document.getElementById('battery-width').value = formData.batteryWidth;
+        if (formData.batteryDepth) document.getElementById('battery-depth').value = formData.batteryDepth;
+        if (formData.batteryLength) document.getElementById('battery-length').value = formData.batteryLength;
+        if (formData.additionalNotesBattery) document.getElementById('additional-notes-battery').value = formData.additionalNotesBattery;
+        if (formData.batteryLocation) document.getElementById('battery-location').value = formData.batteryLocation;
+        
+        // External Measurements
+        if (formData.roofCovering) document.getElementById('roof-covering').value = formData.roofCovering;
+        if (formData.numberStories) document.getElementById('number-stories').value = formData.numberStories;
+        if (formData.roofAge) document.getElementById('roof-age').value = formData.roofAge;
+        if (formData.roofWorkAge) document.getElementById('roof-work-age').value = formData.roofWorkAge;
+        if (formData.soffitOverhang) document.getElementById('soffit-overhang').value = formData.soffitOverhang;
+        if (formData.roofObstructions) {
+            const radio = document.querySelector(`input[name="roof-obstructions"][value="${formData.roofObstructions}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.buildingWidth) document.getElementById('building-width').value = formData.buildingWidth;
+        if (formData.heightToRidge) document.getElementById('height-to-ridge').value = formData.heightToRidge;
+        if (formData.roofShading) {
+            const radio = document.querySelector(`input[name="roof-shading"][value="${formData.roofShading}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.nearestBuildingDistance) document.getElementById('nearest-building-distance').value = formData.nearestBuildingDistance;
+        if (formData.obstructionHeight) document.getElementById('obstruction-height').value = formData.obstructionHeight;
+        if (formData.buildingLength) document.getElementById('building-length').value = formData.buildingLength;
+        
+        // Main Roof
+        if (formData.roofType) document.getElementById('roof-type').value = formData.roofType;
+        if (formData.loftAccessible) {
+            const radio = document.querySelector(`input[name="loft-accessible"][value="${formData.loftAccessible}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.loftHatchWidth) document.getElementById('loft-hatch-width').value = formData.loftHatchWidth;
+        if (formData.loftHatchDepth) document.getElementById('loft-hatch-depth').value = formData.loftHatchDepth;
+        if (formData.loftLadder) {
+            const radio = document.querySelector(`input[name="loft-ladder"][value="${formData.loftLadder}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.loftBoarded) {
+            const radio = document.querySelector(`input[name="loft-boarded"][value="${formData.loftBoarded}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.loftHatchClearance) document.getElementById('loft-hatch-clearance').value = formData.loftHatchClearance;
+        if (formData.ridgeToEaves) document.getElementById('ridge-to-eaves').value = formData.ridgeToEaves;
+        if (formData.roofLengthBottom) document.getElementById('roof-length-bottom').value = formData.roofLengthBottom;
+        if (formData.roofPitch) document.getElementById('roof-pitch').value = formData.roofPitch;
+        if (formData.roofLengthTop) document.getElementById('roof-length-top').value = formData.roofLengthTop;
+        if (formData.rafterWidth) document.getElementById('rafter-width').value = formData.rafterWidth;
+        if (formData.rafterDepth) document.getElementById('rafter-depth').value = formData.rafterDepth;
+        if (formData.webWidth) document.getElementById('web-width').value = formData.webWidth;
+        if (formData.webDepth) document.getElementById('web-depth').value = formData.webDepth;
+        if (formData.webLength) document.getElementById('web-length').value = formData.webLength;
+        if (formData.trussSpacing) document.getElementById('truss-spacing').value = formData.trussSpacing;
+        
+        // Risk Assessment
+        if (formData.riskAssessment) {
+            const radio = document.querySelector(`input[name="risk-assessment"][value="${formData.riskAssessment}"]`);
+            if (radio) radio.checked = true;
+        }
+        
+        // Property
+        if (formData.propertyAge) document.getElementById('property-age').value = formData.propertyAge;
+        if (formData.additionalNotesProperty) document.getElementById('additional-notes-property').value = formData.additionalNotesProperty;
+        
+        // Roof Condition
+        if (formData.asbestos) {
+            const radio = document.querySelector(`input[name="asbestos"][value="${formData.asbestos}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.roofDeflection) {
+            const radio = document.querySelector(`input[name="roof-deflection"][value="${formData.roofDeflection}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.rotDamage) {
+            const radio = document.querySelector(`input[name="rot-damage"][value="${formData.rotDamage}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.roofConcern) {
+            const radio = document.querySelector(`input[name="roof-concern"][value="${formData.roofConcern}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.dwarfWalls) {
+            const radio = document.querySelector(`input[name="dwarf-walls"][value="${formData.dwarfWalls}"]`);
+            if (radio) radio.checked = true;
+        }
+        if (formData.structuralWork) {
+            const radio = document.querySelector(`input[name="structural-work"][value="${formData.structuralWork}"]`);
+            if (radio) radio.checked = true;
+        }
+        
+        // Trigger conditional fields
+        setupConditionalFields();
+        
+        showAlert('📥 Previous draft loaded! Continue where you left off.', 'success');
+        
+        console.log('✅ Form data restored from autosave');
+        return true;
+    } catch (error) {
+        console.error('❌ Error loading autosave:', error);
+        return false;
+    }
 }
 
 function clearAutosave(jobNumber) {
-    // ... all the clearAutosave code
+    try {
+        const autosaveKey = `survey_autosave_${jobNumber}`;
+        localStorage.removeItem(autosaveKey);
+        console.log('✅ Autosave cleared:', autosaveKey);
+    } catch (error) {
+        console.error('❌ Error clearing autosave:', error);
+    }
 }
 
 function updateAutosaveStatus(message) {
-    // ... all the updateAutosaveStatus code
+    let statusDiv = document.getElementById('autosave-status');
+    
+    if (!statusDiv) {
+        statusDiv = document.createElement('div');
+        statusDiv.id = 'autosave-status';
+        statusDiv.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(78, 204, 163, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        `;
+        document.body.appendChild(statusDiv);
+    }
+    
+    statusDiv.textContent = message;
+    statusDiv.style.opacity = '1';
+    
+    setTimeout(() => {
+        statusDiv.style.opacity = '0';
+    }, 2000);
 }
 
 function startAutosave() {
-    // ... all the startAutosave code
+    // Save every 10 seconds
+    autosaveInterval = setInterval(() => {
+        const form = document.getElementById('survey-form');
+        if (form && form.style.display !== 'none') {
+            saveFormData();
+        }
+    }, 10000);
+    
+    console.log('✅ Autosave started (every 10 seconds)');
 }
 
 function stopAutosave() {
-    // ... all the stopAutosave code
+    if (autosaveInterval) {
+        clearInterval(autosaveInterval);
+        console.log('✅ Autosave stopped');
+    }
 }
+
+// Save on page close
+window.addEventListener('beforeunload', () => {
+    const form = document.getElementById('survey-form');
+    if (form && form.style.display !== 'none') {
+        saveFormData();
+    }
+});
+
+// ===== END AUTOSAVE CODE =====
 
 window.addEventListener('beforeunload', () => {
     const form = document.getElementById('survey-form');
