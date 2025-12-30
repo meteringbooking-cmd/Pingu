@@ -1054,10 +1054,9 @@
     <!-- Status Message -->
     <div class="status-message" id="status-message"></div>
 
-    <!-- Hidden containers for PDF generation -->
+    <!-- Hidden container for PDF rendering -->
     <div id="survey-pdf-content" style="position:absolute; left:-9999px; top:-9999px; width:210mm; background:white; padding:20mm; font-family:Arial, sans-serif; line-height:1.5; color:#000;">
     </div>
-    <div id="image-preloader" style="position:absolute; left:-9999px; top:-9999px;"></div>
 
     <!-- jsPDF and html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -1112,21 +1111,16 @@
         async function loadAllJobs() {
             try {
                 const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
-             
                 const jobsQuery = query(collection(window.db, 'jobs'), orderByFn('uploadDate', 'desc'));
                 const querySnapshot = await getDocs(jobsQuery);
-             
                 allJobs = [];
-                querySnapshot.forEach((doc) => allJobs.push({ id: doc.id, ...doc.data() }));
-             
+                querySnapshot.forEach(doc => allJobs.push({ id: doc.id, ...doc.data() }));
                 const engineersQuery = query(collection(window.db, 'team-members'), where('isLeadEngineer', '==', true));
                 const engineersSnapshot = await getDocs(engineersQuery);
                 leadEngineers = [];
-                engineersSnapshot.forEach((doc) => leadEngineers.push({ id: doc.id, ...doc.data() }));
-             
+                engineersSnapshot.forEach(doc => leadEngineers.push({ id: doc.id, ...doc.data() }));
                 filteredJobs = [...allJobs];
                 displayResults();
-             
             } catch (error) {
                 console.error('Error loading jobs:', error);
                 showStatus('Error loading jobs: ' + error.message, 'error');
@@ -1347,7 +1341,7 @@
             }
         }
 
-        // === FINAL WORKING PDF GENERATION WITH IMAGES ===
+        // === FINAL WORKING PDF - IMAGES EMBEDDED AS BASE64 ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1362,8 +1356,24 @@
 
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
-                const preloader = document.getElementById('image-preloader');
-                preloader.innerHTML = '';
+
+                // Helper to convert image URL to base64
+                async function urlToBase64(url) {
+                    try {
+                        const response = await fetch(url, { mode: 'cors' });
+                        if (!response.ok) throw new Error('Fetch failed');
+                        const blob = await response.blob();
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (e) {
+                        console.warn('Failed to load image as base64:', url, e);
+                        return null;
+                    }
+                }
 
                 let html = `
                     <h1 style="text-align:center; font-size:24px; margin-bottom:10px;">Site Survey Report</h1>
@@ -1375,50 +1385,35 @@
                     <hr style="margin:30px 0; border-top:1px solid #ccc;">
                 `;
 
-                currentSurveyData.sections.forEach(section => {
+                for (const section of currentSurveyData.sections) {
                     html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
                         ${escapeHtml(section.title)}
                     </h3>`;
 
-                    section.fields.forEach(field => {
+                    for (const field of section.fields) {
                         if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
                             html += `<p style="margin:8px 0;"><strong>${escapeHtml(field.question)}:</strong> ${escapeHtml(field.answer.toString())}</p>`;
                         }
 
                         if (field.photos && field.photos.length > 0) {
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
-                            field.photos.forEach(url => {
-                                html += `<img crossorigin="anonymous" src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
-
-                                // Preload with crossorigin
-                                const img = document.createElement('img');
-                                img.crossOrigin = 'anonymous';
-                                img.src = url;
-                                preloader.appendChild(img);
-                            });
+                            for (const url of field.photos) {
+                                const base64 = await urlToBase64(url);
+                                if (base64) {
+                                    html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
+                                } else {
+                                    html += `<p style="color:red; font-style:italic;">[Image could not be loaded]</p>`;
+                                }
+                            }
                             html += `</div>`;
                         }
-                    });
-                });
+                    }
+                }
 
                 pdfContent.innerHTML = html;
 
-                // Wait for all preloaded images
-                const images = preloader.querySelectorAll('img');
-                await Promise.all(Array.from(images).map(img => {
-                    if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
-                    return new Promise(resolve => {
-                        img.onload = resolve;
-                        img.onerror = () => { console.warn('Image load failed:', img.src); resolve(); };
-                    });
-                }));
-
-                const canvas = await html2canvas(pdfContent, {
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    logging: false
-                });
+                // No need to wait for external loads — all images are base64 embedded
+                const canvas = await html2canvas(pdfContent, { scale: 2 });
 
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
@@ -1445,8 +1440,8 @@
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
 
             } catch (error) {
-                console.error('PDF error:', error);
-                alert('Failed to generate PDF. Check console.');
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Check console for details.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
@@ -1454,7 +1449,6 @@
         }
         window.generateAndDownloadSurveyPDF = generateAndDownloadSurveyPDF;
 
-        // === ALL OTHER FUNCTIONS (unchanged from your original code) ===
         async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
             try {
