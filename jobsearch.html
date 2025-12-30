@@ -1066,7 +1066,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-        import { getStorage, ref, getDownloadURL, getBytes } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+        import { getStorage, ref, getDownloadURL, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
      
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -1085,7 +1085,7 @@
          
             window.db = db;
             window.storage = storage;
-            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, getDownloadURL, getBytes };
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, getDownloadURL, getBlob };
          
             window.addEventListener('DOMContentLoaded', () => {
                 loadAllJobs();
@@ -1108,9 +1108,6 @@
         let isEditingEngineer = false;
         let currentSurveyData = null;
 
-        // Your original functions (loadAllJobs, performSearch, etc.) go here unchanged
-        // ... (keep all of them exactly as they were in your working version)
-
         async function loadAllJobs() {
             try {
                 const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
@@ -1131,9 +1128,219 @@
             }
         }
 
-        // ... (keep performSearch, setFilter, applyFilter, setView, displayResults, displayGridView, displayTableView, showJobDetails, loadJobFiles, updateJobStatus, editLeadEngineer, cancelEditEngineer, saveLeadEngineer, handleFileUpload, formatFileSize, closeJobModal, escapeHtml, formatDate, showStatus exactly as before)
+        async function performSearch() {
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            if (!searchTerm) { applyFilter(); return; }
+            filteredJobs = allJobs.filter(job => {
+                return (job['Job Number'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Postcode'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Name'] || '').toLowerCase().includes(searchTerm);
+            });
+            displayResults();
+        }
 
-        // === FINAL PDF GENERATION - IMAGES LOADED VIA FIREBASE SDK getBytes ===
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tag').forEach(tag => tag.classList.remove('active'));
+            event.target.classList.add('active');
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const now = new Date();
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            let jobs = searchTerm ? allJobs.filter(job => {
+                return (job['Job Number'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Postcode'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Name'] || '').toLowerCase().includes(searchTerm);
+            }) : [...allJobs];
+
+            if (currentFilter !== 'all') {
+                jobs = jobs.filter(job => {
+                    const uploadDate = new Date(job.uploadDate);
+                    const daysDiff = Math.floor((now - uploadDate) / (1000 * 60 * 60 * 24));
+                    switch(currentFilter) {
+                        case 'this-week': return daysDiff <= 7;
+                        case 'this-month': return daysDiff <= 30;
+                        case 'recent': return daysDiff <= 3;
+                        default: return true;
+                    }
+                });
+            }
+            filteredJobs = jobs;
+            displayResults();
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('results-container');
+            const countEl = document.getElementById('results-count');
+            countEl.textContent = `${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''} found`;
+
+            if (filteredJobs.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><h3>No Jobs Found</h3><p>Try adjusting your search or filters</p></div>`;
+                return;
+            }
+
+            currentView === 'grid' ? displayGridView(container) : displayTableView(container);
+        }
+
+        function displayGridView(container) {
+            container.innerHTML = `<div class="results-grid">${filteredJobs.map(job => {
+                const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                const isPast = installDate && installDate <= new Date();
+                const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
+                let statusText = 'Upcoming', statusClass = 'upcoming';
+                if (jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
+                else if (jobStatus === 'install-started') { statusText = 'Install Started'; statusClass = 'install-started'; }
+                else if (jobStatus === 'install-complete') { statusText = 'Install Complete'; statusClass = 'install-complete'; }
+                else if (isPast || jobStatus === 'completed') { statusText = 'Completed'; statusClass = 'completed'; }
+                return `<div class="job-card" onclick="showJobDetails('${job.id}')">
+                    <div class="job-header"><div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div><div class="job-status ${statusClass}">${statusText}</div></div>
+                    <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown Customer')}</div>
+                    <div class="job-details">
+                        <div class="job-detail"><span class="job-detail-icon">📍</span><span class="job-detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</span></div>
+                        <div class="job-detail"><span class="job-detail-icon">📅</span><span class="job-detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</span></div>
+                        <div class="job-detail"><span class="job-detail-icon">👷</span><span class="job-detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span></div>
+                    </div>
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function displayTableView(container) {
+            container.innerHTML = `<div class="results-table"><table><thead><tr><th>Job Number</th><th>Customer Name</th><th>Postcode</th><th>Install Date</th><th>Lead Engineer</th><th>Status</th></tr></thead><tbody>${filteredJobs.map(job => {
+                const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                const isPast = installDate && installDate <= new Date();
+                const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
+                let statusText = 'Upcoming';
+                if (jobStatus === 'survey-complete') statusText = 'Survey Complete';
+                else if (jobStatus === 'install-started') statusText = 'Install Started';
+                else if (jobStatus === 'install-complete') statusText = 'Install Complete';
+                else if (isPast || jobStatus === 'completed') statusText = 'Completed';
+                return `<tr onclick="showJobDetails('${job.id}')">
+                    <td>#${escapeHtml(job['Job Number'] || 'N/A')}</td>
+                    <td>${escapeHtml(job['Name'] || 'Unknown')}</td>
+                    <td>${escapeHtml(job['Postcode'] || 'N/A')}</td>
+                    <td>${escapeHtml(job['Install Date'] || 'Not scheduled')}</td>
+                    <td>${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</td>
+                    <td>${statusText}</td>
+                </tr>`;
+            }).join('')}</tbody></table></div>`;
+        }
+
+        async function showJobDetails(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (!job) return;
+            currentJobId = jobId;
+            currentJobNumber = job['Job Number'];
+            isEditingEngineer = false;
+
+            document.getElementById('modal-job-number').textContent = `Job #${job['Job Number'] || 'N/A'}`;
+            const jobStatus = job.status || 'upcoming';
+
+            document.getElementById('modal-body').innerHTML = `
+                <div class="detail-group"><div class="detail-label">Customer Name</div><div class="detail-value">${escapeHtml(job['Name'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Phone Number</div><div class="detail-value">${escapeHtml(job['Phone Number'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Email Address</div><div class="detail-value">${escapeHtml(job['Email Address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Address</div><div class="detail-value">${escapeHtml(job['1st line of address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Postcode</div><div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Install Date</div><div class="detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</div></div>
+                <div class="detail-group"><div class="detail-label">Lead Engineer</div><div class="detail-value editable" id="lead-engineer-container"><span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span><button class="edit-btn" onclick="editLeadEngineer()">Change</button></div></div>
+                <div class="detail-group"><div class="detail-label">Uploaded</div><div class="detail-value">${formatDate(job.uploadDate)}</div></div>
+                <div class="status-update-section">
+                    <div class="status-update-header">🔄 Update Job Status</div>
+                    <div class="status-buttons">
+                        <button class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'upcoming', this)">Upcoming</button>
+                        <button class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'survey-complete', this)">Survey Complete</button>
+                        <button class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-started', this)">Install Started</button>
+                        <button class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-complete', this)">Install Complete</button>
+                    </div>
+                    <div id="status-update-message"></div>
+                </div>
+                <div class="attachments-section">
+                    <div class="attachments-header">📎 Associated Files</div>
+                    <div class="attachments-grid" id="attachments-list"><div class="loading-attachments">Loading files...</div></div>
+                </div>
+            `;
+
+            document.getElementById('job-modal').classList.add('show');
+            await loadJobFiles(job['Job Number']);
+        }
+
+        async function loadJobFiles(jobNumber) {
+            const attachmentsList = document.getElementById('attachments-list');
+            try {
+                const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
+                const fileCollections = [
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' }
+                ];
+
+                let allFiles = [];
+                let missingFiles = [];
+
+                const surveyQuery = query(collection(window.db, 'site-surveys'), where('jobNumber', '==', jobNumber), orderBy('submittedAt', 'desc'), limit(1));
+                const surveySnapshot = await getDocs(surveyQuery);
+                if (!surveySnapshot.empty) {
+                    const surveyDoc = surveySnapshot.docs[0];
+                    currentSurveyData = { id: surveyDoc.id, ...surveyDoc.data() };
+                    allFiles.push({ id: surveyDoc.id, fileName: 'Site Survey Report', collectionType: 'Site Survey', icon: '📋', isSurvey: true });
+                } else {
+                    missingFiles.push({ name: 'site-survey', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true });
+                }
+
+                for (const fc of fileCollections) {
+                    const q = query(collection(window.db, fc.name), where('jobNumber', '==', jobNumber));
+                    const snap = await getDocs(q);
+                    if (snap.empty) missingFiles.push(fc);
+                    else snap.forEach(d => allFiles.push({ id: d.id, ...d.data(), collectionType: fc.type, icon: fc.icon }));
+                }
+
+                let html = '';
+                html += allFiles.map(file => file.isSurvey ? `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType}</div>
+                        </div>
+                        <button class="attachment-download" onclick="generateAndDownloadSurveyPDF(event)">Download PDF</button>
+                    </div>` : `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                        </div>
+                        <a href="${file.downloadURL}" target="_blank" class="attachment-download">Download</a>
+                    </div>`).join('');
+
+                html += missingFiles.map((fc, i) => `
+                    <div class="missing-file-item">
+                        <div class="attachment-icon">${fc.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${fc.type}</div>
+                            <div class="attachment-type">Not uploaded yet</div>
+                        </div>
+                        <input type="file" id="file-input-${i}" class="upload-file-input" accept="${fc.accept}" onchange="handleFileUpload(event, '${fc.name}', '${jobNumber}')"/>
+                        <button class="upload-file-btn" onclick="document.getElementById('file-input-${i}').click()">Upload</button>
+                    </div>`).join('');
+
+                attachmentsList.innerHTML = html || '<div class="no-attachments">No files attached to this job</div>';
+            } catch (error) {
+                console.error('Error loading files:', error);
+                attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
+            }
+        }
+
+        // === FINAL WORKING VERSION USING FIREBASE STORAGE SDK TO GET BLOB AND BASE64 ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1149,35 +1356,24 @@
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
 
-                // Helper to convert Firebase Storage path to base64 using getBytes
-                async function firebasePathToBase64(path) {
+                // Helper to convert Firebase Storage URL to base64 using SDK (bypasses CORS completely)
+                async function firebaseUrlToBase64(url) {
                     try {
+                        // Extract path from signed URL
+                        const urlObj = new URL(url);
+                        const path = decodeURIComponent(urlObj.pathname.match(/\/o\/(.+?)(\?|$)/)[1]);
                         const storageRef = ref(window.storage, path);
-                        const bytes = await getBytes(storageRef);
-                        const blob = new Blob([bytes], { type: 'image/jpeg' }); // assume jpeg, works for png too
-                        return new Promise((resolve) => {
+                        const blob = await getBlob(storageRef);
+                        return new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onload = () => resolve(reader.result);
+                            reader.onerror = reject;
                             reader.readAsDataURL(blob);
                         });
                     } catch (e) {
-                        console.warn('Failed to load image from path:', path, e);
+                        console.warn('Failed to load image via Firebase SDK:', url, e);
                         return null;
                     }
-                }
-
-                // Extract path from signed URL
-                function extractPathFromUrl(url) {
-                    try {
-                        const urlObj = new URL(url);
-                        const pathMatch = urlObj.pathname.match(/\/o\/(.+)/);
-                        if (pathMatch) {
-                            return decodeURIComponent(pathMatch[1].split('?')[0]);
-                        }
-                    } catch (e) {
-                        console.warn('Invalid URL:', url);
-                    }
-                    return null;
                 }
 
                 let html = `
@@ -1203,15 +1399,11 @@
                         if (field.photos && field.photos.length > 0) {
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
                             for (const url of field.photos) {
-                                const path = extractPathFromUrl(url);
-                                let base64 = null;
-                                if (path) {
-                                    base64 = await firebasePathToBase64(path);
-                                }
+                                const base64 = await firebaseUrlToBase64(url);
                                 if (base64) {
                                     html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
                                 } else {
-                                    html += `<p style="color:red; font-style:italic;">[Image could not be loaded]</p>`;
+                                    html += `<p style="color:red; font-style:italic;">[Image unavailable]</p>`;
                                 }
                             }
                             html += `</div>`;
@@ -1249,7 +1441,7 @@
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Check console for details.');
+                alert('Failed to generate PDF. Check console.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
