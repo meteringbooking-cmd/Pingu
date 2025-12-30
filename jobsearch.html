@@ -1340,7 +1340,7 @@
             }
         }
 
-        // === FINAL WORKING VERSION USING FIREBASE STORAGE SDK TO GET BLOB AND BASE64 ===
+        // === FIXED VERSION WITH PROPER FIREBASE SDK METHOD DESTRUCTURING ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1359,11 +1359,22 @@
                 // Helper to convert Firebase Storage URL to base64 using SDK (bypasses CORS completely)
                 async function firebaseUrlToBase64(url) {
                     try {
+                        // Get Firebase Storage methods from the global modules
+                        const { ref, getBlob } = window.firebaseModules;
+                        
                         // Extract path from signed URL
                         const urlObj = new URL(url);
-                        const path = decodeURIComponent(urlObj.pathname.match(/\/o\/(.+?)(\?|$)/)[1]);
+                        const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
+                        if (!pathMatch) {
+                            console.warn('Could not extract path from URL:', url);
+                            return null;
+                        }
+                        const path = decodeURIComponent(pathMatch[1]);
+                        console.log('Attempting to load image from path:', path);
+                        
                         const storageRef = ref(window.storage, path);
                         const blob = await getBlob(storageRef);
+                        
                         return new Promise((resolve, reject) => {
                             const reader = new FileReader();
                             reader.onload = () => resolve(reader.result);
@@ -1371,7 +1382,7 @@
                             reader.readAsDataURL(blob);
                         });
                     } catch (e) {
-                        console.warn('Failed to load image via Firebase SDK:', url, e);
+                        console.error('Failed to load image via Firebase SDK:', url, e);
                         return null;
                     }
                 }
@@ -1399,6 +1410,7 @@
                         if (field.photos && field.photos.length > 0) {
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
                             for (const url of field.photos) {
+                                console.log('Processing image URL:', url);
                                 const base64 = await firebaseUrlToBase64(url);
                                 if (base64) {
                                     html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
@@ -1441,7 +1453,7 @@
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Check console.');
+                alert('Failed to generate PDF. Check console for details.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
@@ -1562,7 +1574,7 @@
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-minute' });
         }
 
         function showStatus(message, type) {
