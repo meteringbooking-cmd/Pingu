@@ -993,14 +993,14 @@
             <h1>Job Search</h1>
             <p class="subtitle">Search and filter through all project jobs</p>
         </header>
-      
+     
         <main>
             <section class="search-section">
                 <div class="search-header">
                     <span class="search-icon">🔍</span>
                     <h2>Find Jobs</h2>
                 </div>
-              
+             
                 <div class="search-controls">
                     <div class="search-input-group">
                         <label for="search-input">Search by Job Number, Postcode, or Customer Name</label>
@@ -1014,7 +1014,7 @@
                     </div>
                     <button class="search-btn" onclick="performSearch()">Search</button>
                 </div>
-              
+             
                 <div class="filter-tags">
                     <div class="filter-tag active" data-filter="all" onclick="setFilter('all')">All Jobs</div>
                     <div class="filter-tag" data-filter="this-week" onclick="setFilter('this-week')">This Week</div>
@@ -1022,7 +1022,7 @@
                     <div class="filter-tag" data-filter="recent" onclick="setFilter('recent')">Recently Added</div>
                 </div>
             </section>
-          
+         
             <section class="results-section">
                 <div class="results-header">
                     <div class="results-count" id="results-count">Loading jobs...</div>
@@ -1031,14 +1031,14 @@
                         <button class="view-btn" onclick="setView('table')">Table</button>
                     </div>
                 </div>
-              
+             
                 <div id="results-container">
                     <div class="loading">Searching for jobs</div>
                 </div>
             </section>
         </main>
     </div>
-  
+ 
     <div class="modal" id="job-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1050,20 +1050,25 @@
             </div>
         </div>
     </div>
-  
+ 
     <!-- Status Message -->
     <div class="status-message" id="status-message"></div>
-    <!-- jsPDF and html2canvas for PDF generation -->
+
+    <!-- Hidden div for reliable PDF rendering using html2canvas -->
+    <div id="survey-pdf-content" style="position:absolute; left:-9999px; top:-9999px; width:210mm; background:white; padding:20mm; font-family:Arial, sans-serif; line-height:1.5; color:#000;">
+        <!-- Survey HTML will be injected here temporarily -->
+    </div>
+
+    <!-- jsPDF and html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  
+ 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-      
-        // Firebase configuration
+     
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
             authDomain: "pingu-solar.firebaseapp.com",
@@ -1073,33 +1078,30 @@
             appId: "1:232764952866:web:5923b7f419de6355d6157b",
             measurementId: "G-PFH059DZ64"
         };
-      
-        // Initialize Firebase
+     
         console.log('Initializing Firebase...');
-      
+     
         try {
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
             const storage = getStorage(app);
-          
-            // FIXED: Added 'limit' here
+         
             window.db = db;
             window.storage = storage;
             window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, uploadBytes, getDownloadURL };
-          
+         
             console.log('✅ Firebase initialized successfully');
-          
-            // Load all jobs on page load
+         
             window.addEventListener('DOMContentLoaded', () => {
                 loadAllJobs();
             });
-          
+         
         } catch (error) {
             console.error('❌ Firebase initialization error:', error);
             showStatus('Firebase initialization failed: ' + error.message, 'error');
         }
     </script>
-  
+ 
     <script>
         // Global state
         let allJobs = [];
@@ -1110,22 +1112,20 @@
         let currentJobNumber = null;
         let leadEngineers = [];
         let isEditingEngineer = false;
-        let currentSurveyData = null; // For PDF generation
-      
-        // Load all jobs from Firebase
+        let currentSurveyData = null;
+
         async function loadAllJobs() {
             try {
                 console.log('Loading all jobs...');
                 const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
-              
-                // Query all jobs, ordered by upload date
+             
                 const jobsQuery = query(
                     collection(window.db, 'jobs'),
                     orderByFn('uploadDate', 'desc')
                 );
-              
+             
                 const querySnapshot = await getDocs(jobsQuery);
-              
+             
                 allJobs = [];
                 querySnapshot.forEach((doc) => {
                     allJobs.push({
@@ -1133,15 +1133,12 @@
                         ...doc.data()
                     });
                 });
-              
-                console.log(`Loaded ${allJobs.length} jobs`);
-              
-                // Load lead engineers
+             
                 const engineersQuery = query(
                     collection(window.db, 'team-members'),
                     where('isLeadEngineer', '==', true)
                 );
-              
+             
                 const engineersSnapshot = await getDocs(engineersQuery);
                 leadEngineers = [];
                 engineersSnapshot.forEach((doc) => {
@@ -1150,16 +1147,13 @@
                         ...doc.data()
                     });
                 });
-              
-                console.log(`Loaded ${leadEngineers.length} lead engineers`);
-              
+             
                 filteredJobs = [...allJobs];
                 displayResults();
-              
+             
             } catch (error) {
                 console.error('Error loading jobs:', error);
                 showStatus('Error loading jobs: ' + error.message, 'error');
-              
                 document.getElementById('results-container').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">❌</div>
@@ -1169,102 +1163,67 @@
                 `;
             }
         }
-      
-        // Perform search
+
         async function performSearch() {
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
-          
             if (!searchTerm) {
                 applyFilter();
                 return;
             }
-          
-            console.log('Searching for:', searchTerm);
-          
             filteredJobs = allJobs.filter(job => {
                 const jobNumber = (job['Job Number'] || '').toLowerCase();
                 const postcode = (job['Postcode'] || '').toLowerCase();
                 const customerName = (job['Name'] || '').toLowerCase();
-              
-                return jobNumber.includes(searchTerm) ||
-                       postcode.includes(searchTerm) ||
-                       customerName.includes(searchTerm);
+                return jobNumber.includes(searchTerm) || postcode.includes(searchTerm) || customerName.includes(searchTerm);
             });
-          
-            console.log(`Found ${filteredJobs.length} matching jobs`);
             displayResults();
         }
-      
-        // Set filter
+
         function setFilter(filter) {
             currentFilter = filter;
-          
-            document.querySelectorAll('.filter-tag').forEach(tag => {
-                tag.classList.remove('active');
-            });
+            document.querySelectorAll('.filter-tag').forEach(tag => tag.classList.remove('active'));
             event.target.classList.add('active');
-          
             applyFilter();
         }
-      
-        // Apply filter
+
         function applyFilter() {
             const now = new Date();
             const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
-          
-            let jobs = searchTerm ?
-                allJobs.filter(job => {
-                    const jobNumber = (job['Job Number'] || '').toLowerCase();
-                    const postcode = (job['Postcode'] || '').toLowerCase();
-                    const customerName = (job['Name'] || '').toLowerCase();
-                  
-                    return jobNumber.includes(searchTerm) ||
-                           postcode.includes(searchTerm) ||
-                           customerName.includes(searchTerm);
-                }) :
-                [...allJobs];
-          
+            let jobs = searchTerm ? allJobs.filter(job => {
+                const jobNumber = (job['Job Number'] || '').toLowerCase();
+                const postcode = (job['Postcode'] || '').toLowerCase();
+                const customerName = (job['Name'] || '').toLowerCase();
+                return jobNumber.includes(searchTerm) || postcode.includes(searchTerm) || customerName.includes(searchTerm);
+            }) : [...allJobs];
+
             if (currentFilter !== 'all') {
                 jobs = jobs.filter(job => {
                     const uploadDate = new Date(job.uploadDate);
                     const daysDiff = Math.floor((now - uploadDate) / (1000 * 60 * 60 * 24));
-                  
                     switch(currentFilter) {
-                        case 'this-week':
-                            return daysDiff <= 7;
-                        case 'this-month':
-                            return daysDiff <= 30;
-                        case 'recent':
-                            return daysDiff <= 3;
-                        default:
-                            return true;
+                        case 'this-week': return daysDiff <= 7;
+                        case 'this-month': return daysDiff <= 30;
+                        case 'recent': return daysDiff <= 3;
+                        default: return true;
                     }
                 });
             }
-          
             filteredJobs = jobs;
             displayResults();
         }
-      
-        // Set view
+
         function setView(view) {
             currentView = view;
-          
-            document.querySelectorAll('.view-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-          
             displayResults();
         }
-      
-        // Display results
+
         function displayResults() {
             const container = document.getElementById('results-container');
             const countEl = document.getElementById('results-count');
-          
             countEl.textContent = `${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''} found`;
-          
+
             if (filteredJobs.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
@@ -1275,42 +1234,23 @@
                 `;
                 return;
             }
-          
-            if (currentView === 'grid') {
-                displayGridView(container);
-            } else {
-                displayTableView(container);
-            }
+
+            currentView === 'grid' ? displayGridView(container) : displayTableView(container);
         }
-      
-        // Display grid view
+
         function displayGridView(container) {
             const now = new Date();
-          
             const html = `
                 <div class="results-grid">
                     ${filteredJobs.map(job => {
                         const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
                         const isPast = installDate && installDate <= now;
                         const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
-                      
-                        let statusText = 'Upcoming';
-                        let statusClass = 'upcoming';
-                      
-                        if (jobStatus === 'survey-complete') {
-                            statusText = 'Survey Complete';
-                            statusClass = 'survey-complete';
-                        } else if (jobStatus === 'install-started') {
-                            statusText = 'Install Started';
-                            statusClass = 'install-started';
-                        } else if (jobStatus === 'install-complete') {
-                            statusText = 'Install Complete';
-                            statusClass = 'install-complete';
-                        } else if (isPast || jobStatus === 'completed') {
-                            statusText = 'Completed';
-                            statusClass = 'completed';
-                        }
-                      
+                        let statusText = 'Upcoming', statusClass = 'upcoming';
+                        if (jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
+                        else if (jobStatus === 'install-started') { statusText = 'Install Started'; statusClass = 'install-started'; }
+                        else if (jobStatus === 'install-complete') { statusText = 'Install Complete'; statusClass = 'install-complete'; }
+                        else if (isPast || jobStatus === 'completed') { statusText = 'Completed'; statusClass = 'completed'; }
                         return `
                             <div class="job-card" onclick="showJobDetails('${job.id}')">
                                 <div class="job-header">
@@ -1318,57 +1258,34 @@
                                     <div class="job-status ${statusClass}">${statusText}</div>
                                 </div>
                                 <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown Customer')}</div>
-                              
                                 <div class="job-details">
-                                    <div class="job-detail">
-                                        <span class="job-detail-icon">📍</span>
-                                        <span class="job-detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</span>
-                                    </div>
-                                    <div class="job-detail">
-                                        <span class="job-detail-icon">📅</span>
-                                        <span class="job-detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</span>
-                                    </div>
-                                    <div class="job-detail">
-                                        <span class="job-detail-icon">👷</span>
-                                        <span class="job-detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
-                                    </div>
+                                    <div class="job-detail"><span class="job-detail-icon">📍</span><span class="job-detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</span></div>
+                                    <div class="job-detail"><span class="job-detail-icon">📅</span><span class="job-detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</span></div>
+                                    <div class="job-detail"><span class="job-detail-icon">👷</span><span class="job-detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span></div>
                                 </div>
                             </div>
                         `;
                     }).join('')}
                 </div>
             `;
-          
             container.innerHTML = html;
         }
-      
-        // Display table view
+
         function displayTableView(container) {
             const html = `
                 <div class="results-table">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Job Number</th>
-                                <th>Customer Name</th>
-                                <th>Postcode</th>
-                                <th>Install Date</th>
-                                <th>Lead Engineer</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>Job Number</th><th>Customer Name</th><th>Postcode</th><th>Install Date</th><th>Lead Engineer</th><th>Status</th></tr></thead>
                         <tbody>
                             ${filteredJobs.map(job => {
                                 const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
                                 const isPast = installDate && installDate <= new Date();
                                 const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
-                              
                                 let statusText = 'Upcoming';
                                 if (jobStatus === 'survey-complete') statusText = 'Survey Complete';
                                 else if (jobStatus === 'install-started') statusText = 'Install Started';
                                 else if (jobStatus === 'install-complete') statusText = 'Install Complete';
                                 else if (isPast || jobStatus === 'completed') statusText = 'Completed';
-                              
                                 return `
                                     <tr onclick="showJobDetails('${job.id}')">
                                         <td>#${escapeHtml(job['Job Number'] || 'N/A')}</td>
@@ -1384,680 +1301,393 @@
                     </table>
                 </div>
             `;
-          
             container.innerHTML = html;
         }
-      
-        // Show job details modal
+
         async function showJobDetails(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
-          
             currentJobId = jobId;
             currentJobNumber = job['Job Number'];
             isEditingEngineer = false;
-          
-            const modal = document.getElementById('job-modal');
-            const modalBody = document.getElementById('modal-body');
+
             const modalTitle = document.getElementById('modal-job-number');
-          
+            const modalBody = document.getElementById('modal-body');
             modalTitle.textContent = `Job #${job['Job Number'] || 'N/A'}`;
-          
+
             const jobStatus = job.status || 'upcoming';
-          
+
             modalBody.innerHTML = `
-                <div class="detail-group">
-                    <div class="detail-label">Customer Name</div>
-                    <div class="detail-value">${escapeHtml(job['Name'] || 'N/A')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Phone Number</div>
-                    <div class="detail-value">${escapeHtml(job['Phone Number'] || 'N/A')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Email Address</div>
-                    <div class="detail-value">${escapeHtml(job['Email Address'] || 'N/A')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Address</div>
-                    <div class="detail-value">${escapeHtml(job['1st line of address'] || 'N/A')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Postcode</div>
-                    <div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Install Date</div>
-                    <div class="detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Lead Engineer</div>
-                    <div class="detail-value editable" id="lead-engineer-container">
-                        <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
-                        <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
-                    </div>
-                </div>
-              
-                <div class="detail-group">
-                    <div class="detail-label">Uploaded</div>
-                    <div class="detail-value">${formatDate(job.uploadDate)}</div>
-                </div>
-              
+                <div class="detail-group"><div class="detail-label">Customer Name</div><div class="detail-value">${escapeHtml(job['Name'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Phone Number</div><div class="detail-value">${escapeHtml(job['Phone Number'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Email Address</div><div class="detail-value">${escapeHtml(job['Email Address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Address</div><div class="detail-value">${escapeHtml(job['1st line of address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Postcode</div><div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Install Date</div><div class="detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</div></div>
+                <div class="detail-group"><div class="detail-label">Lead Engineer</div><div class="detail-value editable" id="lead-engineer-container"><span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span><button class="edit-btn" onclick="editLeadEngineer()">Change</button></div></div>
+                <div class="detail-group"><div class="detail-label">Uploaded</div><div class="detail-value">${formatDate(job.uploadDate)}</div></div>
                 <div class="status-update-section">
-                    <div class="status-update-header">
-                        🔄 Update Job Status
-                    </div>
+                    <div class="status-update-header">🔄 Update Job Status</div>
                     <div class="status-buttons">
-                        <button
-                            class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}"
-                            onclick="updateJobStatus('${jobId}', 'upcoming', this)"
-                        >
-                            Upcoming
-                        </button>
-                        <button
-                            class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}"
-                            onclick="updateJobStatus('${jobId}', 'survey-complete', this)"
-                        >
-                            Survey Complete
-                        </button>
-                        <button
-                            class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}"
-                            onclick="updateJobStatus('${jobId}', 'install-started', this)"
-                        >
-                            Install Started
-                        </button>
-                        <button
-                            class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}"
-                            onclick="updateJobStatus('${jobId}', 'install-complete', this)"
-                        >
-                            Install Complete
-                        </button>
+                        <button class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'upcoming', this)">Upcoming</button>
+                        <button class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'survey-complete', this)">Survey Complete</button>
+                        <button class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-started', this)">Install Started</button>
+                        <button class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-complete', this)">Install Complete</button>
                     </div>
                     <div id="status-update-message"></div>
                 </div>
-              
                 <div class="attachments-section">
                     <div class="attachments-header">📎 Associated Files</div>
-                    <div class="attachments-grid" id="attachments-list">
-                        <div class="loading-attachments">Loading files...</div>
-                    </div>
+                    <div class="attachments-grid" id="attachments-list"><div class="loading-attachments">Loading files...</div></div>
                 </div>
             `;
-          
-            modal.classList.add('show');
-          
-            // Load associated files including site survey
+
+            document.getElementById('job-modal').classList.add('show');
             await loadJobFiles(job['Job Number']);
         }
-      
-        // Load files associated with a job number
+
         async function loadJobFiles(jobNumber) {
             const attachmentsList = document.getElementById('attachments-list');
-          
             try {
                 const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
-              
                 const fileCollections = [
                     { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
                     { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
                     { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' }
                 ];
-              
+
                 let allFiles = [];
                 let missingFiles = [];
-                let surveyExists = false;
                 let surveyData = null;
-              
-                // Check for site survey first (special case)
-                const surveyQuery = query(
-                    collection(window.db, 'site-surveys'),
-                    where('jobNumber', '==', jobNumber),
-                    orderBy('submittedAt', 'desc'),
-                    limit(1)
-                );
-              
+
+                const surveyQuery = query(collection(window.db, 'site-surveys'), where('jobNumber', '==', jobNumber), orderBy('submittedAt', 'desc'), limit(1));
                 const surveySnapshot = await getDocs(surveyQuery);
                 if (!surveySnapshot.empty) {
-                    const doc = surveySnapshot.docs[0];
-                    surveyData = { id: doc.id, ...doc.data() };
-                    currentSurveyData = surveyData; // Store for PDF generation
-                    surveyExists = true;
-                  
-                    allFiles.push({
-                        id: doc.id,
-                        fileName: 'Site Survey Report',
-                        fileSize: 0,
-                        downloadURL: '#',
-                        collectionType: 'Site Survey',
-                        icon: '📋',
-                        isSurvey: true
-                    });
+                    surveyData = { id: surveySnapshot.docs[0].id, ...surveySnapshot.docs[0].data() };
+                    currentSurveyData = surveyData;
+                    allFiles.push({ id: surveyData.id, fileName: 'Site Survey Report', collectionType: 'Site Survey', icon: '📋', isSurvey: true });
                 } else {
                     missingFiles.push({ name: 'site-survey', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true });
                 }
-              
-                // Load other files
-                for (const fileCollection of fileCollections) {
-                    const filesQuery = query(
-                        collection(window.db, fileCollection.name),
-                        where('jobNumber', '==', jobNumber)
-                    );
-                  
-                    const querySnapshot = await getDocs(filesQuery);
-                  
-                    if (querySnapshot.empty) {
-                        missingFiles.push(fileCollection);
-                    } else {
-                        querySnapshot.forEach((doc) => {
-                            const data = doc.data();
-                            allFiles.push({
-                                id: doc.id,
-                                ...data,
-                                collectionType: fileCollection.type,
-                                icon: fileCollection.icon
-                            });
-                        });
-                    }
+
+                for (const fc of fileCollections) {
+                    const q = query(collection(window.db, fc.name), where('jobNumber', '==', jobNumber));
+                    const snap = await getDocs(q);
+                    if (snap.empty) missingFiles.push(fc);
+                    else snap.forEach(d => allFiles.push({ id: d.id, ...d.data(), collectionType: fc.type, icon: fc.icon }));
                 }
-              
-                if (allFiles.length === 0 && missingFiles.length === 0) {
-                    attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
-                } else {
-                    let html = '';
-                  
-                    // Show existing files
-                    html += allFiles.map(file => {
-                        if (file.isSurvey) {
-                            return `
-                                <div class="attachment-item">
-                                    <div class="attachment-icon">${file.icon}</div>
-                                    <div class="attachment-info">
-                                        <div class="attachment-name">${escapeHtml(file.fileName)}</div>
-                                        <div class="attachment-type">${file.collectionType}</div>
-                                    </div>
-                                    <button class="attachment-download" onclick="generateAndDownloadSurveyPDF(event)">
-                                        Download PDF
-                                    </button>
-                                </div>
-                            `;
-                        } else {
-                            return `
-                                <div class="attachment-item">
-                                    <div class="attachment-icon">${file.icon}</div>
-                                    <div class="attachment-info">
-                                        <div class="attachment-name">${escapeHtml(file.fileName)}</div>
-                                        <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
-                                    </div>
-                                    <a href="${file.downloadURL}" target="_blank" class="attachment-download">
-                                        Download
-                                    </a>
-                                </div>
-                            `;
-                        }
-                    }).join('');
-                  
-                    // Show missing files with upload option
-                    html += missingFiles.map((fileCollection, index) => `
-                        <div class="missing-file-item">
-                            <div class="attachment-icon">${fileCollection.icon}</div>
-                            <div class="attachment-info">
-                                <div class="attachment-name">${fileCollection.type}</div>
-                                <div class="attachment-type">Not uploaded yet</div>
-                            </div>
-                            <input
-                                type="file"
-                                id="file-input-${index}"
-                                class="upload-file-input"
-                                accept="${fileCollection.accept}"
-                                onchange="handleFileUpload(event, '${fileCollection.name}', '${jobNumber}')"
-                            />
-                            <button class="upload-file-btn" onclick="document.getElementById('file-input-${index}').click()">
-                                Upload
-                            </button>
+
+                let html = '';
+                html += allFiles.map(file => file.isSurvey ? `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType}</div>
                         </div>
-                    `).join('');
-                  
-                    attachmentsList.innerHTML = html;
-                }
-              
+                        <button class="attachment-download" onclick="generateAndDownloadSurveyPDF(event)">Download PDF</button>
+                    </div>` : `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                        </div>
+                        <a href="${file.downloadURL}" target="_blank" class="attachment-download">Download</a>
+                    </div>`).join('');
+
+                html += missingFiles.map((fc, i) => `
+                    <div class="missing-file-item">
+                        <div class="attachment-icon">${fc.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${fc.type}</div>
+                            <div class="attachment-type">Not uploaded yet</div>
+                        </div>
+                        <input type="file" id="file-input-${i}" class="upload-file-input" accept="${fc.accept}" onchange="handleFileUpload(event, '${fc.name}', '${jobNumber}')"/>
+                        <button class="upload-file-btn" onclick="document.getElementById('file-input-${i}').click()">Upload</button>
+                    </div>`).join('');
+
+                attachmentsList.innerHTML = html || '<div class="no-attachments">No files attached to this job</div>';
             } catch (error) {
                 console.error('Error loading files:', error);
                 attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
             }
         }
-      
-        // Generate and download Site Survey PDF
+
+        // === FIXED PDF GENERATION USING HTML2CANVAS ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData) return;
-          
+
             const btn = event.target;
             const originalText = btn.textContent;
             btn.disabled = true;
-            btn.textContent = 'Generating...';
-          
+            btn.textContent = 'Generating PDF...';
+
             try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4');
-                const pageWidth = 190;
-                const pageHeight = 280;
-                let y = 20;
-          
-                function checkPageBreak(height) {
-                    if (y + height > pageHeight) {
-                        doc.addPage();
-                        y = 20;
-                    }
-                }
-          
-                // Title
-                doc.setFontSize(18);
-                doc.text(`Site Survey Report - Job ${currentSurveyData.jobNumber}`, 10, y);
-                y += 10;
-                doc.setFontSize(12);
-                doc.text(`Customer: ${currentSurveyData.customerName || 'N/A'}`, 10, y);
-                y += 7;
-                doc.text(`Surveyor: ${currentSurveyData.surveyor || 'N/A'}`, 10, y);
-                y += 7;
-                doc.text(`Conducted: ${new Date(currentSurveyData.conductedOn).toLocaleString()}`, 10, y);
-                y += 15;
-          
-                // Helper to load image as base64
-                // Helper to load image as base64 (with proper error handling)
-                // Helper to load image as base64 (with proper error handling)
-                // Helper to load image as base64 (bypassing CORS by loading directly)
-                // Helper to load image as base64 from Firebase Storage URL
-                // Helper to load image from Firebase Storage using SDK (bypasses CORS)
-                // Helper to load image from Firebase Storage using SDK (bypasses CORS)
-                // Helper to load image from Firebase Storage using SDK (bypasses CORS)
-                async function loadImage(url) {
-                    return new Promise(async (resolve, reject) => {
-                        try {
-                            // Extract the storage path from the URL
-                            // URL format: https://firebasestorage.googleapis.com/v0/b/BUCKET/o/PATH?alt=media&token=TOKEN
-                            const urlObj = new URL(url);
-                            const pathMatch = urlObj.pathname.match(/\/o\/(.+)/);
-                            if (!pathMatch) {
-                                throw new Error('Invalid Firebase Storage URL');
-                            }
-                            
-                            // Decode the path (it's URL encoded)
-                            const storagePath = decodeURIComponent(pathMatch[1]);
-                            
-                            // Get blob using Firebase Storage SDK (bypasses CORS)
-                            const { ref, getBlob } = window.firebaseModules;
-                            const storageRef = ref(window.storage, storagePath);
-                            const blob = await getBlob(storageRef);
-                            
-                            // Convert blob to base64
-                            const reader = new FileReader();
-                            reader.onloadend = () => {
-                                const base64data = reader.result;
-                                
-                                // Create image from base64 to get dimensions and resize
-                                const img = new Image();
-                                img.onload = () => {
-                                    try {
-                                        const canvas = document.createElement('canvas');
-                                        const maxWidth = 180 * 3; // Higher resolution for PDF
-                                        const scale = maxWidth / img.width;
-                                        canvas.width = maxWidth;
-                                        canvas.height = img.height * scale;
-                                        const ctx = canvas.getContext('2d');
-                                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                                        resolve(canvas.toDataURL('image/jpeg', 0.85));
-                                    } catch (e) {
-                                        console.error('Canvas error:', e);
-                                        // If canvas fails, return original base64
-                                        resolve(base64data);
-                                    }
-                                };
-                                img.onerror = () => {
-                                    // If image load fails, resolve with base64 anyway
-                                    resolve(base64data);
-                                };
-                                img.src = base64data;
-                            };
-                            reader.onerror = () => {
-                                reject(new Error('Failed to read image blob'));
-                            };
-                            reader.readAsDataURL(blob);
-                        } catch (e) {
-                            console.error('Error loading image:', url, e);
-                            reject(e);
-                        }
-                    });
-                }
-          
-                // All fields in order (matching your survey form)
-                const fields = [
-                    { section: 'Survey Details', items: [
-                        { label: 'Conducted On', value: new Date(currentSurveyData.conductedOn).toLocaleString() },
-                        { label: 'Surveyor', value: currentSurveyData.surveyor },
-                        { label: 'Customer Present', value: currentSurveyData.customerPresent }
+                const pdfContent = document.getElementById('survey-pdf-content');
+                let html = `
+                    <h1 style="text-align:center; font-size:24px; margin-bottom:10px;">Site Survey Report</h1>
+                    <h2 style="text-align:center; font-size:18px; color:#555; margin-bottom:30px;">Job #${escapeHtml(currentSurveyData.jobNumber || 'N/A')}</h2>
+                    <p style="font-size:14px;"><strong>Customer:</strong> ${escapeHtml(currentSurveyData.customerName || 'N/A')}</p>
+                    <p style="font-size:14px;"><strong>Surveyor:</strong> ${escapeHtml(currentSurveyData.surveyor || 'N/A')}</p>
+                    <p style="font-size:14px;"><strong>Conducted On:</strong> ${new Date(currentSurveyData.conductedOn).toLocaleString('en-GB', {day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'})}</p>
+                    <hr style="margin:30px 0; border-top:1px solid #ccc;">
+                `;
+
+                const sections = [
+                    { title: 'Survey Details', items: [
+                        {l:'Conducted On',v:new Date(currentSurveyData.conductedOn).toLocaleString()},
+                        {l:'Surveyor',v:currentSurveyData.surveyor},
+                        {l:'Customer Present',v:currentSurveyData.customerPresent}
                     ]},
-                    { section: 'Electrical System', items: [
-                        { label: 'Meter Position', value: currentSurveyData.meterPosition, photos: currentSurveyData.photos?.['meter-position-files'] },
-                        { label: 'Fuse Rating', value: currentSurveyData.fuseRating },
-                        { label: 'Gateway Location', value: currentSurveyData.gatewayLocation, photos: currentSurveyData.photos?.['gateway-location-files'] },
-                        { label: 'Panel Run', value: currentSurveyData.panelRun },
-                        { label: 'Panel Run Distance (m)', value: currentSurveyData.panelRunDistance },
-                        { label: 'Battery to Gateway Run', value: currentSurveyData.batteryGatewayRun, photos: currentSurveyData.photos?.['battery-gateway-files'] },
-                        { label: 'Battery to Gateway Distance (m)', value: currentSurveyData.batteryGatewayDistance },
-                        { label: 'WiFi Signal', value: currentSurveyData.wifiSignal },
-                        { label: 'Meter Cupboard Interior', photos: currentSurveyData.photos?.['meter-cupboard-files'] }
+                    { title: 'Electrical System', items: [
+                        {l:'Meter Position',v:currentSurveyData.meterPosition,p:currentSurveyData.photos?.['meter-position-files']},
+                        {l:'Fuse Rating',v:currentSurveyData.fuseRating},
+                        {l:'Gateway Location',v:currentSurveyData.gatewayLocation,p:currentSurveyData.photos?.['gateway-location-files']},
+                        {l:'Panel Run',v:currentSurveyData.panelRun},
+                        {l:'Panel Run Distance (m)',v:currentSurveyData.panelRunDistance},
+                        {l:'Battery to Gateway Run',v:currentSurveyData.batteryGatewayRun,p:currentSurveyData.photos?.['battery-gateway-files']},
+                        {l:'Battery to Gateway Distance (m)',v:currentSurveyData.batteryGatewayDistance},
+                        {l:'WiFi Signal',v:currentSurveyData.wifiSignal},
+                        {l:'Meter Cupboard Interior',p:currentSurveyData.photos?.['meter-cupboard-files']}
                     ]},
-                    { section: 'Battery Location', items: [
-                        { label: 'Render/Cladding', value: currentSurveyData.renderCladding },
-                        { label: 'Surface Type', value: currentSurveyData.surfaceType },
-                        { label: 'Dimensions (W×D×L mm)', value: `${currentSurveyData.batteryWidth} × ${currentSurveyData.batteryDepth} × ${currentSurveyData.batteryLength}` },
-                        { label: 'Additional Notes', value: currentSurveyData.additionalNotesBattery },
-                        { label: 'Location', value: currentSurveyData.batteryLocation, photos: currentSurveyData.photos?.['battery-location-files'] }
+                    { title: 'Battery Location', items: [
+                        {l:'Render/Cladding',v:currentSurveyData.renderCladding},
+                        {l:'Surface Type',v:currentSurveyData.surfaceType},
+                        {l:'Dimensions (W×D×L mm)',v:`${currentSurveyData.batteryWidth||''} × ${currentSurveyData.batteryDepth||''} × ${currentSurveyData.batteryLength||''}`},
+                        {l:'Additional Notes',v:currentSurveyData.additionalNotesBattery},
+                        {l:'Location',v:currentSurveyData.batteryLocation,p:currentSurveyData.photos?.['battery-location-files']}
                     ]},
-                    { section: 'External Measurements', items: [
-                        { label: 'Roof Covering', value: currentSurveyData.roofCovering, photos: currentSurveyData.photos?.['roof-covering-files'] },
-                        { label: 'Number of Stories', value: currentSurveyData.numberStories },
-                        { label: 'Roof Age (years)', value: currentSurveyData.roofAge },
-                        { label: 'Last Roof Work (years ago)', value: currentSurveyData.roofWorkAge },
-                        { label: 'Soffit Overhang (mm)', value: currentSurveyData.soffitOverhang },
-                        { label: 'Obstructions', value: currentSurveyData.roofObstructions, photos: currentSurveyData.photos?.['obstructions-files'] },
-                        { label: 'Building Dimensions (W×L m)', value: `${currentSurveyData.buildingWidth} × ${currentSurveyData.buildingLength}` },
-                        { label: 'Height to Ridge (m)', value: currentSurveyData.heightToRidge },
-                        { label: 'Shading', value: currentSurveyData.roofShading, photos: currentSurveyData.photos?.['shading-files'] },
-                        { label: 'Nearest Building Distance (m)', value: currentSurveyData.nearestBuildingDistance },
-                        { label: 'Nearest Obstruction Height (m)', value: currentSurveyData.obstructionHeight }
+                    { title: 'External Measurements', items: [
+                        {l:'Roof Covering',v:currentSurveyData.roofCovering,p:currentSurveyData.photos?.['roof-covering-files']},
+                        {l:'Number of Stories',v:currentSurveyData.numberStories},
+                        {l:'Roof Age (years)',v:currentSurveyData.roofAge},
+                        {l:'Last Roof Work (years ago)',v:currentSurveyData.roofWorkAge},
+                        {l:'Soffit Overhang (mm)',v:currentSurveyData.soffitOverhang},
+                        {l:'Obstructions',v:currentSurveyData.roofObstructions,p:currentSurveyData.photos?.['obstructions-files']},
+                        {l:'Building Dimensions (W×L m)',v:`${currentSurveyData.buildingWidth||''} × ${currentSurveyData.buildingLength||''}`},
+                        {l:'Height to Ridge (m)',v:currentSurveyData.heightToRidge},
+                        {l:'Shading',v:currentSurveyData.roofShading,p:currentSurveyData.photos?.['shading-files']},
+                        {l:'Nearest Building Distance (m)',v:currentSurveyData.nearestBuildingDistance},
+                        {l:'Nearest Obstruction Height (m)',v:currentSurveyData.obstructionHeight}
                     ]},
-                    { section: 'Main Roof', items: [
-                        { label: 'Roof Type', value: currentSurveyData.roofType },
-                        { label: 'Loft Accessible', value: currentSurveyData.loftAccessible, photos: currentSurveyData.photos?.['loft-accessible-files'] },
-                        { label: 'Loft Hatch (W×D mm)', value: `${currentSurveyData.loftHatchWidth} × ${currentSurveyData.loftHatchDepth}` },
-                        { label: 'Loft Ladder', value: currentSurveyData.loftLadder },
-                        { label: 'Loft Boarded', value: currentSurveyData.loftBoarded },
-                        { label: 'Loft Hatch Clearance (mm)', value: currentSurveyData.loftHatchClearance },
-                        { label: 'Ridge to Eaves (mm)', value: currentSurveyData.ridgeToEaves },
-                        { label: 'Roof Length Bottom/Top (mm)', value: `${currentSurveyData.roofLengthBottom} / ${currentSurveyData.roofLengthTop}` },
-                        { label: 'Roof Pitch (degrees)', value: currentSurveyData.roofPitch },
-                        { label: 'Rafter (W×D mm)', value: `${currentSurveyData.rafterWidth} × ${currentSurveyData.rafterDepth}` },
-                        { label: 'Web (W×D×L mm)', value: `${currentSurveyData.webWidth} × ${currentSurveyData.webDepth} × ${currentSurveyData.webLength}` },
-                        { label: 'Truss Spacing (mm)', value: currentSurveyData.trussSpacing },
-                        { label: 'Roof Diagram', photos: currentSurveyData.photos?.['roof-diagram-files'] }
+                    { title: 'Main Roof', items: [
+                        {l:'Roof Type',v:currentSurveyData.roofType},
+                        {l:'Loft Accessible',v:currentSurveyData.loftAccessible,p:currentSurveyData.photos?.['loft-accessible-files']},
+                        {l:'Loft Hatch (W×D mm)',v:`${currentSurveyData.loftHatchWidth||''} × ${currentSurveyData.loftHatchDepth||''}`},
+                        {l:'Loft Ladder',v:currentSurveyData.loftLadder},
+                        {l:'Loft Boarded',v:currentSurveyData.loftBoarded},
+                        {l:'Loft Hatch Clearance (mm)',v:currentSurveyData.loftHatchClearance},
+                        {l:'Ridge to Eaves (mm)',v:currentSurveyData.ridgeToEaves},
+                        {l:'Roof Length Bottom/Top (mm)',v:`${currentSurveyData.roofLengthBottom||''} / ${currentSurveyData.roofLengthTop||''}`},
+                        {l:'Roof Pitch (degrees)',v:currentSurveyData.roofPitch},
+                        {l:'Rafter (W×D mm)',v:`${currentSurveyData.rafterWidth||''} × ${currentSurveyData.rafterDepth||''}`},
+                        {l:'Web (W×D×L mm)',v:`${currentSurveyData.webWidth||''} × ${currentSurveyData.webDepth||''} × ${currentSurveyData.webLength||''}`},
+                        {l:'Truss Spacing (mm)',v:currentSurveyData.trussSpacing},
+                        {l:'Roof Diagram',p:currentSurveyData.photos?.['roof-diagram-files']}
                     ]},
-                    { section: 'Property Photos', items: [
-                        { label: 'Wide Angle Property Photos', photos: currentSurveyData.photos?.['property-photos-files'] },
-                        { label: 'Property Age (years)', value: currentSurveyData.propertyAge },
-                        { label: 'Additional Notes', value: currentSurveyData.additionalNotesProperty }
+                    { title: 'Property Photos', items: [
+                        {l:'Wide Angle Property Photos',p:currentSurveyData.photos?.['property-photos-files']},
+                        {l:'Property Age (years)',v:currentSurveyData.propertyAge},
+                        {l:'Additional Notes',v:currentSurveyData.additionalNotesProperty}
                     ]},
-                    { section: 'Roof Condition & Safety', items: [
-                        { label: 'Risk Assessment Completed', value: currentSurveyData.riskAssessment },
-                        { label: 'Asbestos', value: currentSurveyData.asbestos, photos: currentSurveyData.photos?.['asbestos-files'] },
-                        { label: 'Roof Deflection', value: currentSurveyData.roofDeflection, photos: currentSurveyData.photos?.['deflection-files'] },
-                        { label: 'Rot/Damage', value: currentSurveyData.rotDamage, photos: currentSurveyData.photos?.['rot-damage-files'] },
-                        { label: 'Other Concerns', value: currentSurveyData.roofConcern, photos: currentSurveyData.photos?.['roof-concern-files'] },
-                        { label: 'Dwarf Walls/Props', value: currentSurveyData.dwarfWalls, photos: currentSurveyData.photos?.['dwarf-walls-files'] },
-                        { label: 'Previous Structural Work', value: currentSurveyData.structuralWork, photos: currentSurveyData.photos?.['structural-work-files'] },
-                        { label: 'Loft Space Photos', photos: currentSurveyData.photos?.['loft-space-files'] }
+                    { title: 'Roof Condition & Safety', items: [
+                        {l:'Risk Assessment Completed',v:currentSurveyData.riskAssessment},
+                        {l:'Asbestos',v:currentSurveyData.asbestos,p:currentSurveyData.photos?.['asbestos-files']},
+                        {l:'Roof Deflection',v:currentSurveyData.roofDeflection,p:currentSurveyData.photos?.['deflection-files']},
+                        {l:'Rot/Damage',v:currentSurveyData.rotDamage,p:currentSurveyData.photos?.['rot-damage-files']},
+                        {l:'Other Concerns',v:currentSurveyData.roofConcern,p:currentSurveyData.photos?.['roof-concern-files']},
+                        {l:'Dwarf Walls/Props',v:currentSurveyData.dwarfWalls,p:currentSurveyData.photos?.['dwarf-walls-files']},
+                        {l:'Previous Structural Work',v:currentSurveyData.structuralWork,p:currentSurveyData.photos?.['structural-work-files']},
+                        {l:'Loft Space Photos',p:currentSurveyData.photos?.['loft-space-files']}
                     ]}
                 ];
-          
-                for (const section of fields) {
-                    checkPageBreak(15);
-                    doc.setFontSize(14);
-                    doc.text(section.section, 10, y);
-                    y += 10;
-          
+
+                for (const section of sections) {
+                    html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee;">${section.title}</h3>`;
                     for (const item of section.items) {
-                        if (item.value !== undefined && item.value !== null && item.value !== '') {
-                            checkPageBreak(12);
-                            doc.setFontSize(11);
-                            doc.text(`${item.label}: ${item.value}`, 15, y);
-                            y += 8;
+                        if (item.v !== undefined && item.v !== null && item.v !== '') {
+                            html += `<p style="margin:8px 0;"><strong>${escapeHtml(item.l)}:</strong> ${escapeHtml(item.v)}</p>`;
                         }
-          
-                        if (item.photos && item.photos.length > 0) {
-                            for (const url of item.photos) {
-                                try {
-                                    const imgData = await loadImage(url);
-                                    const imgWidth = 180;
-                                    const imgProps = doc.getImageProperties(imgData);
-                                    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
-          
-                                    checkPageBreak(imgHeight + 10);
-                                    doc.addImage(imgData, 'JPEG', 15, y, imgWidth, imgHeight);
-                                    y += imgHeight + 10;
-                                } catch (e) {
-                                    doc.text('Image could not be loaded', 15, y);
-                                    y += 10;
-                                }
-                            }
+                        if (item.p && item.p.length > 0) {
+                            html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
+                            item.p.forEach(url => {
+                                html += `<img src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" />`;
+                            });
+                            html += `</div>`;
                         }
                     }
                 }
-          
-                doc.save(`Site_Survey_${currentSurveyData.jobNumber}.pdf`);
-          
+
+                pdfContent.innerHTML = html;
+
+                const images = pdfContent.querySelectorAll('img');
+                await Promise.all(Array.from(images).map(img => {
+                    if (img.complete && img.naturalHeight !== 0) return;
+                    return new Promise(resolve => {
+                        img.onload = resolve;
+                        img.onerror = () => { console.warn('Image load failed:', img.src); resolve(); };
+                    });
+                }));
+
+                const canvas = await html2canvas(pdfContent, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const imgWidth = pageWidth - 20;
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+                let heightLeft = imgHeight;
+                let position = 10;
+
+                pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight - 20;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight - 20;
+                }
+
+                pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
             } catch (error) {
-                console.error('Error generating PDF:', error);
-                showStatus('Error generating PDF', 'error');
+                console.error('PDF error:', error);
+                alert('Failed to generate PDF – check console');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
             }
         }
-      
         window.generateAndDownloadSurveyPDF = generateAndDownloadSurveyPDF;
-      
-        // Update job status
+
         async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
-          
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-              
-                await updateDoc(doc(window.db, 'jobs', jobId), {
-                    status: newStatus,
-                    lastStatusUpdate: new Date().toISOString()
-                });
-              
+                await updateDoc(doc(window.db, 'jobs', jobId), { status: newStatus, lastStatusUpdate: new Date().toISOString() });
                 const job = allJobs.find(j => j.id === jobId);
-                if (job) {
-                    job.status = newStatus;
-                }
-              
+                if (job) job.status = newStatus;
                 messageDiv.innerHTML = '<div class="status-update-message success">✓ Status updated successfully!</div>';
-              
-                setTimeout(() => {
-                    messageDiv.innerHTML = '';
-                }, 3000);
-              
-                const buttons = document.querySelectorAll('.status-update-btn');
-                buttons.forEach(btn => btn.classList.remove('current'));
-                if (buttonElement) {
-                    buttonElement.classList.add('current');
-                }
-              
+                setTimeout(() => messageDiv.innerHTML = '', 3000);
+                document.querySelectorAll('.status-update-btn').forEach(b => b.classList.remove('current'));
+                if (buttonElement) buttonElement.classList.add('current');
                 displayResults();
-              
             } catch (error) {
-                console.error('Error updating status:', error);
-                messageDiv.innerHTML = `<div class="status-update-message error">✗ Failed to update status: ${error.message}</div>`;
-              
-                setTimeout(() => {
-                    messageDiv.innerHTML = '';
-                }, 5000);
+                console.error('Status update error:', error);
+                messageDiv.innerHTML = `<div class="status-update-message error">✗ Failed: ${error.message}</div>`;
+                setTimeout(() => messageDiv.innerHTML = '', 5000);
             }
         }
-      
         window.updateJobStatus = updateJobStatus;
-      
-        // Edit lead engineer
+
         function editLeadEngineer() {
             if (isEditingEngineer) return;
-          
             isEditingEngineer = true;
             const job = allJobs.find(j => j.id === currentJobId);
             const container = document.getElementById('lead-engineer-container');
-          
-            const options = leadEngineers.map(engineer =>
-                `<option value="${escapeHtml(engineer.name)}" ${engineer.name === job['Lead Engineer'] ? 'selected' : ''}>
-                    ${escapeHtml(engineer.name)}
-                </option>`
-            ).join('');
-          
+            const options = leadEngineers.map(e => `<option value="${escapeHtml(e.name)}" ${e.name === job['Lead Engineer'] ? 'selected' : ''}>${escapeHtml(e.name)}</option>`).join('');
             container.innerHTML = `
-                <select class="engineer-select" id="engineer-select">
-                    <option value="">-- Unassigned --</option>
-                    ${options}
-                </select>
+                <select class="engineer-select" id="engineer-select"><option value="">-- Unassigned --</option>${options}</select>
                 <div class="save-cancel-btns">
                     <button class="save-btn" onclick="saveLeadEngineer()">Save</button>
                     <button class="cancel-btn" onclick="cancelEditEngineer()">Cancel</button>
                 </div>
             `;
         }
-      
-        // Cancel editing lead engineer
+
         function cancelEditEngineer() {
             isEditingEngineer = false;
             const job = allJobs.find(j => j.id === currentJobId);
-            const container = document.getElementById('lead-engineer-container');
-          
-            container.innerHTML = `
+            document.getElementById('lead-engineer-container').innerHTML = `
                 <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
                 <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
             `;
         }
-      
-        // Save lead engineer change
+
         async function saveLeadEngineer() {
-            const select = document.getElementById('engineer-select');
-            const newEngineer = select.value;
-          
+            const newEngineer = document.getElementById('engineer-select').value;
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-              
-                await updateDoc(doc(window.db, 'jobs', currentJobId), {
-                    'Lead Engineer': newEngineer || 'Unassigned'
-                });
-              
+                await updateDoc(doc(window.db, 'jobs', currentJobId), { 'Lead Engineer': newEngineer || 'Unassigned' });
                 const job = allJobs.find(j => j.id === currentJobId);
                 job['Lead Engineer'] = newEngineer || 'Unassigned';
-              
                 isEditingEngineer = false;
-                const container = document.getElementById('lead-engineer-container');
-                container.innerHTML = `
+                document.getElementById('lead-engineer-container').innerHTML = `
                     <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'])}</span>
                     <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
                 `;
-              
                 showStatus('Lead engineer updated successfully!', 'success');
                 displayResults();
-              
             } catch (error) {
-                console.error('Error updating lead engineer:', error);
-                showStatus('Error updating lead engineer: ' + error.message, 'error');
+                console.error('Engineer update error:', error);
+                showStatus('Error: ' + error.message, 'error');
             }
         }
-      
-        // Handle file upload
+
         async function handleFileUpload(event, collectionName, jobNumber) {
             const file = event.target.files[0];
             if (!file) return;
-          
-            const attachmentsList = document.getElementById('attachments-list');
             const uploadButton = event.target.nextElementSibling;
-            const originalButtonText = uploadButton.textContent;
-          
+            const originalText = uploadButton.textContent;
             uploadButton.innerHTML = '<div class="uploading-indicator">Uploading</div>';
             uploadButton.disabled = true;
-          
             try {
                 const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
-              
-                // Upload file to Firebase Storage
                 const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
                 const snapshot = await uploadBytes(storageRef, file);
                 const downloadURL = await getDownloadURL(snapshot.ref);
-              
-                // Add file metadata to Firestore
                 await addDoc(collection(window.db, collectionName), {
-                    jobNumber: jobNumber,
-                    fileName: file.name,
-                    fileSize: file.size,
-                    downloadURL: downloadURL,
-                    uploadDate: new Date().toISOString()
+                    jobNumber, fileName: file.name, fileSize: file.size, downloadURL, uploadDate: new Date().toISOString()
                 });
-              
                 showStatus('File uploaded successfully!', 'success');
-              
-                // Reload files
                 await loadJobFiles(jobNumber);
-              
             } catch (error) {
-                console.error('Error uploading file:', error);
-                showStatus('Error uploading file: ' + error.message, 'error');
-                uploadButton.textContent = originalButtonText;
+                console.error('Upload error:', error);
+                showStatus('Upload failed: ' + error.message, 'error');
+                uploadButton.textContent = originalText;
                 uploadButton.disabled = false;
             }
         }
-      
         window.handleFileUpload = handleFileUpload;
-      
-        // Format file size
+
         function formatFileSize(bytes) {
             if (!bytes) return 'Unknown size';
-            if (bytes === 0) return '0 Bytes';
             const k = 1024;
             const sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
         }
-      
-        // Close job modal
+
         function closeJobModal() {
             document.getElementById('job-modal').classList.remove('show');
         }
-      
-        // Utility functions
+
         function escapeHtml(text) {
             if (typeof text !== 'string') return text;
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
-      
+
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
             const date = new Date(dateString);
-            return date.toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         }
-      
+
         function showStatus(message, type) {
             const status = document.getElementById('status-message');
             status.textContent = message;
             status.className = `status-message ${type} show`;
-          
-            setTimeout(() => {
-                status.classList.remove('show');
-            }, 3000);
+            setTimeout(() => status.classList.remove('show'), 3000);
         }
-      
-        // Close modal when clicking outside
+
         document.getElementById('job-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'job-modal') {
-                closeJobModal();
-            }
+            if (e.target.id === 'job-modal') closeJobModal();
         });
     </script>
 </body>
