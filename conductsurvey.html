@@ -2036,6 +2036,57 @@
             
             const form = document.getElementById('survey-form');
             form.addEventListener('submit', submitSurvey);
+       }
+        
+        // ============================================
+        // AUTOSAVE FUNCTIONALITY (PUT HERE - BEFORE INITIALIZATION)
+        // ============================================
+
+        let autosaveTimer = null;
+        const AUTOSAVE_INTERVAL = 10000;
+        const AUTOSAVE_KEY_PREFIX = 'survey_autosave_';
+
+        // ... all the autosave functions ...
+
+        // MODIFIED: Update verifyJobNumber to include autosave
+        const originalVerifyJobNumber = window.verifyJobNumber;
+        window.verifyJobNumber = async function() {
+            await originalVerifyJobNumber();
+            
+            if (verifiedJob) {
+                checkForAutosavedData();
+                startAutosave();
+            }
+        };
+
+        // Save before page unload
+        window.addEventListener('beforeunload', (e) => {
+            if (verifiedJob && document.getElementById('survey-form').style.display !== 'none') {
+                autosaveFormData();
+            }
+        });
+
+        // Also save when visibility changes
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden && verifiedJob) {
+                autosaveFormData();
+            }
+        });
+
+        console.log('✅ Autosave functionality initialized');
+        
+        // Initialize (KEEP THIS AT THE END)
+        document.addEventListener('DOMContentLoaded', () => {
+            setupConditionalFields();
+            setupFileUploads();
+            
+            const form = document.getElementById('survey-form');
+            form.addEventListener('submit', async (event) => {
+                await submitSurvey(event);
+                // Clear autosave after successful submission
+                clearAutosavedData();
+                stopAutosave();
+            });
         });
     </script>
 </body>
