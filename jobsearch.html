@@ -1341,7 +1341,7 @@
         }
 
         // === CLOUD FUNCTION VERSION - Generates PDF server-side ===
-        // === CLIENT-SIDE VERSION WITH HYPERLINKS TO IMAGES (No CORS issues!) ===
+        // === DIRECT JSPDF VERSION WITH WORKING HYPERLINKS ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1355,127 +1355,168 @@
             btn.textContent = 'Generating PDF...';
 
             try {
-                const pdfContent = document.getElementById('survey-pdf-content');
-
-                let html = `
-                    <h1 style="text-align:center; font-size:24px; margin-bottom:10px;">Site Survey Report</h1>
-                    <h2 style="text-align:center; font-size:18px; color:#333; margin-bottom:30px;">
-                        Job #${escapeHtml(currentSurveyData.jobNumber || 'N/A')}
-                    </h2>
-                    <p style="font-size:14px; margin-bottom:8px;"><strong>Customer:</strong> ${escapeHtml(currentSurveyData.customerName || 'N/A')}</p>
-                    <p style="font-size:14px; margin-bottom:30px;"><strong>Submitted:</strong> ${new Date(currentSurveyData.submittedAt).toLocaleString('en-GB')}</p>
-                    <hr style="margin:30px 0; border-top:1px solid #ccc;">
-                `;
-
-                console.log('Building HTML with image links...');
+                console.log('Creating PDF directly with jsPDF...');
+                
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 20;
+                const maxWidth = pageWidth - (margin * 2);
+                let yPosition = margin;
+                
+                // Helper function to check if we need a new page
+                const checkPageBreak = (requiredSpace) => {
+                    if (yPosition + requiredSpace > pageHeight - margin) {
+                        pdf.addPage();
+                        yPosition = margin;
+                        return true;
+                    }
+                    return false;
+                };
+                
+                // Helper function to add wrapped text
+                const addText = (text, fontSize, style = 'normal', color = [0, 0, 0]) => {
+                    pdf.setFontSize(fontSize);
+                    pdf.setFont('helvetica', style);
+                    pdf.setTextColor(...color);
+                    
+                    const lines = pdf.splitTextToSize(text, maxWidth);
+                    const lineHeight = fontSize * 0.5;
+                    
+                    checkPageBreak(lines.length * lineHeight);
+                    
+                    lines.forEach(line => {
+                        pdf.text(line, margin, yPosition);
+                        yPosition += lineHeight;
+                    });
+                    
+                    return yPosition;
+                };
+                
+                // Title
+                pdf.setFontSize(24);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Site Survey Report', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 12;
+                
+                // Job Number
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(51, 51, 51);
+                pdf.text(`Job #${currentSurveyData.jobNumber || 'N/A'}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 15;
+                
+                // Customer info
+                addText(`Customer: ${currentSurveyData.customerName || 'N/A'}`, 12, 'normal');
+                yPosition += 2;
+                addText(`Submitted: ${new Date(currentSurveyData.submittedAt).toLocaleString('en-GB')}`, 12, 'normal');
+                yPosition += 10;
+                
+                // Horizontal line
+                pdf.setDrawColor(200, 200, 200);
+                pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+                yPosition += 10;
+                
+                // Sections
                 let imageCounter = 1;
                 
                 for (const section of currentSurveyData.sections) {
-                    html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
-                        ${escapeHtml(section.title)}
-                    </h3>`;
-
-                    for (const field of section.fields) {
-                        if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
-                            html += `<p style="margin:8px 0;"><strong>${escapeHtml(field.question)}:</strong> ${escapeHtml(field.answer.toString())}</p>`;
-                        }
-
-                        if (field.photos && field.photos.length > 0) {
-                            console.log(`Adding ${field.photos.length} photo links for field: ${field.question}`);
-                            html += `<div style="margin:20px 0; padding:15px; background:#f5f5f5; border-radius:4px;">`;
-                            html += `<p style="font-size:13px; color:#333; margin-bottom:10px; font-weight:bold;">${escapeHtml(field.question)} - Photos (${field.photos.length}):</p>`;
-                            
-                            for (const url of field.photos) {
-                                html += `<div style="margin:5px 0; padding:8px; background:white; border:1px solid #ddd; border-radius:4px;">`;
-                                html += `<a href="${url}" target="_blank" style="color:#0066cc; text-decoration:none; display:flex; align-items:center; gap:8px;">`;
-                                html += `<span style="font-size:16px;">🔗</span>`;
-                                html += `<span style="font-size:12px;">Image ${imageCounter} - Click to view</span>`;
-                                html += `</a>`;
-                                html += `</div>`;
-                                imageCounter++;
-                            }
-                            
-                            html += `</div>`;
-                        }
-                    }
-                }
-
-                console.log('Rendering HTML to PDF container...');
-                btn.textContent = 'Rendering PDF...';
-                pdfContent.innerHTML = html;
-
-                // Small delay to ensure rendering
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                console.log('Capturing with html2canvas...');
-                const canvas = await html2canvas(pdfContent, { 
-                    scale: 2,
-                    logging: false,
-                    backgroundColor: '#ffffff'
-                });
-
-                console.log('Creating PDF with clickable links...');
-                const imgData = canvas.toDataURL('image/png');
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF('p', 'mm', 'a4');
-
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
-                const imgWidth = pageWidth - 20;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-                let heightLeft = imgHeight;
-                let position = 10;
-
-                pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight - 20;
-
-                while (heightLeft > 0) {
-                    position = heightLeft - imgHeight;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-                    heightLeft -= pageHeight - 20;
-                }
-
-                // Add clickable links to the PDF
-                console.log('Adding hyperlinks to PDF...');
-                imageCounter = 1;
-                let yOffset = 10 + 80; // Start after header (adjust based on your layout)
-                
-                for (const section of currentSurveyData.sections) {
-                    yOffset += 15; // Space for section header
+                    checkPageBreak(20);
+                    
+                    // Section title
+                    pdf.setFontSize(16);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setTextColor(44, 62, 80);
+                    pdf.text(section.title, margin, yPosition);
+                    yPosition += 8;
+                    
+                    // Underline
+                    pdf.setDrawColor(238, 238, 238);
+                    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+                    yPosition += 8;
                     
                     for (const field of section.fields) {
+                        // Answer text
                         if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
-                            yOffset += 6; // Space for answer text
+                            checkPageBreak(15);
+                            
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor(0, 0, 0);
+                            const questionLines = pdf.splitTextToSize(`${field.question}:`, maxWidth);
+                            questionLines.forEach(line => {
+                                pdf.text(line, margin, yPosition);
+                                yPosition += 5;
+                            });
+                            
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setTextColor(51, 51, 51);
+                            const answerLines = pdf.splitTextToSize(field.answer.toString(), maxWidth - 5);
+                            answerLines.forEach(line => {
+                                pdf.text(line, margin + 5, yPosition);
+                                yPosition += 5;
+                            });
+                            
+                            yPosition += 3;
                         }
                         
+                        // Photos section with clickable links
                         if (field.photos && field.photos.length > 0) {
-                            yOffset += 25; // Space for photo section header
+                            checkPageBreak(10 + (field.photos.length * 8));
                             
+                            // Photos header with background
+                            pdf.setFillColor(245, 245, 245);
+                            pdf.rect(margin, yPosition - 5, maxWidth, 8 + (field.photos.length * 8), 'F');
+                            
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor(51, 51, 51);
+                            pdf.text(`${field.question} - Photos (${field.photos.length}):`, margin + 3, yPosition);
+                            yPosition += 8;
+                            
+                            // Add each photo link
                             for (const url of field.photos) {
-                                // Add clickable link at approximate position
-                                // Note: This is approximate since html2canvas renders as image
-                                // For exact positioning, you'd need to calculate based on actual text heights
-                                pdf.link(15, yOffset, 180, 8, { url: url });
-                                yOffset += 10;
+                                const linkText = `🔗 Image ${imageCounter} - Click to view`;
+                                
+                                pdf.setFontSize(10);
+                                pdf.setFont('helvetica', 'normal');
+                                pdf.setTextColor(0, 102, 204); // Blue color for links
+                                
+                                // Add the text
+                                pdf.text(linkText, margin + 8, yPosition);
+                                
+                                // Add the clickable link over the text
+                                // textWidth calculation for the link area
+                                const textWidth = pdf.getTextWidth(linkText);
+                                pdf.link(margin + 8, yPosition - 4, textWidth, 6, { url: url });
+                                
+                                // Add underline to show it's a link
+                                pdf.setDrawColor(0, 102, 204);
+                                pdf.line(margin + 8, yPosition + 0.5, margin + 8 + textWidth, yPosition + 0.5);
+                                
+                                yPosition += 8;
                                 imageCounter++;
                             }
                             
-                            yOffset += 5;
+                            yPosition += 5;
                         }
                     }
+                    
+                    yPosition += 5;
                 }
-
+                
                 console.log('Saving PDF...');
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
-                console.log('PDF generated successfully with clickable links!');
+                console.log('PDF generated successfully with working hyperlinks!');
                 
-                showStatus('PDF generated successfully! Images can be viewed via links.', 'success');
+                showStatus('PDF generated! Click image links to view photos.', 'success');
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Error: ' + error.message + '\nCheck console for details.');
+                alert('Failed to generate PDF. Error: ' + error.message);
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
