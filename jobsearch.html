@@ -1340,7 +1340,8 @@
             }
         }
 
-        // === VERSION WITH TAINTED CANVAS (allows CORS images) ===
+        // === CLOUD FUNCTION VERSION - Generates PDF server-side ===
+        // === CLIENT-SIDE VERSION WITH HYPERLINKS TO IMAGES (No CORS issues!) ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1366,7 +1367,9 @@
                     <hr style="margin:30px 0; border-top:1px solid #ccc;">
                 `;
 
-                console.log('Building HTML with images...');
+                console.log('Building HTML with image links...');
+                let imageCounter = 1;
+                
                 for (const section of currentSurveyData.sections) {
                     html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
                         ${escapeHtml(section.title)}
@@ -1378,85 +1381,40 @@
                         }
 
                         if (field.photos && field.photos.length > 0) {
-                            console.log(`Adding ${field.photos.length} photos for field: ${field.question}`);
-                            html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
-                            html += `<p style="font-size:12px; color:#666; margin-bottom:10px; font-weight:bold;">${escapeHtml(field.question)}</p>`;
+                            console.log(`Adding ${field.photos.length} photo links for field: ${field.question}`);
+                            html += `<div style="margin:20px 0; padding:15px; background:#f5f5f5; border-radius:4px;">`;
+                            html += `<p style="font-size:13px; color:#333; margin-bottom:10px; font-weight:bold;">${escapeHtml(field.question)} - Photos (${field.photos.length}):</p>`;
                             
                             for (const url of field.photos) {
-                                // Don't use crossorigin attribute - let allowTaint handle it
-                                html += `<img src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" />`;
+                                html += `<div style="margin:5px 0; padding:8px; background:white; border:1px solid #ddd; border-radius:4px;">`;
+                                html += `<a href="${url}" target="_blank" style="color:#0066cc; text-decoration:none; display:flex; align-items:center; gap:8px;">`;
+                                html += `<span style="font-size:16px;">🔗</span>`;
+                                html += `<span style="font-size:12px;">Image ${imageCounter} - Click to view</span>`;
+                                html += `</a>`;
+                                html += `</div>`;
+                                imageCounter++;
                             }
+                            
                             html += `</div>`;
                         }
                     }
                 }
 
-                console.log('Inserting HTML into PDF container...');
+                console.log('Rendering HTML to PDF container...');
+                btn.textContent = 'Rendering PDF...';
                 pdfContent.innerHTML = html;
 
-                // Wait for all images to load
-                console.log('Waiting for images to load...');
-                btn.textContent = 'Loading images...';
-                const images = pdfContent.querySelectorAll('img');
-                
-                await new Promise((resolve) => {
-                    let loadedCount = 0;
-                    const totalImages = images.length;
-                    
-                    if (totalImages === 0) {
-                        resolve();
-                        return;
-                    }
-                    
-                    const checkComplete = () => {
-                        loadedCount++;
-                        console.log(`Image ${loadedCount}/${totalImages} loaded`);
-                        if (loadedCount === totalImages) {
-                            resolve();
-                        }
-                    };
-                    
-                    images.forEach((img, index) => {
-                        if (img.complete) {
-                            checkComplete();
-                        } else {
-                            img.onload = checkComplete;
-                            img.onerror = () => {
-                                console.warn(`Image ${index + 1} failed to load, but continuing...`);
-                                checkComplete();
-                            };
-                        }
-                    });
-                    
-                    // Timeout after 30 seconds
-                    setTimeout(() => {
-                        console.warn('Image loading timeout, proceeding anyway...');
-                        resolve();
-                    }, 30000);
-                });
-                
-                console.log('All images loaded or timed out');
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                // Small delay to ensure rendering
+                await new Promise(resolve => setTimeout(resolve, 500));
 
                 console.log('Capturing with html2canvas...');
-                btn.textContent = 'Rendering PDF...';
-                
-                // Key change: allowTaint: false, useCORS: false
-                // This tells html2canvas to NOT try to load external images via CORS
-                // Instead we'll render what's already loaded in the DOM
                 const canvas = await html2canvas(pdfContent, { 
                     scale: 2,
-                    logging: true,
-                    useCORS: false,  // Don't try to fetch via CORS
-                    allowTaint: false,  // Don't allow tainted canvas
-                    backgroundColor: '#ffffff',
-                    onclone: (clonedDoc) => {
-                        // In the cloned document, images should already be loaded
-                        console.log('Document cloned for rendering');
-                    }
+                    logging: false,
+                    backgroundColor: '#ffffff'
                 });
 
-                console.log('Creating PDF...');
+                console.log('Creating PDF with clickable links...');
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1479,11 +1437,41 @@
                     heightLeft -= pageHeight - 20;
                 }
 
+                // Add clickable links to the PDF
+                console.log('Adding hyperlinks to PDF...');
+                imageCounter = 1;
+                let yOffset = 10 + 80; // Start after header (adjust based on your layout)
+                
+                for (const section of currentSurveyData.sections) {
+                    yOffset += 15; // Space for section header
+                    
+                    for (const field of section.fields) {
+                        if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
+                            yOffset += 6; // Space for answer text
+                        }
+                        
+                        if (field.photos && field.photos.length > 0) {
+                            yOffset += 25; // Space for photo section header
+                            
+                            for (const url of field.photos) {
+                                // Add clickable link at approximate position
+                                // Note: This is approximate since html2canvas renders as image
+                                // For exact positioning, you'd need to calculate based on actual text heights
+                                pdf.link(15, yOffset, 180, 8, { url: url });
+                                yOffset += 10;
+                                imageCounter++;
+                            }
+                            
+                            yOffset += 5;
+                        }
+                    }
+                }
+
                 console.log('Saving PDF...');
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
-                console.log('PDF generated successfully!');
+                console.log('PDF generated successfully with clickable links!');
                 
-                showStatus('PDF generated successfully!', 'success');
+                showStatus('PDF generated successfully! Images can be viewed via links.', 'success');
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
