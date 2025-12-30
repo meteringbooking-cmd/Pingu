@@ -1340,7 +1340,7 @@
             }
         }
 
-        // === FIXED VERSION WITH PROPER FIREBASE SDK METHOD DESTRUCTURING ===
+        // === IMPROVED VERSION WITH BETTER ERROR HANDLING ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1356,33 +1356,64 @@
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
 
-                // Helper to convert Firebase Storage URL to base64 using SDK (bypasses CORS completely)
+                // Helper to convert Firebase Storage URL to base64
                 async function firebaseUrlToBase64(url) {
                     try {
-                        // Get Firebase Storage methods from the global modules
-                        const { ref, getBlob } = window.firebaseModules;
+                        console.log('Loading image from URL:', url);
                         
-                        // Extract path from signed URL
-                        const urlObj = new URL(url);
-                        const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
-                        if (!pathMatch) {
-                            console.warn('Could not extract path from URL:', url);
-                            return null;
+                        // Method 1: Try using Firebase SDK
+                        try {
+                            const { ref, getBlob } = window.firebaseModules;
+                            const urlObj = new URL(url);
+                            const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
+                            
+                            if (pathMatch) {
+                                const path = decodeURIComponent(pathMatch[1]);
+                                console.log('Extracted path:', path);
+                                
+                                const storageRef = ref(window.storage, path);
+                                const blob = await getBlob(storageRef);
+                                
+                                const base64 = await new Promise((resolve, reject) => {
+                                    const reader = new FileReader();
+                                    reader.onload = () => resolve(reader.result);
+                                    reader.onerror = reject;
+                                    reader.readAsDataURL(blob);
+                                });
+                                
+                                console.log('Successfully loaded image via Firebase SDK');
+                                return base64;
+                            }
+                        } catch (sdkError) {
+                            console.warn('Firebase SDK method failed:', sdkError);
                         }
-                        const path = decodeURIComponent(pathMatch[1]);
-                        console.log('Attempting to load image from path:', path);
                         
-                        const storageRef = ref(window.storage, path);
-                        const blob = await getBlob(storageRef);
+                        // Method 2: Try direct fetch with signed URL
+                        try {
+                            console.log('Trying direct fetch...');
+                            const response = await fetch(url);
+                            if (!response.ok) throw new Error('Fetch failed');
+                            
+                            const blob = await response.blob();
+                            const base64 = await new Promise((resolve, reject) => {
+                                const reader = new FileReader();
+                                reader.onload = () => resolve(reader.result);
+                                reader.onerror = reject;
+                                reader.readAsDataURL(blob);
+                            });
+                            
+                            console.log('Successfully loaded image via direct fetch');
+                            return base64;
+                        } catch (fetchError) {
+                            console.warn('Direct fetch failed:', fetchError);
+                        }
                         
-                        return new Promise((resolve, reject) => {
-                            const reader = new FileReader();
-                            reader.onload = () => resolve(reader.result);
-                            reader.onerror = reject;
-                            reader.readAsDataURL(blob);
-                        });
+                        // If both methods fail, return null
+                        console.error('All image loading methods failed for:', url);
+                        return null;
+                        
                     } catch (e) {
-                        console.error('Failed to load image via Firebase SDK:', url, e);
+                        console.error('Failed to load image:', url, e);
                         return null;
                     }
                 }
@@ -1397,6 +1428,7 @@
                     <hr style="margin:30px 0; border-top:1px solid #ccc;">
                 `;
 
+                console.log('Processing sections...');
                 for (const section of currentSurveyData.sections) {
                     html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
                         ${escapeHtml(section.title)}
@@ -1408,14 +1440,19 @@
                         }
 
                         if (field.photos && field.photos.length > 0) {
+                            console.log(`Processing ${field.photos.length} photos for field: ${field.question}`);
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
-                            for (const url of field.photos) {
-                                console.log('Processing image URL:', url);
+                            
+                            for (let i = 0; i < field.photos.length; i++) {
+                                const url = field.photos[i];
+                                console.log(`Loading image ${i + 1}/${field.photos.length}`);
+                                btn.textContent = `Loading image ${i + 1}/${field.photos.length}...`;
+                                
                                 const base64 = await firebaseUrlToBase64(url);
                                 if (base64) {
                                     html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
                                 } else {
-                                    html += `<p style="color:red; font-style:italic;">[Image unavailable]</p>`;
+                                    html += `<p style="color:red; font-style:italic;">[Image could not be loaded]</p>`;
                                 }
                             }
                             html += `</div>`;
@@ -1423,10 +1460,18 @@
                     }
                 }
 
+                console.log('Rendering HTML to PDF container...');
+                btn.textContent = 'Rendering PDF...';
                 pdfContent.innerHTML = html;
 
-                const canvas = await html2canvas(pdfContent, { scale: 2 });
+                console.log('Capturing with html2canvas...');
+                const canvas = await html2canvas(pdfContent, { 
+                    scale: 2,
+                    logging: true,
+                    useCORS: true
+                });
 
+                console.log('Creating PDF...');
                 const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF('p', 'mm', 'a4');
@@ -1449,11 +1494,13 @@
                     heightLeft -= pageHeight - 20;
                 }
 
+                console.log('Saving PDF...');
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
+                console.log('PDF generated successfully!');
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
-                alert('Failed to generate PDF. Check console for details.');
+                alert('Failed to generate PDF. Error: ' + error.message + '\nCheck console for details.');
             } finally {
                 btn.disabled = false;
                 btn.textContent = originalText;
