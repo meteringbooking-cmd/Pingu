@@ -1340,7 +1340,7 @@
             }
         }
 
-        // === IMPROVED VERSION WITH BETTER ERROR HANDLING ===
+        // === VERSION WITH TAINTED CANVAS (allows CORS images) ===
         async function generateAndDownloadSurveyPDF(event) {
             event.preventDefault();
             if (!currentSurveyData || !currentSurveyData.sections) {
@@ -1356,68 +1356,6 @@
             try {
                 const pdfContent = document.getElementById('survey-pdf-content');
 
-                // Helper to convert Firebase Storage URL to base64
-                async function firebaseUrlToBase64(url) {
-                    try {
-                        console.log('Loading image from URL:', url);
-                        
-                        // Method 1: Try using Firebase SDK
-                        try {
-                            const { ref, getBlob } = window.firebaseModules;
-                            const urlObj = new URL(url);
-                            const pathMatch = urlObj.pathname.match(/\/o\/(.+?)(\?|$)/);
-                            
-                            if (pathMatch) {
-                                const path = decodeURIComponent(pathMatch[1]);
-                                console.log('Extracted path:', path);
-                                
-                                const storageRef = ref(window.storage, path);
-                                const blob = await getBlob(storageRef);
-                                
-                                const base64 = await new Promise((resolve, reject) => {
-                                    const reader = new FileReader();
-                                    reader.onload = () => resolve(reader.result);
-                                    reader.onerror = reject;
-                                    reader.readAsDataURL(blob);
-                                });
-                                
-                                console.log('Successfully loaded image via Firebase SDK');
-                                return base64;
-                            }
-                        } catch (sdkError) {
-                            console.warn('Firebase SDK method failed:', sdkError);
-                        }
-                        
-                        // Method 2: Try direct fetch with signed URL
-                        try {
-                            console.log('Trying direct fetch...');
-                            const response = await fetch(url);
-                            if (!response.ok) throw new Error('Fetch failed');
-                            
-                            const blob = await response.blob();
-                            const base64 = await new Promise((resolve, reject) => {
-                                const reader = new FileReader();
-                                reader.onload = () => resolve(reader.result);
-                                reader.onerror = reject;
-                                reader.readAsDataURL(blob);
-                            });
-                            
-                            console.log('Successfully loaded image via direct fetch');
-                            return base64;
-                        } catch (fetchError) {
-                            console.warn('Direct fetch failed:', fetchError);
-                        }
-                        
-                        // If both methods fail, return null
-                        console.error('All image loading methods failed for:', url);
-                        return null;
-                        
-                    } catch (e) {
-                        console.error('Failed to load image:', url, e);
-                        return null;
-                    }
-                }
-
                 let html = `
                     <h1 style="text-align:center; font-size:24px; margin-bottom:10px;">Site Survey Report</h1>
                     <h2 style="text-align:center; font-size:18px; color:#333; margin-bottom:30px;">
@@ -1428,7 +1366,7 @@
                     <hr style="margin:30px 0; border-top:1px solid #ccc;">
                 `;
 
-                console.log('Processing sections...');
+                console.log('Building HTML with images...');
                 for (const section of currentSurveyData.sections) {
                     html += `<h3 style="margin:30px 0 15px; font-size:16px; color:#2c3e50; border-bottom:1px solid #eee; padding-bottom:5px;">
                         ${escapeHtml(section.title)}
@@ -1440,35 +1378,82 @@
                         }
 
                         if (field.photos && field.photos.length > 0) {
-                            console.log(`Processing ${field.photos.length} photos for field: ${field.question}`);
+                            console.log(`Adding ${field.photos.length} photos for field: ${field.question}`);
                             html += `<div style="margin:20px 0; page-break-inside:avoid;">`;
+                            html += `<p style="font-size:12px; color:#666; margin-bottom:10px; font-weight:bold;">${escapeHtml(field.question)}</p>`;
                             
-                            for (let i = 0; i < field.photos.length; i++) {
-                                const url = field.photos[i];
-                                console.log(`Loading image ${i + 1}/${field.photos.length}`);
-                                btn.textContent = `Loading image ${i + 1}/${field.photos.length}...`;
-                                
-                                const base64 = await firebaseUrlToBase64(url);
-                                if (base64) {
-                                    html += `<img src="${base64}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" alt="${escapeHtml(field.question)}" />`;
-                                } else {
-                                    html += `<p style="color:red; font-style:italic;">[Image could not be loaded]</p>`;
-                                }
+                            for (const url of field.photos) {
+                                // Don't use crossorigin attribute - let allowTaint handle it
+                                html += `<img src="${url}" style="max-width:100%; height:auto; margin:10px 0; display:block; border:1px solid #ccc; border-radius:4px;" />`;
                             }
                             html += `</div>`;
                         }
                     }
                 }
 
-                console.log('Rendering HTML to PDF container...');
-                btn.textContent = 'Rendering PDF...';
+                console.log('Inserting HTML into PDF container...');
                 pdfContent.innerHTML = html;
 
+                // Wait for all images to load
+                console.log('Waiting for images to load...');
+                btn.textContent = 'Loading images...';
+                const images = pdfContent.querySelectorAll('img');
+                
+                await new Promise((resolve) => {
+                    let loadedCount = 0;
+                    const totalImages = images.length;
+                    
+                    if (totalImages === 0) {
+                        resolve();
+                        return;
+                    }
+                    
+                    const checkComplete = () => {
+                        loadedCount++;
+                        console.log(`Image ${loadedCount}/${totalImages} loaded`);
+                        if (loadedCount === totalImages) {
+                            resolve();
+                        }
+                    };
+                    
+                    images.forEach((img, index) => {
+                        if (img.complete) {
+                            checkComplete();
+                        } else {
+                            img.onload = checkComplete;
+                            img.onerror = () => {
+                                console.warn(`Image ${index + 1} failed to load, but continuing...`);
+                                checkComplete();
+                            };
+                        }
+                    });
+                    
+                    // Timeout after 30 seconds
+                    setTimeout(() => {
+                        console.warn('Image loading timeout, proceeding anyway...');
+                        resolve();
+                    }, 30000);
+                });
+                
+                console.log('All images loaded or timed out');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
                 console.log('Capturing with html2canvas...');
+                btn.textContent = 'Rendering PDF...';
+                
+                // Key change: allowTaint: false, useCORS: false
+                // This tells html2canvas to NOT try to load external images via CORS
+                // Instead we'll render what's already loaded in the DOM
                 const canvas = await html2canvas(pdfContent, { 
                     scale: 2,
                     logging: true,
-                    useCORS: true
+                    useCORS: false,  // Don't try to fetch via CORS
+                    allowTaint: false,  // Don't allow tainted canvas
+                    backgroundColor: '#ffffff',
+                    onclone: (clonedDoc) => {
+                        // In the cloned document, images should already be loaded
+                        console.log('Document cloned for rendering');
+                    }
                 });
 
                 console.log('Creating PDF...');
@@ -1497,6 +1482,8 @@
                 console.log('Saving PDF...');
                 pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
                 console.log('PDF generated successfully!');
+                
+                showStatus('PDF generated successfully!', 'success');
 
             } catch (error) {
                 console.error('PDF generation failed:', error);
