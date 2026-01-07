@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -391,58 +392,6 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
-        .unscheduled-section {
-            margin-top: 3rem;
-            background: var(--dark-light);
-            border-radius: 16px;
-            padding: 2rem;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        .section-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.5rem;
-            color: var(--text);
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .unscheduled-grid {
-            overflow-x: auto;
-        }
-
-        .unscheduled-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .unscheduled-table th {
-            padding: 1rem;
-            text-align: left;
-            color: var(--secondary);
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.9rem;
-            border-bottom: 2px solid var(--dark-lighter);
-            background: var(--dark-lighter);
-        }
-
-        .unscheduled-table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--dark-lighter);
-            vertical-align: top;
-        }
-
-        .engineer-name-item {
-            padding: 0.4rem 0.6rem;
-            background: var(--dark-lighter);
-            border-radius: 4px;
-            margin-bottom: 0.4rem;
-            font-size: 0.85rem;
-            color: var(--text-dim);
-        }
-
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -462,12 +411,6 @@
                 font-size: 0.65rem;
                 padding: 0.2rem;
             }
-
-            .unscheduled-table th,
-            .unscheduled-table td {
-                padding: 0.5rem;
-                font-size: 0.8rem;
-            }
         }
     </style>
 </head>
@@ -476,7 +419,6 @@
         <header>
             <div class="header-content">
                 <a href="staff-management.html" class="logo">Meeting Calendar</a>
-                <a href="staff-management.html" class="back-btn">← Back to Staff Management</a>
             </div>
             <h1>Meeting Calendar</h1>
             <p class="subtitle">Schedule and view team leader meetings with engineers</p>
@@ -514,15 +456,6 @@
                     <!-- Calendar days will be populated here -->
                 </tbody>
             </table>
-        </div>
-
-        <div class="unscheduled-section">
-            <h2 class="section-title">Unscheduled Engineers for <span id="unscheduled-month">January 2026</span></h2>
-            <div class="unscheduled-grid">
-                <table class="unscheduled-table" id="unscheduled-table">
-                    <!-- Will be populated dynamically -->
-                </table>
-            </div>
         </div>
     </div>
 
@@ -670,7 +603,6 @@
             const firstDay = getFirstDayOfMonth(currentDate);
             
             document.getElementById('current-month').textContent = `${monthNames[month]} ${year}`;
-            document.getElementById('unscheduled-month').textContent = `${monthNames[month]} ${year}`;
             
             const calendarBody = document.getElementById('calendar-body');
             calendarBody.innerHTML = '';
@@ -738,8 +670,6 @@
                 
                 calendarBody.appendChild(row);
             }
-            
-            renderUnscheduledEngineers();
         }
 
         function previousMonth() {
@@ -829,76 +759,6 @@
             toast.textContent = message;
             toast.className = 'toast show' + (type === 'error' ? ' error' : '');
             setTimeout(() => toast.classList.remove('show'), 3000);
-        }
-
-        function renderUnscheduledEngineers() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            
-            // Get all meetings for the current month
-            const monthMeetings = allMeetings.filter(m => {
-                if (!m.date) return false;
-                const meetingDate = new Date(m.date);
-                return meetingDate.getFullYear() === year && meetingDate.getMonth() === month;
-            });
-            
-            // Create a set of scheduled engineers
-            const scheduledEngineers = new Set(monthMeetings.map(m => m.engineer));
-            
-            // Group by team leader
-            const teamLeaders = [
-                'Ali Cavan', 'Craig Barnes', 'Paul Simpson', 'Richard Wiecko',
-                'Scott Carson', 'Stuart Whyte', 'Subbies'
-            ];
-            
-            const unscheduledByTeam = {};
-            
-            teamLeaders.forEach(leader => {
-                const teamMembers = allEmployees.filter(emp => {
-                    const empLeader = emp['Team Leader'] || emp.teamLeader;
-                    return empLeader === leader && !emp.leaveDate;
-                });
-                
-                unscheduledByTeam[leader] = teamMembers
-                    .filter(emp => !scheduledEngineers.has(emp['Full Name']))
-                    .sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
-            });
-            
-            // Render table
-            const table = document.getElementById('unscheduled-table');
-            
-            // Create header row
-            const headerRow = document.createElement('tr');
-            teamLeaders.forEach(leader => {
-                const th = document.createElement('th');
-                th.textContent = leader;
-                headerRow.appendChild(th);
-            });
-            table.innerHTML = '';
-            table.appendChild(headerRow);
-            
-            // Find max number of rows needed
-            const maxRows = Math.max(...Object.values(unscheduledByTeam).map(arr => arr.length));
-            
-            // Create data rows
-            for (let i = 0; i < maxRows; i++) {
-                const row = document.createElement('tr');
-                
-                teamLeaders.forEach(leader => {
-                    const td = document.createElement('td');
-                    const engineers = unscheduledByTeam[leader];
-                    
-                    if (i < engineers.length) {
-                        td.innerHTML = `<div class="engineer-name-item">${engineers[i]['Full Name']}</div>`;
-                    } else {
-                        td.innerHTML = '';
-                    }
-                    
-                    row.appendChild(td);
-                });
-                
-                table.appendChild(row);
-            }
         }
 
         // Close modal when clicking outside
