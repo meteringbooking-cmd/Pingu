@@ -478,6 +478,7 @@
                 <a href="staff-management.html" class="logo">Meeting Calendar</a>
                 <a href="staff-management.html" class="back-btn">← Back to Staff Management</a>
             </div>
+            <h1>Meeting Calendar</h1>
             <p class="subtitle">Schedule and view team leader meetings with engineers</p>
         </header>
 
@@ -505,6 +506,8 @@
                         <th>Wednesday</th>
                         <th>Thursday</th>
                         <th>Friday</th>
+                        <th>Saturday</th>
+                        <th>Sunday</th>
                     </tr>
                 </thead>
                 <tbody id="calendar-body">
@@ -673,29 +676,29 @@
             calendarBody.innerHTML = '';
             
             let dayCounter = 1;
-            let currentWeekday = firstDay;
+            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
             
             // Days from previous month
             const prevMonth = new Date(year, month, 0);
             const daysInPrevMonth = prevMonth.getDate();
             const prevMonthStart = daysInPrevMonth - firstDay + 1;
             
-            while (dayCounter <= daysInMonth) {
+            for (let i = 0; i < Math.ceil(totalCells / 7); i++) {
                 const row = document.createElement('tr');
                 
-                for (let j = 0; j < 5; j++) { // Only 5 weekdays
+                for (let j = 0; j < 7; j++) {
                     const cell = document.createElement('td');
+                    const cellIndex = i * 7 + j;
                     
-                    if (currentWeekday < firstDay && dayCounter === 1) {
+                    if (cellIndex < firstDay) {
                         // Previous month days
-                        const day = prevMonthStart + currentWeekday;
+                        const day = prevMonthStart + cellIndex;
                         const prevDate = new Date(year, month - 1, day);
                         cell.innerHTML = `
                             <div class="calendar-day other-month">
                                 <div class="day-number">${day}</div>
                             </div>
                         `;
-                        currentWeekday++;
                     } else if (dayCounter <= daysInMonth) {
                         // Current month days
                         const currentDay = dayCounter;
@@ -719,13 +722,6 @@
                             </div>
                         `;
                         dayCounter++;
-                        currentWeekday++;
-                        
-                        // Skip weekends
-                        if (currentWeekday >= 5) {
-                            currentWeekday = 0;
-                            break; // End this row
-                        }
                     } else {
                         // Next month days
                         const nextMonthDay = dayCounter - daysInMonth;
@@ -735,12 +731,6 @@
                             </div>
                         `;
                         dayCounter++;
-                        currentWeekday++;
-                        
-                        if (currentWeekday >= 5) {
-                            currentWeekday = 0;
-                            break;
-                        }
                     }
                     
                     row.appendChild(cell);
