@@ -1159,13 +1159,36 @@
 
         function showSurveySection(surveyType) {
             selectedSurveyType = surveyType;
-            document.getElementById('battery-survey').classList.remove('active');
-            document.getElementById('battery-and-solar-survey').classList.remove('active');
             
+            // Get both sections
+            const batterySection = document.getElementById('battery-survey');
+            const batterySolarSection = document.getElementById('battery-and-solar-survey');
+            
+            // Remove active class from both
+            batterySection.classList.remove('active');
+            batterySolarSection.classList.remove('active');
+            
+            // Disable required fields in both sections first
+            batterySection.querySelectorAll('[required]').forEach(field => {
+                field.removeAttribute('required');
+                field.dataset.wasRequired = 'true';
+            });
+            batterySolarSection.querySelectorAll('[required]').forEach(field => {
+                field.removeAttribute('required');
+                field.dataset.wasRequired = 'true';
+            });
+            
+            // Activate the correct section and re-enable its required fields
             if (surveyType === 'battery') {
-                document.getElementById('battery-survey').classList.add('active');
+                batterySection.classList.add('active');
+                batterySection.querySelectorAll('[data-was-required="true"]').forEach(field => {
+                    field.setAttribute('required', 'required');
+                });
             } else if (surveyType === 'battery-and-solar') {
-                document.getElementById('battery-and-solar-survey').classList.add('active');
+                batterySolarSection.classList.add('active');
+                batterySolarSection.querySelectorAll('[data-was-required="true"]').forEach(field => {
+                    field.setAttribute('required', 'required');
+                });
             }
         }
 
@@ -1250,49 +1273,21 @@
 
         async function submitSurvey(event) {
             event.preventDefault();
+            console.log('Submit button clicked');
+            
             if (!verifiedJob) {
+                console.log('No verified job');
                 showAlert('Please verify job number first', 'error');
                 return;
             }
             
-            // Only validate fields in the active survey section
-            const activeSection = document.querySelector('.survey-section.active');
-            if (!activeSection) {
-                showAlert('Please select a survey type', 'error');
-                return;
-            }
-            
-            // Check required fields only in active section
-            const requiredFields = activeSection.querySelectorAll('[required]');
-            let allValid = true;
-            let firstInvalid = null;
-            
-            requiredFields.forEach(field => {
-                if (field.type === 'radio') {
-                    const radioGroup = activeSection.querySelectorAll(`input[name="${field.name}"]`);
-                    const isChecked = Array.from(radioGroup).some(radio => radio.checked);
-                    if (!isChecked && !firstInvalid) {
-                        firstInvalid = field;
-                        allValid = false;
-                    }
-                } else if (!field.value || !field.value.trim()) {
-                    if (!firstInvalid) firstInvalid = field;
-                    allValid = false;
-                }
-            });
-            
-            if (!allValid) {
-                if (firstInvalid) {
-                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    setTimeout(() => firstInvalid.focus(), 500);
-                }
-                showAlert('Please fill in all required fields', 'error');
-                return;
-            }
+            console.log('Survey type:', selectedSurveyType);
             
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
+            
+            console.log('Starting submission...');
             
             try {
                 let surveyData = {
@@ -1304,6 +1299,7 @@
                 };
 
                 if (selectedSurveyType === 'battery') {
+                    console.log('Submitting battery survey');
                     surveyData.sections = {
                         batteryDetails: {
                             date: document.getElementById('battery-survey-date')?.value || '',
@@ -1312,6 +1308,7 @@
                         }
                     };
                 } else if (selectedSurveyType === 'battery-and-solar') {
+                    console.log('Submitting battery and solar survey');
                     const photoUrls = {};
                     for (const [fieldId, files] of Object.entries(uploadedFiles)) {
                         if (files.length > 0) {
@@ -1403,12 +1400,15 @@
 
                 const { doc, setDoc } = window.firebaseModules;
                 const surveyRef = doc(window.db, 'site-surveys', `${verifiedJob['Job Number']}_${selectedSurveyType}_${Date.now()}`);
+                console.log('Saving to Firestore...');
                 await setDoc(surveyRef, surveyData);
+                console.log('Saved successfully!');
                 clearProgress();
                 showAlert('Survey submitted successfully!', 'success');
                 setTimeout(() => window.location.href = 'teamview.html', 2000);
             } catch (error) {
                 console.error('Survey submission error:', error);
+                console.error('Error details:', error.message, error.stack);
                 showAlert('Error submitting survey: ' + (error.message || 'Please try again'), 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
