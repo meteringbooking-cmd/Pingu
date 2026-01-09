@@ -475,21 +475,20 @@
             let html = '';
             
             currentSurveys.forEach((survey, index) => {
-                const date = survey.submittedDate || (survey.submittedAt ? new Date(survey.submittedAt).toLocaleDateString('en-GB') : 'Unknown');
-                const time = survey.submittedTime || (survey.submittedAt ? new Date(survey.submittedAt).toLocaleTimeString('en-GB') : 'Unknown');
-                const isOldFormat = !survey.sections || !Array.isArray(survey.sections);
+                const date = survey.submittedAt ? new Date(survey.submittedAt).toLocaleDateString('en-GB') : 'Unknown';
+                const time = survey.submittedAt ? new Date(survey.submittedAt).toLocaleTimeString('en-GB') : 'Unknown';
+                const surveyType = formatSurveyType(survey.surveyType);
                 
                 html += `
                     <div class="survey-item" onclick="displaySurvey(${index})">
                         <div class="survey-item-header">
                             <div class="survey-item-title">
-                                Survey #${currentSurveys.length - index}
-                                ${isOldFormat ? '<span style="color: #FFA500; font-size: 0.8rem; margin-left: 0.5rem;">(Old Format)</span>' : ''}
+                                ${surveyType} Survey #${currentSurveys.length - index}
                             </div>
                             <div class="survey-item-date">${date} at ${time}</div>
                         </div>
                         <div style="color: var(--text-dim); font-size: 0.9rem;">
-                            Customer: ${survey.customerName || 'Unknown'} | Surveyor: ${getSurveyorName(survey)}
+                            Job: ${survey.jobNumber || 'Unknown'} | Status: ${survey.status || 'completed'}
                         </div>
                     </div>
                 `;
@@ -498,22 +497,10 @@
             container.innerHTML = html;
         }
         
-        function getSurveyorName(survey) {
-            // Handle new structured format
-            if (survey.sections && Array.isArray(survey.sections)) {
-                const surveyDetails = survey.sections.find(s => s.title === 'Survey Details');
-                if (surveyDetails && surveyDetails.fields) {
-                    const surveyorField = surveyDetails.fields.find(f => f.question === 'Surveyor');
-                    if (surveyorField) return surveyorField.answer;
-                }
-            }
-            
-            // Handle old format (fallback)
-            if (survey.surveyor) {
-                return survey.surveyor;
-            }
-            
-            return 'Unknown';
+        function formatSurveyType(type) {
+            if (type === 'battery-and-solar') return 'Battery and Solar';
+            if (type === 'battery') return 'Battery';
+            return type || 'Unknown';
         }
         
         function displaySurvey(index) {
@@ -522,107 +509,166 @@
             const viewer = document.getElementById('survey-viewer');
             const content = document.getElementById('survey-content');
             
-            // Check if this is a new format survey with sections
-            if (!currentSurvey.sections || !Array.isArray(currentSurvey.sections)) {
-                // Old format - show a message
-                content.innerHTML = `
-                    <div class="report-header">
-                        <h1>Site Survey Report</h1>
-                        <div class="metadata">
-                            <div class="metadata-item">
-                                <div class="metadata-label">Job Number</div>
-                                <div class="metadata-value">${currentSurvey.jobNumber || 'N/A'}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Customer</div>
-                                <div class="metadata-value">${currentSurvey.customerName || 'N/A'}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Date Submitted</div>
-                                <div class="metadata-value">${currentSurvey.submittedDate || new Date(currentSurvey.submittedAt).toLocaleDateString('en-GB')}</div>
-                            </div>
-                            <div class="metadata-item">
-                                <div class="metadata-label">Status</div>
-                                <div class="metadata-value">${currentSurvey.status || 'completed'}</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 2px solid #FFA500; padding: 1.5rem; border-radius: 12px; margin-top: 2rem;">
-                        <h3 style="margin-top: 0;">⚠️ Old Survey Format</h3>
-                        <p>This survey was created with the old format and doesn't include the structured questions and answers.</p>
-                        <p style="margin-bottom: 0;">To view surveys with full questions, answers, and photos, please submit new surveys using the updated survey form.</p>
-                    </div>
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px;">
-                        <h3>Raw Survey Data</h3>
-                        <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.85rem;">${JSON.stringify(currentSurvey, null, 2)}</pre>
-                    </div>
-                `;
-                
-                document.getElementById('survey-list').style.display = 'none';
-                viewer.classList.add('active');
-                return;
-            }
-            
-            // New format - display properly
+            // Build metadata header
             let html = `
                 <div class="report-header">
                     <h1>Site Survey Report</h1>
                     <div class="metadata">
                         <div class="metadata-item">
                             <div class="metadata-label">Job Number</div>
-                            <div class="metadata-value">${currentSurvey.jobNumber}</div>
+                            <div class="metadata-value">${currentSurvey.jobNumber || 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
-                            <div class="metadata-label">Customer</div>
-                            <div class="metadata-value">${currentSurvey.customerName}</div>
+                            <div class="metadata-label">Survey Type</div>
+                            <div class="metadata-value">${formatSurveyType(currentSurvey.surveyType)}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Date Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedDate}</div>
+                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleDateString('en-GB') : 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Time Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedTime}</div>
+                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleTimeString('en-GB') : 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Status</div>
-                            <div class="metadata-value">${currentSurvey.status}</div>
+                            <div class="metadata-value">${currentSurvey.status || 'completed'}</div>
                         </div>
                     </div>
                 </div>
             `;
             
-            currentSurvey.sections.forEach(section => {
-                html += `
-                    <div class="section">
-                        <h2 class="section-title">${section.title}</h2>
-                `;
+            // Check if this is the new format with sections object
+            if (currentSurvey.sections && typeof currentSurvey.sections === 'object') {
                 
-                section.fields.forEach(field => {
-                    html += `
-                        <div class="field-row">
-                            <div class="field-question">${field.question}</div>
-                            <div class="field-answer">${field.answer}</div>
-                    `;
-                    
-                    if (field.photos && field.photos.length > 0) {
-                        html += '<div class="field-photos">';
-                        field.photos.forEach(photo => {
-                            html += `<img src="${photo}" alt="${field.question}" class="survey-photo" onclick="openModal('${photo}')" />`;
-                        });
-                        html += '</div>';
+                // Handle Battery survey type
+                if (currentSurvey.surveyType === 'battery' && currentSurvey.sections.batteryDetails) {
+                    html += renderBatterySurvey(currentSurvey.sections.batteryDetails);
+                }
+                
+                // Handle Battery and Solar survey type
+                else if (currentSurvey.surveyType === 'battery-and-solar') {
+                    if (currentSurvey.sections.surveyDetails) {
+                        html += renderSection('Survey Details', currentSurvey.sections.surveyDetails);
                     }
-                    
-                    html += '</div>';
-                });
-                
-                html += '</div>';
-            });
+                    if (currentSurvey.sections.riskAssessment) {
+                        html += renderSection('Risk Assessment', currentSurvey.sections.riskAssessment);
+                    }
+                    if (currentSurvey.sections.electricalSystem) {
+                        html += renderSection('Electrical System', currentSurvey.sections.electricalSystem);
+                    }
+                    if (currentSurvey.sections.propertyInternal) {
+                        html += renderSection('Property (Internal)', currentSurvey.sections.propertyInternal);
+                    }
+                    if (currentSurvey.sections.propertyExternal) {
+                        html += renderSection('Property (External)', currentSurvey.sections.propertyExternal);
+                    }
+                }
+            } else {
+                // Old format or unrecognized
+                html += `
+                    <div style="background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 2px solid #FFA500; padding: 1.5rem; border-radius: 12px; margin-top: 2rem;">
+                        <h3 style="margin-top: 0;">⚠️ Old Survey Format</h3>
+                        <p>This survey was created with an older format.</p>
+                    </div>
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px;">
+                        <h3>Raw Survey Data</h3>
+                        <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.85rem;">${JSON.stringify(currentSurvey, null, 2)}</pre>
+                    </div>
+                `;
+            }
             
             content.innerHTML = html;
             
             document.getElementById('survey-list').style.display = 'none';
             viewer.classList.add('active');
+        }
+        
+        function renderBatterySurvey(details) {
+            return `
+                <div class="section">
+                    <h2 class="section-title">Battery Survey Details</h2>
+                    <div class="field-row">
+                        <div class="field-question">Date</div>
+                        <div class="field-answer">${details.date || 'N/A'}</div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field-question">Time</div>
+                        <div class="field-answer">${details.time || 'N/A'}</div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field-question">Surveyor Name</div>
+                        <div class="field-answer">${details.name || 'N/A'}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderSection(title, sectionData) {
+            let html = `
+                <div class="section">
+                    <h2 class="section-title">${title}</h2>
+            `;
+            
+            // Convert section data to field rows
+            for (const [key, value] of Object.entries(sectionData)) {
+                // Skip if it's a photos array
+                if (key.includes('Photos') && Array.isArray(value)) {
+                    continue;
+                }
+                
+                // Format the field name
+                const fieldName = formatFieldName(key);
+                const fieldValue = formatFieldValue(value);
+                
+                // Get associated photos
+                const photoKey = key + 'Photos';
+                const photos = sectionData[photoKey] || [];
+                
+                html += `
+                    <div class="field-row">
+                        <div class="field-question">${fieldName}</div>
+                        <div class="field-answer">${fieldValue}</div>
+                `;
+                
+                if (photos && photos.length > 0) {
+                    html += '<div class="field-photos">';
+                    photos.forEach(photo => {
+                        html += `<img src="${photo}" alt="${fieldName}" class="survey-photo" onclick="openModal('${photo}')" />`;
+                    });
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            return html;
+        }
+        
+        function formatFieldName(key) {
+            // Convert camelCase to Title Case with spaces
+            return key
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .replace(/Photos$/, '')
+                .trim();
+        }
+        
+        function formatFieldValue(value) {
+            if (value === null || value === undefined || value === '') {
+                return 'N/A';
+            }
+            if (typeof value === 'boolean') {
+                return value ? 'Yes' : 'No';
+            }
+            if (typeof value === 'number') {
+                return value.toString();
+            }
+            if (Array.isArray(value)) {
+                return value.join(', ') || 'N/A';
+            }
+            return value;
         }
         
         window.displaySurvey = displaySurvey;
@@ -635,148 +681,10 @@
         window.backToList = backToList;
         
         function downloadHTML() {
-            if (!currentSurvey) return;
-            
-            // Check if old format
-            if (!currentSurvey.sections || !Array.isArray(currentSurvey.sections)) {
-                showAlert('Cannot download old format surveys. Please submit a new survey with the updated form.', 'error');
-                return;
-            }
-            
-            const htmlContent = generateHTMLDocument(currentSurvey);
-            
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Survey_${currentSurvey.jobNumber}_${currentSurvey.submittedDate.replace(/\//g, '-')}.html`;
-            a.click();
-            URL.revokeObjectURL(url);
-            
-            showAlert('Survey downloaded successfully!', 'success');
+            showAlert('Download feature not yet implemented for new format', 'error');
         }
         
         window.downloadHTML = downloadHTML;
-        
-        function generateHTMLDocument(survey) {
-            let html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Site Survey Report - ${survey.jobNumber}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
-            color: #333;
-        }
-        h1 {
-            color: #FF6B35;
-            border-bottom: 3px solid #FF6B35;
-            padding-bottom: 10px;
-        }
-        h2 {
-            color: #00D9FF;
-            margin-top: 30px;
-            border-bottom: 2px solid #eee;
-            padding-bottom: 5px;
-        }
-        .metadata {
-            background: #f0f0f0;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        .metadata p {
-            margin: 5px 0;
-        }
-        .field {
-            margin: 15px 0;
-            padding: 15px;
-            background: #f9f9f9;
-            border-left: 4px solid #FF6B35;
-            border-radius: 4px;
-        }
-        .question {
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        .answer {
-            color: #666;
-            padding-left: 20px;
-        }
-        .photos {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 10px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-        }
-        .photos img {
-            width: 100%;
-            height: 150px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid #ddd;
-        }
-        @media print {
-            .photos img {
-                break-inside: avoid;
-            }
-            h2 {
-                break-after: avoid;
-            }
-        }
-    </style>
-</head>
-<body>
-    <h1>Site Survey Report</h1>
-    
-    <div class="metadata">
-        <p><strong>Job Number:</strong> ${survey.jobNumber}</p>
-        <p><strong>Customer:</strong> ${survey.customerName}</p>
-        <p><strong>Date Submitted:</strong> ${survey.submittedDate} at ${survey.submittedTime}</p>
-        <p><strong>Status:</strong> ${survey.status}</p>
-    </div>
-`;
-            
-            survey.sections.forEach(section => {
-                html += `\n    <h2>${section.title}</h2>\n`;
-                
-                section.fields.forEach(field => {
-                    html += `
-    <div class="field">
-        <div class="question">${field.question}</div>
-        <div class="answer">${field.answer}</div>`;
-                    
-                    if (field.photos && field.photos.length > 0) {
-                        html += `
-        <div class="photos">`;
-                        field.photos.forEach(photo => {
-                            html += `
-            <img src="${photo}" alt="${field.question}" />`;
-                        });
-                        html += `
-        </div>`;
-                    }
-                    
-                    html += `
-    </div>`;
-                });
-            });
-            
-            html += `
-</body>
-</html>`;
-            
-            return html;
-        }
         
         function printSurvey() {
             window.print();
