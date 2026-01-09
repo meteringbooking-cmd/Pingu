@@ -447,6 +447,14 @@
             margin-top: 0.3rem;
             font-style: italic;
         }
+
+        .survey-section {
+            display: none;
+        }
+
+        .survey-section.active {
+            display: block;
+        }
       
         @media (max-width: 768px) {
             .container { padding: 1rem; }
@@ -478,6 +486,15 @@
                 <label for="job-number" class="form-label required">Job Number</label>
                 <input type="text" id="job-number" class="form-input" placeholder="Enter job number..." required />
             </div>
+
+            <div class="form-group">
+                <label for="survey-type" class="form-label required">Survey Type</label>
+                <select id="survey-type" class="form-select" required>
+                    <option value="">Select survey type...</option>
+                    <option value="battery">Battery</option>
+                    <option value="battery-and-solar">Battery and Solar</option>
+                </select>
+            </div>
           
             <button type="button" class="submit-btn" id="verify-btn">Verify Job Number</button>
           
@@ -491,526 +508,484 @@
             <!-- Survey Form (hidden until job verified) -->
             <form id="survey-form" style="display: none;">
               
-                <!-- Survey Details -->
-                <div class="section-header">📅 Survey Details</div>
-              
-                <div class="form-group">
-                    <label for="conducted-on" class="form-label required">Conducted On (Date and Time)</label>
-                    <input type="datetime-local" id="conducted-on" class="form-input" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="surveyor" class="form-label required">Surveyor</label>
-                    <input type="text" id="surveyor" class="form-input" placeholder="Enter surveyor name..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Customer Present During Survey?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="customer-yes" name="customer-present" value="Yes" required><label for="customer-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="customer-no" name="customer-present" value="No"><label for="customer-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="customer-na" name="customer-present" value="N/A"><label for="customer-na">N/A</label></div>
+                <!-- Battery Survey Section -->
+                <div id="battery-survey" class="survey-section">
+                    <div class="section-header">🔋 Battery Survey Details</div>
+                  
+                    <div class="form-group">
+                        <label for="battery-survey-date" class="form-label required">Date</label>
+                        <input type="date" id="battery-survey-date" class="form-input" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="battery-survey-time" class="form-label required">Time</label>
+                        <input type="time" id="battery-survey-time" class="form-input" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="battery-surveyor-name" class="form-label required">Name</label>
+                        <input type="text" id="battery-surveyor-name" class="form-input" placeholder="Enter your name..." required />
                     </div>
                 </div>
-              
-                <!-- Electrical System -->
-                <div class="section-header">⚡ Electrical System</div>
-              
-                <div class="form-group">
-                    <label for="meter-position" class="form-label required">Position of Meter Cupboard or Incoming Supply</label>
-                    <input type="text" id="meter-position" class="form-input" placeholder="Describe location..." required />
-                    <div class="conditional-field" id="meter-position-upload">
-                        <label class="form-label required">Upload Photo(s) of Meter Position</label>
-                        <div class="file-upload-area" onclick="document.getElementById('meter-position-files').click()">
+
+                <!-- Battery and Solar Survey Section -->
+                <div id="battery-and-solar-survey" class="survey-section">
+                    <!-- Survey Details -->
+                    <div class="section-header">📅 Survey Details</div>
+                  
+                    <div class="form-group">
+                        <label for="conducted-on" class="form-label required">Conducted On (Date and Time)</label>
+                        <input type="datetime-local" id="conducted-on" class="form-input" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="surveyor" class="form-label required">Surveyor</label>
+                        <input type="text" id="surveyor" class="form-input" placeholder="Enter surveyor name..." required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Customer Present During Survey?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="customer-yes" name="customer-present" value="Yes" required><label for="customer-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="customer-no" name="customer-present" value="No"><label for="customer-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="customer-na" name="customer-present" value="N/A"><label for="customer-na">N/A</label></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="additional-notes-customer-present" class="form-label">Additional Notes</label>
+                        <textarea id="additional-notes-customer-present" class="form-textarea" placeholder="Any additional information..."></textarea>
+                    </div>
+
+                    <!-- Personal Risk Assessment -->
+                    <div class="section-header">⚠️ Personal Risk Assessment</div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="risk-assessment-yes" name="risk-assessment" value="Yes" required><label for="risk-assessment-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="risk-assessment-no" name="risk-assessment" value="No"><label for="risk-assessment-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="risk-assessment-na" name="risk-assessment" value="N/A"><label for="risk-assessment-na">N/A</label></div>
+                        </div>
+                    </div>
+                  
+                    <!-- Electrical System -->
+                    <div class="section-header">⚡ Electrical System</div>
+                  
+                    <div class="form-group">
+                        <label for="meter-position" class="form-label required">Position of Meter Cupboard or Incoming Supply</label>
+                        <input type="text" id="meter-position" class="form-input" placeholder="Describe location..." required />
+                        <div class="conditional-field show" id="meter-position-upload">
+                            <label class="form-label required">Upload Photo(s) of Meter Position</label>
+                            <div class="file-upload-area" onclick="document.getElementById('meter-position-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="meter-position-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="meter-position-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="fuse-rating" class="form-label required">What is the Fuse Rating?</label>
+                        <input type="text" id="fuse-rating" class="form-input" placeholder="e.g., 100A..." required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="earthing-system" class="form-label required">Type of Earthing System</label>
+                        <input type="text" id="earthing-system" class="form-input" placeholder="Describe earthing system..." required />
+                        <div class="conditional-field show" id="earthing-system-upload">
+                            <label class="form-label required">Upload Photo(s) of earthing system</label>
+                            <div class="file-upload-area" onclick="document.getElementById('earthing-system-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="earthing-system-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="earthing-system-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="gas-bonded-type" class="form-label required">Is Gas Bonded?</label>
+                        <input type="text" id="gas-bonded-type" class="form-input" placeholder="e.g. Yes, No..." required />
+                        <label class="form-label required">Upload Photo(s) of Gas Bonded</label>
+                        <div class="file-upload-area" onclick="document.getElementById('gas-bonded-files').click()">
                             <div class="file-upload-icon">📸</div>
                             <div class="file-upload-text">Click to upload or drag and drop photos</div>
                         </div>
-                        <input type="file" id="meter-position-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="meter-position-uploaded"></div>
+                        <input type="file" id="gas-bonded-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                        <div class="uploaded-files" id="gas-bonded-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="fuse-rating" class="form-label required">What is the Fuse Rating?</label>
-                    <input type="text" id="fuse-rating" class="form-input" placeholder="e.g., 100A..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="gateway-location" class="form-label required">Location for Gateway</label>
-                    <input type="text" id="gateway-location" class="form-input" placeholder="Describe location..." required />
-                    <div class="conditional-field" id="gateway-location-upload">
-                        <label class="form-label required">Upload Photo(s) of Gateway Location</label>
-                        <div class="file-upload-area" onclick="document.getElementById('gateway-location-files').click()">
+                  
+                    <div class="form-group">
+                        <label for="water-bonded-type" class="form-label required">Is Water Bonded?</label>
+                        <input type="text" id="water-bonded-type" class="form-input" placeholder="e.g. Yes, No..." required />
+                        <label class="form-label required">Upload Photo(s) of Water Bonded</label>
+                        <div class="file-upload-area" onclick="document.getElementById('water-bonded-files').click()">
                             <div class="file-upload-icon">📸</div>
                             <div class="file-upload-text">Click to upload or drag and drop photos</div>
                         </div>
-                        <input type="file" id="gateway-location-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="gateway-location-uploaded"></div>
+                        <input type="file" id="water-bonded-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                        <div class="uploaded-files" id="water-bonded-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="panel-run" class="form-label required">Describe the Panel Run</label>
-                    <textarea id="panel-run" class="form-textarea" placeholder="Describe the cable route from panels to inverter..." required></textarea>
-                </div>
-              
-                <div class="form-group">
-                    <label for="panel-run-distance" class="form-label required">Panel Run Distance (m)</label>
-                    <input type="number" id="panel-run-distance" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-gateway-run" class="form-label required">Describe the Battery to Gateway Run</label>
-                    <textarea id="battery-gateway-run" class="form-textarea" placeholder="Describe the cable route from battery to gateway..." required></textarea>
-                    <div class="conditional-field" id="battery-gateway-upload">
-                        <label class="form-label required">Upload Photo(s) of Battery to Gateway Run</label>
-                        <div class="file-upload-area" onclick="document.getElementById('battery-gateway-files').click()">
+                  
+                    <div class="form-group">
+                        <label for="cable-run" class="form-label required">Describe the Cable Run(s)</label>
+                        <textarea id="cable-run" class="form-textarea" placeholder="Describe the cable run(s)..." required></textarea>
+                        <div class="conditional-field show" id="battery-gateway-upload">
+                            <label class="form-label required">Upload Photo(s) of Cable Run</label>
+                            <div class="file-upload-area" onclick="document.getElementById('cable-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="cable-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="cable-uploaded"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="battery-location" class="form-label required">Battery and Inverter Location</label>
+                        <input type="text" id="battery-location" class="form-input" placeholder="Describe the location..." required />
+                        <div class="conditional-field show" id="battery-location-upload">
+                            <label class="form-label required">Upload Photo(s) of Battery Location</label>
+                            <div class="file-upload-area" onclick="document.getElementById('battery-location-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="battery-location-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="battery-location-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="surface-type" class="form-label required">Type of Surface at Battery Location</label>
+                        <input type="text" id="surface-type" class="form-input" placeholder="e.g., Concrete, Wood, Brick..." required />
+                        <label class="form-label required">Upload Photo(s) of Battery Surface Location</label>
+                        <div class="file-upload-area" onclick="document.getElementById('surface-files').click()">
                             <div class="file-upload-icon">📸</div>
                             <div class="file-upload-text">Click to upload or drag and drop photos</div>
                         </div>
-                        <input type="file" id="battery-gateway-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="battery-gateway-uploaded"></div>
+                        <input type="file" id="surface-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                        <div class="uploaded-files" id="surface-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-gateway-distance" class="form-label required">Battery to Gateway Distance (m)</label>
-                    <input type="number" id="battery-gateway-distance" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="wifi-signal" class="form-label required">Is there WiFi Signal at the Proposed Inverter Location?</label>
-                    <input type="text" id="wifi-signal" class="form-input" placeholder="e.g., Yes - strong signal, No - weak signal..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="meter-cupboard-photo" class="form-label required">Photo of Meter Cupboard Interior</label>
-                    <div class="file-upload-area" onclick="document.getElementById('meter-cupboard-files').click()">
-                        <div class="file-upload-icon">📸</div>
-                        <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                  
+                    <div class="form-group">
+                        <label for="battery-width" class="form-label required">Width (mm)</label>
+                        <input type="number" id="battery-width" class="form-input" placeholder="0" step="1" min="0" required />
                     </div>
-                    <input type="file" id="meter-cupboard-files" class="file-upload-input" multiple accept="image/*" capture="environment" required>
-                    <div class="uploaded-files" id="meter-cupboard-uploaded"></div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="render-cladding" class="form-label required">Any Signs of Render or Cladding?</label>
-                    <input type="text" id="render-cladding" class="form-input" placeholder="Describe any render or cladding..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="surface-type" class="form-label required">Type of Surface at Battery Location</label>
-                    <input type="text" id="surface-type" class="form-input" placeholder="e.g., Concrete, Wood, Brick..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-width" class="form-label required">Width (mm)</label>
-                    <input type="number" id="battery-width" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-depth" class="form-label required">Depth (mm)</label>
-                    <input type="number" id="battery-depth" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-length" class="form-label required">Length (mm)</label>
-                    <input type="number" id="battery-length" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="additional-notes-battery" class="form-label">Additional Notes</label>
-                    <textarea id="additional-notes-battery" class="form-textarea" placeholder="Any additional information about the battery location..."></textarea>
-                </div>
-              
-                <div class="form-group">
-                    <label for="battery-location" class="form-label required">Battery/Powerwall Location</label>
-                    <input type="text" id="battery-location" class="form-input" placeholder="Describe the location..." required />
-                    <div class="conditional-field" id="battery-location-upload">
-                        <label class="form-label required">Upload Photo(s) of Battery Location</label>
-                        <div class="file-upload-area" onclick="document.getElementById('battery-location-files').click()">
+                  
+                    <div class="form-group">
+                        <label for="battery-depth" class="form-label required">Depth (mm)</label>
+                        <input type="number" id="battery-depth" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="battery-length" class="form-label required">Length (mm)</label>
+                        <input type="number" id="battery-length" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="additional-notes-battery" class="form-label">Additional Notes</label>
+                        <textarea id="additional-notes-battery" class="form-textarea" placeholder="Any additional information about the battery location..."></textarea>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="render-cladding" class="form-label required">Any Signs of Render or Cladding?</label>
+                        <input type="text" id="render-cladding" class="form-input" placeholder="Describe any render or cladding..." required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="wifi-signal" class="form-label required">Is there WiFi Signal at the Proposed Inverter Location?</label>
+                        <input type="text" id="wifi-signal" class="form-input" placeholder="e.g., Yes - strong signal, No - weak signal..." required />
+                    </div>     
+
+                    <!-- Property -->
+                    <div class="section-header">🏚️ Property (internal)</div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Is the Loft Accessible?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="loft-accessible-yes" name="loft-accessible" value="Yes" required><label for="loft-accessible-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-accessible-no" name="loft-accessible" value="No"><label for="loft-accessible-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-accessible-na" name="loft-accessible" value="N/A"><label for="loft-accessible-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="loft-accessible-upload">
+                            <label class="form-label required">Upload Photo(s) of Loft Access</label>
+                            <div class="file-upload-area" onclick="document.getElementById('loft-accessible-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="loft-accessible-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="loft-accessible-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Is a Loft Ladder Installed?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="loft-ladder-yes" name="loft-ladder" value="Yes" required><label for="loft-ladder-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-ladder-no" name="loft-ladder" value="No"><label for="loft-ladder-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-ladder-na" name="loft-ladder" value="N/A"><label for="loft-ladder-na">N/A</label></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Is the Loft Boarded?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="loft-boarded-yes" name="loft-boarded" value="Yes" required><label for="loft-boarded-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-boarded-no" name="loft-boarded" value="No"><label for="loft-boarded-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="loft-boarded-na" name="loft-boarded" value="N/A"><label for="loft-boarded-na">N/A</label></div>
+                        </div>
+                    </div>
+    
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Signs of Asbestos?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="asbestos-yes" name="asbestos" value="Yes" required><label for="asbestos-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="asbestos-no" name="asbestos" value="No"><label for="asbestos-no">No</label></div>
+                        </div>
+                        <div class="conditional-field" id="asbestos-upload">
+                            <label class="form-label required">Upload Photo(s) of Asbestos</label>
+                            <div class="file-upload-area" onclick="document.getElementById('asbestos-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="asbestos-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="asbestos-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="loft-space-photos" class="form-label required">Wide Angle Inside the Loft Space</label>
+                        <div class="file-upload-area" onclick="document.getElementById('loft-space-files').click()">
                             <div class="file-upload-icon">📸</div>
                             <div class="file-upload-text">Click to upload or drag and drop photos</div>
                         </div>
-                        <input type="file" id="battery-location-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="battery-location-uploaded"></div>
+                        <input type="file" id="loft-space-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                        <div class="uploaded-files" id="loft-space-uploaded"></div>
                     </div>
-                </div>
-              
-                <!-- External Measurements -->
-                <div class="section-header">🏠 External Measurements</div>
-              
-                <div class="form-group">
-                    <label for="roof-covering" class="form-label required">What is the Roof Covering Type?</label>
-                    <input type="text" id="roof-covering" class="form-input" placeholder="e.g., Tiles, Slate, Metal..." required />
-                    <div class="conditional-field" id="roof-covering-upload">
-                        <label class="form-label required">Upload Photo(s) of Roof Covering</label>
-                        <div class="file-upload-area" onclick="document.getElementById('roof-covering-files').click()">
+
+                    <div class="form-group">
+                        <label for="rafter-width" class="form-label required">Rafter Width (mm)</label>
+                        <input type="number" id="rafter-width" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="rafter-depth" class="form-label required">Rafter Depth (mm)</label>
+                        <input type="number" id="rafter-depth" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="web-width" class="form-label required">Web Width (mm)</label>
+                        <input type="number" id="web-width" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="web-depth" class="form-label required">Web Depth (mm)</label>
+                        <input type="number" id="web-depth" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="web-length" class="form-label required">Web Length (mm)</label>
+                        <input type="number" id="web-length" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                      
+                    <div class="form-group">
+                        <label for="truss-spacing" class="form-label required">Truss Spacing (mm)</label>
+                        <input type="number" id="truss-spacing" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Signs of Deflection to the Existing Roof Slopes?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="deflection-yes" name="roof-deflection" value="Yes" required><label for="deflection-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="deflection-no" name="roof-deflection" value="No"><label for="deflection-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="deflection-na" name="roof-deflection" value="N/A"><label for="deflection-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="deflection-upload">
+                            <label class="form-label required">Upload Photo(s) of Roof Deflection</label>
+                            <div class="file-upload-area" onclick="document.getElementById('deflection-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="deflection-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="deflection-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Signs of Rot/Damage to the Internal Roof Structure?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="rot-damage-yes" name="rot-damage" value="Yes" required><label for="rot-damage-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="rot-damage-no" name="rot-damage" value="No"><label for="rot-damage-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="rot-damage-na" name="rot-damage" value="N/A"><label for="rot-damage-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="rot-damage-upload">
+                            <label class="form-label required">Upload Photo(s) of Rot/Damage</label>
+                            <div class="file-upload-area" onclick="document.getElementById('rot-damage-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="rot-damage-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="rot-damage-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="roof-concern-yes" name="roof-concern" value="Yes" required><label for="roof-concern-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="roof-concern-no" name="roof-concern" value="No"><label for="roof-concern-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="roof-concern-na" name="roof-concern" value="N/A"><label for="roof-concern-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="roof-concern-upload">
+                            <label class="form-label required">Upload Photo(s) of Concerns</label>
+                            <div class="file-upload-area" onclick="document.getElementById('roof-concern-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="roof-concern-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="roof-concern-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Dwarf Walls/Props Which Support the Purlins?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="dwarf-walls-yes" name="dwarf-walls" value="Yes" required><label for="dwarf-walls-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="dwarf-walls-no" name="dwarf-walls" value="No"><label for="dwarf-walls-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="dwarf-walls-na" name="dwarf-walls" value="N/A"><label for="dwarf-walls-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="dwarf-walls-upload">
+                            <label class="form-label required">Upload Photo(s) of Dwarf Walls/Props</label>
+                            <div class="file-upload-area" onclick="document.getElementById('dwarf-walls-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="dwarf-walls-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="dwarf-walls-uploaded"></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label class="form-label required">Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="structural-work-yes" name="structural-work" value="Yes" required><label for="structural-work-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="structural-work-no" name="structural-work" value="No"><label for="structural-work-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="structural-work-na" name="structural-work" value="N/A"><label for="structural-work-na">N/A</label></div>
+                        </div>
+                        <div class="conditional-field" id="structural-work-upload">
+                            <label class="form-label required">Upload Photo(s) of Structural Work</label>
+                            <div class="file-upload-area" onclick="document.getElementById('structural-work-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="structural-work-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="structural-work-uploaded"></div>
+                        </div>
+                    </div>          
+
+                    <!-- Property External -->
+                    <div class="section-header">🏚️ Property (external)</div>
+                      
+                    <div class="form-group">
+                        <label for="proposed-design" class="form-label required">Does the Proposed Design Fit?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="proposed-design-yes" name="proposed-design" value="Yes" required><label for="proposed-design-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="proposed-design-no" name="proposed-design" value="No"><label for="proposed-design-no">No</label></div>
+                        </div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="property-photos" class="form-label required">Wide Angle Shots of the Property Including All Property Faces</label>
+                        <div class="file-upload-area" onclick="document.getElementById('property-photos-files').click()">
                             <div class="file-upload-icon">📸</div>
                             <div class="file-upload-text">Click to upload or drag and drop photos</div>
                         </div>
-                        <input type="file" id="roof-covering-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="roof-covering-uploaded"></div>
+                        <input type="file" id="property-photos-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                        <div class="uploaded-files" id="property-photos-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="number-stories" class="form-label required">Number of Stories</label>
-                    <input type="number" id="number-stories" class="form-input" placeholder="0" step="1" min="1" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-age" class="form-label required">How Old is the Roof in Years?</label>
-                    <input type="number" id="roof-age" class="form-input" placeholder="0" step="1" min="0" required />
-                    <div class="help-text">If less than 1 year, enter 0</div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-work-age" class="form-label required">How Many Years Ago was the Last Work Carried Out on the Roof?</label>
-                    <input type="number" id="roof-work-age" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="soffit-overhang" class="form-label required">Distance the Soffit Overhangs (mm)</label>
-                    <input type="number" id="soffit-overhang" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Obstructions on the Roof?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="obstructions-yes" name="roof-obstructions" value="Yes" required><label for="obstructions-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="obstructions-no" name="roof-obstructions" value="No"><label for="obstructions-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="obstructions-na" name="roof-obstructions" value="N/A"><label for="obstructions-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="obstructions-upload">
-                        <label class="form-label required">Upload Photo(s) of Roof Obstructions</label>
-                        <div class="file-upload-area" onclick="document.getElementById('obstructions-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+
+                    <div class="form-group">
+                        <label for="roof-covering" class="form-label required">What is the Roof Covering Type?</label>
+                        <input type="text" id="roof-covering" class="form-input" placeholder="e.g., Tiles, Slate, Metal..." required />
+                        <div class="conditional-field show" id="roof-covering-upload">
+                            <label class="form-label required">Upload Photo(s) of Roof Covering</label>
+                            <div class="file-upload-area" onclick="document.getElementById('roof-covering-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="roof-covering-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="roof-covering-uploaded"></div>
                         </div>
-                        <input type="file" id="obstructions-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="obstructions-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="building-width" class="form-label required">Building Width (m)</label>
-                    <input type="number" id="building-width" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="height-to-ridge" class="form-label required">Height to Ridge (m)</label>
-                    <input type="number" id="height-to-ridge" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Is there any Form of Shading?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="shading-yes" name="roof-shading" value="Yes" required><label for="shading-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="shading-no" name="roof-shading" value="No"><label for="shading-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="shading-na" name="roof-shading" value="N/A"><label for="shading-na">N/A</label></div>
+                  
+                    <div class="form-group">
+                        <label for="number-stories" class="form-label required">Number of Stories</label>
+                        <input type="number" id="number-stories" class="form-input" placeholder="0" step="1" min="1" required />
                     </div>
-                    <div class="conditional-field" id="shading-upload">
-                        <label class="form-label required">Upload Photo(s) of Shading</label>
-                        <div class="file-upload-area" onclick="document.getElementById('shading-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                  
+                    <div class="form-group">
+                        <label for="roof-condition" class="form-label required">Condition of roof?</label>
+                        <input type="text" id="roof-condition" class="form-input" placeholder="Good, Poor..." required />
+                        <div class="conditional-field show">
+                            <label class="form-label required">Upload Photo(s) of Roof Condition</label>
+                            <div class="file-upload-area" onclick="document.getElementById('roof-condition-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="roof-condition-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="roof-condition-uploaded"></div>
                         </div>
-                        <input type="file" id="shading-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="shading-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="nearest-building-distance" class="form-label required">Distance to Nearest Building (m)</label>
-                    <input type="number" id="nearest-building-distance" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="obstruction-height" class="form-label required">Height of Nearest Obstruction (m)</label>
-                    <input type="number" id="obstruction-height" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="building-length" class="form-label required">Building Length (m)</label>
-                    <input type="number" id="building-length" class="form-input" placeholder="0.00" step="0.01" min="0" required />
-                </div>
-              
-                <!-- Main Roof -->
-                <div class="section-header">🏚️ Main Roof</div>
-              
-                <div class="form-group">
-                    <label for="roof-type" class="form-label required">What is the Roof Type?</label>
-                    <input type="text" id="roof-type" class="form-input" placeholder="e.g., Gable, Hip, Flat..." required />
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Is the Loft Accessible?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="loft-accessible-yes" name="loft-accessible" value="Yes" required><label for="loft-accessible-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-accessible-no" name="loft-accessible" value="No"><label for="loft-accessible-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-accessible-na" name="loft-accessible" value="N/A"><label for="loft-accessible-na">N/A</label></div>
+                  
+                    <div class="form-group">
+                        <label for="roof-work-age" class="form-label required">How Many Years Ago was the Last Work Carried Out on the Roof?</label>
+                        <input type="number" id="roof-work-age" class="form-input" placeholder="0" step="1" min="0" required />
                     </div>
-                    <div class="conditional-field" id="loft-accessible-upload">
-                        <label class="form-label required">Upload Photo(s) of Loft Access</label>
-                        <div class="file-upload-area" onclick="document.getElementById('loft-accessible-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+
+                    <div class="form-group">
+                        <label class="form-label required">Are there any Obstructions on the Roof?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="obstructions-yes" name="roof-obstructions" value="Yes" required><label for="obstructions-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="obstructions-no" name="roof-obstructions" value="No"><label for="obstructions-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="obstructions-na" name="roof-obstructions" value="N/A"><label for="obstructions-na">N/A</label></div>
                         </div>
-                        <input type="file" id="loft-accessible-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="loft-accessible-uploaded"></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="loft-hatch-width" class="form-label required">Loft Hatch Width (mm)</label>
-                    <input type="number" id="loft-hatch-width" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="loft-hatch-depth" class="form-label required">Loft Hatch Depth (mm)</label>
-                    <input type="number" id="loft-hatch-depth" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Is a Loft Ladder Installed?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="loft-ladder-yes" name="loft-ladder" value="Yes" required><label for="loft-ladder-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-ladder-no" name="loft-ladder" value="No"><label for="loft-ladder-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-ladder-na" name="loft-ladder" value="N/A"><label for="loft-ladder-na">N/A</label></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Is the Loft Boarded?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="loft-boarded-yes" name="loft-boarded" value="Yes" required><label for="loft-boarded-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-boarded-no" name="loft-boarded" value="No"><label for="loft-boarded-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="loft-boarded-na" name="loft-boarded" value="N/A"><label for="loft-boarded-na">N/A</label></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="loft-hatch-clearance" class="form-label required">Loft Hatch Clearance (mm)</label>
-                    <input type="number" id="loft-hatch-clearance" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="ridge-to-eaves" class="form-label required">Ridge to Eaves (mm)</label>
-                    <input type="number" id="ridge-to-eaves" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-length-bottom" class="form-label required">Length of Roof - Bottom (mm) (i.e. along eaves)</label>
-                    <input type="number" id="roof-length-bottom" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-pitch" class="form-label required">Roof Pitch (degrees)</label>
-                    <input type="number" id="roof-pitch" class="form-input" placeholder="0" step="0.1" min="0" max="90" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-length-top" class="form-label required">Length of Roof - Top (mm) (i.e. along ridge)</label>
-                    <input type="number" id="roof-length-top" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="rafter-width" class="form-label required">Rafter Width (mm)</label>
-                    <input type="number" id="rafter-width" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="rafter-depth" class="form-label required">Rafter Depth (mm)</label>
-                    <input type="number" id="rafter-depth" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="web-width" class="form-label required">Web Width (mm)</label>
-                    <input type="number" id="web-width" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="web-depth" class="form-label required">Web Depth (mm)</label>
-                    <input type="number" id="web-depth" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="web-length" class="form-label required">Web Length (mm)</label>
-                    <input type="number" id="web-length" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="truss-spacing" class="form-label required">Truss Spacing (mm)</label>
-                    <input type="number" id="truss-spacing" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="roof-diagram" class="form-label required">Sketch Roof Diagram and Label</label>
-                    <div class="file-upload-area" onclick="document.getElementById('roof-diagram-files').click()">
-                        <div class="file-upload-icon">📸</div>
-                        <div class="file-upload-text">Click to upload or drag and drop photo</div>
-                    </div>
-                    <input type="file" id="roof-diagram-files" class="file-upload-input" accept="image/*" capture="environment" required>
-                    <div class="uploaded-files" id="roof-diagram-uploaded"></div>
-                </div>
-              
-                <!-- Personal Risk Assessment -->
-                <div class="section-header">⚠️ Personal Risk Assessment</div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="risk-assessment-yes" name="risk-assessment" value="Yes" required><label for="risk-assessment-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="risk-assessment-no" name="risk-assessment" value="No"><label for="risk-assessment-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="risk-assessment-na" name="risk-assessment" value="N/A"><label for="risk-assessment-na">N/A</label></div>
-                    </div>
-                </div>
-              
-                <!-- Property -->
-                <div class="section-header">🏚️ Property</div>
-              
-                <div class="form-group">
-                    <label for="property-photos" class="form-label required">Wide Angle Shots of the Property Including All Property Faces</label>
-                    <div class="file-upload-area" onclick="document.getElementById('property-photos-files').click()">
-                        <div class="file-upload-icon">📸</div>
-                        <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                    </div>
-                    <input type="file" id="property-photos-files" class="file-upload-input" multiple accept="image/*" capture="environment" required>
-                    <div class="uploaded-files" id="property-photos-uploaded"></div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="property-age" class="form-label required">Age of Property (years)</label>
-                    <input type="number" id="property-age" class="form-input" placeholder="0" step="1" min="0" required />
-                </div>
-              
-                <div class="form-group">
-                    <label for="additional-notes-property" class="form-label">Additional Notes</label>
-                    <textarea id="additional-notes-property" class="form-textarea" placeholder="Any additional information about the property..."></textarea>
-                </div>
-              
-                <!-- Roof Condition -->
-                <div class="section-header">🔍 Roof Condition</div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Signs of Asbestos?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="asbestos-yes" name="asbestos" value="Yes" required><label for="asbestos-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="asbestos-no" name="asbestos" value="No"><label for="asbestos-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="asbestos-na" name="asbestos" value="N/A"><label for="asbestos-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="asbestos-upload">
-                        <label class="form-label required">Upload Photo(s) of Asbestos</label>
-                        <div class="file-upload-area" onclick="document.getElementById('asbestos-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        <div class="conditional-field" id="obstructions-upload">
+                            <label class="form-label required">Upload Photo(s) of Roof Obstructions</label>
+                            <div class="file-upload-area" onclick="document.getElementById('obstructions-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="obstructions-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="obstructions-uploaded"></div>
                         </div>
-                        <input type="file" id="asbestos-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="asbestos-uploaded"></div>
                     </div>
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Signs of Deflection to the Existing Roof Slopes?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="deflection-yes" name="roof-deflection" value="Yes" required><label for="deflection-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="deflection-no" name="roof-deflection" value="No"><label for="deflection-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="deflection-na" name="roof-deflection" value="N/A"><label for="deflection-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="deflection-upload">
-                        <label class="form-label required">Upload Photo(s) of Roof Deflection</label>
-                        <div class="file-upload-area" onclick="document.getElementById('deflection-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                     
+                    <div class="form-group">
+                        <label class="form-label required">Is there any Form of Shading?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="shading-yes" name="roof-shading" value="Yes" required><label for="shading-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="shading-no" name="roof-shading" value="No"><label for="shading-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="shading-na" name="roof-shading" value="N/A"><label for="shading-na">N/A</label></div>
                         </div>
-                        <input type="file" id="deflection-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="deflection-uploaded"></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Signs of Rot/Damage to the Internal Roof Structure?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="rot-damage-yes" name="rot-damage" value="Yes" required><label for="rot-damage-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="rot-damage-no" name="rot-damage" value="No"><label for="rot-damage-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="rot-damage-na" name="rot-damage" value="N/A"><label for="rot-damage-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="rot-damage-upload">
-                        <label class="form-label required">Upload Photo(s) of Rot/Damage</label>
-                        <div class="file-upload-area" onclick="document.getElementById('rot-damage-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        <div class="conditional-field" id="shading-upload">
+                            <label class="form-label required">Upload Photo(s) of Shading</label>
+                            <div class="file-upload-area" onclick="document.getElementById('shading-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="shading-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+                            <div class="uploaded-files" id="shading-uploaded"></div>
                         </div>
-                        <input type="file" id="rot-damage-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="rot-damage-uploaded"></div>
+                    </div>
+                  
+                    <div class="form-group">
+                        <label for="additional-notes-property" class="form-label">Additional Notes</label>
+                        <textarea id="additional-notes-property" class="form-textarea" placeholder="Any additional information about the property..."></textarea>
                     </div>
                 </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="roof-concern-yes" name="roof-concern" value="Yes" required><label for="roof-concern-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="roof-concern-no" name="roof-concern" value="No"><label for="roof-concern-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="roof-concern-na" name="roof-concern" value="N/A"><label for="roof-concern-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="roof-concern-upload">
-                        <label class="form-label required">Upload Photo(s) of Concerns</label>
-                        <div class="file-upload-area" onclick="document.getElementById('roof-concern-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                        </div>
-                        <input type="file" id="roof-concern-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="roof-concern-uploaded"></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Are there any Dwarf Walls/Props Which Support the Purlins?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="dwarf-walls-yes" name="dwarf-walls" value="Yes" required><label for="dwarf-walls-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="dwarf-walls-no" name="dwarf-walls" value="No"><label for="dwarf-walls-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="dwarf-walls-na" name="dwarf-walls" value="N/A"><label for="dwarf-walls-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="dwarf-walls-upload">
-                        <label class="form-label required">Upload Photo(s) of Dwarf Walls/Props</label>
-                        <div class="file-upload-area" onclick="document.getElementById('dwarf-walls-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                        </div>
-                        <input type="file" id="dwarf-walls-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="dwarf-walls-uploaded"></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label class="form-label required">Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?</label>
-                    <div class="radio-group">
-                        <div class="radio-option"><input type="radio" id="structural-work-yes" name="structural-work" value="Yes" required><label for="structural-work-yes">Yes</label></div>
-                        <div class="radio-option"><input type="radio" id="structural-work-no" name="structural-work" value="No"><label for="structural-work-no">No</label></div>
-                        <div class="radio-option"><input type="radio" id="structural-work-na" name="structural-work" value="N/A"><label for="structural-work-na">N/A</label></div>
-                    </div>
-                    <div class="conditional-field" id="structural-work-upload">
-                        <label class="form-label required">Upload Photo(s) of Structural Work</label>
-                        <div class="file-upload-area" onclick="document.getElementById('structural-work-files').click()">
-                            <div class="file-upload-icon">📸</div>
-                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                        </div>
-                        <input type="file" id="structural-work-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                        <div class="uploaded-files" id="structural-work-uploaded"></div>
-                    </div>
-                </div>
-              
-                <div class="form-group">
-                    <label for="loft-space-photos" class="form-label required">Wide Angle Inside the Loft Space</label>
-                    <div class="file-upload-area" onclick="document.getElementById('loft-space-files').click()">
-                        <div class="file-upload-icon">📸</div>
-                        <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                    </div>
-                    <input type="file" id="loft-space-files" class="file-upload-input" multiple accept="image/*" capture="environment" required>
-                    <div class="uploaded-files" id="loft-space-uploaded"></div>
-                </div>
-              
+                                                
                 <button type="submit" class="submit-btn" id="submit-btn">Submit Survey</button>
             </form>
         </div>
@@ -1042,6 +1017,7 @@
     <script>
         let verifiedJob = null;
         let uploadedFiles = {};
+        let selectedSurveyType = null;
         const PROGRESS_KEY_PREFIX = 'survey_progress_';
 
         function getProgressKey() {
@@ -1052,8 +1028,8 @@
             const key = getProgressKey();
             if (!key) return;
             const form = document.getElementById('survey-form');
-            const data = {};
-            form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], textarea').forEach(el => {
+            const data = { surveyType: selectedSurveyType };
+            form.querySelectorAll('input[type="text"], input[type="number"], input[type="datetime-local"], input[type="date"], input[type="time"], textarea').forEach(el => {
                 if (el.id) data[el.id] = el.value;
             });
             form.querySelectorAll('input[type="radio"]:checked').forEach(el => {
@@ -1129,11 +1105,11 @@
 
         function setupFileUploads() {
             const uploadFields = [
-                'meter-position-files', 'gateway-location-files', 'battery-gateway-files', 'meter-cupboard-files',
-                'battery-location-files', 'roof-covering-files', 'obstructions-files', 'shading-files',
-                'loft-accessible-files', 'roof-diagram-files', 'property-photos-files', 'asbestos-files',
-                'deflection-files', 'rot-damage-files', 'roof-concern-files', 'dwarf-walls-files',
-                'structural-work-files', 'loft-space-files'
+                'meter-position-files', 'earthing-system-files', 'gas-bonded-files', 'water-bonded-files',
+                'cable-files', 'battery-location-files', 'surface-files', 'loft-accessible-files',
+                'asbestos-files', 'deflection-files', 'rot-damage-files', 'roof-concern-files',
+                'dwarf-walls-files', 'structural-work-files', 'loft-space-files', 'property-photos-files',
+                'roof-covering-files', 'roof-condition-files', 'obstructions-files', 'shading-files'
             ];
 
             uploadFields.forEach(fieldId => {
@@ -1156,23 +1132,6 @@
         }
 
         function setupConditionalFields() {
-            const textFieldsWithPhotos = [
-                { input: 'meter-position', upload: 'meter-position-upload' },
-                { input: 'gateway-location', upload: 'gateway-location-upload' },
-                { input: 'battery-gateway-run', upload: 'battery-gateway-upload' },
-                { input: 'battery-location', upload: 'battery-location-upload' },
-                { input: 'roof-covering', upload: 'roof-covering-upload' }
-            ];
-            textFieldsWithPhotos.forEach(field => {
-                const input = document.getElementById(field.input);
-                const upload = document.getElementById(field.upload);
-                if (input && upload) {
-                    input.addEventListener('input', () => {
-                        upload.classList.toggle('show', input.value.trim() !== '');
-                    });
-                }
-            });
-
             const radioFieldsWithPhotos = [
                 { name: 'roof-obstructions', value: 'Yes', upload: 'obstructions-upload' },
                 { name: 'roof-shading', value: 'Yes', upload: 'shading-upload' },
@@ -1198,21 +1157,66 @@
             });
         }
 
+        function showSurveySection(surveyType) {
+            selectedSurveyType = surveyType;
+            
+            // Get both sections
+            const batterySection = document.getElementById('battery-survey');
+            const batterySolarSection = document.getElementById('battery-and-solar-survey');
+            
+            // Remove active class from both
+            batterySection.classList.remove('active');
+            batterySolarSection.classList.remove('active');
+            
+            // Disable required fields in both sections first
+            batterySection.querySelectorAll('[required]').forEach(field => {
+                field.removeAttribute('required');
+                field.dataset.wasRequired = 'true';
+            });
+            batterySolarSection.querySelectorAll('[required]').forEach(field => {
+                field.removeAttribute('required');
+                field.dataset.wasRequired = 'true';
+            });
+            
+            // Activate the correct section and re-enable its required fields
+            if (surveyType === 'battery') {
+                batterySection.classList.add('active');
+                batterySection.querySelectorAll('[data-was-required="true"]').forEach(field => {
+                    field.setAttribute('required', 'required');
+                });
+            } else if (surveyType === 'battery-and-solar') {
+                batterySolarSection.classList.add('active');
+                batterySolarSection.querySelectorAll('[data-was-required="true"]').forEach(field => {
+                    field.setAttribute('required', 'required');
+                });
+            }
+        }
+
         async function verifyJobNumber() {
             const jobNumber = document.getElementById('job-number').value.trim();
+            const surveyType = document.getElementById('survey-type').value;
+            
             if (!jobNumber) {
                 showAlert('Please enter a job number', 'error');
                 return;
             }
+            
+            if (!surveyType) {
+                showAlert('Please select a survey type', 'error');
+                return;
+            }
+            
             const verifyBtn = document.getElementById('verify-btn');
             const loadingSpinner = document.getElementById('loading-spinner');
             verifyBtn.disabled = true;
             verifyBtn.textContent = 'Verifying...';
             loadingSpinner.classList.add('active');
+            
             try {
                 const { collection, getDocs, query, where } = window.firebaseModules;
                 const jobsQuery = query(collection(window.db, 'jobs'), where('Job Number', '==', jobNumber));
                 const snapshot = await getDocs(jobsQuery);
+                
                 if (snapshot.empty) {
                     showAlert('Job number not found in database.', 'error');
                     verifyBtn.disabled = false;
@@ -1220,10 +1224,13 @@
                     loadingSpinner.classList.remove('active');
                     return;
                 }
+                
                 snapshot.forEach(doc => {
                     verifiedJob = { id: doc.id, ...doc.data() };
                 });
+                
                 const grid = document.getElementById('job-info-grid');
+                const surveyTypeDisplay = surveyType === 'battery-and-solar' ? 'Battery and Solar' : surveyType.charAt(0).toUpperCase() + surveyType.slice(1);
                 grid.innerHTML = `
                     <div class="job-info-item"><div class="job-info-label">Job Number</div><div class="job-info-value">${escapeHtml(verifiedJob['Job Number'])}</div></div>
                     <div class="job-info-item"><div class="job-info-label">Customer</div><div class="job-info-value">${escapeHtml(verifiedJob['Name'])}</div></div>
@@ -1231,11 +1238,15 @@
                     <div class="job-info-item"><div class="job-info-label">Postcode</div><div class="job-info-value">${escapeHtml(verifiedJob['Postcode'])}</div></div>
                     <div class="job-info-item"><div class="job-info-label">Install Date</div><div class="job-info-value">${escapeHtml(verifiedJob['Install Date'] || 'TBD')}</div></div>
                     <div class="job-info-item"><div class="job-info-label">Lead Engineer</div><div class="job-info-value">${escapeHtml(verifiedJob['Lead Engineer'] || 'Unassigned')}</div></div>
+                    <div class="job-info-item"><div class="job-info-label">Survey Type</div><div class="job-info-value">${escapeHtml(surveyTypeDisplay)}</div></div>
                 `;
+                
                 document.getElementById('job-info-card').classList.add('show');
                 document.getElementById('survey-form').style.display = 'block';
+                showSurveySection(surveyType);
                 verifyBtn.style.display = 'none';
                 document.getElementById('job-number').disabled = true;
+                document.getElementById('survey-type').disabled = true;
                 loadingSpinner.classList.remove('active');
                 loadProgress();
                 showAlert('Job verified successfully! Continue filling the survey.', 'success');
@@ -1262,132 +1273,143 @@
 
         async function submitSurvey(event) {
             event.preventDefault();
+            console.log('Submit button clicked');
+            
             if (!verifiedJob) {
+                console.log('No verified job');
                 showAlert('Please verify job number first', 'error');
                 return;
             }
+            
+            console.log('Survey type:', selectedSurveyType);
+            
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
+            
+            console.log('Starting submission...');
+            
             try {
-                const photoUrls = {};
-                for (const [fieldId, files] of Object.entries(uploadedFiles)) {
-                    if (files.length > 0) {
-                        const promises = files.map(async (file, i) => {
-                            const path = `surveys/${verifiedJob['Job Number']}/${fieldId}/${Date.now()}_${i}_${file.name}`;
-                            return await uploadFileToStorage(file, path);
-                        });
-                        photoUrls[fieldId] = await Promise.all(promises);
-                    } else {
-                        photoUrls[fieldId] = [];
-                    }
-                }
-
-                const surveyData = {
+                let surveyData = {
                     jobNumber: verifiedJob['Job Number'],
                     jobId: verifiedJob.id,
                     submittedAt: new Date().toISOString(),
                     status: 'completed',
-                    sections: {
-                        surveyDetails: {
-                            conductedOn: document.getElementById('conducted-on').value,
-                            surveyor: document.getElementById('surveyor').value,
-                            customerPresent: document.querySelector('input[name="customer-present"]:checked')?.value
-                        },
-                        electricalSystem: {
-                            meterPosition: document.getElementById('meter-position').value,
-                            meterPositionPhotos: photoUrls['meter-position-files'] || [],
-                            fuseRating: document.getElementById('fuse-rating').value,
-                            gatewayLocation: document.getElementById('gateway-location').value,
-                            gatewayLocationPhotos: photoUrls['gateway-location-files'] || [],
-                            panelRun: document.getElementById('panel-run').value,
-                            panelRunDistance: parseFloat(document.getElementById('panel-run-distance').value),
-                            batteryGatewayRun: document.getElementById('battery-gateway-run').value,
-                            batteryGatewayPhotos: photoUrls['battery-gateway-files'] || [],
-                            batteryGatewayDistance: parseFloat(document.getElementById('battery-gateway-distance').value),
-                            wifiSignal: document.getElementById('wifi-signal').value,
-                            meterCupboardPhotos: photoUrls['meter-cupboard-files'] || [],
-                            renderCladding: document.getElementById('render-cladding').value,
-                            surfaceType: document.getElementById('surface-type').value,
-                            batteryWidth: parseInt(document.getElementById('battery-width').value),
-                            batteryDepth: parseInt(document.getElementById('battery-depth').value),
-                            batteryLength: parseInt(document.getElementById('battery-length').value),
-                            additionalNotesBattery: document.getElementById('additional-notes-battery').value || '',
-                            batteryLocation: document.getElementById('battery-location').value,
-                            batteryLocationPhotos: photoUrls['battery-location-files'] || []
-                        },
-                        externalMeasurements: {
-                            roofCovering: document.getElementById('roof-covering').value,
-                            roofCoveringPhotos: photoUrls['roof-covering-files'] || [],
-                            numberStories: parseInt(document.getElementById('number-stories').value),
-                            roofAge: parseInt(document.getElementById('roof-age').value),
-                            roofWorkAge: parseInt(document.getElementById('roof-work-age').value),
-                            soffitOverhang: parseInt(document.getElementById('soffit-overhang').value),
-                            roofObstructions: document.querySelector('input[name="roof-obstructions"]:checked')?.value,
-                            obstructionsPhotos: photoUrls['obstructions-files'] || [],
-                            buildingWidth: parseFloat(document.getElementById('building-width').value),
-                            heightToRidge: parseFloat(document.getElementById('height-to-ridge').value),
-                            roofShading: document.querySelector('input[name="roof-shading"]:checked')?.value,
-                            shadingPhotos: photoUrls['shading-files'] || [],
-                            nearestBuildingDistance: parseFloat(document.getElementById('nearest-building-distance').value),
-                            obstructionHeight: parseFloat(document.getElementById('obstruction-height').value),
-                            buildingLength: parseFloat(document.getElementById('building-length').value)
-                        },
-                        mainRoof: {
-                            roofType: document.getElementById('roof-type').value,
-                            loftAccessible: document.querySelector('input[name="loft-accessible"]:checked')?.value,
-                            loftAccessiblePhotos: photoUrls['loft-accessible-files'] || [],
-                            loftHatchWidth: parseInt(document.getElementById('loft-hatch-width').value),
-                            loftHatchDepth: parseInt(document.getElementById('loft-hatch-depth').value),
-                            loftLadder: document.querySelector('input[name="loft-ladder"]:checked')?.value,
-                            loftBoarded: document.querySelector('input[name="loft-boarded"]:checked')?.value,
-                            loftHatchClearance: parseInt(document.getElementById('loft-hatch-clearance').value),
-                            ridgeToEaves: parseInt(document.getElementById('ridge-to-eaves').value),
-                            roofLengthBottom: parseInt(document.getElementById('roof-length-bottom').value),
-                            roofPitch: parseFloat(document.getElementById('roof-pitch').value),
-                            roofLengthTop: parseInt(document.getElementById('roof-length-top').value),
-                            rafterWidth: parseInt(document.getElementById('rafter-width').value),
-                            rafterDepth: parseInt(document.getElementById('rafter-depth').value),
-                            webWidth: parseInt(document.getElementById('web-width').value),
-                            webDepth: parseInt(document.getElementById('web-depth').value),
-                            webLength: parseInt(document.getElementById('web-length').value),
-                            trussSpacing: parseInt(document.getElementById('truss-spacing').value),
-                            roofDiagramPhotos: photoUrls['roof-diagram-files'] || []
-                        },
-                        riskAssessment: {
-                            riskAssessmentDone: document.querySelector('input[name="risk-assessment"]:checked')?.value
-                        },
-                        property: {
-                            propertyPhotos: photoUrls['property-photos-files'] || [],
-                            propertyAge: parseInt(document.getElementById('property-age').value),
-                            additionalNotesProperty: document.getElementById('additional-notes-property').value || ''
-                        },
-                        roofCondition: {
-                            asbestos: document.querySelector('input[name="asbestos"]:checked')?.value,
-                            asbestosPhotos: photoUrls['asbestos-files'] || [],
-                            deflection: document.querySelector('input[name="roof-deflection"]:checked')?.value,
-                            deflectionPhotos: photoUrls['deflection-files'] || [],
-                            rotDamage: document.querySelector('input[name="rot-damage"]:checked')?.value,
-                            rotDamagePhotos: photoUrls['rot-damage-files'] || [],
-                            roofConcern: document.querySelector('input[name="roof-concern"]:checked')?.value,
-                            roofConcernPhotos: photoUrls['roof-concern-files'] || [],
-                            dwarfWalls: document.querySelector('input[name="dwarf-walls"]:checked')?.value,
-                            dwarfWallsPhotos: photoUrls['dwarf-walls-files'] || [],
-                            structuralWork: document.querySelector('input[name="structural-work"]:checked')?.value,
-                            structuralWorkPhotos: photoUrls['structural-work-files'] || [],
-                            loftSpacePhotos: photoUrls['loft-space-files'] || []
-                        }
-                    }
+                    surveyType: selectedSurveyType
                 };
 
-                const surveyRef = doc(window.db, 'site-surveys', `${verifiedJob['Job Number']}_${Date.now()}`);
+                if (selectedSurveyType === 'battery') {
+                    console.log('Submitting battery survey');
+                    surveyData.sections = {
+                        batteryDetails: {
+                            date: document.getElementById('battery-survey-date')?.value || '',
+                            time: document.getElementById('battery-survey-time')?.value || '',
+                            name: document.getElementById('battery-surveyor-name')?.value || ''
+                        }
+                    };
+                } else if (selectedSurveyType === 'battery-and-solar') {
+                    console.log('Submitting battery and solar survey');
+                    const photoUrls = {};
+                    for (const [fieldId, files] of Object.entries(uploadedFiles)) {
+                        if (files.length > 0) {
+                            const promises = files.map(async (file, i) => {
+                                const path = `surveys/${verifiedJob['Job Number']}/${fieldId}/${Date.now()}_${i}_${file.name}`;
+                                return await uploadFileToStorage(file, path);
+                            });
+                            photoUrls[fieldId] = await Promise.all(promises);
+                        } else {
+                            photoUrls[fieldId] = [];
+                        }
+                    }
+
+                    surveyData.sections = {
+                        surveyDetails: {
+                            conductedOn: document.getElementById('conducted-on')?.value || '',
+                            surveyor: document.getElementById('surveyor')?.value || '',
+                            customerPresent: document.querySelector('input[name="customer-present"]:checked')?.value || '',
+                            additionalNotesCustomerPresent: document.getElementById('additional-notes-customer-present')?.value || ''
+                        },
+                        riskAssessment: {
+                            riskAssessmentDone: document.querySelector('input[name="risk-assessment"]:checked')?.value || ''
+                        },
+                        electricalSystem: {
+                            meterPosition: document.getElementById('meter-position')?.value || '',
+                            meterPositionPhotos: photoUrls['meter-position-files'] || [],
+                            fuseRating: document.getElementById('fuse-rating')?.value || '',
+                            earthingSystem: document.getElementById('earthing-system')?.value || '',
+                            earthingSystemPhotos: photoUrls['earthing-system-files'] || [],
+                            gasBonded: document.getElementById('gas-bonded-type')?.value || '',
+                            gasBondedPhotos: photoUrls['gas-bonded-files'] || [],
+                            waterBonded: document.getElementById('water-bonded-type')?.value || '',
+                            waterBondedPhotos: photoUrls['water-bonded-files'] || [],
+                            cableRun: document.getElementById('cable-run')?.value || '',
+                            cableRunPhotos: photoUrls['cable-files'] || [],
+                            batteryLocation: document.getElementById('battery-location')?.value || '',
+                            batteryLocationPhotos: photoUrls['battery-location-files'] || [],
+                            surfaceType: document.getElementById('surface-type')?.value || '',
+                            surfacePhotos: photoUrls['surface-files'] || [],
+                            batteryWidth: parseInt(document.getElementById('battery-width')?.value) || 0,
+                            batteryDepth: parseInt(document.getElementById('battery-depth')?.value) || 0,
+                            batteryLength: parseInt(document.getElementById('battery-length')?.value) || 0,
+                            additionalNotesBattery: document.getElementById('additional-notes-battery')?.value || '',
+                            renderCladding: document.getElementById('render-cladding')?.value || '',
+                            wifiSignal: document.getElementById('wifi-signal')?.value || ''
+                        },
+                        propertyInternal: {
+                            loftAccessible: document.querySelector('input[name="loft-accessible"]:checked')?.value || '',
+                            loftAccessiblePhotos: photoUrls['loft-accessible-files'] || [],
+                            loftLadder: document.querySelector('input[name="loft-ladder"]:checked')?.value || '',
+                            loftBoarded: document.querySelector('input[name="loft-boarded"]:checked')?.value || '',
+                            asbestos: document.querySelector('input[name="asbestos"]:checked')?.value || '',
+                            asbestosPhotos: photoUrls['asbestos-files'] || [],
+                            loftSpacePhotos: photoUrls['loft-space-files'] || [],
+                            rafterWidth: parseInt(document.getElementById('rafter-width')?.value) || 0,
+                            rafterDepth: parseInt(document.getElementById('rafter-depth')?.value) || 0,
+                            webWidth: parseInt(document.getElementById('web-width')?.value) || 0,
+                            webDepth: parseInt(document.getElementById('web-depth')?.value) || 0,
+                            webLength: parseInt(document.getElementById('web-length')?.value) || 0,
+                            trussSpacing: parseInt(document.getElementById('truss-spacing')?.value) || 0,
+                            deflection: document.querySelector('input[name="roof-deflection"]:checked')?.value || '',
+                            deflectionPhotos: photoUrls['deflection-files'] || [],
+                            rotDamage: document.querySelector('input[name="rot-damage"]:checked')?.value || '',
+                            rotDamagePhotos: photoUrls['rot-damage-files'] || [],
+                            roofConcern: document.querySelector('input[name="roof-concern"]:checked')?.value || '',
+                            roofConcernPhotos: photoUrls['roof-concern-files'] || [],
+                            dwarfWalls: document.querySelector('input[name="dwarf-walls"]:checked')?.value || '',
+                            dwarfWallsPhotos: photoUrls['dwarf-walls-files'] || [],
+                            structuralWork: document.querySelector('input[name="structural-work"]:checked')?.value || '',
+                            structuralWorkPhotos: photoUrls['structural-work-files'] || []
+                        },
+                        propertyExternal: {
+                            proposedDesignFit: document.querySelector('input[name="proposed-design"]:checked')?.value || '',
+                            propertyPhotos: photoUrls['property-photos-files'] || [],
+                            roofCovering: document.getElementById('roof-covering')?.value || '',
+                            roofCoveringPhotos: photoUrls['roof-covering-files'] || [],
+                            numberStories: parseInt(document.getElementById('number-stories')?.value) || 0,
+                            roofCondition: document.getElementById('roof-condition')?.value || '',
+                            roofConditionPhotos: photoUrls['roof-condition-files'] || [],
+                            roofWorkAge: parseInt(document.getElementById('roof-work-age')?.value) || 0,
+                            roofObstructions: document.querySelector('input[name="roof-obstructions"]:checked')?.value || '',
+                            obstructionsPhotos: photoUrls['obstructions-files'] || [],
+                            roofShading: document.querySelector('input[name="roof-shading"]:checked')?.value || '',
+                            shadingPhotos: photoUrls['shading-files'] || [],
+                            additionalNotesProperty: document.getElementById('additional-notes-property')?.value || ''
+                        }
+                    };
+                }
+
+                const { doc, setDoc } = window.firebaseModules;
+                const surveyRef = doc(window.db, 'site-surveys', `${verifiedJob['Job Number']}_${selectedSurveyType}_${Date.now()}`);
+                console.log('Saving to Firestore...');
                 await setDoc(surveyRef, surveyData);
+                console.log('Saved successfully!');
                 clearProgress();
                 showAlert('Survey submitted successfully!', 'success');
                 setTimeout(() => window.location.href = 'teamview.html', 2000);
             } catch (error) {
-                console.error(error);
-                showAlert('Error submitting survey. Please try again.', 'error');
+                console.error('Survey submission error:', error);
+                console.error('Error details:', error.message, error.stack);
+                showAlert('Error submitting survey: ' + (error.message || 'Please try again'), 'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
             }
