@@ -596,19 +596,24 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="meter-installation" class="form-label required">Does work need to be carried out on the meter??</label>
-                        <input type="text" id="fuse-rating" class="form-input" placeholder="Yes / No" required />
-                    </div> 
-                    <div class="conditional-field show" id="meter-installation">
-                            <label class="form-label required">Upload Photo(s) of Meter</label>
-                            <div class="file-upload-area" onclick="document.getElementById('meter-installation-files').click()">
-                                <div class="file-upload-icon">📸</div>
-                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
-                            </div>
-                            <input type="file" id="meter-installation-files" class="file-upload-input" multiple accept="image/*" capture="environment">
-                            <div class="uploaded-files" id="meter-installation-uploaded"></div>
-                        </div>
-                    </div>
+    <label for="meter-installation" class="form-label required">Does work need to be carried out on the meter?</label>
+    <input type="text" id="meter-work-needed" class="form-input" placeholder="Yes / No" required />
+</div>
+
+<div class="conditional-field" id="meter-installation" style="display: none;">
+    <div class="form-group">
+        <label class="form-label required">What work is required on the meter?</label>
+        <textarea id="meter-work-details" class="form-input" rows="3" placeholder="Please describe the work required..." required></textarea>
+    </div>
+    
+    <label class="form-label required">Upload Photo(s) of Meter</label>
+    <div class="file-upload-area" onclick="document.getElementById('meter-installation-files').click()">
+        <div class="file-upload-icon">📸</div>
+        <div class="file-upload-text">Click to upload or drag and drop photos</div>
+    </div>
+    <input type="file" id="meter-installation-files" class="file-upload-input" multiple accept="image/*" capture="environment">
+    <div class="uploaded-files" id="meter-installation-uploaded"></div>
+</div>
                   
                     <div class="form-group">
                         <label for="fuse-rating" class="form-label required">What is the Fuse Rating?</label>
@@ -1303,36 +1308,52 @@
         }
 
         function setupConditionalFields() {
-            const radioFieldsWithPhotos = [
-                { name: 'roof-obstructions', value: 'Yes', upload: 'obstructions-upload' },
-                { name: 'roof-shading', value: 'Yes', upload: 'shading-upload' },
-                { name: 'loft-accessible', values: ['Yes', 'No'], upload: 'loft-accessible-upload' },
-                { name: 'asbestos', value: 'Yes', upload: 'asbestos-upload' },
-                { name: 'roof-deflection', value: 'Yes', upload: 'deflection-upload' },
-                { name: 'rot-damage', value: 'Yes', upload: 'rot-damage-upload' },
-                { name: 'roof-concern', value: 'Yes', upload: 'roof-concern-upload' },
-                { name: 'dwarf-walls', value: 'Yes', upload: 'dwarf-walls-upload' },
-                { name: 'structural-work', value: 'Yes', upload: 'structural-work-upload' },
-                { name: 'gas-bonded', value: 'No', upload: 'gas-bonding-required' },
-                { name: 'water-bonded', value: 'No', upload: 'water-bonding-required' },
-                { name: 'overhead-powerlines', value: 'Yes', upload: 'powerlines-upload' },
-                { name: 'property-location', value: 'Yes', upload: 'pavement-upload' },
-                { name: 'gutter-obstacles', value: 'Yes', upload: 'gutter-obstacles-upload' }
-            ];
-            
-            radioFieldsWithPhotos.forEach(field => {
-                const radios = document.querySelectorAll(`input[name="${field.name}"]`);
-                const upload = document.getElementById(field.upload);
-                if (upload) {
-                    radios.forEach(radio => {
-                        radio.addEventListener('change', () => {
-                            const values = Array.isArray(field.values) ? field.values : [field.value];
-                            upload.classList.toggle('show', values.includes(radio.value));
-                        });
-                    });
-                }
+    const radioFieldsWithPhotos = [
+        { name: 'roof-obstructions', value: 'Yes', upload: 'obstructions-upload' },
+        { name: 'roof-shading', value: 'Yes', upload: 'shading-upload' },
+        { name: 'loft-accessible', values: ['Yes', 'No'], upload: 'loft-accessible-upload' },
+        { name: 'asbestos', value: 'Yes', upload: 'asbestos-upload' },
+        { name: 'roof-deflection', value: 'Yes', upload: 'deflection-upload' },
+        { name: 'rot-damage', value: 'Yes', upload: 'rot-damage-upload' },
+        { name: 'roof-concern', value: 'Yes', upload: 'roof-concern-upload' },
+        { name: 'dwarf-walls', value: 'Yes', upload: 'dwarf-walls-upload' },
+        { name: 'structural-work', value: 'Yes', upload: 'structural-work-upload' },
+        { name: 'gas-bonded', value: 'No', upload: 'gas-bonding-required' },
+        { name: 'water-bonded', value: 'No', upload: 'water-bonding-required' },
+        { name: 'overhead-powerlines', value: 'Yes', upload: 'powerlines-upload' },
+        { name: 'property-location', value: 'Yes', upload: 'pavement-upload' },
+        { name: 'gutter-obstacles', value: 'Yes', upload: 'gutter-obstacles-upload' }
+    ];
+    
+    radioFieldsWithPhotos.forEach(field => {
+        const radios = document.querySelectorAll(`input[name="${field.name}"]`);
+        const upload = document.getElementById(field.upload);
+        if (upload) {
+            radios.forEach(radio => {
+                radio.addEventListener('change', () => {
+                    const values = Array.isArray(field.values) ? field.values : [field.value];
+                    upload.classList.toggle('show', values.includes(radio.value));
+                });
             });
         }
+    });
+
+    // Meter work conditional field
+    const meterWorkInput = document.getElementById('meter-work-needed');
+    const meterSection = document.getElementById('meter-installation');
+    
+    if (meterWorkInput && meterSection) {
+        meterWorkInput.addEventListener('input', function(e) {
+            const answer = e.target.value.trim().toLowerCase();
+            
+            if (answer === 'yes') {
+                meterSection.style.display = 'block';
+            } else if (answer === 'no') {
+                meterSection.style.display = 'none';
+            }
+        });
+    }
+}
 
         function showSurveySection(surveyType) {
             selectedSurveyType = surveyType;
