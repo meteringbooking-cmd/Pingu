@@ -400,17 +400,26 @@
 
             Papa.parse(file, {
                 complete: function(results) {
+                    console.log('Raw data:', results.data);
+                    
                     // Skip first row, headers are in row 2 (index 1)
                     const headers = results.data[1];
+                    console.log('Headers:', headers);
+                    
                     const dataRows = results.data.slice(2).filter(row => row.length > 1 && row[0]);
 
                     allData = dataRows.map(row => {
                         const obj = {};
                         headers.forEach((header, i) => {
-                            obj[header] = row[i] || '';
+                            // Trim whitespace from header names
+                            const cleanHeader = header ? header.trim() : '';
+                            obj[cleanHeader] = row[i] || '';
                         });
                         return obj;
                     });
+
+                    console.log('Parsed data sample:', allData[0]);
+                    console.log('Team values:', allData.map(r => r['Team']).slice(0, 10));
 
                     populateTeamFilter();
                     setDefaultDateRange();
