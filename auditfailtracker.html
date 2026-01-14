@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fail Code Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+            font-size: 0.9em;
+        }
+        input, select, button {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .file-input-label:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .chart-container {
+            padding: 30px;
+            position: relative;
+            height: 500px;
+        }
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+        }
+        .no-data-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Fail Code Analysis Dashboard</h1>
+            <p>Upload your CSV file to analyze fail codes by team and date range</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Upload CSV File</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".csv" />
+                    <label for="fileInput" class="file-input-label">
+                        📁 Choose File
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" />
+            </div>
+
+            <div class="control-group">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" />
+            </div>
+
+            <div class="control-group">
+                <label for="teamFilter">Team/Gang</label>
+                <select id="teamFilter">
+                    <option value="all">All Teams</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="chart-container">
+            <canvas id="failCodeChart"></canvas>
+        </div>
+
+        <div id="noData" class="no-data" style="display: none;">
+            <div class="no-data-icon">📋</div>
+            <h2>No Data Available</h2>
+            <p>Please upload a CSV file to begin analysis</p>
+        </div>
+    </div>
+
+    <script>
+        const FAIL_CODES = [
+            'E1', 'E10', 'E14', 'E15', 'E17', 'E20', 'E23', 'E25', 'E26', 'E3',
+            'E30', 'E31', 'E34', 'E35', 'E36', 'E37', 'E38', 'E4', 'E41', 'E46',
+            'E47', 'E49', 'E50', 'E53', 'E56', 'E57', 'E58', 'E59', 'E6', 'E62',
+            'E63', 'E64', 'E65', 'E66', 'E67', 'E68', 'E69', 'E9', 'EX1', 'EX2',
+            'EX3', 'R12', 'R17', 'R21', 'R24', 'R25', 'R26', 'R27', 'R36', 'R38',
+            'R39', 'R40', 'R42', 'R44', 'R46', 'R47', 'R48', 'R49', 'R50', 'R52',
+            'R53', 'RX1', 'RX2', 'RX3'
+        ];
+
+        let allData = [];
+        let chart = null;
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('startDate').addEventListener('change', updateDashboard);
+        document.getElementById('endDate').addEventListener('change', updateDashboard);
+        document.getElementById('teamFilter').addEventListener('change', updateDashboard);
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    // Skip first row, headers are in row 2 (index 1)
+                    const headers = results.data[1];
+                    const dataRows = results.data.slice(2).filter(row => row.length > 1 && row[0]);
+
+                    allData = dataRows.map(row => {
+                        const obj = {};
+                        headers.forEach((header, i) => {
+                            obj[header] = row[i] || '';
+                        });
+                        return obj;
+                    });
+
+                    populateTeamFilter();
+                    setDefaultDateRange();
+                    updateDashboard();
+                },
+                skipEmptyLines: true
+            });
+        }
+
+        function populateTeamFilter() {
+            const teams = [...new Set(allData.map(r => r['Team/Gang']).filter(Boolean))].sort();
+            const select = document.getElementById('teamFilter');
+            select.innerHTML = '<option value="all">All Teams</option>';
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team;
+                option.textContent = team;
+                select.appendChild(option);
+            });
+        }
+
+        function setDefaultDateRange() {
+            const dates = allData
+                .map(r => parseDate(r['Date received']))
+                .filter(d => d)
+                .sort((a, b) => a - b);
+
+            if (dates.length > 0) {
+                document.getElementById('startDate').valueAsDate = dates[0];
+                document.getElementById('endDate').valueAsDate = dates[dates.length - 1];
+            }
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            return new Date(dateStr);
+        }
+
+        function updateDashboard() {
+            if (allData.length === 0) {
+                document.getElementById('noData').style.display = 'block';
+                document.querySelector('.chart-container').style.display = 'none';
+                document.getElementById('stats').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('noData').style.display = 'none';
+            document.querySelector('.chart-container').style.display = 'block';
+            document.getElementById('stats').style.display = 'grid';
+
+            const startDate = document.getElementById('startDate').valueAsDate;
+            const endDate = document.getElementById('endDate').valueAsDate;
+            const selectedTeam = document.getElementById('teamFilter').value;
+
+            const filtered = allData.filter(row => {
+                const rowDate = parseDate(row['Date received']);
+                const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                 (rowDate >= startDate && rowDate <= endDate);
+                const teamMatch = selectedTeam === 'all' || row['Team/Gang'] === selectedTeam;
+                return dateMatch && teamMatch;
+            });
+
+            updateStats(filtered);
+            updateChart(filtered);
+        }
+
+        function updateStats(data) {
+            const totalIncidents = data.length;
+            const uniqueTeams = new Set(data.map(r => r['Team/Gang']).filter(Boolean)).size;
+            
+            let totalFailCodes = 0;
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    if (row[`Fail Code ${i}`]) totalFailCodes++;
+                }
+            });
+
+            const revisitsRequired = data.filter(r => 
+                r['Revisit required?'] && r['Revisit required?'].toLowerCase() === 'yes'
+            ).length;
+
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Incidents</div>
+                    <div class="stat-value">${totalIncidents}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Fail Codes</div>
+                    <div class="stat-value">${totalFailCodes}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Teams</div>
+                    <div class="stat-value">${uniqueTeams}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Revisits Required</div>
+                    <div class="stat-value">${revisitsRequired}</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHTML;
+        }
+
+        function updateChart(data) {
+            const failCodeCounts = {};
+            FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && FAIL_CODES.includes(code)) {
+                        failCodeCounts[code]++;
+                    }
+                }
+            });
+
+            const chartData = FAIL_CODES
+                .map(code => ({ code, count: failCodeCounts[code] }))
+                .filter(item => item.count > 0)
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 20);
+
+            if (chart) chart.destroy();
+
+            const ctx = document.getElementById('failCodeChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(item => item.code),
+                    datasets: [{
+                        label: 'Fail Code Count',
+                        data: chartData.map(item => item.count),
+                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                        borderColor: 'rgba(102, 126, 234, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Top 20 Fail Codes',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize with no data message
+        document.getElementById('noData').style.display = 'block';
+        document.querySelector('.chart-container').style.display = 'none';
+        document.getElementById('stats').style.display = 'none';
+    </script>
+</body>
+</html>
