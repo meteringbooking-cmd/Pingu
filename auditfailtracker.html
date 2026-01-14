@@ -458,6 +458,7 @@
                 document.getElementById('noData').style.display = 'block';
                 document.querySelector('.chart-container').style.display = 'none';
                 document.getElementById('stats').style.display = 'none';
+                document.getElementById('topPerformers').style.display = 'none';
                 return;
             }
 
@@ -477,13 +478,23 @@
                 return dateMatch && teamMatch;
             });
 
-            updateStats(filtered);
+            updateStats(filtered, startDate, endDate);
             updateChart(filtered);
             updateTopPerformers(filtered);
         }
 
-        function updateStats(data) {
-            const totalIncidents = data.length;
+        function updateStats(data, startDate, endDate) {
+            // Count incidents by Date received within the date range
+            let totalIncidents = 0;
+            if (startDate && endDate) {
+                totalIncidents = allData.filter(row => {
+                    const rowDate = parseDate(row['Date received']);
+                    return rowDate && rowDate >= startDate && rowDate <= endDate;
+                }).length;
+            } else {
+                totalIncidents = data.length;
+            }
+            
             const uniqueTeams = new Set(data.map(r => r['Team/Gang']).filter(Boolean)).size;
             
             let totalFailCodes = 0;
