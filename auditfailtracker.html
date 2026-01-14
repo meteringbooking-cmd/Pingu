@@ -144,9 +144,70 @@
             font-size: 4em;
             margin-bottom: 20px;
         }
+        .top-performers {
+            padding: 0 30px 30px;
+        }
+        .performer-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .performer-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            transform: translateY(-2px);
+        }
+        .performer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .performer-name {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #495057;
+        }
+        .performer-total {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        .fail-codes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        .fail-code-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+        .fail-code-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        .fail-code-count {
+            font-size: 1.2em;
+            color: #495057;
+        }
         @media (max-width: 768px) {
             .controls {
                 grid-template-columns: 1fr;
+            }
+            .fail-codes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
             }
         }
     </style>
@@ -191,6 +252,11 @@
 
         <div class="chart-container">
             <canvas id="failCodeChart"></canvas>
+        </div>
+
+        <div id="topPerformers" class="top-performers" style="display: none;">
+            <h2 style="padding: 30px 30px 0; color: #495057;">🏆 Top Performers by Fail Code Count</h2>
+            <div id="performersList"></div>
         </div>
 
         <div id="noData" class="no-data" style="display: none;">
@@ -304,6 +370,7 @@
 
             updateStats(filtered);
             updateChart(filtered);
+            updateTopPerformers(filtered);
         }
 
         function updateStats(data) {
@@ -402,6 +469,68 @@
                     }
                 }
             });
+        }
+
+        function updateTopPerformers(data) {
+            const performerData = {};
+
+            data.forEach(row => {
+                // Look for name-like fields - adjust these based on your actual column names
+                const name = row['Team/Gang'] || row['Liam Harriet'] || 'Unknown';
+                
+                if (!performerData[name]) {
+                    performerData[name] = {
+                        total: 0,
+                        codes: {}
+                    };
+                }
+
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && FAIL_CODES.includes(code)) {
+                        performerData[name].total++;
+                        performerData[name].codes[code] = (performerData[name].codes[code] || 0) + 1;
+                    }
+                }
+            });
+
+            const sortedPerformers = Object.entries(performerData)
+                .filter(([name, data]) => data.total > 0)
+                .sort((a, b) => b[1].total - a[1].total)
+                .slice(0, 10);
+
+            if (sortedPerformers.length === 0) {
+                document.getElementById('topPerformers').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('topPerformers').style.display = 'block';
+
+            const performersHTML = sortedPerformers.map(([name, data]) => {
+                const sortedCodes = Object.entries(data.codes)
+                    .sort((a, b) => b[1] - a[1]);
+
+                const codesHTML = sortedCodes.map(([code, count]) => `
+                    <div class="fail-code-item">
+                        <div class="fail-code-name">${code}</div>
+                        <div class="fail-code-count">${count}</div>
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="performer-card">
+                        <div class="performer-header">
+                            <div class="performer-name">${name}</div>
+                            <div class="performer-total">${data.total} Total Fail Codes</div>
+                        </div>
+                        <div class="fail-codes-grid">
+                            ${codesHTML}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('performersList').innerHTML = performersHTML;
         }
 
         // Initialize with no data message
