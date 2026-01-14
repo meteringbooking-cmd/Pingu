@@ -421,7 +421,7 @@
         }
 
         function populateTeamFilter() {
-            const teams = [...new Set(allData.map(r => r['Team']).filter(Boolean))].sort();
+            const teams = [...new Set(allData.map(r => r['Team/Gang']).filter(Boolean))].sort();
             const select = document.getElementById('teamFilter');
             select.innerHTML = '<option value="all">All Teams</option>';
             teams.forEach(team => {
@@ -474,7 +474,7 @@
                 const rowDate = parseDate(row['Date received']);
                 const dateMatch = (!startDate || !endDate || !rowDate) || 
                                  (rowDate >= startDate && rowDate <= endDate);
-                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                const teamMatch = selectedTeam === 'all' || row['Team/Gang'] === selectedTeam;
                 return dateMatch && teamMatch;
             });
 
@@ -495,7 +495,7 @@
                 totalIncidents = data.length;
             }
             
-            const uniqueTeams = new Set(data.map(r => r['Team']).filter(Boolean)).size;
+            const uniqueTeams = new Set(data.map(r => r['Team/Gang']).filter(Boolean)).size;
             
             let totalFailCodes = 0;
             data.forEach(row => {
@@ -506,10 +506,6 @@
 
             const revisitsRequired = data.filter(r => 
                 r['Revisit required?'] && r['Revisit required?'].toLowerCase() === 'yes'
-            ).length;
-
-            const revisitsCompleted = data.filter(r => 
-                r['Revisit completed'] && r['Revisit completed'].toLowerCase() === 'yes'
             ).length;
 
             const statsHTML = `
@@ -526,9 +522,8 @@
                     <div class="stat-value">${uniqueTeams}</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Revisits</div>
-                    <div class="stat-value">${revisitsCompleted} / ${revisitsRequired}</div>
-                    <div style="font-size: 0.75em; opacity: 0.7; margin-top: 8px;">Completed / Required</div>
+                    <div class="stat-label">Revisits Required</div>
+                    <div class="stat-value">${revisitsRequired}</div>
                 </div>
             `;
             document.getElementById('stats').innerHTML = statsHTML;
@@ -600,7 +595,8 @@
             const performerData = {};
 
             data.forEach(row => {
-                const name = row['Team/Gang'] || 'Unknown';
+                // Look for name-like fields - adjust these based on your actual column names
+                const name = row['Team/Gang'] || row['Liam Harriet'] || 'Unknown';
                 
                 if (!performerData[name]) {
                     performerData[name] = {
