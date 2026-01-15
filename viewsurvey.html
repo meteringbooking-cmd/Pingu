@@ -288,7 +288,6 @@
             border: 2px solid var(--success);
         }
         
-        /* Modal for full-size images */
         .modal {
             display: none;
             position: fixed;
@@ -376,7 +375,6 @@
         </div>
     </div>
     
-    <!-- Image Modal -->
     <div id="image-modal" class="modal" onclick="closeModal()">
         <span class="modal-close">&times;</span>
         <img class="modal-content" id="modal-image">
@@ -431,70 +429,37 @@
             try {
                 const { collection, query, where, getDocs } = window.firebaseModules;
                 
-                // Define all collections to search
-                const collectionsToSearch = [
-                    'site-surveys',
-                    'jobs',
-                    'installations',
-                    'customers',
-                    'surveys',
-                    'battery-surveys',
-                    'solar-surveys',
-                    'inspections',
-                    'tasks',
-                    'notes'
-                ];
+                const surveysQuery = query(
+                    collection(window.db, 'site-surveys'),
+                    where('jobNumber', '==', jobNumber)
+                );
+                
+                const querySnapshot = await getDocs(surveysQuery);
                 
                 currentSurveys = [];
-                let totalDocuments = 0;
-                
-                // Search each collection for this job number
-                for (const collectionName of collectionsToSearch) {
-                    try {
-                        const collectionQuery = query(
-                            collection(window.db, collectionName),
-                            where('jobNumber', '==', jobNumber)
-                        );
-                        
-                        const querySnapshot = await getDocs(collectionQuery);
-                        
-                        querySnapshot.forEach((doc) => {
-                            currentSurveys.push({
-                                id: doc.id,
-                                collectionSource: collectionName,
-                                ...doc.data()
-                            });
-                            totalDocuments++;
-                        });
-                    } catch (err) {
-                        // Collection might not exist or no permission - silently continue
-                        console.log(`Could not access collection: ${collectionName}`, err.message);
-                    }
-                }
+                querySnapshot.forEach((doc) => {
+                    currentSurveys.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
                 
                 if (currentSurveys.length === 0) {
-                    showAlert('No data found for this job number in any collection', 'error');
+                    showAlert('No surveys found for this job number', 'error');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
                 
-                // Sort by submission date, most recent first
-                currentSurveys.sort((a, b) => {
-                    const dateA = a.submittedAt || a.createdAt || a.timestamp || 0;
-                    const dateB = b.submittedAt || b.createdAt || b.timestamp || 0;
-                    return new Date(dateB) - new Date(dateA);
-                });
+                currentSurveys.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
                 
                 displaySurveyList();
-                
-                showAlert(`Found ${totalDocuments} document(s) across ${new Set(currentSurveys.map(s => s.collectionSource)).size} collection(s)`, 'success');
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('survey-list').style.display = 'block';
                 
             } catch (error) {
                 console.error('Error loading surveys:', error);
-                showAlert('Error loading data. Please try again.', 'error');
+                showAlert('Error loading surveys. Please try again.', 'error');
                 document.getElementById('loading').style.display = 'none';
             }
         }
@@ -541,7 +506,6 @@
             const viewer = document.getElementById('survey-viewer');
             const content = document.getElementById('survey-content');
             
-            // Build metadata header
             let html = `
                 <div class="report-header">
                     <h1>Site Survey Report</h1>
@@ -570,70 +534,30 @@
                 </div>
             `;
             
-            // Check if this is the new format with sections object
+            // Display ALL sections dynamically
             if (currentSurvey.sections && typeof currentSurvey.sections === 'object') {
+                const sectionKeys = Object.keys(currentSurvey.sections);
                 
-                // Handle Battery survey type
-                if (currentSurvey.surveyType === 'battery' && currentSurvey.sections.batteryDetails) {
-                    html += renderBatterySurvey(currentSurvey.sections.batteryDetails);
-                }
-                
-                // Handle Battery and Solar survey type
-                else if (currentSurvey.surveyType === 'battery-and-solar') {
-                    if (currentSurvey.sections.surveyDetails) {
-                        html += renderSection('Survey Details', currentSurvey.sections.surveyDetails);
-                    }
-                    if (currentSurvey.sections.riskAssessment) {
-                        html += renderSection('Risk Assessment', currentSurvey.sections.riskAssessment);
-                    }
-                    if (currentSurvey.sections.electricalSystem) {
-                        html += renderSection('Electrical System', currentSurvey.sections.electricalSystem);
-                    }
-                    if (currentSurvey.sections.propertyInternal) {
-                        html += renderSection('Property (Internal)', currentSurvey.sections.propertyInternal);
-                    }
-                    if (currentSurvey.sections.propertyExternal) {
-                        html += renderSection('Property (External)', currentSurvey.sections.propertyExternal);
-                    }
-                }
-            } else {
-                // Old format or unrecognized
-                html += `
-                    <div style="background: rgba(255, 165, 0, 0.2); color: #FFA500; border: 2px solid #FFA500; padding: 1.5rem; border-radius: 12px; margin-top: 2rem;">
-                        <h3 style="margin-top: 0;">⚠️ Old Survey Format</h3>
-                        <p>This survey was created with an older format.</p>
-                    </div>
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px;">
-                        <h3>Raw Survey Data</h3>
-                        <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.85rem;">${JSON.stringify(currentSurvey, null, 2)}</pre>
-                    </div>
-                `;
+                sectionKeys.forEach(sectionKey => {
+                    const sectionData = currentSurvey.sections[sectionKey];
+                    const sectionTitle = formatFieldName(sectionKey);
+                    html += renderSection(sectionTitle, sectionData);
+                });
             }
+            
+            // ALWAYS show complete raw Firebase data
+            html += `
+                <div style="margin-top: 3rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px; border: 2px solid var(--primary);">
+                    <h3 style="color: var(--primary); font-family: 'Syne', sans-serif;">Complete Firebase Data</h3>
+                    <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1rem;">Everything stored in Firebase for this survey:</p>
+                    <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.8rem; max-height: 500px; overflow-y: auto; color: var(--text);">${JSON.stringify(currentSurvey, null, 2)}</pre>
+                </div>
+            `;
             
             content.innerHTML = html;
             
             document.getElementById('survey-list').style.display = 'none';
             viewer.classList.add('active');
-        }
-        
-        function renderBatterySurvey(details) {
-            return `
-                <div class="section">
-                    <h2 class="section-title">Battery Survey Details</h2>
-                    <div class="field-row">
-                        <div class="field-question">Date</div>
-                        <div class="field-answer">${details.date || 'N/A'}</div>
-                    </div>
-                    <div class="field-row">
-                        <div class="field-question">Time</div>
-                        <div class="field-answer">${details.time || 'N/A'}</div>
-                    </div>
-                    <div class="field-row">
-                        <div class="field-question">Surveyor Name</div>
-                        <div class="field-answer">${details.name || 'N/A'}</div>
-                    </div>
-                </div>
-            `;
         }
         
         function renderSection(title, sectionData) {
@@ -642,24 +566,12 @@
                     <h2 class="section-title">${title}</h2>
             `;
             
-            // Debug: Log the section data to console
-            console.log(`Section: ${title}`, sectionData);
-            console.log(`Number of keys in ${title}:`, Object.keys(sectionData).length);
-            
-            // Get all keys that aren't photo arrays
             const fieldKeys = Object.keys(sectionData).filter(key => !key.includes('Photos'));
             
-            console.log(`Field keys in ${title}:`, fieldKeys);
-            
-            // Convert section data to field rows
             fieldKeys.forEach(key => {
                 const value = sectionData[key];
-                
-                // Format the field name
                 const fieldName = formatFieldName(key);
                 const fieldValue = formatFieldValue(value);
-                
-                // Get associated photos
                 const photoKey = key + 'Photos';
                 const photos = sectionData[photoKey] || [];
                 
@@ -680,19 +592,11 @@
                 html += '</div>';
             });
             
-            // Show count of fields rendered
-            html += `
-                <div style="margin-top: 1rem; padding: 0.5rem; background: var(--dark); border-radius: 8px; color: var(--text-dim); font-size: 0.85rem;">
-                    Fields rendered: ${fieldKeys.length}
-                </div>
-            `;
-            
             html += '</div>';
             return html;
         }
         
         function formatFieldName(key) {
-            // Convert camelCase to Title Case with spaces
             return key
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase())
@@ -726,7 +630,7 @@
         window.backToList = backToList;
         
         function downloadHTML() {
-            showAlert('Download feature not yet implemented for new format', 'error');
+            showAlert('Download feature not yet implemented', 'error');
         }
         
         window.downloadHTML = downloadHTML;
