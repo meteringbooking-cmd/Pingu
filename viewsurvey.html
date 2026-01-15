@@ -503,14 +503,11 @@
                 const date = dateField ? new Date(dateField).toLocaleDateString('en-GB') : 'Unknown';
                 const time = dateField ? new Date(dateField).toLocaleTimeString('en-GB') : '';
                 const sourceName = doc.source.replace(/-/g, ' ').toUpperCase();
-                const surveyType = doc.data.surveyType ? 
-                    (doc.data.surveyType === 'battery-and-solar' ? 'Battery and Solar' : 
-                     doc.data.surveyType.charAt(0).toUpperCase() + doc.data.surveyType.slice(1)) : '';
                 
                 html += `
                     <div class="survey-item" onclick="viewDocument(${index})">
                         <div class="survey-item-header">
-                            <div class="survey-item-title">${sourceName}${surveyType ? ' - ' + surveyType : ''}</div>
+                            <div class="survey-item-title">${sourceName}</div>
                             <div class="survey-item-date">${date} ${time}</div>
                         </div>
                         <div style="color: var(--text-dim); font-size: 0.9rem;">
@@ -533,46 +530,56 @@
             
             let html = `
                 <div class="report-header">
-                    <h1>Site Survey Report</h1>
+                    <h1>${currentDocument.source.replace(/-/g, ' ').toUpperCase()}</h1>
                     <div class="metadata">
+                        <div class="metadata-item">
+                            <div class="metadata-label">Collection</div>
+                            <div class="metadata-value">${currentDocument.source}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Document ID</div>
+                            <div class="metadata-value">${currentDocument.id}</div>
+                        </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Job Number</div>
                             <div class="metadata-value">${currentDocument.data.jobNumber || 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
-                            <div class="metadata-label">Survey Type</div>
-                            <div class="metadata-value">${currentDocument.data.surveyType === 'battery-and-solar' ? 'Battery and Solar' : 
-                                currentDocument.data.surveyType ? currentDocument.data.surveyType.charAt(0).toUpperCase() + currentDocument.data.surveyType.slice(1) : 'N/A'}</div>
-                        </div>
-                        <div class="metadata-item">
-                            <div class="metadata-label">Date Submitted</div>
+                            <div class="metadata-label">Date</div>
                             <div class="metadata-value">${date}</div>
                         </div>
                         <div class="metadata-item">
-                            <div class="metadata-label">Time Submitted</div>
+                            <div class="metadata-label">Time</div>
                             <div class="metadata-value">${time}</div>
-                        </div>
-                        <div class="metadata-item">
-                            <div class="metadata-label">Status</div>
-                            <div class="metadata-value">${currentDocument.data.status || 'N/A'}</div>
                         </div>
                     </div>
                 </div>
             `;
             
-            // Render based on survey type
-            if (currentDocument.data.surveyType === 'battery' && currentDocument.data.sections?.batteryDetails) {
-                html += renderBatterySurvey(currentDocument.data.sections.batteryDetails);
-            } else if (currentDocument.data.surveyType === 'battery-and-solar' && currentDocument.data.sections) {
-                html += renderBatterySolarSurvey(currentDocument.data.sections);
-            } else {
-                // Fallback for other documents
-                html += '<div class="section"><h2 class="section-title">Document Data</h2>';
-                Object.keys(currentDocument.data).forEach(key => {
-                    if (key === 'sections') return;
-                    const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    html += renderField(fieldName, currentDocument.data[key]);
+            // Check for sections structure
+            if (currentDocument.data.sections && typeof currentDocument.data.sections === 'object') {
+                Object.keys(currentDocument.data.sections).forEach(sectionKey => {
+                    const sectionName = sectionKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    html += renderSection(sectionName, currentDocument.data.sections[sectionKey]);
                 });
+            } else {
+                // Render all fields
+                html += '<div class="section"><h2 class="section-title">All Fields</h2>';
+                
+                Object.keys(currentDocument.data).forEach(key => {
+                    if (key === 'sections') return; // Skip if we already handled it
+                    
+                    const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const value = currentDocument.data[key];
+                    
+                    html += `
+                        <div class="field-row">
+                            <div class="field-question">${fieldName}</div>
+                            <div class="field-answer">${smartFormatValue(value, key)}</div>
+                        </div>
+                    `;
+                });
+                
                 html += '</div>';
             }
             
@@ -583,182 +590,40 @@
         
         window.viewDocument = viewDocument;
         
-        function renderBatterySurvey(batteryDetails) {
-            let html = '<div class="section"><h2 class="section-title">🔋 Battery Survey Details</h2>';
-            html += renderField('Date', batteryDetails.date);
-            html += renderField('Time', batteryDetails.time);
-            html += renderField('Surveyor Name', batteryDetails.name);
-            html += '</div>';
-            return html;
-        }
-        
-        function renderBatterySolarSurvey(sections) {
-            let html = '';
+        function renderSection(title, data) {
+            let html = `<div class="section"><h2 class="section-title">${title}</h2>`;
             
-            // Survey Details
-            if (sections.surveyDetails) {
-                html += '<div class="section"><h2 class="section-title">📅 Survey Details</h2>';
-                html += renderField('Conducted On (Date and Time)', sections.surveyDetails.conductedOn);
-                html += renderField('Surveyor', sections.surveyDetails.surveyor);
-                html += renderField('Customer Present During Survey?', sections.surveyDetails.customerPresent);
-                html += renderField('Additional Notes', sections.surveyDetails.additionalNotesCustomerPresent);
-                html += '</div>';
-            }
-            
-            // Risk Assessment
-            if (sections.riskAssessment) {
-                html += '<div class="section"><h2 class="section-title">⚠️ Personal Risk Assessment</h2>';
-                html += renderField('Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?', 
-                    sections.riskAssessment.riskAssessmentDone);
-                html += '</div>';
-            }
-            
-            // Electrical System
-            if (sections.electricalSystem) {
-                html += '<div class="section"><h2 class="section-title">⚡ Electrical System</h2>';
-                html += renderFieldWithPhotos('Position of Meter Cupboard or Incoming Supply', 
-                    sections.electricalSystem.meterPosition, sections.electricalSystem.meterPositionPhotos);
-                html += renderField('Does work need to be carried out on the meter?', sections.electricalSystem.meterWorkNeeded);
-                if (sections.electricalSystem.meterWorkDetails) {
-                    html += renderFieldWithPhotos('What work is required on the meter?', 
-                        sections.electricalSystem.meterWorkDetails, sections.electricalSystem.meterWorkPhotos);
-                }
-                html += renderField('What is the Fuse Rating?', sections.electricalSystem.fuseRating);
-                html += renderFieldWithPhotos('Type of Earthing System', 
-                    sections.electricalSystem.earthingSystem, sections.electricalSystem.earthingSystemPhotos);
-                html += renderFieldWithPhotos('Is Gas Bonded?', 
-                    sections.electricalSystem.gasBonded, sections.electricalSystem.gasBondedPhotos);
-                if (sections.electricalSystem.gasBondingEquipment) {
-                    html += renderField('Equipment and Location of Bonding Required', sections.electricalSystem.gasBondingEquipment);
-                }
-                html += renderFieldWithPhotos('Is Water Bonded?', 
-                    sections.electricalSystem.waterBonded, sections.electricalSystem.waterBondedPhotos);
-                if (sections.electricalSystem.waterBondingEquipment) {
-                    html += renderField('Equipment and Location of Bonding Required', sections.electricalSystem.waterBondingEquipment);
-                }
-                html += renderFieldWithPhotos('Describe the Cable Run(s)', 
-                    sections.electricalSystem.cableRun, sections.electricalSystem.cableRunPhotos);
-                html += renderFieldWithPhotos('Battery and Inverter Location', 
-                    sections.electricalSystem.batteryLocation, sections.electricalSystem.batteryLocationPhotos);
-                html += renderFieldWithPhotos('Type of Surface at Battery Location', 
-                    sections.electricalSystem.surfaceType, sections.electricalSystem.surfacePhotos);
-                html += renderField('Width (mm)', sections.electricalSystem.batteryWidth);
-                html += renderField('Depth (mm)', sections.electricalSystem.batteryDepth);
-                html += renderField('Length (mm)', sections.electricalSystem.batteryLength);
-                html += renderField('Additional Notes', sections.electricalSystem.additionalNotesBattery);
-                html += renderField('Any Signs of Render or Cladding?', sections.electricalSystem.renderCladding);
-                html += renderField('Is there WiFi Signal at the Proposed Inverter Location?', sections.electricalSystem.wifiSignal);
-                html += '</div>';
-            }
-            
-            // Property Internal
-            if (sections.propertyInternal) {
-                html += '<div class="section"><h2 class="section-title">🏚️ Property (Internal)</h2>';
-                html += renderFieldWithPhotos('Is the Loft Accessible?', 
-                    sections.propertyInternal.loftAccessible, sections.propertyInternal.loftAccessiblePhotos);
-                html += renderField('Is a Loft Ladder Installed?', sections.propertyInternal.loftLadder);
-                html += renderField('Is the Loft Boarded?', sections.propertyInternal.loftBoarded);
-                html += renderFieldWithPhotos('Are there any Signs of Asbestos?', 
-                    sections.propertyInternal.asbestos, sections.propertyInternal.asbestosPhotos);
-                html += renderFieldWithPhotos('Wide Angle Inside the Loft Space', '', sections.propertyInternal.loftSpacePhotos);
-                html += renderField('Rafter Width (mm)', sections.propertyInternal.rafterWidth);
-                html += renderField('Rafter Depth (mm)', sections.propertyInternal.rafterDepth);
-                html += renderField('Web Width (mm)', sections.propertyInternal.webWidth);
-                html += renderField('Web Depth (mm)', sections.propertyInternal.webDepth);
-                html += renderField('Web Length (mm)', sections.propertyInternal.webLength);
-                html += renderField('Truss Spacing (mm)', sections.propertyInternal.trussSpacing);
-                html += renderFieldWithPhotos('Are there any Signs of Deflection to the Existing Roof Slopes?', 
-                    sections.propertyInternal.deflection, sections.propertyInternal.deflectionPhotos);
-                html += renderFieldWithPhotos('Are there any Signs of Rot/Damage to the Internal Roof Structure?', 
-                    sections.propertyInternal.rotDamage, sections.propertyInternal.rotDamagePhotos);
-                html += renderFieldWithPhotos('Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?', 
-                    sections.propertyInternal.roofConcern, sections.propertyInternal.roofConcernPhotos);
-                html += renderFieldWithPhotos('Are there any Dwarf Walls/Props Which Support the Purlins?', 
-                    sections.propertyInternal.dwarfWalls, sections.propertyInternal.dwarfWallsPhotos);
-                html += renderFieldWithPhotos('Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?', 
-                    sections.propertyInternal.structuralWork, sections.propertyInternal.structuralWorkPhotos);
-                html += '</div>';
-            }
-            
-            // Property External
-            if (sections.propertyExternal) {
-                html += '<div class="section"><h2 class="section-title">🏚️ Property (External)</h2>';
-                html += renderField('Does the Proposed Design Fit?', sections.propertyExternal.proposedDesignFit);
-                html += renderFieldWithPhotos('Wide Angle Shots of the Property Including All Property Faces', '', 
-                    sections.propertyExternal.propertyPhotos);
-                html += renderFieldWithPhotos('What is the Roof Covering Type?', 
-                    sections.propertyExternal.roofCovering, sections.propertyExternal.roofCoveringPhotos);
-                html += renderField('Number of Stories', sections.propertyExternal.numberStories);
-                html += renderFieldWithPhotos('Condition of Roof?', 
-                    sections.propertyExternal.roofCondition, sections.propertyExternal.roofConditionPhotos);
-                html += renderField('How Many Years Ago was the Last Work Carried Out on the Roof?', sections.propertyExternal.roofWorkAge);
-                html += renderFieldWithPhotos('Are there any Obstructions on the Roof?', 
-                    sections.propertyExternal.roofObstructions, sections.propertyExternal.obstructionsPhotos);
-                html += renderFieldWithPhotos('Is there any Form of Shading?', 
-                    sections.propertyExternal.roofShading, sections.propertyExternal.shadingPhotos);
-                html += renderField('Additional Notes', sections.propertyExternal.additionalNotesProperty);
-                html += '</div>';
-            }
-            
-            // Scaffolding
-            if (sections.scaffolding) {
-                html += '<div class="section"><h2 class="section-title">🏗️ Scaffolding</h2>';
-                html += renderField('Type of Access to Property', sections.scaffolding.accessType);
-                html += renderField('Parking Available?', sections.scaffolding.parkingAvailable);
-                html += renderFieldWithPhotos('Are there any Overhead Powerlines Close to the Property?', 
-                    sections.scaffolding.overheadPowerlines, sections.scaffolding.powerlinesPhotos);
-                html += renderFieldWithPhotos('Is the Property on a Pavement or Main Highway?', 
-                        { key: 'customerSignOff', title: 'Customer Sign-off', fields: ['date', 'name', 'signature'] }
-                    ];
-                    
-                    orderedSections.forEach(section => {
-                        if (currentSurvey.sections[section.key]) {
-                            html += renderOrderedSection(section.title, currentSurvey.sections[section.key], section.fields);
-                        }
-                    });
-                }
-            }
-            
-            // ALWAYS show complete raw Firebase data
-            html += `
-                <div style="margin-top: 3rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px; border: 2px solid var(--primary);">
-                    <h3 style="color: var(--primary); font-family: 'Syne', sans-serif;">Complete Firebase Data</h3>
-                    <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1rem;">Everything stored in Firebase for this survey:</p>
-                    <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.8rem; max-height: 500px; overflow-y: auto; color: var(--text);">${JSON.stringify(currentSurvey, null, 2)}</pre>
-                </div>
-            `;
-            
-            content.innerHTML = html;
-            
-            document.getElementById('survey-list').style.display = 'none';
-            viewer.classList.add('active');
-        }
-        
-        function renderSection(title, sectionData) {
-            let html = `
-                <div class="section">
-                    <h2 class="section-title">${title}</h2>
-            `;
-            
-            const fieldKeys = Object.keys(sectionData).filter(key => !key.includes('Photos'));
+            const photoKeys = Object.keys(data).filter(k => k.includes('Photos'));
+            const fieldKeys = Object.keys(data).filter(k => !k.includes('Photos'));
             
             fieldKeys.forEach(key => {
-                const value = sectionData[key];
-                const fieldName = formatFieldName(key);
-                const fieldValue = formatFieldValue(value);
+                const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                const value = data[key];
                 const photoKey = key + 'Photos';
-                const photos = sectionData[photoKey] || [];
+                const photos = data[photoKey] || [];
                 
                 html += `
                     <div class="field-row">
                         <div class="field-question">${fieldName}</div>
-                        <div class="field-answer">${fieldValue}</div>
+                        <div class="field-answer">${smartFormatValue(value, key)}</div>
                 `;
                 
-                if (photos && photos.length > 0) {
+                if (photos.length > 0) {
                     html += '<div class="field-photos">';
-                    photos.forEach(photo => {
-                        html += `<img src="${photo}" alt="${fieldName}" class="survey-photo" onclick="openModal('${photo}')" />`;
+                    photos.forEach((photo, idx) => {
+                        if (typeof photo === 'string' && photo.startsWith('data:image')) {
+                            const kb = Math.round(photo.length * 0.75 / 1024);
+                            html += `
+                                <div class="photo-placeholder" onclick="viewImage('${photo}')">
+                                    <span style="font-size: 3rem;">📷</span>
+                                    <span style="font-size: 0.9rem; margin-top: 0.5rem;">Photo ${idx + 1}</span>
+                                    <span style="font-size: 0.8rem; color: var(--accent);">${kb} KB</span>
+                                    <span style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem;">Click to view</span>
+                                </div>
+                            `;
+                        } else {
+                            html += `<img src="${photo}" class="survey-photo" loading="lazy" onclick="viewImage('${photo}')" />`;
+                        }
                     });
                     html += '</div>';
                 }
@@ -770,31 +635,56 @@
             return html;
         }
         
-        function formatFieldName(key) {
-            return key
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-                .replace(/Photos$/, '')
-                .trim();
-        }
-        
-        function formatFieldValue(value) {
-            if (value === null || value === undefined || value === '') {
-                return 'N/A';
-            }
-            if (typeof value === 'boolean') {
-                return value ? 'Yes' : 'No';
-            }
-            if (typeof value === 'number') {
-                return value.toString();
-            }
+        function smartFormatValue(value, key) {
+            if (value === null || value === undefined || value === '') return 'N/A';
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+            if (typeof value === 'number') return value.toString();
+            
             if (Array.isArray(value)) {
+                if (value.length > 0 && typeof value[0] === 'string' && 
+                    (value[0].startsWith('data:image') || value[0].startsWith('http'))) {
+                    return `<span style="color: var(--accent);">${value.length} photo(s) attached</span>`;
+                }
                 return value.join(', ') || 'N/A';
             }
+            
+            if (typeof value === 'object') {
+                const keys = Object.keys(value);
+                if (keys.length > 3) {
+                    return `<span style="color: var(--text-dim);">Object (${keys.length} properties)</span>`;
+                }
+                return `<pre style="font-size: 0.8rem; padding: 0.5rem; background: var(--dark); border-radius: 4px; overflow-x: auto;">${JSON.stringify(value, null, 2)}</pre>`;
+            }
+            
+            if (typeof value === 'string') {
+                if (value.startsWith('data:image')) {
+                    const kb = Math.round(value.length * 0.75 / 1024);
+                    return `<span style="color: var(--accent); cursor: pointer;" onclick="viewImage('${value}')">📷 Image (${kb}KB) - Click to view</span>`;
+                }
+                if (value.length > 300) {
+                    return value.substring(0, 300) + '... <span style="color: var(--text-dim);">(truncated)</span>';
+                }
+                if ((value.startsWith('http://') || value.startsWith('https://')) && 
+                    (value.includes('firebasestorage') || value.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+                    return `<img src="${value}" style="max-width: 200px; border-radius: 8px; margin-top: 0.5rem; cursor: pointer;" loading="lazy" onclick="viewImage('${value}')" />`;
+                }
+            }
+            
             return value;
         }
         
-        window.displaySurvey = displaySurvey;
+        function viewImage(src) {
+            document.getElementById('modal-image').src = src;
+            document.getElementById('image-modal').classList.add('active');
+        }
+        
+        window.viewImage = viewImage;
+        
+        function closeModal() {
+            document.getElementById('image-modal').classList.remove('active');
+        }
+        
+        window.closeModal = closeModal;
         
         function backToList() {
             document.getElementById('survey-viewer').classList.remove('active');
@@ -803,32 +693,11 @@
         
         window.backToList = backToList;
         
-        function downloadHTML() {
-            showAlert('Download feature not yet implemented', 'error');
-        }
-        
-        window.downloadHTML = downloadHTML;
-        
         function printSurvey() {
             window.print();
         }
         
         window.printSurvey = printSurvey;
-        
-        function openModal(imageSrc) {
-            const modal = document.getElementById('image-modal');
-            const modalImg = document.getElementById('modal-image');
-            modal.classList.add('active');
-            modalImg.src = imageSrc;
-        }
-        
-        window.openModal = openModal;
-        
-        function closeModal() {
-            document.getElementById('image-modal').classList.remove('active');
-        }
-        
-        window.closeModal = closeModal;
     </script>
 </body>
 </html>
