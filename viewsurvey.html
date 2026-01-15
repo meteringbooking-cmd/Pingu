@@ -242,6 +242,25 @@
             border-top: 1px solid var(--dark);
         }
         
+        .photo-placeholder {
+            background: var(--dark);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--dark-lighter);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            min-height: 150px;
+        }
+        
+        .photo-placeholder:hover {
+            border-color: var(--accent);
+            transform: scale(1.02);
+        }
+        
         .survey-photo {
             width: 100%;
             height: 150px;
@@ -356,13 +375,12 @@
         </div>
         
         <div id="survey-list" class="survey-list" style="display: none;">
-            <h2 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">Available Surveys</h2>
+            <h2 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">Available Documents</h2>
             <div id="survey-list-items"></div>
         </div>
         
         <div id="survey-viewer" class="survey-viewer">
             <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="downloadHTML()">Download HTML</button>
                 <button class="btn btn-secondary" onclick="printSurvey()">Print/PDF</button>
                 <button class="btn btn-secondary" onclick="backToList()">← Back to List</button>
             </div>
@@ -371,7 +389,7 @@
         </div>
         
         <div id="loading" class="loading" style="display: none;">
-            Loading surveys...
+            Loading data...
         </div>
     </div>
     
@@ -382,7 +400,7 @@
     
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -398,25 +416,21 @@
         const db = getFirestore(app);
         
         window.db = db;
-        window.firebaseModules = { collection, getDocs, query, where, doc, getDoc };
+        window.firebaseModules = { collection, getDocs, query, where };
     </script>
     
     <script>
-        let currentSurveys = [];
-        let currentSurvey = null;
+        let allDocuments = [];
+        let currentDocument = null;
         
         function showAlert(message, type = 'error') {
             const container = document.getElementById('alert-container');
             container.innerHTML = `<div class="alert ${type}">${message}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
         }
         
         async function loadSurveysForJob() {
             const jobNumber = document.getElementById('job-number-input').value.trim();
-            
             if (!jobNumber) {
                 showAlert('Please enter a job number', 'error');
                 return;
@@ -429,63 +443,78 @@
             try {
                 const { collection, query, where, getDocs } = window.firebaseModules;
                 
-                const surveysQuery = query(
-                    collection(window.db, 'site-surveys'),
-                    where('jobNumber', '==', jobNumber)
-                );
+                const collections = [
+                    'site-surveys', 'jobs', 'installations', 'customers', 
+                    'surveys', 'battery-surveys', 'solar-surveys', 
+                    'inspections', 'tasks', 'notes'
+                ];
                 
-                const querySnapshot = await getDocs(surveysQuery);
+                allDocuments = [];
                 
-                currentSurveys = [];
-                querySnapshot.forEach((doc) => {
-                    currentSurveys.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
+                for (const col of collections) {
+                    try {
+                        const q = query(collection(window.db, col), where('jobNumber', '==', jobNumber));
+                        const snapshot = await getDocs(q);
+                        snapshot.forEach(doc => {
+                            allDocuments.push({
+                                id: doc.id,
+                                source: col,
+                                data: doc.data()
+                            });
+                        });
+                    } catch (err) {
+                        console.log(`Skipping ${col}:`, err.message);
+                    }
+                }
                 
-                if (currentSurveys.length === 0) {
-                    showAlert('No surveys found for this job number', 'error');
+                if (allDocuments.length === 0) {
+                    showAlert('No data found for this job number', 'error');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
                 
-                currentSurveys.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+                allDocuments.sort((a, b) => {
+                    const dateA = a.data.submittedAt || a.data.createdAt || a.data.timestamp || 0;
+                    const dateB = b.data.submittedAt || b.data.createdAt || b.data.timestamp || 0;
+                    return new Date(dateB) - new Date(dateA);
+                });
                 
-                displaySurveyList();
+                displayDocumentList();
+                showAlert(`Found ${allDocuments.length} document(s)`, 'success');
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('survey-list').style.display = 'block';
                 
             } catch (error) {
-                console.error('Error loading surveys:', error);
-                showAlert('Error loading surveys. Please try again.', 'error');
+                console.error('Error:', error);
+                showAlert('Error loading data', 'error');
                 document.getElementById('loading').style.display = 'none';
             }
         }
         
         window.loadSurveysForJob = loadSurveysForJob;
         
-        function displaySurveyList() {
+        function displayDocumentList() {
             const container = document.getElementById('survey-list-items');
-            
             let html = '';
             
-            currentSurveys.forEach((survey, index) => {
-                const date = survey.submittedAt ? new Date(survey.submittedAt).toLocaleDateString('en-GB') : 'Unknown';
-                const time = survey.submittedAt ? new Date(survey.submittedAt).toLocaleTimeString('en-GB') : 'Unknown';
-                const surveyType = formatSurveyType(survey.surveyType);
+            allDocuments.forEach((doc, index) => {
+                const dateField = doc.data.submittedAt || doc.data.createdAt || doc.data.timestamp;
+                const date = dateField ? new Date(dateField).toLocaleDateString('en-GB') : 'Unknown';
+                const time = dateField ? new Date(dateField).toLocaleTimeString('en-GB') : '';
+                const sourceName = doc.source.replace(/-/g, ' ').toUpperCase();
+                const surveyType = doc.data.surveyType ? 
+                    (doc.data.surveyType === 'battery-and-solar' ? 'Battery and Solar' : 
+                     doc.data.surveyType.charAt(0).toUpperCase() + doc.data.surveyType.slice(1)) : '';
                 
                 html += `
-                    <div class="survey-item" onclick="displaySurvey(${index})">
+                    <div class="survey-item" onclick="viewDocument(${index})">
                         <div class="survey-item-header">
-                            <div class="survey-item-title">
-                                ${surveyType} Survey #${currentSurveys.length - index}
-                            </div>
-                            <div class="survey-item-date">${date} at ${time}</div>
+                            <div class="survey-item-title">${sourceName}${surveyType ? ' - ' + surveyType : ''}</div>
+                            <div class="survey-item-date">${date} ${time}</div>
                         </div>
                         <div style="color: var(--text-dim); font-size: 0.9rem;">
-                            Job: ${survey.jobNumber || 'Unknown'} | Status: ${survey.status || 'completed'}
+                            Job: ${doc.data.jobNumber || 'N/A'} | ID: ${doc.id}
                         </div>
                     </div>
                 `;
@@ -494,17 +523,13 @@
             container.innerHTML = html;
         }
         
-        function formatSurveyType(type) {
-            if (type === 'battery-and-solar') return 'Battery and Solar';
-            if (type === 'battery') return 'Battery';
-            return type || 'Unknown';
-        }
-        
-        function displaySurvey(index) {
-            currentSurvey = currentSurveys[index];
-            
-            const viewer = document.getElementById('survey-viewer');
+        function viewDocument(index) {
+            currentDocument = allDocuments[index];
             const content = document.getElementById('survey-content');
+            
+            const dateField = currentDocument.data.submittedAt || currentDocument.data.createdAt || currentDocument.data.timestamp;
+            const date = dateField ? new Date(dateField).toLocaleDateString('en-GB') : 'N/A';
+            const time = dateField ? new Date(dateField).toLocaleTimeString('en-GB') : 'N/A';
             
             let html = `
                 <div class="report-header">
@@ -512,89 +537,177 @@
                     <div class="metadata">
                         <div class="metadata-item">
                             <div class="metadata-label">Job Number</div>
-                            <div class="metadata-value">${currentSurvey.jobNumber || 'N/A'}</div>
+                            <div class="metadata-value">${currentDocument.data.jobNumber || 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Survey Type</div>
-                            <div class="metadata-value">${formatSurveyType(currentSurvey.surveyType)}</div>
+                            <div class="metadata-value">${currentDocument.data.surveyType === 'battery-and-solar' ? 'Battery and Solar' : 
+                                currentDocument.data.surveyType ? currentDocument.data.surveyType.charAt(0).toUpperCase() + currentDocument.data.surveyType.slice(1) : 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Date Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleDateString('en-GB') : 'N/A'}</div>
+                            <div class="metadata-value">${date}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Time Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleTimeString('en-GB') : 'N/A'}</div>
+                            <div class="metadata-value">${time}</div>
                         </div>
                         <div class="metadata-item">
                             <div class="metadata-label">Status</div>
-                            <div class="metadata-value">${currentSurvey.status || 'completed'}</div>
+                            <div class="metadata-value">${currentDocument.data.status || 'N/A'}</div>
                         </div>
                     </div>
                 </div>
             `;
             
-            // Display sections in the exact order they appear in the conduct survey form
-            if (currentSurvey.sections && typeof currentSurvey.sections === 'object') {
-                if (currentSurvey.surveyType === 'battery' && currentSurvey.sections.batteryDetails) {
-                    html += renderBatterySurvey(currentSurvey.sections.batteryDetails);
-                } else if (currentSurvey.surveyType === 'battery-and-solar') {
-                    // Render in exact form order
-                    const orderedSections = [
-                        { key: 'surveyDetails', title: 'Survey Details', fields: ['conductedOn', 'surveyor', 'customerPresent', 'additionalNotesCustomerPresent'] },
-                        { key: 'riskAssessment', title: 'Personal Risk Assessment', fields: ['riskAssessmentDone'] },
-                        { key: 'electricalSystem', title: 'Electrical System', fields: [
-                            'meterPosition', 'meterPositionPhotos',
-                            'meterWorkNeeded', 'meterWorkDetails', 'meterWorkPhotos',
-                            'fuseRating',
-                            'earthingSystem', 'earthingSystemPhotos',
-                            'gasBonded', 'gasBondingEquipment', 'gasBondedPhotos',
-                            'waterBonded', 'waterBondingEquipment', 'waterBondedPhotos',
-                            'cableRun', 'cableRunPhotos',
-                            'batteryLocation', 'batteryLocationPhotos',
-                            'surfaceType', 'surfacePhotos',
-                            'batteryWidth', 'batteryDepth', 'batteryLength',
-                            'additionalNotesBattery',
-                            'renderCladding',
-                            'wifiSignal'
-                        ]},
-                        { key: 'propertyInternal', title: 'Property (Internal)', fields: [
-                            'loftAccessible', 'loftAccessiblePhotos',
-                            'loftLadder',
-                            'loftBoarded',
-                            'asbestos', 'asbestosPhotos',
-                            'loftSpacePhotos',
-                            'rafterWidth', 'rafterDepth',
-                            'webWidth', 'webDepth', 'webLength',
-                            'trussSpacing',
-                            'deflection', 'deflectionPhotos',
-                            'rotDamage', 'rotDamagePhotos',
-                            'roofConcern', 'roofConcernPhotos',
-                            'dwarfWalls', 'dwarfWallsPhotos',
-                            'structuralWork', 'structuralWorkPhotos'
-                        ]},
-                        { key: 'propertyExternal', title: 'Property (External)', fields: [
-                            'proposedDesignFit',
-                            'propertyPhotos',
-                            'roofCovering', 'roofCoveringPhotos',
-                            'numberStories',
-                            'roofCondition', 'roofConditionPhotos',
-                            'roofWorkAge',
-                            'roofObstructions', 'obstructionsPhotos',
-                            'roofShading', 'shadingPhotos',
-                            'additionalNotesProperty'
-                        ]},
-                        { key: 'scaffolding', title: 'Scaffolding', fields: [
-                            'accessType',
-                            'parkingAvailable',
-                            'overheadPowerlines', 'powerlinesPhotos',
-                            'propertyOnPavement', 'pavementPhotos',
-                            'groundType', 'groundTypePhotos',
-                            'accessIssues',
-                            'gutterObstacles', 'gutterObstaclesPhotos',
-                            'lowerRoofs', 'lowerRoofsPhotos',
-                            'additionalNotes'
-                        ]},
+            // Render based on survey type
+            if (currentDocument.data.surveyType === 'battery' && currentDocument.data.sections?.batteryDetails) {
+                html += renderBatterySurvey(currentDocument.data.sections.batteryDetails);
+            } else if (currentDocument.data.surveyType === 'battery-and-solar' && currentDocument.data.sections) {
+                html += renderBatterySolarSurvey(currentDocument.data.sections);
+            } else {
+                // Fallback for other documents
+                html += '<div class="section"><h2 class="section-title">Document Data</h2>';
+                Object.keys(currentDocument.data).forEach(key => {
+                    if (key === 'sections') return;
+                    const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    html += renderField(fieldName, currentDocument.data[key]);
+                });
+                html += '</div>';
+            }
+            
+            content.innerHTML = html;
+            document.getElementById('survey-list').style.display = 'none';
+            document.getElementById('survey-viewer').classList.add('active');
+        }
+        
+        window.viewDocument = viewDocument;
+        
+        function renderBatterySurvey(batteryDetails) {
+            let html = '<div class="section"><h2 class="section-title">🔋 Battery Survey Details</h2>';
+            html += renderField('Date', batteryDetails.date);
+            html += renderField('Time', batteryDetails.time);
+            html += renderField('Surveyor Name', batteryDetails.name);
+            html += '</div>';
+            return html;
+        }
+        
+        function renderBatterySolarSurvey(sections) {
+            let html = '';
+            
+            // Survey Details
+            if (sections.surveyDetails) {
+                html += '<div class="section"><h2 class="section-title">📅 Survey Details</h2>';
+                html += renderField('Conducted On (Date and Time)', sections.surveyDetails.conductedOn);
+                html += renderField('Surveyor', sections.surveyDetails.surveyor);
+                html += renderField('Customer Present During Survey?', sections.surveyDetails.customerPresent);
+                html += renderField('Additional Notes', sections.surveyDetails.additionalNotesCustomerPresent);
+                html += '</div>';
+            }
+            
+            // Risk Assessment
+            if (sections.riskAssessment) {
+                html += '<div class="section"><h2 class="section-title">⚠️ Personal Risk Assessment</h2>';
+                html += renderField('Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?', 
+                    sections.riskAssessment.riskAssessmentDone);
+                html += '</div>';
+            }
+            
+            // Electrical System
+            if (sections.electricalSystem) {
+                html += '<div class="section"><h2 class="section-title">⚡ Electrical System</h2>';
+                html += renderFieldWithPhotos('Position of Meter Cupboard or Incoming Supply', 
+                    sections.electricalSystem.meterPosition, sections.electricalSystem.meterPositionPhotos);
+                html += renderField('Does work need to be carried out on the meter?', sections.electricalSystem.meterWorkNeeded);
+                if (sections.electricalSystem.meterWorkDetails) {
+                    html += renderFieldWithPhotos('What work is required on the meter?', 
+                        sections.electricalSystem.meterWorkDetails, sections.electricalSystem.meterWorkPhotos);
+                }
+                html += renderField('What is the Fuse Rating?', sections.electricalSystem.fuseRating);
+                html += renderFieldWithPhotos('Type of Earthing System', 
+                    sections.electricalSystem.earthingSystem, sections.electricalSystem.earthingSystemPhotos);
+                html += renderFieldWithPhotos('Is Gas Bonded?', 
+                    sections.electricalSystem.gasBonded, sections.electricalSystem.gasBondedPhotos);
+                if (sections.electricalSystem.gasBondingEquipment) {
+                    html += renderField('Equipment and Location of Bonding Required', sections.electricalSystem.gasBondingEquipment);
+                }
+                html += renderFieldWithPhotos('Is Water Bonded?', 
+                    sections.electricalSystem.waterBonded, sections.electricalSystem.waterBondedPhotos);
+                if (sections.electricalSystem.waterBondingEquipment) {
+                    html += renderField('Equipment and Location of Bonding Required', sections.electricalSystem.waterBondingEquipment);
+                }
+                html += renderFieldWithPhotos('Describe the Cable Run(s)', 
+                    sections.electricalSystem.cableRun, sections.electricalSystem.cableRunPhotos);
+                html += renderFieldWithPhotos('Battery and Inverter Location', 
+                    sections.electricalSystem.batteryLocation, sections.electricalSystem.batteryLocationPhotos);
+                html += renderFieldWithPhotos('Type of Surface at Battery Location', 
+                    sections.electricalSystem.surfaceType, sections.electricalSystem.surfacePhotos);
+                html += renderField('Width (mm)', sections.electricalSystem.batteryWidth);
+                html += renderField('Depth (mm)', sections.electricalSystem.batteryDepth);
+                html += renderField('Length (mm)', sections.electricalSystem.batteryLength);
+                html += renderField('Additional Notes', sections.electricalSystem.additionalNotesBattery);
+                html += renderField('Any Signs of Render or Cladding?', sections.electricalSystem.renderCladding);
+                html += renderField('Is there WiFi Signal at the Proposed Inverter Location?', sections.electricalSystem.wifiSignal);
+                html += '</div>';
+            }
+            
+            // Property Internal
+            if (sections.propertyInternal) {
+                html += '<div class="section"><h2 class="section-title">🏚️ Property (Internal)</h2>';
+                html += renderFieldWithPhotos('Is the Loft Accessible?', 
+                    sections.propertyInternal.loftAccessible, sections.propertyInternal.loftAccessiblePhotos);
+                html += renderField('Is a Loft Ladder Installed?', sections.propertyInternal.loftLadder);
+                html += renderField('Is the Loft Boarded?', sections.propertyInternal.loftBoarded);
+                html += renderFieldWithPhotos('Are there any Signs of Asbestos?', 
+                    sections.propertyInternal.asbestos, sections.propertyInternal.asbestosPhotos);
+                html += renderFieldWithPhotos('Wide Angle Inside the Loft Space', '', sections.propertyInternal.loftSpacePhotos);
+                html += renderField('Rafter Width (mm)', sections.propertyInternal.rafterWidth);
+                html += renderField('Rafter Depth (mm)', sections.propertyInternal.rafterDepth);
+                html += renderField('Web Width (mm)', sections.propertyInternal.webWidth);
+                html += renderField('Web Depth (mm)', sections.propertyInternal.webDepth);
+                html += renderField('Web Length (mm)', sections.propertyInternal.webLength);
+                html += renderField('Truss Spacing (mm)', sections.propertyInternal.trussSpacing);
+                html += renderFieldWithPhotos('Are there any Signs of Deflection to the Existing Roof Slopes?', 
+                    sections.propertyInternal.deflection, sections.propertyInternal.deflectionPhotos);
+                html += renderFieldWithPhotos('Are there any Signs of Rot/Damage to the Internal Roof Structure?', 
+                    sections.propertyInternal.rotDamage, sections.propertyInternal.rotDamagePhotos);
+                html += renderFieldWithPhotos('Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?', 
+                    sections.propertyInternal.roofConcern, sections.propertyInternal.roofConcernPhotos);
+                html += renderFieldWithPhotos('Are there any Dwarf Walls/Props Which Support the Purlins?', 
+                    sections.propertyInternal.dwarfWalls, sections.propertyInternal.dwarfWallsPhotos);
+                html += renderFieldWithPhotos('Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?', 
+                    sections.propertyInternal.structuralWork, sections.propertyInternal.structuralWorkPhotos);
+                html += '</div>';
+            }
+            
+            // Property External
+            if (sections.propertyExternal) {
+                html += '<div class="section"><h2 class="section-title">🏚️ Property (External)</h2>';
+                html += renderField('Does the Proposed Design Fit?', sections.propertyExternal.proposedDesignFit);
+                html += renderFieldWithPhotos('Wide Angle Shots of the Property Including All Property Faces', '', 
+                    sections.propertyExternal.propertyPhotos);
+                html += renderFieldWithPhotos('What is the Roof Covering Type?', 
+                    sections.propertyExternal.roofCovering, sections.propertyExternal.roofCoveringPhotos);
+                html += renderField('Number of Stories', sections.propertyExternal.numberStories);
+                html += renderFieldWithPhotos('Condition of Roof?', 
+                    sections.propertyExternal.roofCondition, sections.propertyExternal.roofConditionPhotos);
+                html += renderField('How Many Years Ago was the Last Work Carried Out on the Roof?', sections.propertyExternal.roofWorkAge);
+                html += renderFieldWithPhotos('Are there any Obstructions on the Roof?', 
+                    sections.propertyExternal.roofObstructions, sections.propertyExternal.obstructionsPhotos);
+                html += renderFieldWithPhotos('Is there any Form of Shading?', 
+                    sections.propertyExternal.roofShading, sections.propertyExternal.shadingPhotos);
+                html += renderField('Additional Notes', sections.propertyExternal.additionalNotesProperty);
+                html += '</div>';
+            }
+            
+            // Scaffolding
+            if (sections.scaffolding) {
+                html += '<div class="section"><h2 class="section-title">🏗️ Scaffolding</h2>';
+                html += renderField('Type of Access to Property', sections.scaffolding.accessType);
+                html += renderField('Parking Available?', sections.scaffolding.parkingAvailable);
+                html += renderFieldWithPhotos('Are there any Overhead Powerlines Close to the Property?', 
+                    sections.scaffolding.overheadPowerlines, sections.scaffolding.powerlinesPhotos);
+                html += renderFieldWithPhotos('Is the Property on a Pavement or Main Highway?', 
                         { key: 'customerSignOff', title: 'Customer Sign-off', fields: ['date', 'name', 'signature'] }
                     ];
                     
