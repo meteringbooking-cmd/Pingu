@@ -431,38 +431,70 @@
             try {
                 const { collection, query, where, getDocs } = window.firebaseModules;
                 
-                const surveysQuery = query(
-                    collection(window.db, 'site-surveys'),
-                    where('jobNumber', '==', jobNumber)
-                );
-                
-                const querySnapshot = await getDocs(surveysQuery);
+                // Define all collections to search
+                const collectionsToSearch = [
+                    'site-surveys',
+                    'jobs',
+                    'installations',
+                    'customers',
+                    'surveys',
+                    'battery-surveys',
+                    'solar-surveys',
+                    'inspections',
+                    'tasks',
+                    'notes'
+                ];
                 
                 currentSurveys = [];
-                querySnapshot.forEach((doc) => {
-                    currentSurveys.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
+                let totalDocuments = 0;
+                
+                // Search each collection for this job number
+                for (const collectionName of collectionsToSearch) {
+                    try {
+                        const collectionQuery = query(
+                            collection(window.db, collectionName),
+                            where('jobNumber', '==', jobNumber)
+                        );
+                        
+                        const querySnapshot = await getDocs(collectionQuery);
+                        
+                        querySnapshot.forEach((doc) => {
+                            currentSurveys.push({
+                                id: doc.id,
+                                collectionSource: collectionName,
+                                ...doc.data()
+                            });
+                            totalDocuments++;
+                        });
+                    } catch (err) {
+                        // Collection might not exist or no permission - silently continue
+                        console.log(`Could not access collection: ${collectionName}`, err.message);
+                    }
+                }
                 
                 if (currentSurveys.length === 0) {
-                    showAlert('No surveys found for this job number', 'error');
+                    showAlert('No data found for this job number in any collection', 'error');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
                 
                 // Sort by submission date, most recent first
-                currentSurveys.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+                currentSurveys.sort((a, b) => {
+                    const dateA = a.submittedAt || a.createdAt || a.timestamp || 0;
+                    const dateB = b.submittedAt || b.createdAt || b.timestamp || 0;
+                    return new Date(dateB) - new Date(dateA);
+                });
                 
                 displaySurveyList();
+                
+                showAlert(`Found ${totalDocuments} document(s) across ${new Set(currentSurveys.map(s => s.collectionSource)).size} collection(s)`, 'success');
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('survey-list').style.display = 'block';
                 
             } catch (error) {
                 console.error('Error loading surveys:', error);
-                showAlert('Error loading surveys. Please try again.', 'error');
+                showAlert('Error loading data. Please try again.', 'error');
                 document.getElementById('loading').style.display = 'none';
             }
         }
