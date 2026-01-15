@@ -242,6 +242,25 @@
             border-top: 1px solid var(--dark);
         }
         
+        .photo-placeholder {
+            background: var(--dark);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--dark-lighter);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            min-height: 150px;
+        }
+        
+        .photo-placeholder:hover {
+            border-color: var(--accent);
+            transform: scale(1.02);
+        }
+        
         .survey-photo {
             width: 100%;
             height: 150px;
@@ -356,13 +375,12 @@
         </div>
         
         <div id="survey-list" class="survey-list" style="display: none;">
-            <h2 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">Available Surveys</h2>
+            <h2 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">Available Documents</h2>
             <div id="survey-list-items"></div>
         </div>
         
         <div id="survey-viewer" class="survey-viewer">
             <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="downloadHTML()">Download HTML</button>
                 <button class="btn btn-secondary" onclick="printSurvey()">Print/PDF</button>
                 <button class="btn btn-secondary" onclick="backToList()">← Back to List</button>
             </div>
@@ -371,7 +389,7 @@
         </div>
         
         <div id="loading" class="loading" style="display: none;">
-            Loading surveys...
+            Loading data...
         </div>
     </div>
     
@@ -382,7 +400,7 @@
     
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, where, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -398,25 +416,21 @@
         const db = getFirestore(app);
         
         window.db = db;
-        window.firebaseModules = { collection, getDocs, query, where, doc, getDoc };
+        window.firebaseModules = { collection, getDocs, query, where };
     </script>
     
     <script>
-        let currentSurveys = [];
-        let currentSurvey = null;
+        let allDocuments = [];
+        let currentDocument = null;
         
         function showAlert(message, type = 'error') {
             const container = document.getElementById('alert-container');
             container.innerHTML = `<div class="alert ${type}">${message}</div>`;
-            
-            setTimeout(() => {
-                container.innerHTML = '';
-            }, 5000);
+            setTimeout(() => { container.innerHTML = ''; }, 5000);
         }
         
         async function loadSurveysForJob() {
             const jobNumber = document.getElementById('job-number-input').value.trim();
-            
             if (!jobNumber) {
                 showAlert('Please enter a job number', 'error');
                 return;
@@ -429,63 +443,75 @@
             try {
                 const { collection, query, where, getDocs } = window.firebaseModules;
                 
-                const surveysQuery = query(
-                    collection(window.db, 'site-surveys'),
-                    where('jobNumber', '==', jobNumber)
-                );
+                const collections = [
+                    'site-surveys', 'jobs', 'installations', 'customers', 
+                    'surveys', 'battery-surveys', 'solar-surveys', 
+                    'inspections', 'tasks', 'notes'
+                ];
                 
-                const querySnapshot = await getDocs(surveysQuery);
+                allDocuments = [];
                 
-                currentSurveys = [];
-                querySnapshot.forEach((doc) => {
-                    currentSurveys.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
+                for (const col of collections) {
+                    try {
+                        const q = query(collection(window.db, col), where('jobNumber', '==', jobNumber));
+                        const snapshot = await getDocs(q);
+                        snapshot.forEach(doc => {
+                            allDocuments.push({
+                                id: doc.id,
+                                source: col,
+                                data: doc.data()
+                            });
+                        });
+                    } catch (err) {
+                        console.log(`Skipping ${col}:`, err.message);
+                    }
+                }
                 
-                if (currentSurveys.length === 0) {
-                    showAlert('No surveys found for this job number', 'error');
+                if (allDocuments.length === 0) {
+                    showAlert('No data found for this job number', 'error');
                     document.getElementById('loading').style.display = 'none';
                     return;
                 }
                 
-                currentSurveys.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+                allDocuments.sort((a, b) => {
+                    const dateA = a.data.submittedAt || a.data.createdAt || a.data.timestamp || 0;
+                    const dateB = b.data.submittedAt || b.data.createdAt || b.data.timestamp || 0;
+                    return new Date(dateB) - new Date(dateA);
+                });
                 
-                displaySurveyList();
+                displayDocumentList();
+                showAlert(`Found ${allDocuments.length} document(s)`, 'success');
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('survey-list').style.display = 'block';
                 
             } catch (error) {
-                console.error('Error loading surveys:', error);
-                showAlert('Error loading surveys. Please try again.', 'error');
+                console.error('Error:', error);
+                showAlert('Error loading data', 'error');
                 document.getElementById('loading').style.display = 'none';
             }
         }
         
         window.loadSurveysForJob = loadSurveysForJob;
         
-        function displaySurveyList() {
+        function displayDocumentList() {
             const container = document.getElementById('survey-list-items');
-            
             let html = '';
             
-            currentSurveys.forEach((survey, index) => {
-                const date = survey.submittedAt ? new Date(survey.submittedAt).toLocaleDateString('en-GB') : 'Unknown';
-                const time = survey.submittedAt ? new Date(survey.submittedAt).toLocaleTimeString('en-GB') : 'Unknown';
-                const surveyType = formatSurveyType(survey.surveyType);
+            allDocuments.forEach((doc, index) => {
+                const dateField = doc.data.submittedAt || doc.data.createdAt || doc.data.timestamp;
+                const date = dateField ? new Date(dateField).toLocaleDateString('en-GB') : 'Unknown';
+                const time = dateField ? new Date(dateField).toLocaleTimeString('en-GB') : '';
+                const sourceName = doc.source.replace(/-/g, ' ').toUpperCase();
                 
                 html += `
-                    <div class="survey-item" onclick="displaySurvey(${index})">
+                    <div class="survey-item" onclick="viewDocument(${index})">
                         <div class="survey-item-header">
-                            <div class="survey-item-title">
-                                ${surveyType} Survey #${currentSurveys.length - index}
-                            </div>
-                            <div class="survey-item-date">${date} at ${time}</div>
+                            <div class="survey-item-title">${sourceName}</div>
+                            <div class="survey-item-date">${date} ${time}</div>
                         </div>
                         <div style="color: var(--text-dim); font-size: 0.9rem;">
-                            Job: ${survey.jobNumber || 'Unknown'} | Status: ${survey.status || 'completed'}
+                            Job: ${doc.data.jobNumber || 'N/A'} | ID: ${doc.id}
                         </div>
                     </div>
                 `;
@@ -494,97 +520,110 @@
             container.innerHTML = html;
         }
         
-        function formatSurveyType(type) {
-            if (type === 'battery-and-solar') return 'Battery and Solar';
-            if (type === 'battery') return 'Battery';
-            return type || 'Unknown';
-        }
-        
-        function displaySurvey(index) {
-            currentSurvey = currentSurveys[index];
-            
-            const viewer = document.getElementById('survey-viewer');
+        function viewDocument(index) {
+            currentDocument = allDocuments[index];
             const content = document.getElementById('survey-content');
+            
+            const dateField = currentDocument.data.submittedAt || currentDocument.data.createdAt || currentDocument.data.timestamp;
+            const date = dateField ? new Date(dateField).toLocaleDateString('en-GB') : 'N/A';
+            const time = dateField ? new Date(dateField).toLocaleTimeString('en-GB') : 'N/A';
             
             let html = `
                 <div class="report-header">
-                    <h1>Site Survey Report</h1>
+                    <h1>${currentDocument.source.replace(/-/g, ' ').toUpperCase()}</h1>
                     <div class="metadata">
                         <div class="metadata-item">
+                            <div class="metadata-label">Collection</div>
+                            <div class="metadata-value">${currentDocument.source}</div>
+                        </div>
+                        <div class="metadata-item">
+                            <div class="metadata-label">Document ID</div>
+                            <div class="metadata-value">${currentDocument.id}</div>
+                        </div>
+                        <div class="metadata-item">
                             <div class="metadata-label">Job Number</div>
-                            <div class="metadata-value">${currentSurvey.jobNumber || 'N/A'}</div>
+                            <div class="metadata-value">${currentDocument.data.jobNumber || 'N/A'}</div>
                         </div>
                         <div class="metadata-item">
-                            <div class="metadata-label">Survey Type</div>
-                            <div class="metadata-value">${formatSurveyType(currentSurvey.surveyType)}</div>
+                            <div class="metadata-label">Date</div>
+                            <div class="metadata-value">${date}</div>
                         </div>
                         <div class="metadata-item">
-                            <div class="metadata-label">Date Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleDateString('en-GB') : 'N/A'}</div>
-                        </div>
-                        <div class="metadata-item">
-                            <div class="metadata-label">Time Submitted</div>
-                            <div class="metadata-value">${currentSurvey.submittedAt ? new Date(currentSurvey.submittedAt).toLocaleTimeString('en-GB') : 'N/A'}</div>
-                        </div>
-                        <div class="metadata-item">
-                            <div class="metadata-label">Status</div>
-                            <div class="metadata-value">${currentSurvey.status || 'completed'}</div>
+                            <div class="metadata-label">Time</div>
+                            <div class="metadata-value">${time}</div>
                         </div>
                     </div>
                 </div>
             `;
             
-            // Display ALL sections dynamically
-            if (currentSurvey.sections && typeof currentSurvey.sections === 'object') {
-                const sectionKeys = Object.keys(currentSurvey.sections);
-                
-                sectionKeys.forEach(sectionKey => {
-                    const sectionData = currentSurvey.sections[sectionKey];
-                    const sectionTitle = formatFieldName(sectionKey);
-                    html += renderSection(sectionTitle, sectionData);
+            // Check for sections structure
+            if (currentDocument.data.sections && typeof currentDocument.data.sections === 'object') {
+                Object.keys(currentDocument.data.sections).forEach(sectionKey => {
+                    const sectionName = sectionKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    html += renderSection(sectionName, currentDocument.data.sections[sectionKey]);
                 });
+            } else {
+                // Render all fields
+                html += '<div class="section"><h2 class="section-title">All Fields</h2>';
+                
+                Object.keys(currentDocument.data).forEach(key => {
+                    if (key === 'sections') return; // Skip if we already handled it
+                    
+                    const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    const value = currentDocument.data[key];
+                    
+                    html += `
+                        <div class="field-row">
+                            <div class="field-question">${fieldName}</div>
+                            <div class="field-answer">${smartFormatValue(value, key)}</div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
             }
             
-            // ALWAYS show complete raw Firebase data
-            html += `
-                <div style="margin-top: 3rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 12px; border: 2px solid var(--primary);">
-                    <h3 style="color: var(--primary); font-family: 'Syne', sans-serif;">Complete Firebase Data</h3>
-                    <p style="color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1rem;">Everything stored in Firebase for this survey:</p>
-                    <pre style="overflow-x: auto; padding: 1rem; background: var(--dark); border-radius: 8px; font-size: 0.8rem; max-height: 500px; overflow-y: auto; color: var(--text);">${JSON.stringify(currentSurvey, null, 2)}</pre>
-                </div>
-            `;
-            
             content.innerHTML = html;
-            
             document.getElementById('survey-list').style.display = 'none';
-            viewer.classList.add('active');
+            document.getElementById('survey-viewer').classList.add('active');
         }
         
-        function renderSection(title, sectionData) {
-            let html = `
-                <div class="section">
-                    <h2 class="section-title">${title}</h2>
-            `;
+        window.viewDocument = viewDocument;
+        
+        function renderSection(title, data) {
+            let html = `<div class="section"><h2 class="section-title">${title}</h2>`;
             
-            const fieldKeys = Object.keys(sectionData).filter(key => !key.includes('Photos'));
+            const photoKeys = Object.keys(data).filter(k => k.includes('Photos'));
+            const fieldKeys = Object.keys(data).filter(k => !k.includes('Photos'));
             
             fieldKeys.forEach(key => {
-                const value = sectionData[key];
-                const fieldName = formatFieldName(key);
-                const fieldValue = formatFieldValue(value);
+                const fieldName = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                const value = data[key];
                 const photoKey = key + 'Photos';
-                const photos = sectionData[photoKey] || [];
+                const photos = data[photoKey] || [];
                 
                 html += `
                     <div class="field-row">
                         <div class="field-question">${fieldName}</div>
-                        <div class="field-answer">${fieldValue}</div>
+                        <div class="field-answer">${smartFormatValue(value, key)}</div>
                 `;
                 
-                if (photos && photos.length > 0) {
+                if (photos.length > 0) {
                     html += '<div class="field-photos">';
-                    photos.forEach(photo => {
-                        html += `<img src="${photo}" alt="${fieldName}" class="survey-photo" onclick="openModal('${photo}')" />`;
+                    photos.forEach((photo, idx) => {
+                        if (typeof photo === 'string' && photo.startsWith('data:image')) {
+                            const kb = Math.round(photo.length * 0.75 / 1024);
+                            html += `
+                                <div class="photo-placeholder" onclick="viewImage('${photo}')">
+                                    <span style="font-size: 3rem;">📷</span>
+                                    <span style="font-size: 0.9rem; margin-top: 0.5rem;">Photo ${idx + 1}</span>
+                                    <span style="font-size: 0.8rem; color: var(--accent);">${kb} KB</span>
+                                    <span style="font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem;">Click to view</span>
+                                </div>
+                            `;
+                        } else {
+                            html += `<img src="${photo}" class="survey-photo" loading="lazy" onclick="viewImage('${photo}')" />`;
+                        }
                     });
                     html += '</div>';
                 }
@@ -596,31 +635,56 @@
             return html;
         }
         
-        function formatFieldName(key) {
-            return key
-                .replace(/([A-Z])/g, ' $1')
-                .replace(/^./, str => str.toUpperCase())
-                .replace(/Photos$/, '')
-                .trim();
-        }
-        
-        function formatFieldValue(value) {
-            if (value === null || value === undefined || value === '') {
-                return 'N/A';
-            }
-            if (typeof value === 'boolean') {
-                return value ? 'Yes' : 'No';
-            }
-            if (typeof value === 'number') {
-                return value.toString();
-            }
+        function smartFormatValue(value, key) {
+            if (value === null || value === undefined || value === '') return 'N/A';
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+            if (typeof value === 'number') return value.toString();
+            
             if (Array.isArray(value)) {
+                if (value.length > 0 && typeof value[0] === 'string' && 
+                    (value[0].startsWith('data:image') || value[0].startsWith('http'))) {
+                    return `<span style="color: var(--accent);">${value.length} photo(s) attached</span>`;
+                }
                 return value.join(', ') || 'N/A';
             }
+            
+            if (typeof value === 'object') {
+                const keys = Object.keys(value);
+                if (keys.length > 3) {
+                    return `<span style="color: var(--text-dim);">Object (${keys.length} properties)</span>`;
+                }
+                return `<pre style="font-size: 0.8rem; padding: 0.5rem; background: var(--dark); border-radius: 4px; overflow-x: auto;">${JSON.stringify(value, null, 2)}</pre>`;
+            }
+            
+            if (typeof value === 'string') {
+                if (value.startsWith('data:image')) {
+                    const kb = Math.round(value.length * 0.75 / 1024);
+                    return `<span style="color: var(--accent); cursor: pointer;" onclick="viewImage('${value}')">📷 Image (${kb}KB) - Click to view</span>`;
+                }
+                if (value.length > 300) {
+                    return value.substring(0, 300) + '... <span style="color: var(--text-dim);">(truncated)</span>';
+                }
+                if ((value.startsWith('http://') || value.startsWith('https://')) && 
+                    (value.includes('firebasestorage') || value.match(/\.(jpg|jpeg|png|gif|webp)$/i))) {
+                    return `<img src="${value}" style="max-width: 200px; border-radius: 8px; margin-top: 0.5rem; cursor: pointer;" loading="lazy" onclick="viewImage('${value}')" />`;
+                }
+            }
+            
             return value;
         }
         
-        window.displaySurvey = displaySurvey;
+        function viewImage(src) {
+            document.getElementById('modal-image').src = src;
+            document.getElementById('image-modal').classList.add('active');
+        }
+        
+        window.viewImage = viewImage;
+        
+        function closeModal() {
+            document.getElementById('image-modal').classList.remove('active');
+        }
+        
+        window.closeModal = closeModal;
         
         function backToList() {
             document.getElementById('survey-viewer').classList.remove('active');
@@ -629,32 +693,11 @@
         
         window.backToList = backToList;
         
-        function downloadHTML() {
-            showAlert('Download feature not yet implemented', 'error');
-        }
-        
-        window.downloadHTML = downloadHTML;
-        
         function printSurvey() {
             window.print();
         }
         
         window.printSurvey = printSurvey;
-        
-        function openModal(imageSrc) {
-            const modal = document.getElementById('image-modal');
-            const modalImg = document.getElementById('modal-image');
-            modal.classList.add('active');
-            modalImg.src = imageSrc;
-        }
-        
-        window.openModal = openModal;
-        
-        function closeModal() {
-            document.getElementById('image-modal').classList.remove('active');
-        }
-        
-        window.closeModal = closeModal;
     </script>
 </body>
 </html>
