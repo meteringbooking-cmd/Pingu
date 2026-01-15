@@ -610,12 +610,18 @@
                     <h2 class="section-title">${title}</h2>
             `;
             
+            // Debug: Log the section data to console
+            console.log(`Section: ${title}`, sectionData);
+            console.log(`Number of keys in ${title}:`, Object.keys(sectionData).length);
+            
+            // Get all keys that aren't photo arrays
+            const fieldKeys = Object.keys(sectionData).filter(key => !key.includes('Photos'));
+            
+            console.log(`Field keys in ${title}:`, fieldKeys);
+            
             // Convert section data to field rows
-            for (const [key, value] of Object.entries(sectionData)) {
-                // Skip if it's a photos array
-                if (key.includes('Photos') && Array.isArray(value)) {
-                    continue;
-                }
+            fieldKeys.forEach(key => {
+                const value = sectionData[key];
                 
                 // Format the field name
                 const fieldName = formatFieldName(key);
@@ -640,7 +646,14 @@
                 }
                 
                 html += '</div>';
-            }
+            });
+            
+            // Show count of fields rendered
+            html += `
+                <div style="margin-top: 1rem; padding: 0.5rem; background: var(--dark); border-radius: 8px; color: var(--text-dim); font-size: 0.85rem;">
+                    Fields rendered: ${fieldKeys.length}
+                </div>
+            `;
             
             html += '</div>';
             return html;
