@@ -359,7 +359,7 @@
     <div class="container">
         <header>
             <a href="teamview.html" class="logo">Pingu - Solar</a>
-            <h1>Survey Viewer</h1>
+            <img src="https://www.dropbox.com/scl/fi/kkujm1u6y7vvnp7luq8d7/ngu-main-white.png?rlkey=kgq2uh48qh4xssh4vlbz868lr&st=107e50hs&dl=1" alt="Logo" style="max-width: 300px; height: auto; margin-top: 1rem;">
         </header>
        
         <div class="controls">
@@ -395,6 +395,7 @@
         </div>
     </div>
    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -808,39 +809,46 @@
 
             showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
 
-            // Download each photo
-            for (let i = 0; i < photos.length; i++) {
-                const photo = photos[i];
-                const filename = `${jobNumber}_photo_${i + 1}.jpg`;
-                
-                try {
-                    if (photo.startsWith('data:image')) {
-                        // Handle base64 images
-                        const link = document.createElement('a');
-                        link.href = photo;
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    } else if (photo.startsWith('http')) {
-                        // Handle URL images
-                        const link = document.createElement('a');
-                        link.href = photo;
-                        link.download = filename;
-                        link.target = '_blank';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                    }
-                    
-                    // Add small delay between downloads to avoid browser blocking
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                } catch (e) {
-                    console.error('Error downloading photo:', e);
-                }
-            }
+            try {
+                const zip = new JSZip();
+                const folder = zip.folder(`${jobNumber}_photos`);
 
-            showAlert(`${photos.length} photo(s) downloaded successfully!`, 'success');
+                // Add each photo to the ZIP
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
+                    const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
+                    
+                    try {
+                        if (photo.startsWith('data:image')) {
+                            // Extract base64 data
+                            const base64Data = photo.split(',')[1];
+                            folder.file(filename, base64Data, { base64: true });
+                        } else if (photo.startsWith('http')) {
+                            // Fetch the image from URL
+                            const response = await fetch(photo);
+                            const blob = await response.blob();
+                            folder.file(filename, blob);
+                        }
+                    } catch (e) {
+                        console.error(`Error adding photo ${i + 1}:`, e);
+                    }
+                }
+
+                // Generate ZIP file and trigger download
+                const content = await zip.generateAsync({ type: 'blob' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `${jobNumber}_photos.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+                showAlert(`Successfully downloaded ${photos.length} photo(s) as ZIP file!`, 'success');
+            } catch (e) {
+                console.error('Error creating photo pack:', e);
+                showAlert('Error creating photo pack. Please try again.', 'error');
+            }
         }
 
         window.downloadPhotoPack = downloadPhotoPack;
