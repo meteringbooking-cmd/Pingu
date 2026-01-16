@@ -1760,14 +1760,20 @@
         canvas.addEventListener('touchmove', draw);
         canvas.addEventListener('touchend', stopDrawing);
 
-        signaturePad = canvas;
+        signaturePad = {
+    canvas: canvas,
+    toDataURL: () => canvas.toDataURL('image/png'),
+    clear: () => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+};
     }
 
     function clearSignature() {
-        if (!signaturePad) return;
-        const ctx = signaturePad.getContext('2d');
-        ctx.clearRect(0, 0, signaturePad.width, signaturePad.height);
-        }
+    if (!signaturePad) return;
+    signaturePad.clear();
+}
 
         window.clearSignature = clearSignature;
     </script>
