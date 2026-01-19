@@ -40,7 +40,9 @@
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); padding: 18px; border-radius: 20px;
+            transition: all 0.4s ease;
         }
+        .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
         .stat-card .label { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
         .stat-card .value { font-size: 1.6rem; font-weight: 700; margin-top: 6px; display: block; }
 
@@ -48,25 +50,30 @@
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); border-radius: 28px; padding: 30px; margin-bottom: 30px;
         }
-        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; }
         
         input, select {
             width: 100%; background: var(--input-bg); border: 1px solid var(--border);
-            padding: 14px; border-radius: 14px; color: white; outline: none;
+            padding: 14px; border-radius: 14px; color: white; font-family: inherit;
         }
 
         .table-wrap { border-radius: 28px; overflow: hidden; border: 1px solid var(--border); background: var(--glass); }
         table { width: 100%; border-collapse: collapse; }
         th { background: rgba(255,255,255,0.03); padding: 20px; text-align: left; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
         td { padding: 20px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; color: var(--accent); }
 
         .tag { padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
         .tag-tech { background: rgba(129, 140, 248, 0.1); color: var(--accent); border-color: rgba(129, 140, 248, 0.2); }
+        .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; }
+        .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; }
+        
         .text-issues { color: #f87171; font-weight: 600; }
         .text-success { color: #34d399; font-weight: 600; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 9999; padding: 40px; }
-        .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; }
+        .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; max-height: 80vh; overflow-y: auto; position: relative; }
+        .grid-detail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
     </style>
 </head>
 <body>
@@ -91,19 +98,34 @@
             <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
             <div class="stat-card"><span class="label">Panel Only</span><span id="stat-panel" class="value" style="color:#a78bfa">0</span></div>
         </div>
+        <div class="stats-row row-2">
+            <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
+            <div class="stat-card"><span class="label">Revisits</span><span id="stat-revisit" class="value" style="color:#60a5fa">0</span></div>
+            <div class="stat-card"><span class="label">Aftercare</span><span id="stat-aftercare" class="value" style="color:#fbbf24">0</span></div>
+        </div>
     </div>
     
     <div class="glass-panel">
         <div class="controls">
-            <div class="input-group"><label>Search</label><input type="text" id="searchInput" placeholder="Search Postcode or ID..." onkeyup="runFilters()"></div>
             <div class="input-group">
-                <label>Job Type</label>
+                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Global Search</label>
+                <input type="text" id="searchInput" placeholder="Search any column..." onkeyup="runFilters()">
+            </div>
+            <div class="input-group">
+                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Job Type</label>
                 <select id="typeFilter" onchange="runFilters()">
                     <option value="">All Types</option>
                     <option value="Solar Install">Solar Install</option>
                     <option value="Survey">Survey</option>
                     <option value="Revisit">Revisit</option>
+                    <option value="Aftercare">Aftercare</option>
                 </select>
+            </div>
+            <div class="input-group">
+                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Date Range Start</label>
+                <input type="date" id="startDate" onchange="runFilters()">
             </div>
         </div>
     </div>
@@ -116,6 +138,7 @@
                     <th>Postcode</th>
                     <th>Job Type</th>
                     <th>Status</th>
+                    <th>KF Status</th>
                     <th>Compliance</th>
                 </tr>
             </thead>
@@ -124,34 +147,27 @@
     </div>
 </div>
 
+<div id="overlay" class="overlay" onclick="this.style.display='none'">
+    <div class="modal-body" onclick="event.stopPropagation()">
+        <h2 id="modalTitle" style="margin-top:0;">Node Details</h2>
+        <div id="modalData" class="grid-detail"></div>
+    </div>
+</div>
+
 <script>
     let allData = [];
+
+    const techMatch = (row, brand) => {
+        const val = String(row['Booked Status'] || '').toLowerCase();
+        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
+        return val.includes(brand.toLowerCase());
+    };
 
     document.getElementById('csvFile').addEventListener('change', (e) => {
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: true,
             complete: (r) => {
-                const rawRows = r.data;
-                const postcodeRegistry = {};
-
-                // Step 1: Count occurrences of each postcode
-                rawRows.forEach(row => {
-                    const pc = (row['Postcode'] || '').trim().toUpperCase();
-                    if(pc) postcodeRegistry[pc] = (postcodeRegistry[pc] || 0) + 1;
-                });
-
-                // Step 2: Process based on your rule
-                allData = rawRows.filter(row => {
-                    const pc = (row['Postcode'] || '').trim().toUpperCase();
-                    const isSurvey = (row['Job Type'] || '').toLowerCase().includes('survey');
-                    
-                    // IF postcode is the same (seen > 1) AND job is survey, IGNORE.
-                    if (postcodeRegistry[pc] > 1 && isSurvey) {
-                        return false; 
-                    }
-                    return true; // Keep everything else
-                });
-
+                allData = r.data; // Now uploads EVERY row without filtering
                 runFilters();
             }
         });
@@ -160,31 +176,67 @@
     function runFilters() {
         const q = document.getElementById('searchInput').value.toLowerCase();
         const tF = document.getElementById('typeFilter').value.toLowerCase();
+        const sD = document.getElementById('startDate').value;
 
         const filtered = allData.filter(row => {
             const mS = Object.values(row).some(v => String(v).toLowerCase().includes(q));
             const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
-            return mS && mT;
+            let mD = true;
+            if (sD && row['Booked Date']) {
+                mD = row['Booked Date'].includes(sD); // Basic date match
+            }
+            return mS && mT && mD;
         });
 
-        document.getElementById('stat-total').innerText = filtered.length;
+        updateStats(filtered);
         render(filtered);
+    }
+
+    function updateStats(data) {
+        document.getElementById('stat-total').innerText = data.length;
+        document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
+        document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
+        document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
+        document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
+        document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
+        
+        document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
+        document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
+        document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
+        
+        document.getElementById('stat-revisit').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('revisit')).length;
+        document.getElementById('stat-aftercare').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
     }
 
     function render(data) {
         const tb = document.getElementById('tableBody');
         tb.innerHTML = '';
         data.forEach(r => {
+            const kf = ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase());
+            const comp = String(r['Compliance Checked'] || '').trim().toUpperCase();
+            
             const tr = document.createElement('tr');
+            tr.onclick = () => showDetails(r);
             tr.innerHTML = `
-                <td style="font-weight:700;">${r['Job Number']}</td>
-                <td>${r['Postcode']}</td>
-                <td style="color:var(--text-dim)">${r['Job Type']}</td>
-                <td><span class="tag tag-tech">${r['Booked Status']}</span></td>
-                <td>${r['Compliance Checked']}</td>
+                <td style="font-weight:700;">${r['Job Number'] || '---'}</td>
+                <td>${r['Postcode'] || '---'}</td>
+                <td style="color:var(--text-dim)">${r['Job Type'] || '---'}</td>
+                <td><span class="tag tag-tech">${r['Booked Status'] || '---'}</span></td>
+                <td><span class="tag ${kf ? 'tag-kf' : 'tag-wait'}">${kf ? 'YES' : 'NO'}</span></td>
+                <td class="${comp === 'Y' ? 'text-success' : (comp.includes('ISSUE') ? 'text-issues' : '')}">${r['Compliance Checked'] || '---'}</td>
             `;
             tb.appendChild(tr);
         });
+    }
+
+    function showDetails(row) {
+        const d = document.getElementById('modalData');
+        d.innerHTML = '';
+        document.getElementById('modalTitle').innerText = `Job ID: ${row['Job Number']}`;
+        Object.entries(row).forEach(([k, v]) => {
+            d.innerHTML += `<div><div style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">${k}</div><div style="color:#fff;">${v || '---'}</div></div>`;
+        });
+        document.getElementById('overlay').style.display = "block";
     }
 </script>
 </body>
