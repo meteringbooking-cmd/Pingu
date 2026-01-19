@@ -627,14 +627,23 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="meter-installation" class="form-label required">Does work need to be carried out on the meter?</label>
-                        <input type="text" id="meter-work-needed" class="form-input" placeholder="Yes / No" required />
-                    </div>
+    <label class="form-label required">Does work need to be carried out on the meter?</label>
+    <div class="radio-group">
+        <div class="radio-option">
+            <input type="radio" id="meter-work-yes" name="meter-work-needed" value="Yes" required>
+            <label for="meter-work-yes">Yes</label>
+        </div>
+        <div class="radio-option">
+            <input type="radio" id="meter-work-no" name="meter-work-needed" value="No">
+            <label for="meter-work-no">No</label>
+        </div>
+    </div>
+</div>
 
                     <div class="conditional-field" id="meter-installation" style="display: none;">
                         <div class="form-group">
                             <label class="form-label required">What work is required on the meter?</label>
-                            <textarea id="meter-work-details" class="form-input" rows="3" placeholder="Please describe the work required..." required></textarea>
+                            <textarea id="meter-work-details" class="form-input" rows="3" placeholder="Please describe the work required..."></textarea>
                         </div>
                        
                         <label class="form-label required">Upload Photo(s) of Meter</label>
@@ -1322,7 +1331,7 @@
     }
     async function sendMeterWorkEmail() {
         const meterWorkDetails = document.getElementById('meter-work-details')?.value || '';
-        const meterWorkNeeded = document.getElementById('meter-work-needed')?.value || '';
+        const meterWorkNeeded = document.querySelector('input[name="meter-work-needed"]:checked')?.value || '';
        
         if (meterWorkNeeded.trim().toLowerCase() !== 'yes' || !meterWorkDetails.trim()) {
             return;
@@ -1402,20 +1411,22 @@
             }
         });
 
-        const meterWorkInput = document.getElementById('meter-work-needed');
-        const meterSection = document.getElementById('meter-installation');
-        const meterWorkDetails = document.getElementById('meter-work-details');
-       
-        if (meterWorkInput && meterSection) {
-            meterWorkInput.addEventListener('input', function(e) {
-                const answer = e.target.value.trim().toLowerCase();
-               
-                if (answer === 'yes') {
-                    meterSection.style.display = 'block';
-                } else if (answer === 'no') {
-                    meterSection.style.display = 'none';
-                }
-            });
+        const meterWorkRadios = document.querySelectorAll('input[name="meter-work-needed"]');
+const meterSection = document.getElementById('meter-installation');
+const meterWorkDetails = document.getElementById('meter-work-details');
+
+if (meterWorkRadios.length > 0 && meterSection) {
+    meterWorkRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'Yes') {
+                meterSection.style.display = 'block';
+                if (meterWorkDetails) meterWorkDetails.setAttribute('required', 'required');
+            } else {
+                meterSection.style.display = 'none';
+                if (meterWorkDetails) meterWorkDetails.removeAttribute('required');
+            }
+        });
+    });
            
             if (meterWorkDetails) {
                 meterWorkDetails.addEventListener('blur', async function() {
@@ -1587,7 +1598,7 @@
                     electricalSystem: {
                         meterPosition: document.getElementById('meter-position')?.value || '',
                         meterPositionPhotos: photoUrls['meter-position-files'] || [],
-                        meterWorkNeeded: document.getElementById('meter-work-needed')?.value || '',
+                        meterWorkNeeded: document.querySelector('input[name="meter-work-needed"]:checked')?.value || '',
                         meterWorkDetails: document.getElementById('meter-work-details')?.value || '',
                         meterWorkPhotos: photoUrls['meter-installation-files'] || [],
                         fuseRating: document.getElementById('fuse-rating')?.value || '',
