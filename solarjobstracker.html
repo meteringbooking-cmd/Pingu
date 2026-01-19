@@ -78,6 +78,9 @@
         .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
         
         .sub-job-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
+        
+        /* Width fixes for scannability */
+        .stat-card .value { overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
@@ -90,6 +93,329 @@
                 <input type="file" id="csvFile" accept=".csv" style="display:none;">
                 <div style="background:var(--accent); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600; font-size:0.9rem;">
                     Upload Node Data
+                </div>
+            </label>
+        </div>
+    </header>
+
+    <div class="stats-container">
+        <div class="stats-row row-1">
+            <div class="stat-card"><span class="label">Filtered Sites</span><span id="stat-total" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Solar Installs</span><span id="stat-solar" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Enphase</span><span id="stat-enphase" class="value" style="color:#60a5fa">0</span></div>
+            <div class="stat-card"><span class="label">Tesla</span><span id="stat-tesla" class="value" style="color:#f87171">0</span></div>
+            <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
+            <div class="stat-card"><span class="label">Panel Only</span><span id="stat-panel" class="value" style="color:#a78bfa">0</span></div>
+        </div>
+        <div class="stats-row row-2">
+            <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Cancelled (N/A)</span><span id="stat-cancelled" class="value" style="color:#9ca3af">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
+            <div class="stat-card"><span class="label">Revisits</span><span id="stat-revisit" class="value" style="color:#60a5fa">0</span></div>
+            <div class="stat-card"><span class="label">Aftercare</span><span id="stat-aftercare" class="value" style="color:#fbbf24">0</span></div>
+        </div>
+    </div>
+    
+    <div class="glass-panel">
+        <div class="controls">
+            <div class="input-group">
+                <label>Job Type</label>
+                <select id="typeFilter" onchange="runFilters()">
+                    <option value="">All Types</option>
+                    <option value="Solar Install">Solar Install</option>
+                    <option value="Survey">Survey</option>
+                    <option value="Revisit">Revisit</option>
+                    <option value="Aftercare">Aftercare</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label>Brand</label>
+                <select id="techFilter" onchange="runFilters()">
+                    <option value="">All Brands</option>
+                    <option value="Fox">Fox</option>
+                    <option value="Enphase">Enphase</option>
+                    <option value="Tesla">Tesla</option>
+                </select>
+            </div>
+            <div class="input-group"><label>Start Date</label><input type="date" id="startDate" onchange="runFilters()"></div>
+            <div class="input-group"><label>End Date</label><input type="date" id="endDate" onchange="runFilters()"></div>
+            <div class="input-group" style="grid-column: span 1;">
+                <label>Search</label>
+                <input type="text" id="searchInput" placeholder="Postcode / Job #..." onkeyup="runFilters()">
+            </div>
+            <div>
+                <button onclick="location.reload()" style="margin-top:32px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); color:white; border:1px solid var(--border); cursor:pointer; width:100%;">Clear Data</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job ID / Group</th>
+                    <th>Postcode</th>
+                    <th>Type</th>
+                    <th>Booked Date</th>
+                    <th>KF Status</th>
+                    <th>Compliance</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="overlay" class="overlay" onclick="closeModal()">
+    <div class="modal-body" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeModal()">×</span>
+        <h2 id="modalTitle" style="margin-bottom:30px;">Site Details</h2>
+        <div id="modalData"></div>
+    </div>
+</div>
+
+<script>
+    let rawData = [];
+    let groupedData = [];
+
+    const parseDate = (d) => {
+        if (!d) return null;
+        const pts = d.includes('/') ? d.split('/') : d.split('-');
+        if (pts.length !== 3) return null;
+        // Handle DD/MM/YYYY or YYYY-MM-DD
+        return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
+    };
+
+    const techMatch = (row, brand) => {
+        const val = String(row['Booked Status'] || '').toLowerCase();
+        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
+        return val.includes(brand.toLowerCase());
+    };
+
+    document.getElementById('csvFile').addEventListener('change', (e) => {
+        Papa.parse(e.target.files[0], {
+            header: true, skipEmptyLines: 'greedy',
+            complete: (r) => {
+                rawData = r.data.filter(row => row['Job Number'] && row['Job Number'].trim() !== "");
+                processGroups();
+                runFilters();
+            }
+        });
+    });
+
+    function processGroups() {
+        const groups = {};
+        
+        // Group by postcode
+        rawData.forEach(row => {
+            const pc = (row['Postcode'] || 'NO-PC').toUpperCase().trim();
+            if (!groups[pc]) groups[pc] = [];
+            groups[pc].push(row);
+        });
+        
+        groupedData = [];
+        
+        Object.keys(groups).forEach(pc => {
+            const jobs = groups[pc];
+            
+            // Logic: If duplicates exist at postcode, ignore "Survey" rows
+            let filteredJobs = jobs;
+            if (jobs.length > 1) {
+                filteredJobs = jobs.filter(j => !String(j['Job Type']).toLowerCase().includes('survey'));
+                // Safeguard: If the filter removed everything, keep the original list
+                if (filteredJobs.length === 0) filteredJobs = jobs;
+            }
+            
+            const primary = filteredJobs[0];
+            groupedData.push({
+                postcode: pc,
+                isGroup: filteredJobs.length > 1,
+                jobs: filteredJobs,
+                ...primary
+            });
+        });
+    }
+
+    function runFilters() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const tF = document.getElementById('typeFilter').value.toLowerCase();
+        const hF = document.getElementById('techFilter').value.toLowerCase();
+        const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
+        const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
+
+        const filtered = groupedData.filter(site => {
+            const mS = site.postcode.toLowerCase().includes(q) || site['Job Number'].toLowerCase().includes(q);
+            const mT = !tF || site.jobs.some(j => String(j['Job Type']).toLowerCase().includes(tF));
+            const mH = !hF || site.jobs.some(j => techMatch(j, hF));
+            
+            const dates = site.jobs.map(j => parseDate(j['Booked Date'])).filter(d => d);
+            let mD = true;
+            if (sD && !dates.some(d => d >= sD)) mD = false;
+            if (eD && !dates.some(d => d <= eD)) mD = false;
+
+            return mS && mT && mH && mD;
+        });
+
+        updateStats(filtered);
+        renderTable(filtered);
+    }
+
+    function updateStats(data) {
+        const allJobs = data.flatMap(site => site.jobs);
+        
+        const getCount = (fn) => allJobs.filter(fn).length;
+
+        document.getElementById('stat-total').innerText = data.length; 
+        document.getElementById('stat-solar').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('solar install'));
+        document.getElementById('stat-enphase').innerText = getCount(j => techMatch(j, 'enphase'));
+        document.getElementById('stat-tesla').innerText = getCount(j => techMatch(j, 'tesla'));
+        document.getElementById('stat-fox').innerText = getCount(j => techMatch(j, 'fox'));
+        document.getElementById('stat-panel').innerText = getCount(j => String(j['Booked Status']).toLowerCase().includes('panel'));
+        
+        document.getElementById('stat-kf').innerText = getCount(j => ['Y','YES'].includes(String(j['Complete on KF']).trim().toUpperCase()));
+        document.getElementById('stat-cancelled').innerText = getCount(j => String(j['Complete on KF']).trim().toUpperCase() === 'N/A');
+        document.getElementById('stat-comp-y').innerText = getCount(j => String(j['Compliance Checked']).trim().toUpperCase() === 'Y');
+        document.getElementById('stat-comp-issues').innerText = getCount(j => String(j['Compliance Checked']).toLowerCase().includes('issue'));
+        document.getElementById('stat-revisit').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('revisit'));
+        document.getElementById('stat-aftercare').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('aftercare'));
+    }
+
+    function renderTable(data) {
+        const tb = document.getElementById('tableBody');
+        tb.innerHTML = '';
+        data.forEach(site => {
+            const tr = document.createElement('tr');
+            tr.onclick = () => showDetails(site);
+            
+            const kfRaw = String(site['Complete on KF'] || '').trim().toUpperCase();
+            const isCancelled = kfRaw === 'N/A';
+            const isDone = ['Y','YES'].includes(kfRaw);
+
+            tr.innerHTML = `
+                <td style="font-weight:700;">${site['Job Number']} ${site.isGroup ? `<span class="tag tag-group" style="margin-left:8px;">+${site.jobs.length-1} MORE</span>` : ''}</td>
+                <td>${site.postcode}</td>
+                <td style="color:var(--text-dim)">${site['Job Type']}</td>
+                <td>${site['Booked Date'] || '---'}</td>
+                <td><span class="tag ${isCancelled ? 'tag-wait' : (isDone ? 'tag-kf' : 'tag-wait')}">${isCancelled ? 'CANCELLED' : (isDone ? 'COMPLETE' : 'PENDING')}</span></td>
+                <td class="${String(site['Compliance Checked']).includes('ISSUE') ? 'text-issues' : 'text-success'}">${site['Compliance Checked'] || '---'}</td>
+            `;
+            tb.appendChild(tr);
+        });
+    }
+
+    function showDetails(site) {
+        const container = document.getElementById('modalData');
+        container.innerHTML = '';
+        document.getElementById('modalTitle').innerText = `Site Node: ${site.postcode}`;
+        
+        site.jobs.forEach(job => {
+            let jobHtml = `<div class="sub-job-card"><div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">`;
+            Object.entries(job).forEach(([k, v]) => {
+                jobHtml += `<div><div style="font-size:0.6rem; color:var(--text-dim); text-transform:uppercase;">${k}</div>
+                            <div style="font-size:0.95rem; color:#fff;">${v || '---'}</div></div>`;
+            });
+            jobHtml += `</div></div>`;
+            container.innerHTML += jobHtml;
+        });
+        document.getElementById('overlay').style.display = "block";
+    }
+
+    function closeModal() { document.getElementById('overlay').style.display = "none"; }
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Intelligence</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030712;
+            --glass: rgba(17, 24, 39, 0.7);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #818cf8;
+            --accent-glow: rgba(129, 140, 248, 0.4);
+            --text: #f3f4f6;
+            --text-dim: #9ca3af;
+            --input-bg: #111827;
+        }
+
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background: var(--bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.1) 0px, transparent 50%);
+            margin: 0; padding: 40px; color: var(--text); min-height: 100vh;
+        }
+
+        .container { max-width: 1600px; margin: auto; }
+        header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; }
+        .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
+        .logo-area span { color: var(--accent); font-weight: 300; }
+        
+        .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
+        .stats-row { display: grid; gap: 15px; }
+        .row-1 { grid-template-columns: repeat(6, 1fr); }
+        .row-2 { grid-template-columns: repeat(6, 1fr); }
+
+        .stat-card { 
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid var(--border); padding: 18px; border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .stat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 20px -10px var(--accent-glow); }
+        .stat-card .label { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
+        .stat-card .value { font-size: 1.6rem; font-weight: 700; margin-top: 6px; display: block; }
+
+        .glass-panel { 
+            background: var(--glass); backdrop-filter: blur(20px);
+            border: 1px solid var(--border); border-radius: 28px; padding: 30px; margin-bottom: 30px;
+        }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; }
+        .input-group label { display: block; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-dim); font-weight: 500; }
+        
+        input, select {
+            width: 100%; background: var(--input-bg); border: 1px solid var(--border);
+            padding: 14px; border-radius: 14px; color: white; font-family: inherit; font-size: 0.9rem;
+            transition: 0.3s; box-sizing: border-box; outline: none;
+        }
+
+        .table-wrap { border-radius: 28px; overflow: hidden; border: 1px solid var(--border); background: var(--glass); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: rgba(255,255,255,0.03); padding: 20px; text-align: left; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 20px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
+        tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; color: var(--accent); }
+
+        .tag { padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
+        .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+        .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; border-color: rgba(156, 163, 175, 0.2); }
+        .tag-group { background: rgba(251, 191, 36, 0.1); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+        
+        .text-issues { color: #f87171; font-weight: 600; }
+        .text-success { color: #34d399; font-weight: 600; }
+
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 9999; padding: 40px; }
+        .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; max-height: 80vh; overflow-y: auto; position: relative; }
+        .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
+        
+        .sub-job-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-area"><h1><span>.SOLAR Intel</span></h1></div>
+        <div style="text-align: right;">
+            <label class="input-group" style="display:inline-block;">
+                <input type="file" id="csvFile" accept=".csv" style="display:none;">
+                <div style="background:var(--accent); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                    Initialise Upload
                 </div>
             </label>
         </div>
