@@ -210,7 +210,7 @@
             complete: (r) => {
                 const rawRows = r.data;
                 
-                // 1. Group jobs by postcode
+                // Group jobs by postcode to identify duplicates
                 const pcGroups = {};
                 rawRows.forEach(row => {
                     const pc = (row['Postcode'] || '').trim().toUpperCase();
@@ -221,16 +221,16 @@
 
                 const processed = [];
                 
-                // 2. Apply Rule: If multiple jobs for 1 postcode, ignore Survey if other types exist
                 Object.keys(pcGroups).forEach(pc => {
                     const group = pcGroups[pc];
+                    // If multiple entries for this postcode, check for "real" jobs vs surveys
                     const nonSurveys = group.filter(r => !String(r['Job Type'] || '').toLowerCase().includes('survey'));
                     
-                    if (nonSurveys.length > 0) {
-                        // If there are real jobs, only keep those (ignores surveys for this postcode)
+                    if (group.length > 1 && nonSurveys.length > 0) {
+                        // If there are duplicates AND at least one non-survey, only keep the non-surveys
                         nonSurveys.forEach(job => processed.push(job));
                     } else {
-                        // If there are ONLY surveys, keep them
+                        // Otherwise (only one job OR only surveys found), keep the whole group
                         group.forEach(job => processed.push(job));
                     }
                 });
