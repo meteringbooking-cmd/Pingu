@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Intelligence | Flat View</title>
+    <title>Solar Intelligence | Precision View</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -78,6 +78,7 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 9999; padding: 40px; }
         .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; max-height: 80vh; overflow-y: auto; position: relative; }
         .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
+        .sub-job-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
     </style>
 </head>
 <body>
@@ -173,12 +174,13 @@
 
 <script>
     let rawData = [];
-    let filteredData = [];
+    let currentFilteredSet = [];
 
     const parseDate = (d) => {
         if (!d) return null;
         const pts = d.includes('/') ? d.split('/') : d.split('-');
         if (pts.length !== 3) return null;
+        // Supports DD/MM/YYYY or YYYY-MM-DD
         return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
     };
 
@@ -186,6 +188,7 @@
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: 'greedy',
             complete: (r) => {
+                // Initial load: keep every row independent
                 rawData = r.data.filter(row => row['Job Number'] && row['Job Number'].trim() !== "");
                 runFilters();
             }
@@ -196,29 +199,36 @@
         const q = document.getElementById('searchInput').value.toLowerCase();
         const tF = document.getElementById('typeFilter').value.toLowerCase();
         const hF = document.getElementById('techFilter').value.toLowerCase();
-        const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
-        const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
+        const sDInput = document.getElementById('startDate').value;
+        const eDInput = document.getElementById('endDate').value;
+        
+        const sD = sDInput ? new Date(sDInput) : null;
+        const eD = eDInput ? new Date(eDInput) : null;
 
-        filteredData = rawData.filter(row => {
+        // Apply strict row-by-row filtering
+        currentFilteredSet = rawData.filter(row => {
             const mS = (row['Postcode'] || '').toLowerCase().includes(q) || (row['Job Number'] || '').toLowerCase().includes(q);
             const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
             
+            // Brand logic against Booked Status
             const bS = String(row['Booked Status'] || '').toLowerCase();
             const mH = !hF || (hF === 'fox' ? (bS.includes('fox') || bS.includes('evo')) : bS.includes(hF));
 
-            const dVal = parseDate(row['Booked Date']);
+            // Date logic
+            const rowDate = parseDate(row['Booked Date']);
             let mD = true;
-            if (sD && (!dVal || dVal < sD)) mD = false;
-            if (eD && (!dVal || dVal > eD)) mD = false;
+            if (sD && (!rowDate || rowDate < sD)) mD = false;
+            if (eD && (!rowDate || rowDate > eD)) mD = false;
 
             return mS && mT && mH && mD;
         });
 
-        updateStats(filteredData);
-        renderTable(filteredData);
+        updateStats(currentFilteredSet);
+        renderTable(currentFilteredSet);
     }
 
     function updateStats(data) {
+        // All stats are derived strictly from the 'data' passed (which is the filtered set)
         const getCount = (column, value, exact = false) => {
             return data.filter(j => {
                 const cellValue = String(j[column] || '').trim().toUpperCase();
@@ -227,15 +237,11 @@
             }).length;
         };
 
-        // Filtered Sites logic: Total entries in current view
+        // Header: Filtered Sites (Total entries currently in view)
         document.getElementById('stat-total').innerText = data.length; 
 
-        // Job Type Stats
+        // Row 1: Types and Brands
         document.getElementById('stat-solar').innerText = getCount('Job Type', 'Solar Install');
-        document.getElementById('stat-revisit').innerText = getCount('Job Type', 'Revisit');
-        document.getElementById('stat-aftercare').innerText = getCount('Job Type', 'Aftercare');
-
-        // Booked Status (Brands)
         document.getElementById('stat-enphase').innerText = getCount('Booked Status', 'Enphase');
         document.getElementById('stat-tesla').innerText = getCount('Booked Status', 'Tesla');
         document.getElementById('stat-fox').innerText = data.filter(j => {
@@ -244,11 +250,13 @@
         }).length;
         document.getElementById('stat-panel').innerText = getCount('Booked Status', 'Panel');
         
-        // KF & Compliance
+        // Row 2: Outcomes
         document.getElementById('stat-kf').innerText = getCount('Complete on KF', 'Y', true);
         document.getElementById('stat-cancelled').innerText = getCount('Complete on KF', 'N/A', true);
         document.getElementById('stat-comp-y').innerText = getCount('Compliance Checked', 'Y', true);
         document.getElementById('stat-comp-issues').innerText = getCount('Compliance Checked', 'Issue');
+        document.getElementById('stat-revisit').innerText = getCount('Job Type', 'Revisit');
+        document.getElementById('stat-aftercare').innerText = getCount('Job Type', 'Aftercare');
     }
 
     function renderTable(data) {
@@ -275,13 +283,13 @@
     }
 
     function exportFilteredData() {
-        if (!filteredData.length) return alert("No data to export");
-        const csv = Papa.unparse(filteredData);
+        if (!currentFilteredSet.length) return alert("No filtered data to export");
+        const csv = Papa.unparse(currentFilteredSet);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
         link.setAttribute("href", url);
-        link.setAttribute("download", `solar_intel_flat_${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute("download", `solar_filtered_export_${new Date().toISOString().split('T')[0]}.csv`);
         link.click();
     }
 
