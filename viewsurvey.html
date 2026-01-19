@@ -778,29 +778,21 @@
             return v;
         }
 
-        // Helper function to convert image URL to base64 using canvas (bypasses CORS)
-        function imageUrlToBase64(url) {
+        // Helper function to convert image to base64 using canvas
+        function imageToBase64(imgElement) {
             return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                
-                img.onload = () => {
+                try {
                     const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    canvas.width = imgElement.naturalWidth || imgElement.width;
+                    canvas.height = imgElement.naturalHeight || imgElement.height;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
+                    ctx.drawImage(imgElement, 0, 0);
                     
-                    try {
-                        const base64 = canvas.toDataURL('image/jpeg', 0.95);
-                        resolve(base64.split(',')[1]);
-                    } catch (e) {
-                        reject(e);
-                    }
-                };
-                
-                img.onerror = () => reject(new Error('Failed to load image'));
-                img.src = url;
+                    const base64 = canvas.toDataURL('image/jpeg', 0.95);
+                    resolve(base64.split(',')[1]);
+                } catch (e) {
+                    reject(e);
+                }
             });
         }
 
@@ -810,50 +802,36 @@
                 return;
             }
 
-            const photos = [];
+            // Get all image elements currently displayed on the page
+            const imgElements = document.querySelectorAll('.survey-photo');
             const jobNumber = currentDocument.data.jobNumber || 'unknown';
-            
-            // Collect all photos from the document
-            if (currentDocument.data.sections) {
-                Object.values(currentDocument.data.sections).forEach(section => {
-                    Object.entries(section).forEach(([key, value]) => {
-                        if (key.endsWith('Photos') && Array.isArray(value)) {
-                            value.forEach(photo => {
-                                if (typeof photo === 'string' && (photo.startsWith('data:image') || photo.startsWith('http'))) {
-                                    photos.push(photo);
-                                }
-                            });
-                        }
-                    });
-                });
-            }
 
-            if (photos.length === 0) {
+            if (imgElements.length === 0) {
                 showAlert('No photos found in this document', 'error');
                 return;
             }
 
-            showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
+            showAlert(`Preparing ${imgElements.length} photo(s) for download...`, 'success');
 
             try {
                 const zip = new JSZip();
                 const folder = zip.folder(`${jobNumber}_photos`);
                 let successCount = 0;
 
-                // Add each photo to the ZIP
-                for (let i = 0; i < photos.length; i++) {
-                    const photo = photos[i];
+                // Convert each displayed image to base64 and add to ZIP
+                for (let i = 0; i < imgElements.length; i++) {
+                    const img = imgElements[i];
                     const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
                     
                     try {
-                        if (photo.startsWith('data:image')) {
-                            // Extract base64 data
-                            const base64Data = photo.split(',')[1];
+                        // If the image src is already base64, use it directly
+                        if (img.src.startsWith('data:image')) {
+                            const base64Data = img.src.split(',')[1];
                             folder.file(filename, base64Data, { base64: true });
                             successCount++;
-                        } else if (photo.startsWith('http')) {
-                            // Convert Firebase Storage URL to base64 using canvas (bypasses CORS)
-                            const base64Data = await imageUrlToBase64(photo);
+                        } else {
+                            // For Firebase Storage URLs, convert the already-loaded image to base64
+                            const base64Data = await imageToBase64(img);
                             folder.file(filename, base64Data, { base64: true });
                             successCount++;
                         }
@@ -865,7 +843,7 @@
 
                 // Check if we have any files in the folder
                 if (successCount === 0) {
-                    showAlert('Could not download any photos. They may be protected or unavailable.', 'error');
+                    showAlert('Could not download any photos. Please try again.', 'error');
                     return;
                 }
 
@@ -884,7 +862,7 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
 
-                showAlert(`Successfully downloaded ${successCount} of ${photos.length} photo(s) as ZIP file!`, 'success');
+                showAlert(`Successfully downloaded ${successCount} of ${imgElements.length} photo(s) as ZIP file!`, 'success');
             } catch (e) {
                 console.error('Error creating photo pack:', e);
                 showAlert('Error creating photo pack: ' + e.message, 'error');
