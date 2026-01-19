@@ -778,21 +778,30 @@
             return v;
         }
 
-        // Helper function to convert image to base64 using canvas
-        function imageToBase64(imgElement) {
-            return new Promise((resolve, reject) => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = imgElement.naturalWidth || imgElement.width;
-                    canvas.height = imgElement.naturalHeight || imgElement.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(imgElement, 0, 0);
-                    
-                    const base64 = canvas.toDataURL('image/jpeg', 0.95);
-                    resolve(base64.split(',')[1]);
-                } catch (e) {
-                    reject(e);
+       // Helper function to extract Firebase Storage path from URL
+        function getStoragePathFromUrl(url) {
+            try {
+                const urlObj = new URL(url);
+                const pathMatch = urlObj.pathname.match(/\/o\/(.+)\?/);
+                if (pathMatch) {
+                    return decodeURIComponent(pathMatch[1]);
                 }
+            } catch (e) {
+                console.error('Error parsing URL:', e);
+            }
+            return null;
+        }
+
+        // Helper function to convert blob to base64
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
         }
 
@@ -802,38 +811,60 @@
                 return;
             }
 
-            // Get all image elements currently displayed on the page
-            const imgElements = document.querySelectorAll('.survey-photo');
+            const photos = [];
             const jobNumber = currentDocument.data.jobNumber || 'unknown';
+            
+            // Collect all photos from the document
+            if (currentDocument.data.sections) {
+                Object.values(currentDocument.data.sections).forEach(section => {
+                    Object.entries(section).forEach(([key, value]) => {
+                        if (key.endsWith('Photos') && Array.isArray(value)) {
+                            value.forEach(photo => {
+                                if (typeof photo === 'string' && (photo.startsWith('data:image') || photo.startsWith('http'))) {
+                                    photos.push(photo);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
 
-            if (imgElements.length === 0) {
+            if (photos.length === 0) {
                 showAlert('No photos found in this document', 'error');
                 return;
             }
 
-            showAlert(`Preparing ${imgElements.length} photo(s) for download...`, 'success');
+            showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
 
             try {
                 const zip = new JSZip();
                 const folder = zip.folder(`${jobNumber}_photos`);
+                const { ref, getBlob } = window.storageModules;
                 let successCount = 0;
 
-                // Convert each displayed image to base64 and add to ZIP
-                for (let i = 0; i < imgElements.length; i++) {
-                    const img = imgElements[i];
+                // Add each photo to the ZIP
+                for (let i = 0; i < photos.length; i++) {
+                    const photo = photos[i];
                     const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
                     
                     try {
-                        // If the image src is already base64, use it directly
-                        if (img.src.startsWith('data:image')) {
-                            const base64Data = img.src.split(',')[1];
+                        if (photo.startsWith('data:image')) {
+                            // Extract base64 data from data URL
+                            const base64Data = photo.split(',')[1];
                             folder.file(filename, base64Data, { base64: true });
                             successCount++;
-                        } else {
-                            // For Firebase Storage URLs, convert the already-loaded image to base64
-                            const base64Data = await imageToBase64(img);
-                            folder.file(filename, base64Data, { base64: true });
-                            successCount++;
+                        } else if (photo.startsWith('http')) {
+                            // For Firebase Storage URLs, use Firebase Storage SDK to download
+                            const storagePath = getStoragePathFromUrl(photo);
+                            if (storagePath) {
+                                const storageRef = ref(window.storage, storagePath);
+                                const blob = await getBlob(storageRef);
+                                const base64Data = await blobToBase64(blob);
+                                folder.file(filename, base64Data, { base64: true });
+                                successCount++;
+                            } else {
+                                console.error(`Could not parse storage path from URL: ${photo}`);
+                            }
                         }
                     } catch (e) {
                         console.error(`Error adding photo ${i + 1}:`, e);
@@ -862,7 +893,7 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
 
-                showAlert(`Successfully downloaded ${successCount} of ${imgElements.length} photo(s) as ZIP file!`, 'success');
+                showAlert(`Successfully downloaded ${successCount} of ${photos.length} photo(s) as ZIP file!`, 'success');
             } catch (e) {
                 console.error('Error creating photo pack:', e);
                 showAlert('Error creating photo pack: ' + e.message, 'error');
