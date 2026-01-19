@@ -59,6 +59,9 @@
             transition: 0.3s; box-sizing: border-box; outline: none;
         }
 
+        .btn-primary { background: var(--accent); color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-weight: 600; border: none; font-size: 0.9rem; }
+        .btn-secondary { background: rgba(255,255,255,0.05); color: white; padding: 12px 24px; border-radius: 12px; cursor: pointer; border: 1px solid var(--border); font-size: 0.9rem; }
+
         .table-wrap { border-radius: 28px; overflow: hidden; border: 1px solid var(--border); background: var(--glass); }
         table { width: 100%; border-collapse: collapse; }
         th { background: rgba(255,255,255,0.03); padding: 20px; text-align: left; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
@@ -78,7 +81,6 @@
         .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
         
         .sub-job-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
-        .stat-card .value { overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
 <body>
@@ -86,12 +88,11 @@
 <div class="container">
     <header>
         <div class="logo-area"><h1><span>.SOLAR Intel</span></h1></div>
-        <div style="text-align: right;">
-            <label class="input-group" style="display:inline-block;">
+        <div style="display: flex; gap: 10px;">
+            <button class="btn-secondary" onclick="exportFilteredData()">Export Filtered CSV</button>
+            <label class="input-group">
                 <input type="file" id="csvFile" accept=".csv" style="display:none;">
-                <div style="background:var(--accent); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600; font-size:0.9rem;">
-                    Initialise Upload
-                </div>
+                <div class="btn-primary">Initialise Upload</div>
             </label>
         </div>
     </header>
@@ -138,12 +139,12 @@
             </div>
             <div class="input-group"><label>Start Date</label><input type="date" id="startDate" onchange="runFilters()"></div>
             <div class="input-group"><label>End Date</label><input type="date" id="endDate" onchange="runFilters()"></div>
-            <div class="input-group" style="grid-column: span 1;">
+            <div class="input-group">
                 <label>Search</label>
                 <input type="text" id="searchInput" placeholder="Postcode / Job #..." onkeyup="runFilters()">
             </div>
             <div>
-                <button onclick="location.reload()" style="margin-top:32px; padding:12px; border-radius:12px; background:rgba(255,255,255,0.05); color:white; border:1px solid var(--border); cursor:pointer; width:100%;">Clear Data</button>
+                <button onclick="location.reload()" class="btn-secondary" style="margin-top:32px; width:100%;">Clear All</button>
             </div>
         </div>
     </div>
@@ -176,6 +177,7 @@
 <script>
     let rawData = [];
     let groupedData = [];
+    let currentFilteredSet = [];
 
     const parseDate = (d) => {
         if (!d) return null;
@@ -208,7 +210,6 @@
             const jobs = groups[pc];
             let filteredJobs = jobs;
             if (jobs.length > 1) {
-                // If duplicates exist, remove "Survey" rows as per requirement
                 filteredJobs = jobs.filter(j => !String(j['Job Type']).toLowerCase().includes('survey'));
                 if (filteredJobs.length === 0) filteredJobs = [jobs[0]];
             }
@@ -229,10 +230,9 @@
         const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
         const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
 
-        const filtered = groupedData.filter(site => {
+        currentFilteredSet = groupedData.filter(site => {
             const mS = site.postcode.toLowerCase().includes(q) || site['Job Number'].toLowerCase().includes(q);
             const mT = !tF || site.jobs.some(j => String(j['Job Type']).toLowerCase().includes(tF));
-            
             const mH = !hF || site.jobs.some(j => {
                 const val = String(j['Booked Status'] || '').toLowerCase();
                 if (hF === 'fox') return val.includes('fox') || val.includes('evo');
@@ -247,12 +247,11 @@
             return mS && mT && mH && mD;
         });
 
-        updateStats(filtered);
-        renderTable(filtered);
+        updateStats(currentFilteredSet);
+        renderTable(currentFilteredSet);
     }
 
     function updateStats(data) {
-        // Flatten only the jobs currently visible in the filtered sites
         const allFilteredJobs = data.flatMap(site => site.jobs);
         
         const getCount = (column, value, exact = false) => {
@@ -263,10 +262,7 @@
             }).length;
         };
 
-        // Header Stat: Total unique postcode sites displayed
         document.getElementById('stat-total').innerText = data.length; 
-
-        // Row 1: Job Types and Brands
         document.getElementById('stat-solar').innerText = getCount('Job Type', 'Solar Install');
         document.getElementById('stat-enphase').innerText = getCount('Booked Status', 'Enphase');
         document.getElementById('stat-tesla').innerText = getCount('Booked Status', 'Tesla');
@@ -275,8 +271,7 @@
             return val.includes('fox') || val.includes('evo');
         }).length;
         document.getElementById('stat-panel').innerText = getCount('Booked Status', 'Panel');
-
-        // Row 2: KF, Compliance, and other types
+        
         document.getElementById('stat-kf').innerText = getCount('Complete on KF', 'Y', true);
         document.getElementById('stat-cancelled').innerText = getCount('Complete on KF', 'N/A', true);
         document.getElementById('stat-comp-y').innerText = getCount('Compliance Checked', 'Y', true);
@@ -291,7 +286,6 @@
         data.forEach(site => {
             const tr = document.createElement('tr');
             tr.onclick = () => showDetails(site);
-            
             const kfRaw = String(site['Complete on KF'] || '').trim().toUpperCase();
             const isCancelled = kfRaw === 'N/A';
             const isDone = kfRaw === 'Y';
@@ -306,6 +300,21 @@
             `;
             tb.appendChild(tr);
         });
+    }
+
+    function exportFilteredData() {
+        if (!currentFilteredSet.length) return alert("No data to export");
+        const exportJobs = currentFilteredSet.flatMap(site => site.jobs);
+        const csv = Papa.unparse(exportJobs);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `solar_intel_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
     function showDetails(site) {
