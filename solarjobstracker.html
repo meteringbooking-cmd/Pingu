@@ -78,8 +78,6 @@
         .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
         
         .sub-job-card { background: rgba(255,255,255,0.03); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
-        
-        /* Width fixes for scannability */
         .stat-card .value { overflow: hidden; text-overflow: ellipsis; }
     </style>
 </head>
@@ -183,14 +181,7 @@
         if (!d) return null;
         const pts = d.includes('/') ? d.split('/') : d.split('-');
         if (pts.length !== 3) return null;
-        // Handle DD/MM/YYYY or YYYY-MM-DD
         return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
-    };
-
-    const techMatch = (row, brand) => {
-        const val = String(row['Booked Status'] || '').toLowerCase();
-        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
-        return val.includes(brand.toLowerCase());
     };
 
     document.getElementById('csvFile').addEventListener('change', (e) => {
@@ -206,8 +197,6 @@
 
     function processGroups() {
         const groups = {};
-        
-        // Group by postcode
         rawData.forEach(row => {
             const pc = (row['Postcode'] || 'NO-PC').toUpperCase().trim();
             if (!groups[pc]) groups[pc] = [];
@@ -215,18 +204,14 @@
         });
         
         groupedData = [];
-        
         Object.keys(groups).forEach(pc => {
             const jobs = groups[pc];
-            
-            // Logic: If duplicates exist at postcode, ignore "Survey" rows
             let filteredJobs = jobs;
             if (jobs.length > 1) {
+                // If duplicates exist, remove "Survey" rows as per requirement
                 filteredJobs = jobs.filter(j => !String(j['Job Type']).toLowerCase().includes('survey'));
-                // Safeguard: If the filter removed everything, keep the original list
-                if (filteredJobs.length === 0) filteredJobs = jobs;
+                if (filteredJobs.length === 0) filteredJobs = [jobs[0]];
             }
-            
             const primary = filteredJobs[0];
             groupedData.push({
                 postcode: pc,
@@ -247,8 +232,13 @@
         const filtered = groupedData.filter(site => {
             const mS = site.postcode.toLowerCase().includes(q) || site['Job Number'].toLowerCase().includes(q);
             const mT = !tF || site.jobs.some(j => String(j['Job Type']).toLowerCase().includes(tF));
-            const mH = !hF || site.jobs.some(j => techMatch(j, hF));
             
+            const mH = !hF || site.jobs.some(j => {
+                const val = String(j['Booked Status'] || '').toLowerCase();
+                if (hF === 'fox') return val.includes('fox') || val.includes('evo');
+                return val.includes(hF);
+            });
+
             const dates = site.jobs.map(j => parseDate(j['Booked Date'])).filter(d => d);
             let mD = true;
             if (sD && !dates.some(d => d >= sD)) mD = false;
@@ -262,23 +252,37 @@
     }
 
     function updateStats(data) {
-        const allJobs = data.flatMap(site => site.jobs);
+        // Flatten only the jobs currently visible in the filtered sites
+        const allFilteredJobs = data.flatMap(site => site.jobs);
         
-        const getCount = (fn) => allJobs.filter(fn).length;
+        const getCount = (column, value, exact = false) => {
+            return allFilteredJobs.filter(j => {
+                const cellValue = String(j[column] || '').trim().toUpperCase();
+                const target = value.toUpperCase();
+                return exact ? cellValue === target : cellValue.includes(target);
+            }).length;
+        };
 
+        // Header Stat: Total unique postcode sites displayed
         document.getElementById('stat-total').innerText = data.length; 
-        document.getElementById('stat-solar').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('solar install'));
-        document.getElementById('stat-enphase').innerText = getCount(j => techMatch(j, 'enphase'));
-        document.getElementById('stat-tesla').innerText = getCount(j => techMatch(j, 'tesla'));
-        document.getElementById('stat-fox').innerText = getCount(j => techMatch(j, 'fox'));
-        document.getElementById('stat-panel').innerText = getCount(j => String(j['Booked Status']).toLowerCase().includes('panel'));
-        
-        document.getElementById('stat-kf').innerText = getCount(j => ['Y','YES'].includes(String(j['Complete on KF']).trim().toUpperCase()));
-        document.getElementById('stat-cancelled').innerText = getCount(j => String(j['Complete on KF']).trim().toUpperCase() === 'N/A');
-        document.getElementById('stat-comp-y').innerText = getCount(j => String(j['Compliance Checked']).trim().toUpperCase() === 'Y');
-        document.getElementById('stat-comp-issues').innerText = getCount(j => String(j['Compliance Checked']).toLowerCase().includes('issue'));
-        document.getElementById('stat-revisit').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('revisit'));
-        document.getElementById('stat-aftercare').innerText = getCount(j => String(j['Job Type']).toLowerCase().includes('aftercare'));
+
+        // Row 1: Job Types and Brands
+        document.getElementById('stat-solar').innerText = getCount('Job Type', 'Solar Install');
+        document.getElementById('stat-enphase').innerText = getCount('Booked Status', 'Enphase');
+        document.getElementById('stat-tesla').innerText = getCount('Booked Status', 'Tesla');
+        document.getElementById('stat-fox').innerText = allFilteredJobs.filter(j => {
+            const val = String(j['Booked Status'] || '').toLowerCase();
+            return val.includes('fox') || val.includes('evo');
+        }).length;
+        document.getElementById('stat-panel').innerText = getCount('Booked Status', 'Panel');
+
+        // Row 2: KF, Compliance, and other types
+        document.getElementById('stat-kf').innerText = getCount('Complete on KF', 'Y', true);
+        document.getElementById('stat-cancelled').innerText = getCount('Complete on KF', 'N/A', true);
+        document.getElementById('stat-comp-y').innerText = getCount('Compliance Checked', 'Y', true);
+        document.getElementById('stat-comp-issues').innerText = getCount('Compliance Checked', 'Issue');
+        document.getElementById('stat-revisit').innerText = getCount('Job Type', 'Revisit');
+        document.getElementById('stat-aftercare').innerText = getCount('Job Type', 'Aftercare');
     }
 
     function renderTable(data) {
@@ -290,7 +294,7 @@
             
             const kfRaw = String(site['Complete on KF'] || '').trim().toUpperCase();
             const isCancelled = kfRaw === 'N/A';
-            const isDone = ['Y','YES'].includes(kfRaw);
+            const isDone = kfRaw === 'Y';
 
             tr.innerHTML = `
                 <td style="font-weight:700;">${site['Job Number']} ${site.isGroup ? `<span class="tag tag-group" style="margin-left:8px;">+${site.jobs.length-1} MORE</span>` : ''}</td>
@@ -308,7 +312,6 @@
         const container = document.getElementById('modalData');
         container.innerHTML = '';
         document.getElementById('modalTitle').innerText = `Site Node: ${site.postcode}`;
-        
         site.jobs.forEach(job => {
             let jobHtml = `<div class="sub-job-card"><div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">`;
             Object.entries(job).forEach(([k, v]) => {
