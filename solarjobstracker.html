@@ -32,7 +32,6 @@
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
         
-        /* Two-row grid for expanded stats */
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 40px; }
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
@@ -75,7 +74,6 @@
         }
         .grid-detail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
         .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
-        .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 10px currentColor; }
     </style>
 </head>
 <body>
@@ -103,32 +101,30 @@
         <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
         <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
         <div class="stat-card"><span class="label">Cancelled</span><span id="stat-cancelled" class="value" style="color:#94a3b8">0</span></div>
-        <div class="stat-card"><span class="label">Comppliance Check: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
-        <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
-        <div class="stat-card"><span class="label">Compliance: N/A</span><span id="stat-comp-na" class="value" style="color:#94a3b8">0</span></div>
+        <div class="stat-card"><span class="label">Comp Check: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
+        <div class="stat-card"><span class="label">Comp: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
+        <div class="stat-card"><span class="label">Comp: N/A</span><span id="stat-comp-na" class="value" style="color:#94a3b8">0</span></div>
     </div>
     
     <div class="glass-panel">
         <div class="controls">
             <div class="input-group">
-                <label>System Phase</label>
+                <label>Job Type</label>
                 <select id="typeFilter" onchange="runFilters()">
-                    <option value="">All Systems</option>
-                    <option value="solar">Solar Install</option>
-                    <option value="survey">Survey</option>
-                    <option value="revisit">Revisit</option>
-                    <option value="aftercare">Aftercare</option>
+                    <option value="">All Types</option>
+                    <option value="Solar Install">Solar Install</option>
+                    <option value="Survey">Survey</option>
+                    <option value="Revisit">Revisit</option>
+                    <option value="Aftercare">Aftercare</option>
                 </select>
             </div>
             <div class="input-group">
-                <label>Hardware Protocol</label>
+                <label>Booked Status (Brand)</label>
                 <select id="techFilter" onchange="runFilters()">
-                    <option value="">All Protocols</option>
-                    <option value="enphase">Enphase</option>
-                    <option value="tesla">Tesla Powerwall</option>
-                    <option value="fox">Fox / Evo</option>
-                    <option value="revisit">Revisit (Status)</option>
-                    <option value="n/a">N/A</option>
+                    <option value="">All Brands</option>
+                    <option value="Fox">Fox</option>
+                    <option value="Enphase">Enphase</option>
+                    <option value="Tesla">Tesla</option>
                 </select>
             </div>
             <div class="input-group"><label>Booked Start</label><input type="date" id="startDate" onchange="runFilters()"></div>
@@ -172,15 +168,14 @@
         if (!d) return null;
         const pts = d.includes('/') ? d.split('/') : d.split('-');
         if (pts.length !== 3) return null;
-        // Logic to handle YYYY-MM-DD or DD-MM-YYYY
         return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
     };
 
-    const techMatch = (row, f) => {
-        const comb = `${row['Job Type']} ${row['Booked Status']} ${row['Enphase']}`.toLowerCase();
-        if (f === 'fox') return comb.includes('fox') || comb.includes('evo');
-        if (f === 'revisit') return comb.includes('revisit') || comb.includes('rv');
-        return comb.includes(f);
+    // Updated techMatch to look specifically at the Booked Status column
+    const techMatch = (row, brand) => {
+        const val = String(row['Booked Status'] || '').toLowerCase();
+        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
+        return val.includes(brand.toLowerCase());
     };
 
     document.getElementById('csvFile').addEventListener('change', (e) => {
@@ -192,7 +187,6 @@
                     const pc = (row['Postcode'] || '').trim().toUpperCase();
                     if(!pc) return;
                     const isSrv = (row['Job Type'] || '').toLowerCase().includes('survey');
-                    // Deduplicate postcodes, prioritize installs over surveys
                     if(!map.has(pc) || (map.get(pc)['Job Type'].toLowerCase().includes('survey') && !isSrv)) map.set(pc, row);
                 });
                 allData = Array.from(map.values());
@@ -203,17 +197,18 @@
 
     function runFilters() {
         const q = document.getElementById('searchInput').value.toLowerCase();
-        const tF = document.getElementById('typeFilter').value;
-        const hF = document.getElementById('techFilter').value;
+        const tF = document.getElementById('typeFilter').value.toLowerCase();
+        const hF = document.getElementById('techFilter').value.toLowerCase();
         const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
         const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
 
         const filtered = allData.filter(row => {
             const mS = Object.values(row).some(v => String(v).toLowerCase().includes(q));
+            // Strict Job Type filter
             const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
+            // Strict Brand filter (Booked Status)
             const mH = !hF || techMatch(row, hF);
             
-            // Targeted Date Filter: Column E (Booked Date)
             const rD = parseDate(row['Booked Date']);
             let mD = true;
             if (sD && (!rD || rD < sD)) mD = false;
@@ -226,21 +221,15 @@
     }
 
     function updateStats(data) {
-        const getCount = (tech) => data.filter(r => techMatch(r, tech)).length;
-        
         document.getElementById('stat-total').innerText = data.length;
         document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('solar')).length;
-        document.getElementById('stat-enphase').innerText = getCount('enphase');
-        document.getElementById('stat-tesla').innerText = getCount('tesla');
-        document.getElementById('stat-fox').innerText = getCount('fox');
+        document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
+        document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
+        document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
         
-        // KF Complete logic
         document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF']).trim().toUpperCase())).length;
-        
-        // Cancelled (KF is N/A)
         document.getElementById('stat-cancelled').innerText = data.filter(r => String(r['Complete on KF']).trim().toUpperCase() === 'N/A').length;
 
-        // Compliance Logic
         document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked']).trim().toUpperCase() === 'Y').length;
         document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked']).trim().toLowerCase().includes('issues')).length;
         document.getElementById('stat-comp-na').innerText = data.filter(r => String(r['Compliance Checked']).trim().toUpperCase() === 'N/A').length;
