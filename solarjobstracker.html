@@ -97,7 +97,7 @@
 
     <div class="stats-container">
         <div class="stats-row row-1">
-            <div class="stat-card"><span class="label">Unique Sites</span><span id="stat-total" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Filtered Sites</span><span id="stat-total" class="value">0</span></div>
             <div class="stat-card"><span class="label">Solar Installs</span><span id="stat-solar" class="value">0</span></div>
             <div class="stat-card"><span class="label">Enphase</span><span id="stat-enphase" class="value" style="color:#60a5fa">0</span></div>
             <div class="stat-card"><span class="label">Tesla</span><span id="stat-tesla" class="value" style="color:#f87171">0</span></div>
@@ -192,7 +192,7 @@
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: 'greedy',
             complete: (r) => {
-                // Filter Column A blanks
+                // Initial clean: filter out blank Asset IDs
                 rawData = r.data.filter(row => row['Job Number'] && row['Job Number'].trim() !== "");
                 processGroups();
                 runFilters();
@@ -202,22 +202,39 @@
 
     function processGroups() {
         const groups = {};
+        
+        // Group everything by postcode first
         rawData.forEach(row => {
             const pc = (row['Postcode'] || 'NO-PC').toUpperCase().trim();
             if (!groups[pc]) groups[pc] = [];
             groups[pc].push(row);
         });
         
-        groupedData = Object.keys(groups).map(pc => {
+        groupedData = [];
+        
+        Object.keys(groups).forEach(pc => {
             const jobs = groups[pc];
-            // Primary row for display is usually the most recent or the first one
-            const primary = jobs[0];
-            return {
-                postcode: pc,
-                isGroup: jobs.length > 1,
-                jobs: jobs,
-                ...primary
-            };
+            
+            // Logic: If matching postcodes exist, ignore any job with type "Survey"
+            let filteredJobs = jobs;
+            if (jobs.length > 1) {
+                filteredJobs = jobs.filter(j => !String(j['Job Type']).toLowerCase().includes('survey'));
+            }
+            
+            // If the filtering removed all jobs (e.g. they were all surveys), keep one so the site isn't lost
+            if (filteredJobs.length === 0 && jobs.length > 0) {
+                filteredJobs = [jobs[0]];
+            }
+
+            if (filteredJobs.length > 0) {
+                const primary = filteredJobs[0];
+                groupedData.push({
+                    postcode: pc,
+                    isGroup: filteredJobs.length > 1,
+                    jobs: filteredJobs,
+                    ...primary
+                });
+            }
         });
     }
 
@@ -244,9 +261,8 @@
     }
 
     function updateStats(data) {
-        // Stats based on total jobs, not unique sites
         const allJobs = data.flatMap(site => site.jobs);
-        document.getElementById('stat-total').innerText = data.length; // Unique Locations
+        document.getElementById('stat-total').innerText = data.length; 
         document.getElementById('stat-solar').innerText = allJobs.filter(r => String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
         document.getElementById('stat-enphase').innerText = allJobs.filter(r => techMatch(r, 'enphase')).length;
         document.getElementById('stat-tesla').innerText = allJobs.filter(r => techMatch(r, 'tesla')).length;
