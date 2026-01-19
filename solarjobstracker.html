@@ -115,6 +115,7 @@
             <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
             <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
             <div class="stat-card"><span class="label">Revisits</span><span id="stat-revisit" class="value" style="color:#60a5fa">0</span></div>
+            <div class="stat-card"><span class="label">Aftercare</span><span id="stat-aftercare" class="value" style="color:#fbbf24">0</span></div>
         </div>
     </div>
     
@@ -241,22 +242,34 @@
     }
 
     function updateStats(data) {
+        // Total and Core Solar
         document.getElementById('stat-total').innerText = data.length;
-        document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('solar install')).length;
+        document.getElementById('stat-solar').innerText = data.filter(r => 
+            String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
+        
+        // Brand logic
         document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
-        
-        // Panel Only logic
-        document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status']).toLowerCase().includes('panel')).length;
+        document.getElementById('stat-panel').innerText = data.filter(r => 
+            String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
         
         // Operational Stats
-        document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF']).trim().toUpperCase())).length;
-        document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked']).trim().toUpperCase() === 'Y').length;
-        document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked']).trim().toLowerCase().includes('issues')).length;
+        document.getElementById('stat-kf').innerText = data.filter(r => 
+            ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
+        document.getElementById('stat-comp-y').innerText = data.filter(r => 
+            String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
+        document.getElementById('stat-comp-issues').innerText = data.filter(r => 
+            String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
         
-        // Revisits from Job Type column
-        document.getElementById('stat-revisit').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('revisit')).length;
+        // Robust Job Type Checks (Handles "Revisit", "Re-visit", "Aftercare", etc)
+        document.getElementById('stat-revisit').innerText = data.filter(r => {
+            const type = String(r['Job Type'] || '').toLowerCase();
+            return type.includes('revisit') || type.includes('re-visit');
+        }).length;
+
+        document.getElementById('stat-aftercare').innerText = data.filter(r => 
+            String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
     }
 
     function render(data) {
