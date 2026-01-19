@@ -36,11 +36,7 @@
         /* Stats Layout Logic */
         .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
         .stats-row { display: grid; gap: 15px; }
-        
-        /* Row 1: 6 columns */
         .row-1 { grid-template-columns: repeat(6, 1fr); }
-        
-        /* Row 2: 5 columns (All in one line) */
         .row-2 { grid-template-columns: repeat(5, 1fr); }
 
         .stat-card { 
@@ -74,10 +70,13 @@
         td { padding: 20px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
         tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; color: var(--accent); }
 
+        /* Tags and Status Colors */
         .tag { padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
         .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
         .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; border-color: rgba(156, 163, 175, 0.2); }
         .tag-tech { background: rgba(129, 140, 248, 0.1); color: var(--accent); border-color: rgba(129, 140, 248, 0.2); }
+        .text-issues { color: #f87171; font-weight: 600; }
+        .text-success { color: #34d399; font-weight: 600; }
 
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 9999; padding: 40px; }
         .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; max-height: 80vh; overflow-y: auto; position: relative; }
@@ -214,8 +213,19 @@
                 r.data.forEach(row => {
                     const pc = (row['Postcode'] || '').trim().toUpperCase();
                     if(!pc) return;
-                    const isSrv = (row['Job Type'] || '').toLowerCase().includes('survey');
-                    if(!map.has(pc) || (map.get(pc)['Job Type'].toLowerCase().includes('survey') && !isSrv)) map.set(pc, row);
+                    
+                    const isSurvey = (row['Job Type'] || '').toLowerCase().includes('survey');
+                    
+                    // Logic: If postcode exists, only overwrite if current entry is NOT a survey
+                    if (!map.has(pc)) {
+                        map.set(pc, row);
+                    } else {
+                        const existingIsSurvey = (map.get(pc)['Job Type'] || '').toLowerCase().includes('survey');
+                        // If current job is NOT a survey, it takes priority over any existing entry (especially if existing is a survey)
+                        if (!isSurvey) {
+                            map.set(pc, row);
+                        }
+                    }
                 });
                 allData = Array.from(map.values());
                 runFilters();
@@ -246,30 +256,21 @@
 
     function updateStats(data) {
         document.getElementById('stat-total').innerText = data.length;
-        document.getElementById('stat-solar').innerText = data.filter(r => 
-            String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
-        
+        document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
         document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
-        document.getElementById('stat-panel').innerText = data.filter(r => 
-            String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
+        document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
+        document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
+        document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
+        document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
         
-        document.getElementById('stat-kf').innerText = data.filter(r => 
-            ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
-        document.getElementById('stat-comp-y').innerText = data.filter(r => 
-            String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
-        document.getElementById('stat-comp-issues').innerText = data.filter(r => 
-            String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
-        
-        // Revisits and Aftercare Logic
         document.getElementById('stat-revisit').innerText = data.filter(r => {
             const type = String(r['Job Type'] || '').toLowerCase();
             return type.includes('revisit') || type.includes('re-visit');
         }).length;
 
-        document.getElementById('stat-aftercare').innerText = data.filter(r => 
-            String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
+        document.getElementById('stat-aftercare').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
     }
 
     function render(data) {
@@ -277,8 +278,16 @@
         tb.innerHTML = '';
         data.forEach(r => {
             const kfRaw = String(r['Complete on KF'] || '').trim().toUpperCase();
+            const compRaw = String(r['Compliance Checked'] || '').trim().toUpperCase();
+            
             const kf = ['Y','YES'].includes(kfRaw);
             const isCancelled = kfRaw === 'N/A';
+            
+            // Dynamic Compliance Class
+            let compClass = "";
+            if(compRaw === 'Y') compClass = "text-success";
+            if(compRaw.includes('ISSUE')) compClass = "text-issues";
+
             const tr = document.createElement('tr');
             tr.onclick = () => showDetails(r);
             tr.innerHTML = `
@@ -287,7 +296,7 @@
                 <td>${r['Booked Date'] || '---'}</td>
                 <td><span class="tag tag-tech">${r['Booked Status']}</span></td>
                 <td><span class="tag ${isCancelled ? 'tag-wait' : (kf ? 'tag-kf' : 'tag-wait')}">${isCancelled ? 'CANCELLED' : (kf ? 'COMPLETED' : 'PENDING')}</span></td>
-                <td>${r['Compliance Checked'] || '---'}</td>
+                <td class="${compClass}">${r['Compliance Checked'] || '---'}</td>
             `;
             tb.appendChild(tr);
         });
