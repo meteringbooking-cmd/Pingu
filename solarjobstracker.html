@@ -28,6 +28,7 @@
         }
 
         .container { max-width: 1600px; margin: auto; }
+
         header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; }
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
@@ -40,9 +41,9 @@
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); padding: 18px; border-radius: 20px;
-            transition: all 0.4s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .stat-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .stat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 20px -10px var(--accent-glow); }
         .stat-card .label { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
         .stat-card .value { font-size: 1.6rem; font-weight: 700; margin-top: 6px; display: block; }
 
@@ -50,23 +51,28 @@
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); border-radius: 28px; padding: 30px; margin-bottom: 30px;
         }
-        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; }
+        .input-group label { display: block; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-dim); font-weight: 500; }
         
         input, select {
             width: 100%; background: var(--input-bg); border: 1px solid var(--border);
-            padding: 14px; border-radius: 14px; color: white; font-family: inherit;
+            padding: 14px; border-radius: 14px; color: white; font-family: inherit; font-size: 0.9rem;
+            transition: 0.3s; box-sizing: border-box; outline: none;
+            -webkit-appearance: none; appearance: none;
         }
+        select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 15px; padding-right: 40px; }
+        option { background: var(--input-bg); color: white; padding: 10px; }
 
         .table-wrap { border-radius: 28px; overflow: hidden; border: 1px solid var(--border); background: var(--glass); }
         table { width: 100%; border-collapse: collapse; }
-        th { background: rgba(255,255,255,0.03); padding: 20px; text-align: left; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
+        th { background: rgba(255,255,255,0.03); padding: 20px; text-align: left; font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
         td { padding: 20px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
         tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; color: var(--accent); }
 
         .tag { padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
+        .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
+        .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; border-color: rgba(156, 163, 175, 0.2); }
         .tag-tech { background: rgba(129, 140, 248, 0.1); color: var(--accent); border-color: rgba(129, 140, 248, 0.2); }
-        .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; }
-        .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; }
         
         .text-issues { color: #f87171; font-weight: 600; }
         .text-success { color: #34d399; font-weight: 600; }
@@ -74,17 +80,25 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(15px); z-index: 9999; padding: 40px; }
         .modal-body { max-width: 1000px; margin: auto; background: var(--bg); border: 1px solid var(--border); padding: 50px; border-radius: 40px; max-height: 80vh; overflow-y: auto; position: relative; }
         .grid-detail { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+        .close-btn { position: absolute; right: 30px; top: 30px; font-size: 2rem; cursor: pointer; color: var(--text-dim); }
+
+        .btn-reset { background: rgba(255,255,255,0.05); color: var(--text-dim); border: 1px solid var(--border); padding: 12px 20px; border-radius: 14px; cursor: pointer; font-family: inherit; font-size: 0.8rem; font-weight: 600; transition: 0.3s; margin-top: 32px; }
+        .btn-reset:hover { background: #f87171; color: white; border-color: transparent; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <header>
-        <div class="logo-area"><h1><span>.SOLAR Jobs Tracker</span></h1></div>
+        <div class="logo-area">
+            <h1><span>.SOLAR Jobs Tracker</span></h1>
+        </div>
         <div style="text-align: right;">
-            <label>
+            <label class="input-group" style="display:inline-block;">
                 <input type="file" id="csvFile" accept=".csv" style="display:none;">
-                <div style="background:var(--accent); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600;">Initialise Upload</div>
+                <div style="background:var(--accent); color:white; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                    Initialise Upload
+                </div>
             </label>
         </div>
     </header>
@@ -110,11 +124,7 @@
     <div class="glass-panel">
         <div class="controls">
             <div class="input-group">
-                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Global Search</label>
-                <input type="text" id="searchInput" placeholder="Search any column..." onkeyup="runFilters()">
-            </div>
-            <div class="input-group">
-                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Job Type</label>
+                <label>Job Type</label>
                 <select id="typeFilter" onchange="runFilters()">
                     <option value="">All Types</option>
                     <option value="Solar Install">Solar Install</option>
@@ -124,8 +134,22 @@
                 </select>
             </div>
             <div class="input-group">
-                <label style="display:block; margin-bottom:10px; font-size:0.8rem; color:var(--text-dim);">Date Range Start</label>
-                <input type="date" id="startDate" onchange="runFilters()">
+                <label>Booked Status (Brand)</label>
+                <select id="techFilter" onchange="runFilters()">
+                    <option value="">All Brands</option>
+                    <option value="Fox">Fox</option>
+                    <option value="Enphase">Enphase</option>
+                    <option value="Tesla">Tesla</option>
+                </select>
+            </div>
+            <div class="input-group"><label>Booked Start</label><input type="date" id="startDate" onchange="runFilters()"></div>
+            <div class="input-group"><label>Booked End</label><input type="date" id="endDate" onchange="runFilters()"></div>
+            <div class="input-group" style="grid-column: span 1;">
+                <label>Command Search</label>
+                <input type="text" id="searchInput" placeholder="Search Node..." onkeyup="runFilters()">
+            </div>
+            <div>
+                <button class="btn-reset" onclick="resetAll()">Reset All</button>
             </div>
         </div>
     </div>
@@ -135,10 +159,10 @@
             <thead>
                 <tr>
                     <th>Asset ID</th>
-                    <th>Postcode</th>
                     <th>Job Type</th>
+                    <th>Booked Date</th>
                     <th>Status</th>
-                    <th>KF Status</th>
+                    <th>KF Complete</th>
                     <th>Compliance</th>
                 </tr>
             </thead>
@@ -147,9 +171,10 @@
     </div>
 </div>
 
-<div id="overlay" class="overlay" onclick="this.style.display='none'">
+<div id="overlay" class="overlay" onclick="closeModal(event)">
     <div class="modal-body" onclick="event.stopPropagation()">
-        <h2 id="modalTitle" style="margin-top:0;">Node Details</h2>
+        <span class="close-btn" onclick="document.getElementById('overlay').style.display='none'">×</span>
+        <h2 id="modalTitle" style="margin-top:0; font-size:2rem;">Node Intel</h2>
         <div id="modalData" class="grid-detail"></div>
     </div>
 </div>
@@ -157,17 +182,60 @@
 <script>
     let allData = [];
 
+    const parseDate = (d) => {
+        if (!d) return null;
+        const pts = d.includes('/') ? d.split('/') : d.split('-');
+        if (pts.length !== 3) return null;
+        return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
+    };
+
     const techMatch = (row, brand) => {
         const val = String(row['Booked Status'] || '').toLowerCase();
         if (brand === 'fox') return val.includes('fox') || val.includes('evo');
         return val.includes(brand.toLowerCase());
     };
 
+    function resetAll() {
+        document.getElementById('typeFilter').value = "";
+        document.getElementById('techFilter').value = "";
+        document.getElementById('startDate').value = "";
+        document.getElementById('endDate').value = "";
+        document.getElementById('searchInput').value = "";
+        runFilters();
+    }
+
     document.getElementById('csvFile').addEventListener('change', (e) => {
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: true,
             complete: (r) => {
-                allData = r.data; // Now uploads EVERY row without filtering
+                const rawRows = r.data;
+                
+                // 1. Group jobs by postcode
+                const pcGroups = {};
+                rawRows.forEach(row => {
+                    const pc = (row['Postcode'] || '').trim().toUpperCase();
+                    if(!pc) return;
+                    if(!pcGroups[pc]) pcGroups[pc] = [];
+                    pcGroups[pc].push(row);
+                });
+
+                const processed = [];
+                
+                // 2. Apply Rule: If multiple jobs for 1 postcode, ignore Survey if other types exist
+                Object.keys(pcGroups).forEach(pc => {
+                    const group = pcGroups[pc];
+                    const nonSurveys = group.filter(r => !String(r['Job Type'] || '').toLowerCase().includes('survey'));
+                    
+                    if (nonSurveys.length > 0) {
+                        // If there are real jobs, only keep those (ignores surveys for this postcode)
+                        nonSurveys.forEach(job => processed.push(job));
+                    } else {
+                        // If there are ONLY surveys, keep them
+                        group.forEach(job => processed.push(job));
+                    }
+                });
+
+                allData = processed;
                 runFilters();
             }
         });
@@ -176,18 +244,20 @@
     function runFilters() {
         const q = document.getElementById('searchInput').value.toLowerCase();
         const tF = document.getElementById('typeFilter').value.toLowerCase();
-        const sD = document.getElementById('startDate').value;
+        const hF = document.getElementById('techFilter').value.toLowerCase();
+        const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
+        const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
 
         const filtered = allData.filter(row => {
             const mS = Object.values(row).some(v => String(v).toLowerCase().includes(q));
             const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
+            const mH = !hF || techMatch(row, hF);
+            const rD = parseDate(row['Booked Date']);
             let mD = true;
-            if (sD && row['Booked Date']) {
-                mD = row['Booked Date'].includes(sD); // Basic date match
-            }
-            return mS && mT && mD;
+            if (sD && (!rD || rD < sD)) mD = false;
+            if (eD && (!rD || rD > eD)) mD = false;
+            return mS && mT && mH && mD;
         });
-
         updateStats(filtered);
         render(filtered);
     }
@@ -199,12 +269,15 @@
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
         document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
-        
         document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
         document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
         document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
         
-        document.getElementById('stat-revisit').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('revisit')).length;
+        document.getElementById('stat-revisit').innerText = data.filter(r => {
+            const type = String(r['Job Type'] || '').toLowerCase();
+            return type.includes('revisit') || type.includes('re-visit');
+        }).length;
+
         document.getElementById('stat-aftercare').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
     }
 
@@ -212,18 +285,24 @@
         const tb = document.getElementById('tableBody');
         tb.innerHTML = '';
         data.forEach(r => {
-            const kf = ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase());
-            const comp = String(r['Compliance Checked'] || '').trim().toUpperCase();
+            const kfRaw = String(r['Complete on KF'] || '').trim().toUpperCase();
+            const compRaw = String(r['Compliance Checked'] || '').trim().toUpperCase();
+            const kf = ['Y','YES'].includes(kfRaw);
+            const isCancelled = kfRaw === 'N/A';
             
+            let compClass = "";
+            if(compRaw === 'Y') compClass = "text-success";
+            if(compRaw.includes('ISSUE')) compClass = "text-issues";
+
             const tr = document.createElement('tr');
             tr.onclick = () => showDetails(r);
             tr.innerHTML = `
-                <td style="font-weight:700;">${r['Job Number'] || '---'}</td>
-                <td>${r['Postcode'] || '---'}</td>
-                <td style="color:var(--text-dim)">${r['Job Type'] || '---'}</td>
-                <td><span class="tag tag-tech">${r['Booked Status'] || '---'}</span></td>
-                <td><span class="tag ${kf ? 'tag-kf' : 'tag-wait'}">${kf ? 'YES' : 'NO'}</span></td>
-                <td class="${comp === 'Y' ? 'text-success' : (comp.includes('ISSUE') ? 'text-issues' : '')}">${r['Compliance Checked'] || '---'}</td>
+                <td style="font-weight:700;">${r['Job Number']}</td>
+                <td style="color:var(--text-dim)">${r['Job Type']}</td>
+                <td>${r['Booked Date'] || '---'}</td>
+                <td><span class="tag tag-tech">${r['Booked Status']}</span></td>
+                <td><span class="tag ${isCancelled ? 'tag-wait' : (kf ? 'tag-kf' : 'tag-wait')}">${isCancelled ? 'CANCELLED' : (kf ? 'COMPLETED' : 'PENDING')}</span></td>
+                <td class="${compClass}">${r['Compliance Checked'] || '---'}</td>
             `;
             tb.appendChild(tr);
         });
@@ -232,12 +311,15 @@
     function showDetails(row) {
         const d = document.getElementById('modalData');
         d.innerHTML = '';
-        document.getElementById('modalTitle').innerText = `Job ID: ${row['Job Number']}`;
+        document.getElementById('modalTitle').innerText = `ID: ${row['Job Number']}`;
         Object.entries(row).forEach(([k, v]) => {
-            d.innerHTML += `<div><div style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase;">${k}</div><div style="color:#fff;">${v || '---'}</div></div>`;
+            d.innerHTML += `<div><div style="font-size:0.65rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:1px; margin-bottom:5px;">${k}</div>
+                            <div style="font-size:1.1rem; color:#fff;">${v || '---'}</div></div>`;
         });
         document.getElementById('overlay').style.display = "block";
     }
+
+    function closeModal(e) { document.getElementById('overlay').style.display = "none"; }
 </script>
 </body>
 </html>
