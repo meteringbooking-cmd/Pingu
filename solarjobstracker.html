@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Jobs Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        #filter { margin-bottom: 10px; width: 100%; padding: 8px; }
+        .modal { display: none; position: fixed; z-index: 1; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+        .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+        .close:hover, .close:focus { color: black; text-decoration: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Solar Jobs Tracker</h1>
+    <input type="file" id="csvFile" accept=".csv">
+    <input type="text" id="filter" placeholder="Filter by Job Number, Job Type, Install Type, etc...">
+    <table id="jobsTable">
+        <thead>
+            <tr>
+                <th>Job Number</th>
+                <th>Job Type</th>
+                <th>Install Type</th>
+                <th>Complete on KF (Kraken)</th>
+                <th>Compliance Checked</th>
+                <th>Issues Sent</th>
+                <th>Issues Resolved</th>
+                <th>Lead</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Job Details</h2>
+            <div id="detailsContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const csvFileInput = document.getElementById('csvFile');
+        const jobsTableBody = document.querySelector('#jobsTable tbody');
+        const filterInput = document.getElementById('filter');
+        const modal = document.getElementById('detailsModal');
+        const closeModal = document.querySelector('.close');
+        const detailsContent = document.getElementById('detailsContent');
+
+        let allJobs = []; // Store all processed jobs
+
+        csvFileInput.addEventListener('change', handleFileUpload);
+        filterInput.addEventListener('input', applyFilter);
+        closeModal.addEventListener('click', () => modal.style.display = 'none');
+        window.addEventListener('click', (event) => {
+            if (event.target === modal) modal.style.display = 'none';
+        });
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvData = e.target.result;
+                const parsedData = parseCSV(csvData);
+                const processedData = processDuplicates(parsedData);
+                allJobs = processedData;
+                renderTable(allJobs);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split(/\r?\n/);
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(',').map(v => v.trim());
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+            return data;
+        }
+
+        function processDuplicates(data) {
+            const postcodeMap = new Map();
+
+            // Group by postcode
+            data.forEach(job => {
+                const postcode = job['Postcode'] || '';
+                if (!postcodeMap.has(postcode)) {
+                    postcodeMap.set(postcode, []);
+                }
+                postcodeMap.get(postcode).push(job);
+            });
+
+            // For each group, filter to prefer non-survey
+            const processed = [];
+            postcodeMap.forEach(group => {
+                const nonSurvey = group.filter(job => (job['Job Type'] || '').toLowerCase() !== 'survey');
+                if (nonSurvey.length > 0) {
+                    processed.push(...nonSurvey);
+                } else {
+                    processed.push(...group);
+                }
+            });
+
+            return processed;
+        }
+
+        function renderTable(jobs) {
+            jobsTableBody.innerHTML = '';
+            jobs.forEach(job => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${job['Job Number'] || ''}</td>
+                    <td>${job['Job Type'] || ''}</td>
+                    <td>${job['Booked Status'] || ''}</td>
+                    <td>${job['Complete on KF'] || ''}</td>
+                    <td>${job['Compliance Checked'] || ''}</td>
+                    <td>${[job['Issues Sent'], job['Issues Sent2'], job['Issues Sent3']].filter(Boolean).join(', ') || ''}</td>
+                    <td>${job['Issues Resolved'] || ''}</td>
+                    <td>${job['Lead'] || ''}</td>
+                `;
+                row.addEventListener('click', () => showDetails(job));
+                jobsTableBody.appendChild(row);
+            });
+        }
+
+        function applyFilter() {
+            const filterText = filterInput.value.toLowerCase();
+            const filteredJobs = allJobs.filter(job => {
+                const fields = [
+                    job['Job Number'],
+                    job['Job Type'],
+                    job['Booked Status'],
+                    job['Complete on KF'],
+                    job['Compliance Checked'],
+                    job['Issues Sent'],
+                    job['Issues Sent2'],
+                    job['Issues Sent3'],
+                    job['Issues Resolved'],
+                    job['Lead']
+                ].map(f => (f || '').toLowerCase());
+                return fields.some(field => field.includes(filterText));
+            });
+            renderTable(filteredJobs);
+        }
+
+        function showDetails(job) {
+            detailsContent.innerHTML = '';
+            Object.entries(job).forEach(([key, value]) => {
+                const p = document.createElement('p');
+                p.textContent = `${key}: ${value}`;
+                detailsContent.appendChild(p);
+            });
+            modal.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
