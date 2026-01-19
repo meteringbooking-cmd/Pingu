@@ -1,69 +1,4 @@
-<script>
-    <script>
-    let allData = [];
-
-    const parseDate = (d) => {
-        if (!d) return null;
-        const pts = d.includes('/') ? d.split('/') : d.split('-');
-        if (pts.length !== 3) return null;
-        return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
-    };
-
-    const techMatch = (row, brand) => {
-        const val = String(row['Booked Status'] || '').toLowerCase();
-        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
-        return val.includes(brand.toLowerCase());
-    };
-
-    function resetAll() {
-        document.getElementById('typeFilter').value = "";
-        document.getElementById('techFilter').value = "";
-        document.getElementById('startDate').value = "";
-        document.getElementById('endDate').value = "";
-        document.getElementById('searchInput').value = "";
-        runFilters();
-    }
-
-    document.getElementById('csvFile').addEventListener('change', (e) => {
-        Papa.parse(e.target.files[0], {
-            header: true, 
-            skipEmptyLines: 'greedy', // Removes physically empty rows
-            complete: (r) => {
-                // Filter out any rows that have a header but no actual Job Number content
-                allData = r.data.filter(row => {
-                    return row['Job Number'] && row['Job Number'].trim() !== "";
-                });
-                runFilters();
-            }
-        });
-    });
-
-    function runFilters() {
-        const q = document.getElementById('searchInput').value.toLowerCase();
-        const tF = document.getElementById('typeFilter').value.toLowerCase();
-        const hF = document.getElementById('techFilter').value.toLowerCase();
-        const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
-        const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
-
-        const filtered = allData.filter(row => {
-            const mS = Object.values(row).some(v => String(v).toLowerCase().includes(q));
-            const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
-            const mH = !hF || techMatch(row, hF);
-            const rD = parseDate(row['Booked Date']);
-            let mD = true;
-            if (sD && (!rD || rD < sD)) mD = false;
-            if (eD && (!rD || rD > eD)) mD = false;
-            return mS && mT && mH && mD;
-        });
-        updateStats(filtered);
-        render(filtered);
-    }
-
-    // ... (Keep updateStats, render, showDetails, and closeModal exactly as before) ...
-</script>
-
-    // ... (Keep updateStats, render, showDetails, and closeModal exactly as before) ...
-</script><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -93,7 +28,6 @@
         }
 
         .container { max-width: 1600px; margin: auto; }
-
         header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 50px; }
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
@@ -155,9 +89,7 @@
 
 <div class="container">
     <header>
-        <div class="logo-area">
-            <h1><span>.SOLAR Jobs Tracker</span></h1>
-        </div>
+        <div class="logo-area"><h1><span>.SOLAR Jobs Tracker</span></h1></div>
         <div style="text-align: right;">
             <label class="input-group" style="display:inline-block;">
                 <input type="file" id="csvFile" accept=".csv" style="display:none;">
@@ -271,10 +203,14 @@
 
     document.getElementById('csvFile').addEventListener('change', (e) => {
         Papa.parse(e.target.files[0], {
-            header: true, skipEmptyLines: true,
+            header: true, 
+            skipEmptyLines: 'greedy', 
             complete: (r) => {
-                // Accepts ALL data exactly as it is in the CSV
-                allData = r.data;
+                // Ignore any row where Column A (Job Number) is blank
+                allData = r.data.filter(row => {
+                    const colA = row['Job Number'];
+                    return colA && colA.toString().trim() !== "";
+                });
                 runFilters();
             }
         });
@@ -311,12 +247,10 @@
         document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
         document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
         document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
-        
         document.getElementById('stat-revisit').innerText = data.filter(r => {
             const type = String(r['Job Type'] || '').toLowerCase();
             return type.includes('revisit') || type.includes('re-visit');
         }).length;
-
         document.getElementById('stat-aftercare').innerText = data.filter(r => String(r['Job Type'] || '').toLowerCase().includes('aftercare')).length;
     }
 
@@ -328,7 +262,6 @@
             const compRaw = String(r['Compliance Checked'] || '').trim().toUpperCase();
             const kf = ['Y','YES'].includes(kfRaw);
             const isCancelled = kfRaw === 'N/A';
-            
             let compClass = "";
             if(compRaw === 'Y') compClass = "text-success";
             if(compRaw.includes('ISSUE')) compClass = "text-issues";
