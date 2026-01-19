@@ -15,7 +15,7 @@
             --accent-glow: rgba(129, 140, 248, 0.4);
             --text: #f3f4f6;
             --text-dim: #9ca3af;
-            --input-bg: #111827; /* Darker solid background for dropdowns */
+            --input-bg: #111827;
         }
 
         body { 
@@ -33,7 +33,12 @@
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 40px; }
+        /* Stats Layout */
+        .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
+        .stats-row { display: grid; gap: 15px; }
+        .row-1 { grid-template-columns: repeat(6, 1fr); }
+        .row-2 { grid-template-columns: repeat(4, 1fr); }
+
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
             border: 1px solid var(--border); padding: 20px; border-radius: 20px;
@@ -50,7 +55,6 @@
         .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 25px; }
         .input-group label { display: block; margin-bottom: 10px; font-size: 0.8rem; color: var(--text-dim); font-weight: 500; }
         
-        /* Fixed Dropdown Styling */
         input, select {
             width: 100%; background: var(--input-bg); border: 1px solid var(--border);
             padding: 14px; border-radius: 14px; color: white; font-family: inherit; font-size: 0.9rem;
@@ -59,7 +63,6 @@
         }
         select { cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 15px center; background-size: 15px; padding-right: 40px; }
         option { background: var(--input-bg); color: white; padding: 10px; }
-        input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 
         .table-wrap { border-radius: 28px; overflow: hidden; border: 1px solid var(--border); background: var(--glass); }
         table { width: 100%; border-collapse: collapse; }
@@ -98,17 +101,21 @@
         </div>
     </header>
 
-    <div id="statsDashboard" class="stats-grid">
-        <div class="stat-card"><span class="label">Total Jobs</span><span id="stat-total" class="value">0</span></div>
-        <div class="stat-card"><span class="label">Solar Installs</span><span id="stat-solar" class="value">0</span></div>
-        <div class="stat-card"><span class="label">Enphase</span><span id="stat-enphase" class="value" style="color:#60a5fa">0</span></div>
-        <div class="stat-card"><span class="label">Tesla</span><span id="stat-tesla" class="value" style="color:#f87171">0</span></div>
-        <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
-        <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
-        <div class="stat-card"><span class="label">Cancelled</span><span id="stat-cancelled" class="value" style="color:#94a3b8">0</span></div>
-        <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
-        <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
-        <div class="stat-card"><span class="label">Compliance: N/A</span><span id="stat-comp-na" class="value" style="color:#94a3b8">0</span></div>
+    <div class="stats-container">
+        <div class="stats-row row-1">
+            <div class="stat-card"><span class="label">Total Jobs</span><span id="stat-total" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Solar Installs</span><span id="stat-solar" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Enphase</span><span id="stat-enphase" class="value" style="color:#60a5fa">0</span></div>
+            <div class="stat-card"><span class="label">Tesla</span><span id="stat-tesla" class="value" style="color:#f87171">0</span></div>
+            <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
+            <div class="stat-card"><span class="label">Panel Only</span><span id="stat-panel" class="value" style="color:#a78bfa">0</span></div>
+        </div>
+        <div class="stats-row row-2">
+            <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
+            <div class="stat-card"><span class="label">Revisits</span><span id="stat-revisit" class="value" style="color:#60a5fa">0</span></div>
+        </div>
     </div>
     
     <div class="glass-panel">
@@ -234,15 +241,21 @@
 
     function updateStats(data) {
         document.getElementById('stat-total').innerText = data.length;
-        document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('solar')).length;
+        document.getElementById('stat-solar').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('solar install')).length;
         document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
+        
+        // Panel Only logic
+        document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status']).toLowerCase().includes('panel')).length;
+        
+        // Operational Stats
         document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF']).trim().toUpperCase())).length;
-        document.getElementById('stat-cancelled').innerText = data.filter(r => String(r['Complete on KF']).trim().toUpperCase() === 'N/A').length;
         document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked']).trim().toUpperCase() === 'Y').length;
         document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked']).trim().toLowerCase().includes('issues')).length;
-        document.getElementById('stat-comp-na').innerText = data.filter(r => String(r['Compliance Checked']).trim().toUpperCase() === 'N/A').length;
+        
+        // Revisits from Job Type column
+        document.getElementById('stat-revisit').innerText = data.filter(r => String(r['Job Type']).toLowerCase().includes('revisit')).length;
     }
 
     function render(data) {
