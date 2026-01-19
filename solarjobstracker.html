@@ -33,7 +33,6 @@
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
         
-        /* Stats Layout Logic */
         .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
         .stats-row { display: grid; gap: 15px; }
         .row-1 { grid-template-columns: repeat(6, 1fr); }
@@ -70,11 +69,11 @@
         td { padding: 20px; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
         tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; color: var(--accent); }
 
-        /* Tags and Status Colors */
         .tag { padding: 6px 14px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; border: 1px solid transparent; }
         .tag-kf { background: rgba(52, 211, 153, 0.1); color: #34d399; border-color: rgba(52, 211, 153, 0.2); }
         .tag-wait { background: rgba(156, 163, 175, 0.1); color: #9ca3af; border-color: rgba(156, 163, 175, 0.2); }
         .tag-tech { background: rgba(129, 140, 248, 0.1); color: var(--accent); border-color: rgba(129, 140, 248, 0.2); }
+        
         .text-issues { color: #f87171; font-weight: 600; }
         .text-success { color: #34d399; font-weight: 600; }
 
@@ -209,25 +208,34 @@
         Papa.parse(e.target.files[0], {
             header: true, skipEmptyLines: true,
             complete: (r) => {
-                const map = new Map();
-                r.data.forEach(row => {
+                const rawRows = r.data;
+                
+                // 1. Group jobs by postcode
+                const pcGroups = {};
+                rawRows.forEach(row => {
                     const pc = (row['Postcode'] || '').trim().toUpperCase();
                     if(!pc) return;
+                    if(!pcGroups[pc]) pcGroups[pc] = [];
+                    pcGroups[pc].push(row);
+                });
+
+                const processed = [];
+                
+                // 2. Apply Rule: If multiple jobs for 1 postcode, ignore Survey if other types exist
+                Object.keys(pcGroups).forEach(pc => {
+                    const group = pcGroups[pc];
+                    const nonSurveys = group.filter(r => !String(r['Job Type'] || '').toLowerCase().includes('survey'));
                     
-                    const isSurvey = (row['Job Type'] || '').toLowerCase().includes('survey');
-                    
-                    // Logic: If postcode exists, only overwrite if current entry is NOT a survey
-                    if (!map.has(pc)) {
-                        map.set(pc, row);
+                    if (nonSurveys.length > 0) {
+                        // If there are real jobs, only keep those (ignores surveys for this postcode)
+                        nonSurveys.forEach(job => processed.push(job));
                     } else {
-                        const existingIsSurvey = (map.get(pc)['Job Type'] || '').toLowerCase().includes('survey');
-                        // If current job is NOT a survey, it takes priority over any existing entry (especially if existing is a survey)
-                        if (!isSurvey) {
-                            map.set(pc, row);
-                        }
+                        // If there are ONLY surveys, keep them
+                        group.forEach(job => processed.push(job));
                     }
                 });
-                allData = Array.from(map.values());
+
+                allData = processed;
                 runFilters();
             }
         });
@@ -279,11 +287,9 @@
         data.forEach(r => {
             const kfRaw = String(r['Complete on KF'] || '').trim().toUpperCase();
             const compRaw = String(r['Compliance Checked'] || '').trim().toUpperCase();
-            
             const kf = ['Y','YES'].includes(kfRaw);
             const isCancelled = kfRaw === 'N/A';
             
-            // Dynamic Compliance Class
             let compClass = "";
             if(compRaw === 'Y') compClass = "text-success";
             if(compRaw.includes('ISSUE')) compClass = "text-issues";
