@@ -35,7 +35,7 @@
         .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
         .stats-row { display: grid; gap: 15px; }
         .row-1 { grid-template-columns: repeat(6, 1fr); }
-        .row-2 { grid-template-columns: repeat(5, 1fr); }
+        .row-2 { grid-template-columns: repeat(6, 1fr); } /* Set to 6 to accommodate Cancelled card */
 
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
@@ -111,6 +111,7 @@
         </div>
         <div class="stats-row row-2">
             <div class="stat-card"><span class="label">KF Completed</span><span id="stat-kf" class="value" style="color:#34d399">0</span></div>
+            <div class="stat-card"><span class="label">Cancelled (N/A)</span><span id="stat-cancelled" class="value" style="color:#9ca3af">0</span></div>
             <div class="stat-card"><span class="label">Compliance: Y</span><span id="stat-comp-y" class="value" style="color:#34d399">0</span></div>
             <div class="stat-card"><span class="label">Compliance: Issues</span><span id="stat-comp-issues" class="value" style="color:#f87171">0</span></div>
             <div class="stat-card"><span class="label">Revisits</span><span id="stat-revisit" class="value" style="color:#60a5fa">0</span></div>
@@ -244,7 +245,11 @@
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
         document.getElementById('stat-panel').innerText = data.filter(r => String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
+        
+        // KF Stats
         document.getElementById('stat-kf').innerText = data.filter(r => ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
+        document.getElementById('stat-cancelled').innerText = data.filter(r => String(r['Complete on KF'] || '').trim().toUpperCase() === 'N/A').length;
+
         document.getElementById('stat-comp-y').innerText = data.filter(r => String(r['Compliance Checked'] || '').trim().toUpperCase() === 'Y').length;
         document.getElementById('stat-comp-issues').innerText = data.filter(r => String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
         document.getElementById('stat-revisit').innerText = data.filter(r => {
