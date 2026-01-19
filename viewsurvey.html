@@ -791,7 +791,7 @@
 
         window.printSurvey = printSurvey;
 
-        async function downloadPhotoPack() {
+async function downloadPhotoPack() {
             if (!currentDocument) {
                 showAlert('No document loaded', 'error');
                 return;
@@ -837,18 +837,38 @@
                             const base64Data = photo.split(',')[1];
                             folder.file(filename, base64Data, { base64: true });
                         } else if (photo.startsWith('http')) {
-                            // Fetch the image from URL
-                            const response = await fetch(photo);
+                            // For Firebase Storage URLs, we need to fetch as blob with proper mode
+                            const response = await fetch(photo, { mode: 'cors' });
+                            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                             const blob = await response.blob();
-                            folder.file(filename, blob);
+                            
+                            // Only add if blob has content
+                            if (blob.size > 0) {
+                                folder.file(filename, blob);
+                            } else {
+                                console.warn(`Photo ${i + 1} has zero size, skipping`);
+                            }
                         }
                     } catch (e) {
                         console.error(`Error adding photo ${i + 1}:`, e);
+                        // Continue with next photo instead of failing completely
                     }
                 }
 
+                // Check if we have any files in the folder
+                const fileCount = Object.keys(folder.files).length;
+                if (fileCount === 0) {
+                    showAlert('Could not download any photos. They may be protected or unavailable.', 'error');
+                    return;
+                }
+
                 // Generate ZIP file and trigger download
-                const content = await zip.generateAsync({ type: 'blob' });
+                const content = await zip.generateAsync({ 
+                    type: 'blob',
+                    compression: 'DEFLATE',
+                    compressionOptions: { level: 6 }
+                });
+                
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
                 link.download = `${jobNumber}_photos.zip`;
@@ -857,10 +877,10 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
 
-                showAlert(`Successfully downloaded ${photos.length} photo(s) as ZIP file!`, 'success');
+                showAlert(`Successfully downloaded ${fileCount} photo(s) as ZIP file!`, 'success');
             } catch (e) {
                 console.error('Error creating photo pack:', e);
-                showAlert('Error creating photo pack. Please try again.', 'error');
+                showAlert('Error creating photo pack: ' + e.message, 'error');
             }
         }
 
