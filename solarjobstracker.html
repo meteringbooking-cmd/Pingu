@@ -3,35 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solar Jobs Tracker + Stats</title>
+    <title>Solar Jobs Tracker - Tech Filter</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 20px; }
-        .container { max-width: 1300px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 20px; color: #1c1e21; }
+        .container { max-width: 1400px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
         /* Stats Dashboard */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: #fff; border: 1px solid #e1e4e8; padding: 15px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .stat-card h4 { margin: 0; color: #65676b; font-size: 0.85rem; text-transform: uppercase; }
-        .stat-card div { font-size: 1.5rem; font-weight: bold; color: #1c1e21; margin-top: 5px; }
-        .highlight-blue { border-top: 4px solid #007bff; }
-        .highlight-green { border-top: 4px solid #28a745; }
-        .highlight-orange { border-top: 4px solid #fd7e14; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 25px; }
+        .stat-card { background: #fff; border: 1px solid #e1e4e8; padding: 12px; border-radius: 8px; text-align: center; }
+        .stat-card h4 { margin: 0; color: #65676b; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-card div { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .highlight-blue { border-top: 4px solid #007bff; background: #f0f7ff; }
+        .highlight-green { border-top: 4px solid #28a745; background: #f1fcf4; }
 
-        .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; align-items: center; }
-        select, input[type="text"] { padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; }
-        input[type="text"] { flex-grow: 1; min-width: 200px; }
+        /* Controls */
+        .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; align-items: center; border: 1px solid #eee; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-size: 0.75rem; font-weight: bold; color: #4b4b4b; }
+        select, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 6px; min-width: 180px; }
+        input#searchInput { min-width: 300px; flex-grow: 1; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f9fa; color: #4b4b4b; position: sticky; top: 0; }
-        tr:hover { background-color: #fcfcfc; cursor: pointer; }
+        /* Table */
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th { background-color: #34495e; color: white; text-align: left; padding: 12px; position: sticky; top: 0; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        tr:hover { background-color: #f8f9fa; cursor: pointer; }
 
         /* Modal */
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); }
-        .modal-content { background: white; margin: 5% auto; padding: 25px; border-radius: 12px; width: 70%; max-height: 80vh; overflow-y: auto; }
-        .detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .label { font-weight: bold; color: #727272; margin-bottom: 3px; font-size: 0.8rem; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); }
+        .modal-content { background: white; margin: 2% auto; padding: 30px; border-radius: 12px; width: 80%; max-height: 90vh; overflow-y: auto; }
+        .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .detail-item { border-bottom: 1px solid #f0f0f0; padding-bottom: 8px; }
+        .label { font-weight: bold; color: #888; font-size: 0.7rem; text-transform: uppercase; }
+        .close-btn { float: right; font-size: 30px; cursor: pointer; line-height: 20px; }
     </style>
 </head>
 <body>
@@ -40,55 +46,70 @@
     <h2>Solar Jobs Tracker</h2>
 
     <div id="statsDashboard" class="stats-grid">
-        <div class="stat-card highlight-blue"><h4>Total</h4><div id="stat-total">0</div></div>
+        <div class="stat-card highlight-blue"><h4>Total Jobs</h4><div id="stat-total">0</div></div>
         <div class="stat-card"><h4>Solar Install</h4><div id="stat-solar">0</div></div>
         <div class="stat-card"><h4>Survey</h4><div id="stat-survey">0</div></div>
-        <div class="stat-card"><h4>Battery</h4><div id="stat-battery">0</div></div>
-        <div class="stat-card"><h4>Enphase</h4><div id="stat-enphase">0</div></div>
-        <div class="stat-card"><h4>Tesla</h4><div id="stat-tesla">0</div></div>
-        <div class="stat-card"><h4>Fox/Evo</h4><div id="stat-fox">0</div></div>
-        <div class="stat-card highlight-green"><h4>KF Completed</h4><div id="stat-kf">0</div></div>
+        <div class="stat-card"><h4>AfterCare</h4><div id="stat-aftercare">0</div></div>
+        <div class="stat-card highlight-green"><h4>Enphase</h4><div id="stat-enphase">0</div></div>
+        <div class="stat-card highlight-green"><h4>Tesla</h4><div id="stat-tesla">0</div></div>
+        <div class="stat-card highlight-green"><h4>Fox/Evo</h4><div id="stat-fox">0</div></div>
+        <div class="stat-card"><h4>KF Complete</h4><div id="stat-kf">0</div></div>
     </div>
     
     <div class="controls">
-        <input type="file" id="csvFile" accept=".csv">
-        <select id="typeFilter" onchange="runFilters()">
-            <option value="">All Job Types</option>
-            <option value="solar">Solar Install</option>
-            <option value="survey">Survey</option>
-            <option value="revisit">Revisit</option>
-            <option value="aftercare">AfterCare</option>
-            <option value="battery">Battery</option>
-        </select>
-        <select id="installFilter" onchange="runFilters()">
-            <option value="">All Install Types</option>
-            <option value="booked">Booked</option>
-            <option value="completed">Completed</option>
-        </select>
-        <input type="text" id="searchInput" placeholder="Search anything (Postcode, Job #, Lead...)" onkeyup="runFilters()">
+        <div class="control-group">
+            <label>Upload CSV</label>
+            <input type="file" id="csvFile" accept=".csv">
+        </div>
+        <div class="control-group">
+            <label>Job Type</label>
+            <select id="typeFilter" onchange="runFilters()">
+                <option value="">All Job Types</option>
+                <option value="solar">Solar Install</option>
+                <option value="survey">Survey</option>
+                <option value="revisit">Revisit</option>
+                <option value="aftercare">AfterCare</option>
+                <option value="battery">Battery</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Install Type (Tech)</label>
+            <select id="techFilter" onchange="runFilters()">
+                <option value="">All Tech</option>
+                <option value="enphase">Enphase</option>
+                <option value="fox">Fox / Fox Evo</option>
+                <option value="tesla">Tesla</option>
+            </select>
+        </div>
+        <div class="control-group" style="flex-grow: 1;">
+            <label>Search</label>
+            <input type="text" id="searchInput" placeholder="Search Address, Job #, Postcode..." onkeyup="runFilters()">
+        </div>
     </div>
 
-    <table id="jobsTable">
-        <thead>
-            <tr>
-                <th>Job Number</th>
-                <th>Job Type</th>
-                <th>Install Type</th>
-                <th>Complete on KF</th>
-                <th>Compliance</th>
-                <th>Issues</th>
-                <th>Resolved</th>
-                <th>Lead</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Job Number</th>
+                    <th>Job Type</th>
+                    <th>Install Type (Status)</th>
+                    <th>KF Complete</th>
+                    <th>Compliance</th>
+                    <th>Issues (1,2,3)</th>
+                    <th>Resolved</th>
+                    <th>Lead</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
 </div>
 
 <div id="detailsModal" class="modal">
     <div class="modal-content">
-        <span style="float:right; cursor:pointer; font-size:24px;" onclick="closeModal()">&times;</span>
-        <h3>Job Detail View</h3>
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        <h3 id="modalTitle">Job Details</h3>
         <hr><br>
         <div id="modalData" class="detail-grid"></div>
     </div>
@@ -96,6 +117,13 @@
 
 <script>
     let allData = [];
+
+    // Helper to check if a row contains a tech keyword
+    const checkTech = (row, tech) => {
+        const combined = `${row['Job Type']} ${row['Booked Status']} ${row['Enphase']}`.toLowerCase();
+        if (tech === 'fox') return combined.includes('fox') || combined.includes('evo');
+        return combined.includes(tech);
+    };
 
     document.getElementById('csvFile').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -112,12 +140,16 @@
         const postcodeMap = new Map();
         data.forEach(row => {
             const pc = (row['Postcode'] || '').trim().toUpperCase();
-            const jobType = (row['Job Type'] || '').toLowerCase();
+            if (!pc) return; // Skip rows with no postcode
+            
+            const isSurvey = (row['Job Type'] || '').toLowerCase().includes('survey');
+            
             if (!postcodeMap.has(pc)) {
                 postcodeMap.set(pc, row);
             } else {
-                const existing = postcodeMap.get(pc);
-                if (existing['Job Type'].toLowerCase().includes('survey') && !jobType.includes('survey')) {
+                const existingIsSurvey = (postcodeMap.get(pc)['Job Type'] || '').toLowerCase().includes('survey');
+                // If existing is survey and current isn't, overwrite
+                if (existingIsSurvey && !isSurvey) {
                     postcodeMap.set(pc, row);
                 }
             }
@@ -127,15 +159,15 @@
     }
 
     function runFilters() {
-        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-        const typeFilter = document.getElementById('typeFilter').value;
-        const installFilter = document.getElementById('installFilter').value.toLowerCase();
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const typeF = document.getElementById('typeFilter').value;
+        const techF = document.getElementById('techFilter').value;
 
         const filtered = allData.filter(row => {
-            const matchesSearch = Object.values(row).some(v => String(v).toLowerCase().includes(searchTerm));
-            const matchesType = typeFilter === "" || String(row['Job Type']).toLowerCase().includes(typeFilter);
-            const matchesInstall = installFilter === "" || String(row['Booked Status']).toLowerCase().includes(installFilter);
-            return matchesSearch && matchesType && matchesInstall;
+            const matchesSearch = Object.values(row).some(v => String(v).toLowerCase().includes(search));
+            const matchesType = typeF === "" || String(row['Job Type']).toLowerCase().includes(typeF);
+            const matchesTech = techF === "" || checkTech(row, techF);
+            return matchesSearch && matchesType && matchesTech;
         });
 
         updateStats(filtered);
@@ -143,18 +175,18 @@
     }
 
     function updateStats(data) {
-        const count = (arr, key, term) => arr.filter(r => String(r[key]).toLowerCase().includes(term.toLowerCase())).length;
-        
+        const getCount = (techKeyword) => data.filter(r => checkTech(r, techKeyword)).length;
+        const getJobCount = (typeKeyword) => data.filter(r => String(r['Job Type']).toLowerCase().includes(typeKeyword)).length;
+
         document.getElementById('stat-total').innerText = data.length;
-        document.getElementById('stat-solar').innerText = count(data, 'Job Type', 'solar');
-        document.getElementById('stat-survey').innerText = count(data, 'Job Type', 'survey');
-        document.getElementById('stat-battery').innerText = count(data, 'Job Type', 'battery');
-        document.getElementById('stat-enphase').innerText = count(data, 'Enphase', 'y'); // Assumes Y/N in Enphase col
-        document.getElementById('stat-tesla').innerText = count(data, 'Job Type', 'tesla') + count(data, 'Booked Status', 'tesla');
-        document.getElementById('stat-fox').innerText = data.filter(r => {
-            const val = (r['Job Type'] + r['Booked Status']).toLowerCase();
-            return val.includes('fox') || val.includes('evo');
-        }).length;
+        document.getElementById('stat-solar').innerText = getJobCount('solar');
+        document.getElementById('stat-survey').innerText = getJobCount('survey');
+        document.getElementById('stat-aftercare').innerText = getJobCount('aftercare');
+        
+        document.getElementById('stat-enphase').innerText = getCount('enphase');
+        document.getElementById('stat-tesla').innerText = getCount('tesla');
+        document.getElementById('stat-fox').innerText = getCount('fox');
+
         document.getElementById('stat-kf').innerText = data.filter(r => {
             const val = String(r['Complete on KF']).trim().toUpperCase();
             return val === 'Y' || val === 'YES';
@@ -164,18 +196,18 @@
     function renderTable(data) {
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
-        data.forEach((row, index) => {
+        data.forEach(row => {
             const tr = document.createElement('tr');
             tr.onclick = () => showDetails(row);
             tr.innerHTML = `
-                <td>${row['Job Number'] || ''}</td>
-                <td>${row['Job Type'] || ''}</td>
-                <td>${row['Booked Status'] || ''}</td>
-                <td>${row['Complete on KF'] || ''}</td>
-                <td>${row['Compliance Checked'] || ''}</td>
-                <td>${row['Issues Sent'] || ''}</td>
-                <td>${row['Issues Resolved'] || ''}</td>
-                <td>${row['Lead'] || ''}</td>
+                <td><b>${row['Job Number'] || '-'}</b></td>
+                <td>${row['Job Type'] || '-'}</td>
+                <td>${row['Booked Status'] || '-'}</td>
+                <td>${row['Complete on KF'] || '-'}</td>
+                <td>${row['Compliance Checked'] || '-'}</td>
+                <td>${row['Issues Sent'] || ''} ${row['Issues Sent2'] || ''} ${row['Issues Sent3'] || ''}</td>
+                <td>${row['Issues Resolved'] || '-'}</td>
+                <td>${row['Lead'] || '-'}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -183,14 +215,20 @@
 
     function showDetails(row) {
         const display = document.getElementById('modalData');
+        document.getElementById('modalTitle').innerText = `Job #${row['Job Number']} Details`;
         display.innerHTML = '';
         for (const [key, value] of Object.entries(row)) {
-            display.innerHTML += `<div class="detail-item"><div class="label">${key}</div><div>${value || '-'}</div></div>`;
+            display.innerHTML += `
+                <div class="detail-item">
+                    <div class="label">${key}</div>
+                    <div style="word-break: break-word;">${value || '-'}</div>
+                </div>`;
         }
         document.getElementById('detailsModal').style.display = "block";
     }
 
     function closeModal() { document.getElementById('detailsModal').style.display = "none"; }
+    window.onclick = (e) => { if(e.target.id === 'detailsModal') closeModal(); }
 </script>
 </body>
 </html>
