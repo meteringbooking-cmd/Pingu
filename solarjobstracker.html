@@ -33,20 +33,24 @@
         .logo-area h1 { font-size: 2.2rem; margin: 0; letter-spacing: -1px; font-weight: 700; }
         .logo-area span { color: var(--accent); font-weight: 300; }
         
-        /* Stats Layout */
+        /* Stats Layout Logic */
         .stats-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 40px; }
         .stats-row { display: grid; gap: 15px; }
+        
+        /* Row 1: 6 columns */
         .row-1 { grid-template-columns: repeat(6, 1fr); }
-        .row-2 { grid-template-columns: repeat(4, 1fr); }
+        
+        /* Row 2: 5 columns (All in one line) */
+        .row-2 { grid-template-columns: repeat(5, 1fr); }
 
         .stat-card { 
             background: var(--glass); backdrop-filter: blur(20px);
-            border: 1px solid var(--border); padding: 20px; border-radius: 20px;
+            border: 1px solid var(--border); padding: 18px; border-radius: 20px;
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .stat-card:hover { border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 10px 20px -10px var(--accent-glow); }
-        .stat-card .label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-        .stat-card .value { font-size: 1.8rem; font-weight: 700; margin-top: 8px; display: block; }
+        .stat-card .label { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
+        .stat-card .value { font-size: 1.6rem; font-weight: 700; margin-top: 6px; display: block; }
 
         .glass-panel { 
             background: var(--glass); backdrop-filter: blur(20px);
@@ -132,20 +136,19 @@
                 </select>
             </div>
             <div class="input-group">
-                <label>Booked Status</label>
+                <label>Booked Status (Brand)</label>
                 <select id="techFilter" onchange="runFilters()">
-                    <option value="">All Types</option>
+                    <option value="">All Brands</option>
                     <option value="Fox">Fox</option>
                     <option value="Enphase">Enphase</option>
                     <option value="Tesla">Tesla</option>
-                    <option value="Panel Only">Panel Only</option>
                 </select>
             </div>
             <div class="input-group"><label>Booked Start</label><input type="date" id="startDate" onchange="runFilters()"></div>
             <div class="input-group"><label>Booked End</label><input type="date" id="endDate" onchange="runFilters()"></div>
             <div class="input-group" style="grid-column: span 1;">
                 <label>Command Search</label>
-                <input type="text" id="searchInput" placeholder="Job #, lead..." onkeyup="runFilters()">
+                <input type="text" id="searchInput" placeholder="Search Node..." onkeyup="runFilters()">
             </div>
             <div>
                 <button class="btn-reset" onclick="resetAll()">Reset All</button>
@@ -242,19 +245,16 @@
     }
 
     function updateStats(data) {
-        // Total and Core Solar
         document.getElementById('stat-total').innerText = data.length;
         document.getElementById('stat-solar').innerText = data.filter(r => 
             String(r['Job Type'] || '').toLowerCase().includes('solar install')).length;
         
-        // Brand logic
         document.getElementById('stat-enphase').innerText = data.filter(r => techMatch(r, 'enphase')).length;
         document.getElementById('stat-tesla').innerText = data.filter(r => techMatch(r, 'tesla')).length;
         document.getElementById('stat-fox').innerText = data.filter(r => techMatch(r, 'fox')).length;
         document.getElementById('stat-panel').innerText = data.filter(r => 
             String(r['Booked Status'] || '').toLowerCase().includes('panel')).length;
         
-        // Operational Stats
         document.getElementById('stat-kf').innerText = data.filter(r => 
             ['Y','YES'].includes(String(r['Complete on KF'] || '').trim().toUpperCase())).length;
         document.getElementById('stat-comp-y').innerText = data.filter(r => 
@@ -262,7 +262,7 @@
         document.getElementById('stat-comp-issues').innerText = data.filter(r => 
             String(r['Compliance Checked'] || '').toLowerCase().includes('issue')).length;
         
-        // Robust Job Type Checks (Handles "Revisit", "Re-visit", "Aftercare", etc)
+        // Revisits and Aftercare Logic
         document.getElementById('stat-revisit').innerText = data.filter(r => {
             const type = String(r['Job Type'] || '').toLowerCase();
             return type.includes('revisit') || type.includes('re-visit');
@@ -276,7 +276,7 @@
         const tb = document.getElementById('tableBody');
         tb.innerHTML = '';
         data.forEach(r => {
-            const kfRaw = String(r['Complete on KF']).trim().toUpperCase();
+            const kfRaw = String(r['Complete on KF'] || '').trim().toUpperCase();
             const kf = ['Y','YES'].includes(kfRaw);
             const isCancelled = kfRaw === 'N/A';
             const tr = document.createElement('tr');
