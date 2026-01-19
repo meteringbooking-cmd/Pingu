@@ -1,4 +1,69 @@
-<!DOCTYPE html>
+<script>
+    <script>
+    let allData = [];
+
+    const parseDate = (d) => {
+        if (!d) return null;
+        const pts = d.includes('/') ? d.split('/') : d.split('-');
+        if (pts.length !== 3) return null;
+        return pts[0].length === 4 ? new Date(pts[0], pts[1]-1, pts[2]) : new Date(pts[2], pts[1]-1, pts[0]);
+    };
+
+    const techMatch = (row, brand) => {
+        const val = String(row['Booked Status'] || '').toLowerCase();
+        if (brand === 'fox') return val.includes('fox') || val.includes('evo');
+        return val.includes(brand.toLowerCase());
+    };
+
+    function resetAll() {
+        document.getElementById('typeFilter').value = "";
+        document.getElementById('techFilter').value = "";
+        document.getElementById('startDate').value = "";
+        document.getElementById('endDate').value = "";
+        document.getElementById('searchInput').value = "";
+        runFilters();
+    }
+
+    document.getElementById('csvFile').addEventListener('change', (e) => {
+        Papa.parse(e.target.files[0], {
+            header: true, 
+            skipEmptyLines: 'greedy', // Removes physically empty rows
+            complete: (r) => {
+                // Filter out any rows that have a header but no actual Job Number content
+                allData = r.data.filter(row => {
+                    return row['Job Number'] && row['Job Number'].trim() !== "";
+                });
+                runFilters();
+            }
+        });
+    });
+
+    function runFilters() {
+        const q = document.getElementById('searchInput').value.toLowerCase();
+        const tF = document.getElementById('typeFilter').value.toLowerCase();
+        const hF = document.getElementById('techFilter').value.toLowerCase();
+        const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
+        const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
+
+        const filtered = allData.filter(row => {
+            const mS = Object.values(row).some(v => String(v).toLowerCase().includes(q));
+            const mT = !tF || String(row['Job Type']).toLowerCase().includes(tF);
+            const mH = !hF || techMatch(row, hF);
+            const rD = parseDate(row['Booked Date']);
+            let mD = true;
+            if (sD && (!rD || rD < sD)) mD = false;
+            if (eD && (!rD || rD > eD)) mD = false;
+            return mS && mT && mH && mD;
+        });
+        updateStats(filtered);
+        render(filtered);
+    }
+
+    // ... (Keep updateStats, render, showDetails, and closeModal exactly as before) ...
+</script>
+
+    // ... (Keep updateStats, render, showDetails, and closeModal exactly as before) ...
+</script><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
