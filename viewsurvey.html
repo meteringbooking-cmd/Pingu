@@ -817,6 +817,7 @@
                 const zip = new JSZip();
                 const folder = zip.folder(`${jobNumber}_photos`);
                 let successCount = 0;
+                let corsFailures = 0;
 
                 // Add each photo to the ZIP
                 for (let i = 0; i < photos.length; i++) {
@@ -830,15 +831,51 @@
                             folder.file(filename, base64Data, { base64: true });
                             successCount++;
                         } else if (photo.startsWith('http')) {
-                            // Fetch the image directly using the public URL
-                            const response = await fetch(photo);
-                            if (!response.ok) {
-                                console.error(`Failed to fetch photo ${i + 1}: ${response.status}`);
-                                continue;
+                            // Since the images are already displayed on the page, we can grab them from the DOM
+                            const displayedImages = document.querySelectorAll('.survey-photo');
+                            let foundImage = null;
+                            
+                            for (const img of displayedImages) {
+                                if (img.src === photo) {
+                                    foundImage = img;
+                                    break;
+                                }
                             }
-                            const blob = await response.blob();
-                            folder.file(filename, blob);
-                            successCount++;
+                            
+                            if (foundImage && foundImage.complete) {
+                                // Image is already loaded in the DOM, convert to blob via canvas
+                                const canvas = document.createElement('canvas');
+                                canvas.width = foundImage.naturalWidth;
+                                canvas.height = foundImage.naturalHeight;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(foundImage, 0, 0);
+                                
+                                await new Promise((resolve, reject) => {
+                                    canvas.toBlob((blob) => {
+                                        if (blob) {
+                                            folder.file(filename, blob);
+                                            successCount++;
+                                            resolve();
+                                        } else {
+                                            reject(new Error('Failed to convert to blob'));
+                                        }
+                                    }, 'image/jpeg', 0.95);
+                                });
+                            } else {
+                                // Image not in DOM yet, try fetch
+                                try {
+                                    const response = await fetch(photo);
+                                    if (!response.ok) {
+                                        throw new Error(`HTTP ${response.status}`);
+                                    }
+                                    const blob = await response.blob();
+                                    folder.file(filename, blob);
+                                    successCount++;
+                                } catch (fetchError) {
+                                    console.error(`CORS error for photo ${i + 1}:`, fetchError);
+                                    corsFailures++;
+                                }
+                            }
                         }
                     } catch (e) {
                         console.error(`Error adding photo ${i + 1}:`, e);
@@ -848,7 +885,7 @@
 
                 // Check if we have any files in the folder
                 if (successCount === 0) {
-                    showAlert('Could not download any photos. Please try again.', 'error');
+                    showAlert('⚠️ CORS Error: Firebase Storage is blocking downloads. Configure CORS or scroll through the survey to load all images first, then try again.', 'error');
                     return;
                 }
 
@@ -867,7 +904,11 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(link.href);
 
-                showAlert(`Successfully downloaded ${successCount} of ${photos.length} photo(s) as ZIP file!`, 'success');
+                if (corsFailures > 0) {
+                    showAlert(`⚠️ Downloaded ${successCount} of ${photos.length} photo(s). ${corsFailures} failed due to CORS. Scroll through survey to load all images, then try again.`, 'success');
+                } else {
+                    showAlert(`✅ Successfully downloaded all ${photos.length} photo(s)!`, 'success');
+                }
             } catch (e) {
                 console.error('Error creating photo pack:', e);
                 showAlert('Error creating photo pack: ' + e.message, 'error');
