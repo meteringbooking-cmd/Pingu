@@ -788,131 +788,57 @@ async function downloadPhotoPack() {
         return;
     }
 
-    const photos = [];
     const jobNumber = currentDocument.data.jobNumber || 'unknown';
     
-    // Collect all photos from the document
-    if (currentDocument.data.sections) {
-        Object.values(currentDocument.data.sections).forEach(section => {
-            Object.entries(section).forEach(([key, value]) => {
-                if (key.endsWith('Photos') && Array.isArray(value)) {
-                    value.forEach(photo => {
-                        if (typeof photo === 'string' && (photo.startsWith('data:image') || photo.startsWith('http'))) {
-                            photos.push(photo);
-                        }
-                    });
-                }
-            });
-        });
-    }
-
-    if (photos.length === 0) {
-        showAlert('No photos found in this document', 'error');
-        return;
-    }
-
-    showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
+    showAlert('Preparing photo pack... This may take a moment.', 'success');
 
     try {
-        const zip = new JSZip();
-        const folder = zip.folder(`${jobNumber}_photos`);
-        let successCount = 0;
-
-        // Process each photo
-        for (let i = 0; i < photos.length; i++) {
-            const photo = photos[i];
-            const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
-            
-            try {
-                if (photo.startsWith('data:image')) {
-                    // Handle base64 data URLs
-                    const base64Data = photo.split(',')[1];
-                    folder.file(filename, base64Data, { base64: true });
-                    successCount++;
-                } else if (photo.startsWith('http')) {
-                    // Use canvas to convert image to blob (bypasses CORS for already-loaded images)
-                    const blob = await urlToBlob(photo);
-                    if (blob) {
-                        folder.file(filename, blob);
-                        successCount++;
-                    }
-                }
-            } catch (e) {
-                console.error(`Error adding photo ${i + 1} (${photo}):`, e);
-            }
-        }
-
-        if (successCount === 0) {
-            showAlert('Failed to download any photos. Please check console for errors.', 'error');
-            return;
-        }
-
-        // Generate and download ZIP
-        const content = await zip.generateAsync({ 
-            type: 'blob',
-            compression: 'DEFLATE',
-            compressionOptions: { level: 6 }
+        const response = await fetch('https://us-central1-pingu-solar.cloudfunctions.net/downloadPhotosPack', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                collection: currentDocument.source,
+                documentId: currentDocument.id
+            })
         });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to download photos');
+        }
+
+        // Get the ZIP blob from the response
+        const blob = await response.blob();
         
+        // Create download link
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
+        link.href = URL.createObjectURL(blob);
         link.download = `${jobNumber}_photos.zip`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
 
-        const failedCount = photos.length - successCount;
-        if (failedCount > 0) {
-            showAlert(`Downloaded ${successCount} of ${photos.length} photo(s). ${failedCount} failed.`, 'success');
-        } else {
-            showAlert(`✅ Successfully downloaded all ${photos.length} photo(s)!`, 'success');
-        }
+        showAlert('✅ Photo pack downloaded successfully!', 'success');
     } catch (e) {
-        console.error('Error creating photo pack:', e);
-        showAlert('Error creating photo pack: ' + e.message, 'error');
+        console.error('Error downloading photo pack:', e);
+        showAlert('Error downloading photo pack: ' + e.message, 'error');
     }
 }
+window.downloadPhotoPack = downloadPhotoPack;
 
-function urlToBlob(url) {
-    return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.naturalWidth;
-                canvas.height = img.naturalHeight;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
-            } catch (e) {
-                console.error('Canvas conversion failed:', e);
-                resolve(null);
-            }
-        };
-        
-        img.onerror = () => {
-            console.error('Image load failed:', url);
-            resolve(null);
-        };
-        
-        img.src = url;
-    });
+function printSurvey() {
+    window.print();
 }
-        window.downloadPhotoPack = downloadPhotoPack;
+window.printSurvey = printSurvey;
 
-        function printSurvey() {
-            window.print();
-        }
-        window.printSurvey = printSurvey;
-
-        function backToList() {
-            document.getElementById('survey-viewer').classList.remove('active');
-            document.getElementById('survey-list').style.display = 'block';
-        }
-        window.backToList = backToList;
+function backToList() {
+    document.getElementById('survey-viewer').classList.remove('active');
+    document.getElementById('survey-list').style.display = 'block';
+}
+window.backToList = backToList;
     </script>
 </body>
 </html>
