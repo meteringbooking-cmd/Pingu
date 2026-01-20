@@ -243,7 +243,7 @@
         }
         .occurrence-row {
             display: grid;
-            grid-template-columns: 80px 1fr;
+            grid-template-columns: 110px 1fr;
             gap: 15px;
             padding: 12px;
             margin-bottom: 8px;
@@ -265,6 +265,7 @@
             font-size: 1.1em;
             display: flex;
             align-items: center;
+            gap: 8px;
         }
         .occurrence-count {
             font-size: 1.3em;
@@ -360,11 +361,34 @@
             color: #a8c0ff;
             margin-bottom: 6px;
             font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .fail-code-count {
             font-size: 1.4em;
             color: rgba(255, 255, 255, 0.9);
             font-weight: bold;
+        }
+        
+        /* Color badge styles */
+        .color-badge {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .color-badge.red {
+            background: linear-gradient(135deg, #ff4757, #c23616);
+        }
+        .color-badge.amber {
+            background: linear-gradient(135deg, #ffa502, #ff6348);
+        }
+        .color-badge.purple {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
         }
         
         /* Tooltip styles */
@@ -514,6 +538,41 @@
             'R49', 'R50', 'R51', 'R52', 'R53', 'R54', 'RX1', 'RX2', 'RX3'
         ];
 
+        const FAIL_CODE_COLORS = {
+            // Red E-codes
+            'E1': 'red', 'E2': 'red', 'E3': 'red', 'E4': 'red', 'E5': 'red',
+            'E6': 'red', 'E7': 'red', 'E8': 'red', 'E9': 'red', 'E10': 'red',
+            'E11': 'red', 'E12': 'red', 'E13': 'red', 'E14': 'red', 'E15': 'red',
+            'E16': 'red', 'E17': 'red', 'E18': 'red', 'E19': 'red', 'E20': 'red',
+            'EX1': 'red',
+            // Amber E-codes
+            'E22': 'amber', 'E23': 'amber', 'E24': 'amber', 'E25': 'amber', 'E26': 'amber',
+            'E27': 'amber', 'E28': 'amber', 'E29': 'amber', 'E30': 'amber', 'E31': 'amber',
+            'E32': 'amber', 'E33': 'amber', 'E34': 'amber', 'E35': 'amber', 'E36': 'amber',
+            'E37': 'amber', 'E38': 'amber', 'E39': 'amber', 'E40': 'amber', 'E41': 'amber',
+            'E42': 'amber', 'E43': 'amber', 'E44': 'amber', 'E45': 'amber', 'E46': 'amber',
+            'E47': 'amber', 'E48': 'amber', 'E49': 'amber', 'E50': 'amber', 'E51': 'amber',
+            'EX2': 'amber',
+            // Purple E-codes
+            'E52': 'purple', 'E53': 'purple', 'E54': 'purple', 'E55': 'purple', 'E56': 'purple',
+            'E57': 'purple', 'E58': 'purple', 'E59': 'purple', 'E60': 'purple', 'E61': 'purple',
+            'E62': 'purple', 'E63': 'purple', 'E64': 'purple', 'E65': 'purple', 'E66': 'purple',
+            'E67': 'purple', 'E68': 'purple', 'E69': 'purple', 'E70': 'purple', 'EX3': 'purple',
+            // Red R-codes
+            'R10': 'red', 'R11': 'red', 'R12': 'red', 'R13': 'red', 'R14': 'red',
+            'R15': 'red', 'R16': 'red', 'RX1': 'red',
+            // Amber R-codes
+            'R17': 'amber', 'R18': 'amber', 'R19': 'amber', 'R20': 'amber', 'R21': 'amber',
+            'R22': 'amber', 'R23': 'amber', 'R24': 'amber', 'R25': 'amber', 'R26': 'amber',
+            'R27': 'amber', 'R28': 'amber', 'R29': 'amber', 'R30': 'amber', 'R31': 'amber',
+            'R32': 'amber', 'R33': 'amber', 'R34': 'amber', 'R35': 'amber', 'R36': 'amber',
+            'R37': 'amber', 'R38': 'amber', 'R39': 'amber', 'R40': 'amber', 'RX2': 'amber',
+            // Purple R-codes
+            'R41': 'purple', 'R42': 'purple', 'R43': 'purple', 'R44': 'purple', 'R45': 'purple',
+            'R46': 'purple', 'R47': 'purple', 'R48': 'purple', 'R49': 'purple', 'R50': 'purple',
+            'R51': 'purple', 'R52': 'purple', 'R53': 'purple', 'R54': 'purple', 'RX3': 'purple'
+        };
+
         const FAIL_CODE_DESCRIPTIONS = {
             'E1': 'Missed an A code on distribution equipment (DNO)',
             'E2': 'Under sized cable installed for equipment / length of cable run',
@@ -586,7 +645,55 @@
             'E68': 'Missing Photos / missing information',
             'E69': 'Photo taken but inadequate',
             'E70': 'Incorrect glands installed with selected cable',
-            'EX3': 'Miscellaneous - provide notes'
+            'EX3': 'Miscellaneous - provide notes',
+            'R10': 'Working within 2m of an unprotected edge without correct PPE',
+            'R11': 'Working outside of Scaffolded area',
+            'R12': 'Working on an unsafe scaffold',
+            'R13': 'Working on an unsafe Ladder',
+            'R14': 'DC cable installed unprotected within the building envelope',
+            'R15': 'Cable damage when installed',
+            'R16': 'Installer worked outside of scope/installer not applying competence',
+            'RX1': 'Miscellaneous - supporting notes required',
+            'R17': 'No structural cals completed',
+            'R18': 'Working on scaffold not to TG20:21 standards',
+            'R19': 'Incorrect/No PPE worn',
+            'R20': 'Incorrect hook used for tile type',
+            'R21': 'Rail replacement outside of clamping zone',
+            'R22': 'Incorrect number of fixings in roof hooks',
+            'R23': 'Incorrect fixings used on roof hooks',
+            'R24': '5mm gap not observed to the side of between the roof hook bracket and the roof tile beneath',
+            'R25': 'Incorrect tile flashing used',
+            'R26': 'Flashing incorrectly installed and not weathertight',
+            'R27': 'Incorrect number of placement of hooks',
+            'R28': 'Maximum span between roof hooks exceeded',
+            'R29': 'Racking system bolts under/over tightened. Torque wrench not used.',
+            'R30': 'Rail profiles protrude less than 10mm at module edge',
+            'R31': 'Array not as per schematics',
+            'R32': 'Rail profiles protrude more than 0.4m past the last hook at the sides of the array',
+            'R33': 'Micro inverter fixings under/over tightened, torque wrench not used',
+            'R34': 'Module clamps under/over tightened. Torque wrench not used.',
+            'R35': 'Micro inverters incorrectly installed',
+            'R36': 'Installation of bird guard does not meet manufacturers instructions',
+            'R37': 'Array installed over mechanical vents',
+            'R38': 'Roof not left weathertight, tiles not flush or broken',
+            'R39': 'Property left with split rafters or screws protrudes rafters',
+            'R40': 'Failed to meet the requirements of MCS, installed within 400mm of an edge without special measures considered',
+            'RX2': 'Miscellaneous - supporting notes required',
+            'R41': 'Unidentified pre existing damage to roof/roof in poor condition',
+            'R42': 'Cables inadequately supports',
+            'R43': 'No sealant used on cable entry in wall',
+            'R44': 'Cutting rails in situ on the roof',
+            'R45': 'Cutting tiles in situ on the roof',
+            'R46': 'Missing photos',
+            'R47': 'Photos taken but inadequate',
+            'R48': 'Installation of bird guard does not meet company standard',
+            'R49': 'Cable roof entry not to spec',
+            'R50': 'Rails profile do not protrude module by 50mm',
+            'R51': 'Ladder work without tetra safety systems',
+            'R52': 'Failed to replace broken tiles',
+            'R53': 'Clearances not observed to in roof features',
+            'R54': 'Working on a scaffold not to OES standards',
+            'RX3': 'Miscellaneous - supporting notes required'
         };
 
         let allData = [];
@@ -597,6 +704,11 @@
         document.getElementById('startDate').addEventListener('change', updateDashboard);
         document.getElementById('endDate').addEventListener('change', updateDashboard);
         document.getElementById('teamFilter').addEventListener('change', updateDashboard);
+
+        function getColorBadge(code) {
+            const color = FAIL_CODE_COLORS[code] || 'purple';
+            return `<span class="color-badge ${color}"></span>`;
+        }
 
         function handleFileUpload(e) {
             const file = e.target.files[0];
@@ -770,6 +882,22 @@
             if (chart) chart.destroy();
 
             const ctx = document.getElementById('failCodeChart').getContext('2d');
+            
+            // Create color array based on fail code colors
+            const backgroundColors = chartData.map(item => {
+                const color = FAIL_CODE_COLORS[item.code];
+                if (color === 'red') return 'rgba(255, 71, 87, 0.8)';
+                if (color === 'amber') return 'rgba(255, 165, 2, 0.8)';
+                return 'rgba(162, 155, 254, 0.8)'; // purple
+            });
+            
+            const borderColors = chartData.map(item => {
+                const color = FAIL_CODE_COLORS[item.code];
+                if (color === 'red') return 'rgba(255, 71, 87, 1)';
+                if (color === 'amber') return 'rgba(255, 165, 2, 1)';
+                return 'rgba(162, 155, 254, 1)'; // purple
+            });
+
             chart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -777,8 +905,8 @@
                     datasets: [{
                         label: 'Fail Code Count',
                         data: chartData.map(item => item.count),
-                        backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                        borderColor: 'rgba(102, 126, 234, 1)',
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
                         borderWidth: 2
                     }]
                 },
@@ -865,7 +993,7 @@
 
             const tableHTML = sortedCodes.map(item => `
                 <div class="occurrence-row" data-code="${item.code}">
-                    <div class="occurrence-code">${item.code}</div>
+                    <div class="occurrence-code">${getColorBadge(item.code)} ${item.code}</div>
                     <div class="occurrence-count">${item.count}</div>
                 </div>
             `).join('');
@@ -919,7 +1047,7 @@
 
                 const codesHTML = sortedCodes.map(([code, count]) => `
                     <div class="fail-code-item" data-code="${code}">
-                        <div class="fail-code-name">${code}</div>
+                        <div class="fail-code-name">${getColorBadge(code)} ${code}</div>
                         <div class="fail-code-count">${count}</div>
                     </div>
                 `).join('');
