@@ -1454,12 +1454,11 @@
                                     </div>
                                 </div>
                                 <div class="job-card-footer">
-                                    <a href="https://pingu-blue.vercel.app/conductsurvey.html?job=${encodeURIComponent(jobNumber)}" 
+                                    <button 
                                        class="commence-survey-btn"
-                                       target="_blank"
-                                       onclick="event.stopPropagation()">
+                                       onclick="commenceSurvey('${escapeHtml(jobNumber)}', event)">
                                         🔍 Commence Survey
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -1662,6 +1661,38 @@
         }
         
         window.updateJobStatus = updateJobStatus;
+        
+        async function commenceSurvey(jobNumber, event) {
+            event.stopPropagation();
+            
+            try {
+                // Copy job number to clipboard
+                await navigator.clipboard.writeText(jobNumber);
+                
+                // Show brief notification
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '✓ Job Number Copied!';
+                button.style.background = 'linear-gradient(135deg, var(--success), var(--success))';
+                
+                setTimeout(() => {
+                    button.innerHTML = originalText;
+                    button.style.background = '';
+                }, 1500);
+                
+                // Open survey page after a brief delay
+                setTimeout(() => {
+                    window.open('https://pingu-blue.vercel.app/conductsurvey.html', '_blank');
+                }, 600);
+                
+            } catch (error) {
+                console.error('Failed to copy job number:', error);
+                // Still open the survey page even if clipboard fails
+                window.open('https://pingu-blue.vercel.app/conductsurvey.html', '_blank');
+            }
+        }
+        
+        window.commenceSurvey = commenceSurvey;
         
         async function loadJobFiles(jobNumber) {
             const attachmentsList = document.getElementById('attachments-list');
