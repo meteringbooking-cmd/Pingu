@@ -814,9 +814,6 @@ async function downloadPhotoPack() {
     showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
 
     try {
-        const { ref, getBlob } = window.storageModules;
-        const storage = window.storage;
-        
         const zip = new JSZip();
         const folder = zip.folder(`${jobNumber}_photos`);
         let successCount = 0;
@@ -833,31 +830,15 @@ async function downloadPhotoPack() {
                     folder.file(filename, base64Data, { base64: true });
                     successCount++;
                 } else if (photo.startsWith('http')) {
-                    // Handle both Firebase Storage URLs and regular HTTP URLs
-                    if (photo.includes('firebasestorage.googleapis.com')) {
-                        // Extract the file path from Firebase Storage URL
-                        const matches = photo.match(/\/o\/(.+?)(\?|$)/);
-                        if (matches && matches[1]) {
-                            const filePath = decodeURIComponent(matches[1]);
-                            
-                            // Use Firebase Storage SDK to download
-                            const fileRef = ref(storage, filePath);
-                            const blob = await getBlob(fileRef);
-                            
-                            folder.file(filename, blob);
-                            successCount++;
-                        }
-                    } else {
-                        // For regular HTTP URLs, fetch directly
-                        const response = await fetch(photo);
-                        const blob = await response.blob();
+                    // Use canvas to convert image to blob (bypasses CORS for already-loaded images)
+                    const blob = await urlToBlob(photo);
+                    if (blob) {
                         folder.file(filename, blob);
                         successCount++;
                     }
                 }
             } catch (e) {
                 console.error(`Error adding photo ${i + 1} (${photo}):`, e);
-                // Continue with next photo
             }
         }
 
@@ -891,6 +872,34 @@ async function downloadPhotoPack() {
         console.error('Error creating photo pack:', e);
         showAlert('Error creating photo pack: ' + e.message, 'error');
     }
+}
+
+function urlToBlob(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        img.onload = () => {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.naturalWidth;
+                canvas.height = img.naturalHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.95);
+            } catch (e) {
+                console.error('Canvas conversion failed:', e);
+                resolve(null);
+            }
+        };
+        
+        img.onerror = () => {
+            console.error('Image load failed:', url);
+            resolve(null);
+        };
+        
+        img.src = url;
+    });
 }
         window.downloadPhotoPack = downloadPhotoPack;
 
