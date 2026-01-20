@@ -832,22 +832,31 @@ async function downloadPhotoPack() {
                     const base64Data = photo.split(',')[1];
                     folder.file(filename, base64Data, { base64: true });
                     successCount++;
-                } else if (photo.includes('firebasestorage.googleapis.com')) {
-                    // Extract the file path from Firebase Storage URL
-                    const matches = photo.match(/\/o\/(.+?)\?/);
-                    if (matches && matches[1]) {
-                        const filePath = decodeURIComponent(matches[1]);
-                        
-                        // Use Firebase Storage SDK to download (bypasses CORS!)
-                        const fileRef = ref(storage, filePath);
-                        const blob = await getBlob(fileRef);
-                        
+                } else if (photo.startsWith('http')) {
+                    // Handle both Firebase Storage URLs and regular HTTP URLs
+                    if (photo.includes('firebasestorage.googleapis.com')) {
+                        // Extract the file path from Firebase Storage URL
+                        const matches = photo.match(/\/o\/(.+?)(\?|$)/);
+                        if (matches && matches[1]) {
+                            const filePath = decodeURIComponent(matches[1]);
+                            
+                            // Use Firebase Storage SDK to download
+                            const fileRef = ref(storage, filePath);
+                            const blob = await getBlob(fileRef);
+                            
+                            folder.file(filename, blob);
+                            successCount++;
+                        }
+                    } else {
+                        // For regular HTTP URLs, fetch directly
+                        const response = await fetch(photo);
+                        const blob = await response.blob();
                         folder.file(filename, blob);
                         successCount++;
                     }
                 }
             } catch (e) {
-                console.error(`Error adding photo ${i + 1}:`, e);
+                console.error(`Error adding photo ${i + 1} (${photo}):`, e);
                 // Continue with next photo
             }
         }
