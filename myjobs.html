@@ -446,6 +446,8 @@
             cursor: pointer;
             position: relative;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
         
         .job-card::before {
@@ -521,6 +523,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.6rem;
+            flex: 1;
         }
         
         .job-detail {
@@ -533,6 +536,34 @@
         
         .job-detail-icon {
             color: var(--accent);
+        }
+        
+        .job-card-footer {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--dark);
+        }
+        
+        .commence-survey-btn {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+        }
+        
+        .commence-survey-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 204, 163, 0.4);
         }
         
         .empty-state {
@@ -825,6 +856,91 @@
             font-style: italic;
         }
         
+        /* Confirmation Dialog */
+        .confirmation-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .confirmation-dialog.show {
+            display: flex;
+        }
+        
+        .confirmation-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 450px;
+            width: 90%;
+            border: 2px solid var(--primary);
+            animation: slideUpModal 0.4s ease;
+        }
+        
+        .confirmation-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .confirmation-message {
+            color: var(--text-dim);
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            line-height: 1.6;
+        }
+        
+        .confirmation-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .confirm-btn,
+        .cancel-btn {
+            padding: 1rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .confirm-btn {
+            background: linear-gradient(135deg, var(--success), var(--accent));
+            color: white;
+        }
+        
+        .confirm-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(78, 204, 163, 0.4);
+        }
+        
+        .cancel-btn {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--dark-lighter);
+        }
+        
+        .cancel-btn:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -947,10 +1063,24 @@
     <div class="modal" id="job-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="modal-job-number">Job #12345</h2>
+                <h2 class="modal-title" id="modal-job-number">Job 12345</h2>
                 <button class="close-btn" onclick="closeJobModal()">×</button>
             </div>
             <div class="modal-body" id="modal-body">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Dialog -->
+    <div class="confirmation-dialog" id="confirmation-dialog">
+        <div class="confirmation-content">
+            <div class="confirmation-header">⚠️ Confirm Status Change</div>
+            <div class="confirmation-message" id="confirmation-message">
+                Are you sure you want to update the status?
+            </div>
+            <div class="confirmation-buttons">
+                <button class="cancel-btn" onclick="cancelStatusUpdate()">No, Cancel</button>
+                <button class="confirm-btn" onclick="confirmStatusUpdate()">Yes, Update</button>
             </div>
         </div>
     </div>
@@ -990,6 +1120,7 @@
         let currentUser = null;
         let currentView = 'grid';
         let teamMembers = [];
+        let pendingStatusUpdate = null;
         
         function parseInstallDate(dateStr) {
             if (!dateStr) return null;
@@ -1288,6 +1419,7 @@
                 <div class="results-grid">
                     ${upcomingJobs.map(job => {
                         const jobStatus = job.status || 'upcoming';
+                        const jobNumber = job['Job Number'] || 'N/A';
                         
                         let statusText = 'Upcoming';
                         let statusClass = 'upcoming';
@@ -1303,7 +1435,7 @@
                         return `
                             <div class="job-card" onclick="showJobDetails('${job.id}')">
                                 <div class="job-header">
-                                    <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                                    <div class="job-number">${escapeHtml(jobNumber)}</div>
                                     <div class="job-status ${statusClass}">${statusText}</div>
                                 </div>
                                 <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown Customer')}</div>
@@ -1320,6 +1452,13 @@
                                         <span class="job-detail-icon">👷</span>
                                         ${escapeHtml(job['Lead Engineer'] || 'Unassigned')}
                                     </div>
+                                </div>
+                                <div class="job-card-footer">
+                                    <a href="https://pingu-blue.vercel.app/conductsurvey.html?jobNumber=${encodeURIComponent(jobNumber)}" 
+                                       class="commence-survey-btn"
+                                       onclick="event.stopPropagation()">
+                                        🔍 Commence Survey
+                                    </a>
                                 </div>
                             </div>
                         `;
@@ -1347,7 +1486,7 @@
             const modalBody = document.getElementById('modal-body');
             const modalTitle = document.getElementById('modal-job-number');
             
-            modalTitle.textContent = `Job #${job['Job Number'] || 'N/A'}`;
+            modalTitle.textContent = `Job ${job['Job Number'] || 'N/A'}`;
             
             const jobStatus = job.status || 'upcoming';
             
@@ -1392,25 +1531,25 @@
                     <div class="status-buttons">
                         <button 
                             class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'upcoming', this)"
+                            onclick="requestStatusUpdate('${jobId}', 'upcoming', 'Upcoming', this)"
                         >
                             Upcoming
                         </button>
                         <button 
                             class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'survey-complete', this)"
+                            onclick="requestStatusUpdate('${jobId}', 'survey-complete', 'Survey Complete', this)"
                         >
                             Survey Complete
                         </button>
                         <button 
                             class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'install-started', this)"
+                            onclick="requestStatusUpdate('${jobId}', 'install-started', 'Install Started', this)"
                         >
                             Install Started
                         </button>
                         <button 
                             class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" 
-                            onclick="updateJobStatus('${jobId}', 'install-complete', this)"
+                            onclick="requestStatusUpdate('${jobId}', 'install-complete', 'Install Complete', this)"
                         >
                             Install Complete
                         </button>
@@ -1432,6 +1571,50 @@
         }
         
         window.showJobDetails = showJobDetails;
+        
+        function requestStatusUpdate(jobId, newStatus, statusLabel, buttonElement) {
+            // Only show confirmation for survey-complete, install-started, and install-complete
+            if (newStatus === 'survey-complete' || newStatus === 'install-started' || newStatus === 'install-complete') {
+                pendingStatusUpdate = {
+                    jobId,
+                    newStatus,
+                    buttonElement
+                };
+                
+                const message = document.getElementById('confirmation-message');
+                message.textContent = `Are you sure you want to change the status to "${statusLabel}"?`;
+                
+                document.getElementById('confirmation-dialog').classList.add('show');
+            } else {
+                // For "Upcoming", update directly without confirmation
+                updateJobStatus(jobId, newStatus, buttonElement);
+            }
+        }
+        
+        window.requestStatusUpdate = requestStatusUpdate;
+        
+        function cancelStatusUpdate() {
+            document.getElementById('confirmation-dialog').classList.remove('show');
+            pendingStatusUpdate = null;
+        }
+        
+        window.cancelStatusUpdate = cancelStatusUpdate;
+        
+        async function confirmStatusUpdate() {
+            if (!pendingStatusUpdate) return;
+            
+            document.getElementById('confirmation-dialog').classList.remove('show');
+            
+            await updateJobStatus(
+                pendingStatusUpdate.jobId,
+                pendingStatusUpdate.newStatus,
+                pendingStatusUpdate.buttonElement
+            );
+            
+            pendingStatusUpdate = null;
+        }
+        
+        window.confirmStatusUpdate = confirmStatusUpdate;
         
         async function updateJobStatus(jobId, newStatus, buttonElement) {
             const messageDiv = document.getElementById('status-update-message');
@@ -1549,6 +1732,12 @@
         document.getElementById('job-modal').addEventListener('click', (e) => {
             if (e.target.id === 'job-modal') {
                 closeJobModal();
+            }
+        });
+        
+        document.getElementById('confirmation-dialog').addEventListener('click', (e) => {
+            if (e.target.id === 'confirmation-dialog') {
+                cancelStatusUpdate();
             }
         });
     </script>
