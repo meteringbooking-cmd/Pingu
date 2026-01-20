@@ -782,138 +782,107 @@
             return v;
         }
 
-        async function downloadPhotoPack() {
-            if (!currentDocument) {
-                showAlert('No document loaded', 'error');
-                return;
-            }
+async function downloadPhotoPack() {
+    if (!currentDocument) {
+        showAlert('No document loaded', 'error');
+        return;
+    }
 
-            const photos = [];
-            const jobNumber = currentDocument.data.jobNumber || 'unknown';
-            
-            // Collect all photos from the document
-            if (currentDocument.data.sections) {
-                Object.values(currentDocument.data.sections).forEach(section => {
-                    Object.entries(section).forEach(([key, value]) => {
-                        if (key.endsWith('Photos') && Array.isArray(value)) {
-                            value.forEach(photo => {
-                                if (typeof photo === 'string' && (photo.startsWith('data:image') || photo.startsWith('http'))) {
-                                    photos.push(photo);
-                                }
-                            });
+    const photos = [];
+    const jobNumber = currentDocument.data.jobNumber || 'unknown';
+    
+    // Collect all photos from the document
+    if (currentDocument.data.sections) {
+        Object.values(currentDocument.data.sections).forEach(section => {
+            Object.entries(section).forEach(([key, value]) => {
+                if (key.endsWith('Photos') && Array.isArray(value)) {
+                    value.forEach(photo => {
+                        if (typeof photo === 'string' && (photo.startsWith('data:image') || photo.startsWith('http'))) {
+                            photos.push(photo);
                         }
                     });
-                });
-            }
+                }
+            });
+        });
+    }
 
-            if (photos.length === 0) {
-                showAlert('No photos found in this document', 'error');
-                return;
-            }
+    if (photos.length === 0) {
+        showAlert('No photos found in this document', 'error');
+        return;
+    }
 
-            showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
+    showAlert(`Preparing ${photos.length} photo(s) for download...`, 'success');
 
+    try {
+        const { ref, getBlob } = window.storageModules;
+        const storage = window.storage;
+        
+        const zip = new JSZip();
+        const folder = zip.folder(`${jobNumber}_photos`);
+        let successCount = 0;
+
+        // Process each photo
+        for (let i = 0; i < photos.length; i++) {
+            const photo = photos[i];
+            const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
+            
             try {
-                const zip = new JSZip();
-                const folder = zip.folder(`${jobNumber}_photos`);
-                let successCount = 0;
-                let corsFailures = 0;
-
-                // Add each photo to the ZIP
-                for (let i = 0; i < photos.length; i++) {
-                    const photo = photos[i];
-                    const filename = `photo_${String(i + 1).padStart(3, '0')}.jpg`;
-                    
-                    try {
-                        if (photo.startsWith('data:image')) {
-                            // Extract base64 data from data URL
-                            const base64Data = photo.split(',')[1];
-                            folder.file(filename, base64Data, { base64: true });
-                            successCount++;
-                        } else if (photo.startsWith('http')) {
-                            // Since the images are already displayed on the page, we can grab them from the DOM
-                            const displayedImages = document.querySelectorAll('.survey-photo');
-                            let foundImage = null;
-                            
-                            for (const img of displayedImages) {
-                                if (img.src === photo) {
-                                    foundImage = img;
-                                    break;
-                                }
-                            }
-                            
-                            if (foundImage && foundImage.complete) {
-                                // Image is already loaded in the DOM, convert to blob via canvas
-                                const canvas = document.createElement('canvas');
-                                canvas.width = foundImage.naturalWidth;
-                                canvas.height = foundImage.naturalHeight;
-                                const ctx = canvas.getContext('2d');
-                                ctx.drawImage(foundImage, 0, 0);
-                                
-                                await new Promise((resolve, reject) => {
-                                    canvas.toBlob((blob) => {
-                                        if (blob) {
-                                            folder.file(filename, blob);
-                                            successCount++;
-                                            resolve();
-                                        } else {
-                                            reject(new Error('Failed to convert to blob'));
-                                        }
-                                    }, 'image/jpeg', 0.95);
-                                });
-                            } else {
-                                // Image not in DOM yet, try fetch
-                                try {
-                                    const response = await fetch(photo);
-                                    if (!response.ok) {
-                                        throw new Error(`HTTP ${response.status}`);
-                                    }
-                                    const blob = await response.blob();
-                                    folder.file(filename, blob);
-                                    successCount++;
-                                } catch (fetchError) {
-                                    console.error(`CORS error for photo ${i + 1}:`, fetchError);
-                                    corsFailures++;
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        console.error(`Error adding photo ${i + 1}:`, e);
-                        // Continue with next photo instead of failing completely
+                if (photo.startsWith('data:image')) {
+                    // Handle base64 data URLs
+                    const base64Data = photo.split(',')[1];
+                    folder.file(filename, base64Data, { base64: true });
+                    successCount++;
+                } else if (photo.includes('firebasestorage.googleapis.com')) {
+                    // Extract the file path from Firebase Storage URL
+                    const matches = photo.match(/\/o\/(.+?)\?/);
+                    if (matches && matches[1]) {
+                        const filePath = decodeURIComponent(matches[1]);
+                        
+                        // Use Firebase Storage SDK to download (bypasses CORS!)
+                        const fileRef = ref(storage, filePath);
+                        const blob = await getBlob(fileRef);
+                        
+                        folder.file(filename, blob);
+                        successCount++;
                     }
                 }
-
-                // Check if we have any files in the folder
-                if (successCount === 0) {
-                    showAlert('⚠️ CORS Error: Firebase Storage is blocking downloads. Configure CORS or scroll through the survey to load all images first, then try again.', 'error');
-                    return;
-                }
-
-                // Generate ZIP file and trigger download
-                const content = await zip.generateAsync({ 
-                    type: 'blob',
-                    compression: 'DEFLATE',
-                    compressionOptions: { level: 6 }
-                });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = `${jobNumber}_photos.zip`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-
-                if (corsFailures > 0) {
-                    showAlert(`⚠️ Downloaded ${successCount} of ${photos.length} photo(s). ${corsFailures} failed due to CORS. Scroll through survey to load all images, then try again.`, 'success');
-                } else {
-                    showAlert(`✅ Successfully downloaded all ${photos.length} photo(s)!`, 'success');
-                }
             } catch (e) {
-                console.error('Error creating photo pack:', e);
-                showAlert('Error creating photo pack: ' + e.message, 'error');
+                console.error(`Error adding photo ${i + 1}:`, e);
+                // Continue with next photo
             }
         }
+
+        if (successCount === 0) {
+            showAlert('Failed to download any photos. Please check console for errors.', 'error');
+            return;
+        }
+
+        // Generate and download ZIP
+        const content = await zip.generateAsync({ 
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: 6 }
+        });
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${jobNumber}_photos.zip`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        const failedCount = photos.length - successCount;
+        if (failedCount > 0) {
+            showAlert(`Downloaded ${successCount} of ${photos.length} photo(s). ${failedCount} failed.`, 'success');
+        } else {
+            showAlert(`✅ Successfully downloaded all ${photos.length} photo(s)!`, 'success');
+        }
+    } catch (e) {
+        console.error('Error creating photo pack:', e);
+        showAlert('Error creating photo pack: ' + e.message, 'error');
+    }
+}
         window.downloadPhotoPack = downloadPhotoPack;
 
         function printSurvey() {
