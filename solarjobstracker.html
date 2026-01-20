@@ -98,7 +98,7 @@
     <div class="stats-container">
         <div class="stats-row row-1">
             <div class="stat-card"><span class="label">Filtered Sites</span><span id="stat-total" class="value">0</span></div>
-            <div class="stat-card"><span class="label">Solar Installs</span><span id="stat-solar" class="value">0</span></div>
+            <div class="stat-card"><span class="label">Installs</span><span id="stat-solar" class="value">0</span></div>
             <div class="stat-card"><span class="label">Enphase</span><span id="stat-enphase" class="value" style="color:#60a5fa">0</span></div>
             <div class="stat-card"><span class="label">Tesla</span><span id="stat-tesla" class="value" style="color:#f87171">0</span></div>
             <div class="stat-card"><span class="label">Fox</span><span id="stat-fox" class="value" style="color:#fbbf24">0</span></div>
@@ -135,6 +135,15 @@
                     <option value="Tesla">Tesla</option>
                 </select>
             </div>
+            <div class="input-group">
+                <label>KF Status</label>
+                <select id="kfFilter" onchange="runFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="Y">Complete</option>
+                    <option value="N/A">Cancelled</option>
+                    <option value="PENDING">Pending</option>
+                </select>
+            </div>
             <div class="input-group"><label>Start Date</label><input type="date" id="startDate" onchange="runFilters()"></div>
             <div class="input-group"><label>End Date</label><input type="date" id="endDate" onchange="runFilters()"></div>
             <div class="input-group">
@@ -154,6 +163,7 @@
                     <th>Job Number</th>
                     <th>Postcode</th>
                     <th>Type</th>
+                    <th>Brand</th>
                     <th>Booked Date</th>
                     <th>KF Status</th>
                     <th>Compliance</th>
@@ -222,6 +232,7 @@
         const q = document.getElementById('searchInput').value.toLowerCase();
         const tF = document.getElementById('typeFilter').value.toLowerCase();
         const hF = document.getElementById('techFilter').value.toLowerCase();
+        const kfF = document.getElementById('kfFilter').value.toUpperCase();
         const sD = document.getElementById('startDate').value ? new Date(document.getElementById('startDate').value) : null;
         const eD = document.getElementById('endDate').value ? new Date(document.getElementById('endDate').value) : null;
 
@@ -232,12 +243,16 @@
             const bS = String(row['Booked Status'] || '').toLowerCase();
             const mH = !hF || (hF === 'fox' ? (bS.includes('fox') || bS.includes('evo')) : bS.includes(hF));
 
+            const kfRaw = String(row['Complete on KF'] || '').trim().toUpperCase();
+            const kfStatus = kfRaw === 'N/A' ? 'N/A' : (kfRaw === 'Y' ? 'Y' : 'PENDING');
+            const mKF = !kfF || kfStatus === kfF;
+
             const rowDate = parseDate(row['Booked Date']);
             let mD = true;
             if (sD && (!rowDate || rowDate < sD)) mD = false;
             if (eD && (!rowDate || rowDate > eD)) mD = false;
 
-            return mS && mT && mH && mD;
+            return mS && mT && mH && mKF && mD;
         });
 
         updateStats(currentFilteredSet);
@@ -253,8 +268,14 @@
             }).length;
         };
 
-        document.getElementById('stat-total').innerText = data.length; 
-        document.getElementById('stat-solar').innerText = getCount('Job Type', 'Solar Install');
+        const totalFiltered = data.length;
+        const cancelled = getCount('Complete on KF', 'N/A', true);
+        const revisits = getCount('Job Type', 'Revisit');
+        const aftercare = getCount('Job Type', 'Aftercare');
+        const installs = totalFiltered - cancelled - revisits - aftercare;
+
+        document.getElementById('stat-total').innerText = totalFiltered; 
+        document.getElementById('stat-solar').innerText = installs;
         document.getElementById('stat-enphase').innerText = getCount('Booked Status', 'Enphase');
         document.getElementById('stat-tesla').innerText = getCount('Booked Status', 'Tesla');
         document.getElementById('stat-fox').innerText = data.filter(j => {
@@ -264,11 +285,11 @@
         document.getElementById('stat-panel').innerText = getCount('Booked Status', 'Panel');
         
         document.getElementById('stat-kf').innerText = getCount('Complete on KF', 'Y', true);
-        document.getElementById('stat-cancelled').innerText = getCount('Complete on KF', 'N/A', true);
+        document.getElementById('stat-cancelled').innerText = cancelled;
         document.getElementById('stat-comp-y').innerText = getCount('Compliance Checked', 'Y', true);
         document.getElementById('stat-comp-issues').innerText = getCount('Compliance Checked', 'Issue');
-        document.getElementById('stat-revisit').innerText = getCount('Job Type', 'Revisit');
-        document.getElementById('stat-aftercare').innerText = getCount('Job Type', 'Aftercare');
+        document.getElementById('stat-revisit').innerText = revisits;
+        document.getElementById('stat-aftercare').innerText = aftercare;
     }
 
     function renderTable(data) {
@@ -281,10 +302,18 @@
             const isCancelled = kfRaw === 'N/A';
             const isDone = kfRaw === 'Y';
 
+            const bookedStatus = String(row['Booked Status'] || '').toLowerCase();
+            let brand = '---';
+            if (bookedStatus.includes('enphase')) brand = 'Enphase';
+            else if (bookedStatus.includes('tesla')) brand = 'Tesla';
+            else if (bookedStatus.includes('fox') || bookedStatus.includes('evo')) brand = 'Fox';
+            else if (bookedStatus.includes('panel')) brand = 'Panel Only';
+
             tr.innerHTML = `
                 <td style="font-weight:700;">${row['Job Number']}</td>
                 <td>${row['Postcode']}</td>
                 <td style="color:var(--text-dim)">${row['Job Type']}</td>
+                <td>${brand}</td>
                 <td>${row['Booked Date'] || '---'}</td>
                 <td><span class="tag ${isCancelled ? 'tag-wait' : (isDone ? 'tag-kf' : 'tag-wait')}">${isCancelled ? 'CANCELLED' : (isDone ? 'COMPLETE' : 'PENDING')}</span></td>
                 <td class="${String(row['Compliance Checked']).includes('ISSUE') ? 'text-issues' : 'text-success'}">${row['Compliance Checked'] || '---'}</td>
