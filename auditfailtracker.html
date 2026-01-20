@@ -211,11 +211,69 @@
             font-size: 2.5em;
             font-weight: bold;
         }
-        .chart-container {
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
             padding: 30px;
+        }
+        .chart-container {
             position: relative;
             height: 500px;
             background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .occurrence-table-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .occurrence-table-container h2 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .occurrence-table {
+            width: 100%;
+        }
+        .occurrence-row {
+            display: grid;
+            grid-template-columns: 80px 1fr;
+            gap: 15px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .occurrence-row:hover {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: rgba(127, 127, 213, 0.5);
+            transform: translateX(5px);
+        }
+        .occurrence-code {
+            font-weight: bold;
+            color: #a8c0ff;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+        }
+        .occurrence-count {
+            font-size: 1.3em;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: bold;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
         }
         .no-data {
             text-align: center;
@@ -289,6 +347,8 @@
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
         }
         .fail-code-item:hover {
             background: rgba(102, 126, 234, 0.2);
@@ -305,6 +365,62 @@
             font-size: 1.4em;
             color: rgba(255, 255, 255, 0.9);
             font-weight: bold;
+        }
+        
+        /* Tooltip styles */
+        .tooltip {
+            position: absolute;
+            background: rgba(20, 20, 40, 0.98);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            max-width: 300px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid rgba(127, 127, 213, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        .tooltip.show {
+            opacity: 1;
+        }
+        .tooltip-code {
+            font-weight: bold;
+            color: #a8c0ff;
+            margin-bottom: 6px;
+            font-size: 1.1em;
+        }
+        .tooltip-description {
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        /* Scrollbar styling */
+        .occurrence-table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .occurrence-table-container {
+                max-height: 400px;
+            }
         }
         @media (max-width: 768px) {
             .controls {
@@ -354,12 +470,18 @@
 
         <div class="stats" id="stats"></div>
 
-        <div class="chart-container">
-            <canvas id="failCodeChart"></canvas>
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="chart-container">
+                <canvas id="failCodeChart"></canvas>
+            </div>
+            <div class="occurrence-table-container">
+                <h2>📋 All Fail Codes</h2>
+                <div class="occurrence-table" id="occurrenceTable"></div>
+            </div>
         </div>
 
         <div id="topPerformers" class="top-performers" style="display: none;">
-            <h2 style="padding: 30px 30px 0; color: #495057;">🏆 Top Performers by Fail Code Count</h2>
+            <h2>🏆 Top Performers by Fail Code Count</h2>
             <div id="performersList"></div>
         </div>
 
@@ -370,15 +492,21 @@
         </div>
     </div>
 
+    <!-- Tooltip element -->
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-code"></div>
+        <div class="tooltip-description"></div>
+    </div>
+
     <script>
         const FAIL_CODES = [
             'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10',
             'E11', 'E12', 'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20',
             'E23', 'E24', 'E25', 'E26', 'E27', 'E28', 'E29', 'E30', 'E31', 'E32',
             'E33', 'E34', 'E35', 'E36', 'E37', 'E38', 'E39', 'E40', 'E41', 'E42',
-            'E43', 'E44', 'E45', 'E46', 'E47', 'E48', 'E49', 'E50', 'E51', 'E52',
-            'E53', 'E54', 'E55', 'E56', 'E57', 'E58', 'E59', 'E60', 'E61', 'E62',
-            'E63', 'E64', 'E65', 'E66', 'E67', 'E68', 'E69', 'E70', 'EX1', 'EX2',
+            'E43', 'E44', 'E45', 'E46', 'E47', 'E48', 'E49', 'E50', 'E51', 'EX2',
+            'E52', 'E53', 'E54', 'E55', 'E56', 'E57', 'E58', 'E59', 'E60', 'E61',
+            'E62', 'E63', 'E64', 'E65', 'E66', 'E67', 'E68', 'E69', 'E70', 'EX1',
             'EX3', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'R17', 'R18',
             'R19', 'R20', 'R21', 'R22', 'R23', 'R24', 'R25', 'R26', 'R27', 'R28',
             'R29', 'R30', 'R31', 'R32', 'R33', 'R34', 'R35', 'R36', 'R37', 'R38',
@@ -386,8 +514,84 @@
             'R49', 'R50', 'R51', 'R52', 'R53', 'R54', 'RX1', 'RX2', 'RX3'
         ];
 
+        const FAIL_CODE_DESCRIPTIONS = {
+            'E1': 'Missed an A code on distribution equipment (DNO)',
+            'E2': 'Under sized cable installed for equipment / length of cable run',
+            'E3': 'Incorrect or no PPE worn',
+            'E4': 'Cable damaged when installed',
+            'E5': 'Incorrect type of cable installed',
+            'E6': 'Conductor only secured by one terminal screw',
+            'E7': 'Reverse Polarity (AC or DC) Provide notes',
+            'E8': 'Non IP rated consumer unit installed outside',
+            'E9': 'The enclosure does not protect to IP55',
+            'E10': 'Electrical certificate blank / not filled in',
+            'E11': '',
+            'E12': 'Terminals are over tightened, torque screwdriver not used',
+            'E13': 'Test results on the EIC are different to supplied photos',
+            'E14': 'Test result taken not suitable for install and/or are outside BS7671 limits',
+            'E15': 'Exposed Conductors (including un-plugged holes, both live and neutral and customer blocks)',
+            'E16': 'Loose terminations- greater than 360° rotation on any termination',
+            'E17': 'Engineer worked out of scope/Engineer not applying competence',
+            'E18': 'Signs of distress, over heating, burning, fire etc',
+            'E19': 'DC cable has no warning stickers',
+            'E20': 'Fire detection not fitted',
+            'EX1': 'Miscellaneous - supporting notes required',
+            'E22': 'Missed a B code on distribution equipment (DNO)',
+            'E23': 'Incorrect MCB, RCBO or RCD type',
+            'E24': 'Incorrect mA rating on RCD',
+            'E25': 'Incorrect ferrules or crimps fitted',
+            'E26': 'Fuse pull has not been completed in KF',
+            'E27': 'Incorrect size of tails installed or not used',
+            'E28': 'Plastic consumer unit fitted inside',
+            'E29': 'The enclosure does not protect to IP2X sides and bottom/IP4X top',
+            'E30': 'CT clamp installed in the incorrect location / not fitted',
+            'E31': '',
+            'E32': 'Fitted outside BS 7671 requirements (provide notes)',
+            'E33': 'Smoke alarms not interlinked',
+            'E34': 'No socket polarity plug test / only one performed',
+            'E35': '',
+            'E36': 'Extraneous bonding not installed/inadequate - provide notes',
+            'E37': 'Electrical certificate / MCS forms not complete',
+            'E38': 'Solar equipment not installed in correct location',
+            'E39': 'Testing on MFT using incorrect setting',
+            'E40': 'Solar equipment installed using incorrect fixings',
+            'E41': 'No lock-off kit used',
+            'E42': 'Not connected to the internet and not left in smart mode',
+            'E43': 'Not connected to customers app',
+            'E44': 'Not a clear explanation how the app and the system works',
+            'E45': 'Testing results different to recorded details but within limits',
+            'E46': 'Fire rated clips not used',
+            'E47': 'No glands installed',
+            'E48': 'Fire detection only fitted at battery location',
+            'E49': 'No photos taken',
+            'E50': 'Single insulation visible outside of enclosures',
+            'E51': 'Terminations not adequately tightened- rotation on any terminal screw between 180° and 360° (half turn)',
+            'EX2': 'Miscellaneous - provide notes',
+            'E52': 'Cable installed in incorrect zones',
+            'E53': 'Cable inadequately supported',
+            'E54': 'No sealant used',
+            'E55': 'DC cable run not stickered enough for length of run',
+            'E56': 'Missed a C code on distribution equipment (DNO)',
+            'E57': 'EIC / MCS forms not filled in correctly',
+            'E58': 'No polarity identification on tails / Grey tails used',
+            'E59': 'Not all signatures recorded',
+            'E60': 'Same photo of test load twice',
+            'E61': 'RCD testing completed on wrong setting (Type AC instead of A)',
+            'E62': 'Identification only used on tails',
+            'E63': 'Periodic and RCD test label missing',
+            'E64': '230 Volt label missing',
+            'E65': 'Safety labelling missing from inverter, storage battery or metering position',
+            'E66': 'Drain wire incorrectly terminated',
+            'E67': 'No signatures taken',
+            'E68': 'Missing Photos / missing information',
+            'E69': 'Photo taken but inadequate',
+            'E70': 'Incorrect glands installed with selected cable',
+            'EX3': 'Miscellaneous - provide notes'
+        };
+
         let allData = [];
         let chart = null;
+        const tooltip = document.getElementById('tooltip');
 
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
         document.getElementById('startDate').addEventListener('change', updateDashboard);
@@ -465,14 +669,14 @@
         function updateDashboard() {
             if (allData.length === 0) {
                 document.getElementById('noData').style.display = 'block';
-                document.querySelector('.chart-container').style.display = 'none';
+                document.getElementById('mainContent').style.display = 'none';
                 document.getElementById('stats').style.display = 'none';
                 document.getElementById('topPerformers').style.display = 'none';
                 return;
             }
 
             document.getElementById('noData').style.display = 'none';
-            document.querySelector('.chart-container').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'grid';
             document.getElementById('stats').style.display = 'grid';
 
             const startDate = document.getElementById('startDate').valueAsDate;
@@ -489,6 +693,7 @@
 
             updateStats(filtered, startDate, endDate);
             updateChart(filtered);
+            updateOccurrenceTable(filtered);
             updateTopPerformers(filtered);
         }
 
@@ -587,9 +792,32 @@
                         title: {
                             display: true,
                             text: 'Top 20 Fail Codes',
+                            color: 'rgba(255, 255, 255, 0.9)',
                             font: {
                                 size: 18,
                                 weight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 40, 0.95)',
+                            titleColor: '#a8c0ff',
+                            bodyColor: 'rgba(255, 255, 255, 0.9)',
+                            borderColor: 'rgba(127, 127, 213, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    return 'Count: ' + context.parsed.y;
+                                },
+                                afterLabel: function(context) {
+                                    const code = context.label;
+                                    const description = FAIL_CODE_DESCRIPTIONS[code];
+                                    return description ? '\n' + description : '';
+                                }
                             }
                         }
                     },
@@ -597,11 +825,58 @@
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                precision: 0
+                                precision: 0,
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
                             }
                         }
                     }
                 }
+            });
+        }
+
+        function updateOccurrenceTable(data) {
+            const failCodeCounts = {};
+            FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && FAIL_CODES.includes(code)) {
+                        failCodeCounts[code]++;
+                    }
+                }
+            });
+
+            const sortedCodes = FAIL_CODES
+                .map(code => ({ code, count: failCodeCounts[code] }))
+                .filter(item => item.count > 0)
+                .sort((a, b) => b.count - a.count);
+
+            const tableHTML = sortedCodes.map(item => `
+                <div class="occurrence-row" data-code="${item.code}">
+                    <div class="occurrence-code">${item.code}</div>
+                    <div class="occurrence-count">${item.count}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('occurrenceTable').innerHTML = tableHTML;
+
+            // Add event listeners for tooltips
+            document.querySelectorAll('.occurrence-row').forEach(row => {
+                row.addEventListener('mouseenter', showTooltip);
+                row.addEventListener('mousemove', moveTooltip);
+                row.addEventListener('mouseleave', hideTooltip);
             });
         }
 
@@ -643,7 +918,7 @@
                     .sort((a, b) => b[1] - a[1]);
 
                 const codesHTML = sortedCodes.map(([code, count]) => `
-                    <div class="fail-code-item">
+                    <div class="fail-code-item" data-code="${code}">
                         <div class="fail-code-name">${code}</div>
                         <div class="fail-code-count">${count}</div>
                     </div>
@@ -663,11 +938,52 @@
             }).join('');
 
             document.getElementById('performersList').innerHTML = performersHTML;
+
+            // Add event listeners for tooltips on fail code items
+            document.querySelectorAll('.fail-code-item').forEach(item => {
+                item.addEventListener('mouseenter', showTooltip);
+                item.addEventListener('mousemove', moveTooltip);
+                item.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        function showTooltip(e) {
+            const code = e.currentTarget.dataset.code;
+            const description = FAIL_CODE_DESCRIPTIONS[code];
+            
+            if (!description) return;
+
+            tooltip.querySelector('.tooltip-code').textContent = code;
+            tooltip.querySelector('.tooltip-description').textContent = description;
+            tooltip.classList.add('show');
+            
+            moveTooltip(e);
+        }
+
+        function moveTooltip(e) {
+            const tooltipRect = tooltip.getBoundingClientRect();
+            let left = e.pageX + 15;
+            let top = e.pageY + 15;
+
+            // Prevent tooltip from going off screen
+            if (left + tooltipRect.width > window.innerWidth) {
+                left = e.pageX - tooltipRect.width - 15;
+            }
+            if (top + tooltipRect.height > window.innerHeight + window.scrollY) {
+                top = e.pageY - tooltipRect.height - 15;
+            }
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('show');
         }
 
         // Initialize with no data message
         document.getElementById('noData').style.display = 'block';
-        document.querySelector('.chart-container').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
         document.getElementById('stats').style.display = 'none';
     </script>
 </body>
