@@ -3,331 +3,648 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SharePoint Excel Reader</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <title>Dashboard | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
         }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #0078d4;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .warning-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .success-box {
-            background: #d4edda;
-            border-left: 4px solid #28a745;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin: 20px 0;
-            border-bottom: 2px solid #ddd;
-        }
-        .tab {
-            padding: 10px 20px;
-            background: #f8f9fa;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-            border-radius: 4px 4px 0 0;
-            transition: all 0.2s;
-        }
-        .tab:hover {
-            background: #e9ecef;
-        }
-        .tab.active {
-            background: #0078d4;
-            color: white;
-        }
-        .tab-content {
-            display: none;
-            padding: 20px 0;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .embed-container {
-            position: relative;
-            width: 100%;
-            height: 600px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        .embed-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-        input, button {
-            padding: 10px;
-            margin: 5px 0;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            width: 100%;
+       
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
-        button {
-            background: #0078d4;
-            color: white;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 16px;
+       
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
         }
-        button:hover {
-            background: #106ebe;
+       
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
         }
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
+       
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
         }
-        #status {
-            margin: 15px 0;
-            padding: 10px;
-            border-radius: 4px;
-            display: none;
+       
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
         }
-        #status.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+       
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
         }
-        #status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+       
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-        #status.info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
+       
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
-        table {
+       
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+       
+        .back-btn {
+            background: var(--dark-light);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+       
+        .back-btn:hover {
+            background: var(--dark-lighter);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+       
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+       
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+       
+        .section {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+       
+        .section:hover {
+            border-color: var(--primary);
+        }
+       
+        .section h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+       
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+       
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-dim);
+        }
+       
+        input, select {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: left;
-            min-width: 100px;
+       
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
         }
-        th {
-            background: #0078d4;
+       
+        .btn {
+            padding: 0.8rem 1.8rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+       
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
+        }
+       
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+       
+        #timeline-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            display: block;
+        }
+       
+        #timeline-table th, #timeline-table td {
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid var(--dark-lighter);
+            min-width: 120px;
+        }
+       
+        #timeline-table th {
+            background: var(--dark-lighter);
+            color: var(--accent);
             position: sticky;
             top: 0;
         }
-        tr:nth-child(even) {
-            background: #f8f9fa;
+       
+        #timeline-table tbody tr th {
+            background: var(--dark-lighter);
+            color: var(--text);
+            text-align: left;
+            position: sticky;
+            left: 0;
         }
-        tr:hover {
-            background: #e9ecef;
+       
+        .job-card {
+            background: var(--dark-light);
+            padding: 0.5rem;
+            margin: 0.5rem 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
-        code {
-            background: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: monospace;
-            font-size: 13px;
+       
+        .job-card:hover {
+            background: var(--primary-dark);
         }
-        .download-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
+       
+        .job-card.complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+       
+        .job-card.aborted, .job-card.cancelled {
+            background: var(--error);
+            color: white;
+        }
+       
+        .charts-container {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+       
+        .chart-wrapper {
+            flex: 1;
+            min-width: 300px;
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 12px;
+        }
+       
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+       
+        .modal.show {
+            display: flex;
+        }
+       
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 400px;
+            width: 90%;
+            border: 2px solid var(--primary);
+        }
+       
+        .modal h3 {
+            font-family: 'Syne', sans-serif;
+            margin-bottom: 1rem;
+        }
+       
+        .status-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+       
+        .status-message {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 1001;
+            display: none;
+        }
+       
+        .status-message.show {
+            display: block;
+        }
+       
+        .status-message.success {
+            background: var(--success);
+            color: var(--dark);
+        }
+       
+        .status-message.error {
+            background: var(--error);
+            color: white;
+        }
+       
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .charts-container { flex-direction: column; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Solar Jobs - SharePoint Excel Viewer</h1>
-        
-        <div class="success-box">
-            <strong>✅ Embed View Active!</strong> Your Excel file is now embedded below. You can interact with it directly, or upload the file to see it in a data table format.
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <a href="upload.html" class="back-btn">← To Upload</a>
+            </div>
+            <h1>Solar Installs Dashboard</h1>
+            <p class="subtitle">Track teams, jobs, and weekly stats</p>
+        </header>
+
+        <!-- Quick Entry Section -->
+        <div class="section" id="quick-entry">
+            <h2>Quick Job Entry</h2>
+            <form id="job-form">
+                <div class="form-group">
+                    <label for="team">Team</label>
+                    <select id="team" required>
+                        <option value="">Select Team</option>
+                        <!-- Options populated in JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="postcode">Postcode</label>
+                    <input type="text" id="postcode" required>
+                </div>
+                <div class="form-group">
+                    <label for="job-type">Job Type</label>
+                    <select id="job-type" required>
+                        <option value="">Select Job Type</option>
+                        <option value="Solar Install">Solar Install</option>
+                        <option value="Battery">Battery</option>
+                        <option value="Survey">Survey</option>
+                        <option value="Revisit">Revisit</option>
+                        <option value="Revisit Chargeable">Revisit Chargeable</option>
+                        <option value="Aftercare">Aftercare</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="days">Days</label>
+                    <select id="days" required>
+                        <option value="">Select Days</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Job</button>
+            </form>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('embed')">📄 Embedded View</button>
-            <button class="tab" onclick="switchTab('upload')">📊 Data Table View</button>
-        </div>
-
-        <div id="embed-tab" class="tab-content active">
-            <div class="info-box">
-                <strong>Interactive Excel View:</strong> This is your live Excel file from SharePoint. You can view and interact with it directly.
-            </div>
-            
-            <div class="embed-container">
-                <iframe 
-                    src="https://nextgenerationutilities.sharepoint.com/sites/NextGenerationUtilities/_layouts/15/Doc.aspx?sourcedoc={65130780-85f4-4e85-b874-f99cc7148108}&action=embedview&wdAllowInteractivity=False&wdHideGridlines=True&wdHideHeaders=True&wdDownloadButton=True&wdInConfigurator=True"
-                    scrolling="yes">
-                </iframe>
-            </div>
-
-            <div class="warning-box" style="margin-top: 20px;">
-                <strong>Note:</strong> If the embedded view shows a login screen, it means you need to be signed into SharePoint. The data table view below doesn't require authentication if you upload the file manually.
+        <!-- Timeline Section -->
+        <div class="section" id="timeline">
+            <h2>Jobs Timeline</h2>
+            <div style="overflow-x: auto;">
+                <table id="timeline-table">
+                    <thead id="timeline-header"></thead>
+                    <tbody id="timeline-body"></tbody>
+                </table>
             </div>
         </div>
 
-        <div id="upload-tab" class="tab-content">
-            <div class="info-box">
-                <strong>Data Table View:</strong> Upload your Excel file to see it as a searchable, sortable table.
+        <!-- Weekly Stats Section -->
+        <div class="section" id="weekly-stats">
+            <h2>Weekly Job Type Stats</h2>
+            <div class="charts-container">
+                <div class="chart-wrapper">
+                    <h3>Previous Week</h3>
+                    <canvas id="prev-week-chart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>Current Week</h3>
+                    <canvas id="current-week-chart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>Next Week</h3>
+                    <canvas id="next-week-chart"></canvas>
+                </div>
             </div>
-
-            <div class="download-section">
-                <h3>How to use:</h3>
-                <ol style="margin: 10px 0; padding-left: 20px;">
-                    <li>Download "Solar Jobs.xlsx" from SharePoint</li>
-                    <li>Upload it using the button below</li>
-                    <li>View and interact with the data in table format</li>
-                </ol>
-                
-                <input type="file" id="fileInput" accept=".xlsx,.xls">
-                <button id="uploadBtn">📂 Process Excel File</button>
-            </div>
-
-            <div id="status"></div>
-            <div id="dataDisplay"></div>
         </div>
     </div>
 
-    <script>
-        const uploadBtn = document.getElementById('uploadBtn');
-        const fileInput = document.getElementById('fileInput');
-        const statusDiv = document.getElementById('status');
-        const dataDisplay = document.getElementById('dataDisplay');
+    <!-- Status Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <h3>Update Job Status</h3>
+            <div class="status-buttons">
+                <button class="btn btn-primary" data-status="complete">Complete</button>
+                <button class="btn btn-primary" data-status="aborted">Aborted</button>
+                <button class="btn btn-primary" data-status="cancelled">Cancelled</button>
+                <button class="btn btn-secondary" onclick="closeStatusModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-        function switchTab(tabName) {
-            // Update tabs
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            if (tabName === 'embed') {
-                document.querySelector('.tab:nth-child(1)').classList.add('active');
-                document.getElementById('embed-tab').classList.add('active');
-            } else {
-                document.querySelector('.tab:nth-child(2)').classList.add('active');
-                document.getElementById('upload-tab').classList.add('active');
-            }
-        }
+    <!-- Status Message -->
+    <div class="status-message" id="status-message"></div>
 
-        uploadBtn.addEventListener('click', () => {
-            const file = fileInput.files[0];
-            if (!file) {
-                showStatus('❌ Please select a file first', 'error');
-                return;
-            }
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-            showStatus('📊 Processing file...', 'info');
-            const reader = new FileReader();
-            
-            reader.onload = (e) => {
-                try {
-                    parseAndDisplayExcel(e.target.result);
-                    showStatus('✅ File processed successfully!', 'success');
-                } catch (error) {
-                    showStatus(`❌ Error processing file: ${error.message}`, 'error');
-                    console.error(error);
-                }
-            };
-            
-            reader.onerror = () => {
-                showStatus('❌ Error reading file', 'error');
-            };
-            
-            reader.readAsArrayBuffer(file);
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Global variables
+        let jobs = [];
+        const teams = Array.from({length: 16}, (_, i) => `NGU${i+1}`);
+        const jobTypes = ['Solar Install', 'Battery', 'Survey', 'Revisit', 'Revisit Chargeable', 'Aftercare'];
+        let selectedJobId = null;
+
+        // Populate team options
+        const teamSelect = document.getElementById('team');
+        teams.forEach(team => {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            teamSelect.appendChild(option);
         });
 
-        function parseAndDisplayExcel(arrayBuffer) {
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            
-            // Get first sheet
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        // Add job form
+        const jobForm = document.getElementById('job-form');
+        jobForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const job = {
+                Team: document.getElementById('team').value,
+                Postcode: document.getElementById('postcode').value,
+                'Job Type': document.getElementById('job-type').value,
+                'Install Date': document.getElementById('date').value,
+                'Job Length': parseInt(document.getElementById('days').value),
+                Status: 'pending',
+                uploadDate: new Date().toISOString()
+            };
 
-            if (!jsonData || jsonData.length === 0) {
-                dataDisplay.innerHTML = '<p style="color: #666; padding: 20px;">No data found in the Excel file.</p>';
-                return;
+            try {
+                await addDoc(collection(db, 'jobs'), job);
+                showStatus('Job added successfully!', 'success');
+                jobForm.reset();
+            } catch (error) {
+                showStatus('Error adding job: ' + error.message, 'error');
+            }
+        });
+
+        // Fetch and listen to jobs
+        onSnapshot(collection(db, 'jobs'), (snapshot) => {
+            jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            buildTimeline();
+            updateCharts();
+        });
+
+        // Build timeline
+        function buildTimeline() {
+            const today = new Date();
+            const startDate = new Date(today);
+            startDate.setDate(today.getDate() - 7); // 7 days before
+            const endDate = new Date(today);
+            endDate.setDate(today.getDate() + 7); // 7 days after
+
+            const dates = [];
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                dates.push(new Date(d).toISOString().split('T')[0]);
             }
 
-            displayData(jsonData, firstSheetName, workbook.SheetNames);
-        }
-
-        function displayData(data, currentSheet, allSheets) {
-            const headers = Object.keys(data[0]);
-            
-            let html = '<div style="background: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">';
-            html += `<h3 style="margin-top: 0;">📋 Sheet: ${currentSheet}</h3>`;
-            html += `<p style="color: #666; margin: 5px 0;"><strong>Total rows:</strong> ${data.length}</p>`;
-            html += `<p style="color: #666; margin: 5px 0;"><strong>Columns:</strong> ${headers.length}</p>`;
-            html += '</div>';
-            
-            html += '<div style="overflow-x: auto;">';
-            html += '<table><thead><tr>';
-            
-            headers.forEach(header => {
-                html += `<th>${header}</th>`;
+            // Header
+            let headerHtml = '<tr><th>Team</th>';
+            dates.forEach(date => {
+                headerHtml += `<th>${formatDate(date)}</th>`;
             });
-            html += '</tr></thead><tbody>';
+            headerHtml += '</tr>';
+            document.getElementById('timeline-header').innerHTML = headerHtml;
 
-            data.forEach((row, index) => {
-                html += '<tr>';
-                headers.forEach(header => {
-                    const value = row[header];
-                    html += `<td>${value !== null && value !== undefined ? value : ''}</td>`;
+            // Body
+            let bodyHtml = '';
+            teams.forEach(team => {
+                bodyHtml += `<tr><th>${team}</th>`;
+                dates.forEach(date => {
+                    const cellJobs = getJobsForCell(team, date);
+                    let cellHtml = '';
+                    cellJobs.forEach(job => {
+                        cellHtml += `<div class="job-card ${job.Status}" onclick="openStatusModal('${job.id}')">
+                            ${job['Job Type']} (${job.Postcode}) - ${job['Job Length']}d
+                        </div>`;
+                    });
+                    bodyHtml += `<td>${cellHtml}</td>`;
                 });
-                html += '</tr>';
+                bodyHtml += '</tr>';
             });
-
-            html += '</tbody></table>';
-            html += '</div>';
-            
-            dataDisplay.innerHTML = html;
+            document.getElementById('timeline-body').innerHTML = bodyHtml;
         }
 
-        function showStatus(message, type) {
-            statusDiv.textContent = message;
-            statusDiv.className = type;
-            statusDiv.style.display = 'block';
+        function getJobsForCell(team, date) {
+            return jobs.filter(job => {
+                if (job.Team !== team || job.Status === 'cancelled') return false;
+                const jobStart = new Date(job['Install Date']);
+                const jobEnd = new Date(jobStart);
+                jobEnd.setDate(jobStart.getDate() + job['Job Length'] - 1);
+                const cellDate = new Date(date);
+                return cellDate >= jobStart && cellDate <= jobEnd;
+            });
         }
 
-        // Auto-hide status after 5 seconds
-        function autoHideStatus() {
-            setTimeout(() => {
-                if (statusDiv.className === 'success' || statusDiv.className === 'info') {
-                    statusDiv.style.display = 'none';
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        // Update charts
+        let charts = {};
+        function updateCharts() {
+            const weeks = getWeeks();
+            ['prev', 'current', 'next'].forEach((weekKey, index) => {
+                const counts = countJobTypes(weeks[weekKey].start, weeks[weekKey].end);
+                const data = {
+                    labels: jobTypes,
+                    datasets: [{
+                        label: `${weekKey.charAt(0).toUpperCase() + weekKey.slice(1)} Week`,
+                        data: jobTypes.map(type => counts[type] || 0),
+                        backgroundColor: 'rgba(255, 107, 53, 0.6)'
+                    }]
+                };
+                const config = {
+                    type: 'bar',
+                    data: data,
+                    options: { scales: { y: { beginAtZero: true } } }
+                };
+                const canvasId = `${weekKey}-week-chart`;
+                if (charts[canvasId]) {
+                    charts[canvasId].data = data;
+                    charts[canvasId].update();
+                } else {
+                    charts[canvasId] = new Chart(document.getElementById(canvasId), config);
                 }
-            }, 5000);
+            });
+        }
+
+        function getWeeks() {
+            const today = new Date();
+            const currentStart = new Date(today);
+            currentStart.setDate(today.getDate() - today.getDay() + 1); // Monday
+            const currentEnd = new Date(currentStart);
+            currentEnd.setDate(currentStart.getDate() + 6);
+
+            const prevStart = new Date(currentStart);
+            prevStart.setDate(currentStart.getDate() - 7);
+            const prevEnd = new Date(prevStart);
+            prevEnd.setDate(prevStart.getDate() + 6);
+
+            const nextStart = new Date(currentEnd);
+            nextStart.setDate(currentEnd.getDate() + 1);
+            const nextEnd = new Date(nextStart);
+            nextEnd.setDate(nextStart.getDate() + 6);
+
+            return {
+                prev: { start: prevStart.toISOString().split('T')[0], end: prevEnd.toISOString().split('T')[0] },
+                current: { start: currentStart.toISOString().split('T')[0], end: currentEnd.toISOString().split('T')[0] },
+                next: { start: nextStart.toISOString().split('T')[0], end: nextEnd.toISOString().split('T')[0] }
+            };
+        }
+
+        function countJobTypes(start, end) {
+            const counts = {};
+            jobs.forEach(job => {
+                const jobDate = job['Install Date'];
+                if (jobDate >= start && jobDate <= end && job.Status !== 'cancelled') {
+                    const type = job['Job Type'];
+                    counts[type] = (counts[type] || 0) + 1;
+                }
+            });
+            return counts;
+        }
+
+        // Status modal
+        function openStatusModal(jobId) {
+            selectedJobId = jobId;
+            document.getElementById('status-modal').classList.add('show');
+        }
+
+        function closeStatusModal() {
+            document.getElementById('status-modal').classList.remove('show');
+            selectedJobId = null;
+        }
+
+        const statusButtons = document.querySelectorAll('.status-buttons button[data-status]');
+        statusButtons.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const status = btn.dataset.status;
+                try {
+                    await updateDoc(doc(db, 'jobs', selectedJobId), { Status: status });
+                    showStatus('Status updated!', 'success');
+                } catch (error) {
+                    showStatus('Error updating status: ' + error.message, 'error');
+                }
+                closeStatusModal();
+            });
+        });
+
+        // Utility
+        function showStatus(message, type) {
+            const status = document.getElementById('status-message');
+            status.textContent = message;
+            status.className = `status-message ${type} show`;
+            setTimeout(() => status.classList.remove('show'), 5000);
         }
     </script>
 </body>
