@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharePoint Excel Reader</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #0078d4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .config-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #106ebe;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin: 15px 0;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        #status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        #status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        #status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            overflow-x: auto;
+            display: block;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            min-width: 100px;
+        }
+        th {
+            background: #0078d4;
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .method-option {
+            background: white;
+            border: 2px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .method-option:hover {
+            border-color: #0078d4;
+            box-shadow: 0 2px 8px rgba(0,120,212,0.2);
+        }
+        .method-option.selected {
+            border-color: #0078d4;
+            background: #f0f7ff;
+        }
+        .method-content {
+            display: none;
+            margin-top: 15px;
+        }
+        .method-option.selected .method-content {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 SharePoint Excel Reader</h1>
+        
+        <div class="info-box">
+            <strong>Your File:</strong> Solar Jobs.xlsx<br>
+            <strong>Site:</strong> Next Generation Utilities
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ Important:</strong> Due to SharePoint security, this will only work if:
+            <ul style="margin: 10px 0;">
+                <li>You're already logged into SharePoint in this browser, OR</li>
+                <li>The file is shared publicly</li>
+            </ul>
+            If it doesn't work, try <strong>Method 2</strong> below (manual upload).
+        </div>
+
+        <h3>Choose a Method:</h3>
+
+        <div class="method-option selected" id="method1-option">
+            <h4 style="margin-top: 0;">Method 1: Direct Link (Try This First)</h4>
+            <p>Attempt to download directly from SharePoint using your link.</p>
+            <div class="method-content">
+                <button id="fetchBtn">📥 Load Excel from SharePoint</button>
+            </div>
+        </div>
+
+        <div class="method-option" id="method2-option">
+            <h4 style="margin-top: 0;">Method 2: Manual Upload (Backup Method)</h4>
+            <p>Download the file from SharePoint, then upload it here.</p>
+            <div class="method-content">
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                <button id="uploadBtn">📂 Process Uploaded File</button>
+            </div>
+        </div>
+
+        <div id="status"></div>
+        
+        <div id="dataDisplay"></div>
+    </div>
+
+    <script>
+        // Original SharePoint link
+        const sharePointLink = 'https://nextgenerationutilities.sharepoint.com/:x:/r/sites/NextGenerationUtilities/_layouts/15/Doc.aspx?sourcedoc=%7B65130780-85F4-4E85-B874-F99CC7148108%7D&file=Solar%20Jobs.xlsx&action=default&mobileredirect=true';
+        
+        // Convert to download link
+        const documentId = '65130780-85F4-4E85-B874-F99CC7148108';
+        const downloadUrl = `https://nextgenerationutilities.sharepoint.com/sites/NextGenerationUtilities/_layouts/15/download.aspx?UniqueId=${documentId}`;
+
+        const fetchBtn = document.getElementById('fetchBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInput = document.getElementById('fileInput');
+        const statusDiv = document.getElementById('status');
+        const dataDisplay = document.getElementById('dataDisplay');
+
+        // Method selection
+        document.getElementById('method1-option').addEventListener('click', () => {
+            document.getElementById('method1-option').classList.add('selected');
+            document.getElementById('method2-option').classList.remove('selected');
+        });
+
+        document.getElementById('method2-option').addEventListener('click', () => {
+            document.getElementById('method2-option').classList.add('selected');
+            document.getElementById('method1-option').classList.remove('selected');
+        });
+
+        // Method 1: Direct fetch
+        fetchBtn.addEventListener('click', async () => {
+            try {
+                showStatus('Attempting to download from SharePoint...', 'info');
+                
+                const response = await fetch(downloadUrl, {
+                    credentials: 'include',
+                    mode: 'cors'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to download: ${response.status}. The file may require authentication or different permissions.`);
+                }
+
+                const blob = await response.blob();
+                const arrayBuffer = await blob.arrayBuffer();
+                
+                parseAndDisplayExcel(arrayBuffer);
+                showStatus('✅ Data loaded successfully from SharePoint!', 'success');
+            } catch (error) {
+                showStatus(`❌ Direct download failed: ${error.message}. Please try Method 2 (manual upload) instead.`, 'error');
+                console.error(error);
+                
+                // Auto-switch to method 2
+                setTimeout(() => {
+                    document.getElementById('method2-option').click();
+                }, 2000);
+            }
+        });
+
+        // Method 2: Manual upload
+        uploadBtn.addEventListener('click', () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                showStatus('Please select a file first', 'error');
+                return;
+            }
+
+            showStatus('Processing file...', 'info');
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                try {
+                    parseAndDisplayExcel(e.target.result);
+                    showStatus('✅ File processed successfully!', 'success');
+                } catch (error) {
+                    showStatus(`❌ Error processing file: ${error.message}`, 'error');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        });
+
+        function parseAndDisplayExcel(arrayBuffer) {
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            
+            // Get first sheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+            if (!jsonData || jsonData.length === 0) {
+                dataDisplay.innerHTML = '<p style="color: #666;">No data found in the Excel file.</p>';
+                return;
+            }
+
+            displayData(jsonData, firstSheetName);
+        }
+
+        function displayData(data, sheetName) {
+            const headers = Object.keys(data[0]);
+            let html = `<h3>Sheet: ${sheetName}</h3>`;
+            html += `<p style="color: #666;">Total rows: ${data.length}</p>`;
+            html += '<table><thead><tr>';
+            
+            headers.forEach(header => {
+                html += `<th>${header}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+
+            data.forEach(row => {
+                html += '<tr>';
+                headers.forEach(header => {
+                    const value = row[header];
+                    html += `<td>${value !== null && value !== undefined ? value : ''}</td>`;
+                });
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            dataDisplay.innerHTML = html;
+        }
+
+        function showStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = type;
+            statusDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
