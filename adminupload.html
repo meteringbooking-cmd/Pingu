@@ -159,7 +159,7 @@
             margin-top: 2.5rem;
         }
         .preview-table-wrapper {
-            max-height: 360px;
+            max-height: 400px;
             overflow-y: auto;
             border-radius: 8px;
             border: 1px solid var(--dark-lighter);
@@ -183,6 +183,12 @@
             top: 0;
             z-index: 1;
             font-weight: 600;
+        }
+        .preview-table th small {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 0.3rem;
         }
         .status {
             padding: 1rem 1.5rem;
@@ -270,7 +276,7 @@
         <!-- Column Mapping Section -->
         <div id="mappingSection" class="mapping-section hidden">
             <h3 style="margin-bottom: 1.2rem; color: var(--accent);">Map CSV Columns to Database Fields</h3>
-            <p style="color: var(--text-dim); margin-bottom: 1.5rem;">Match each required field to the correct column in your CSV file. All required fields must be assigned.</p>
+            <p style="color: var(--text-dim); margin-bottom: 1.5rem;">Match each required field to the correct column in your CSV. All required fields must be assigned before preview/upload.</p>
             <div id="mappingGrid" class="mapping-grid"></div>
             <div style="margin-top: 1.5rem; text-align: center;">
                 <button id="confirmMappingBtn" class="btn btn-primary" disabled>Confirm Mapping & Continue to Preview</button>
@@ -327,9 +333,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // ────────────────────────────────────────────────
-    // Required fields in database
-    // ────────────────────────────────────────────────
+    // Required fields (must be mapped)
     const requiredFields = [
         "Job Type",
         "Job Number",
@@ -340,13 +344,14 @@
         "Days",
         "Panel No.",
         "Status Update",
+        "PO",
         "Lead",
         "Team Number"
     ];
 
-    let csvData = [];           // Raw parsed rows (original column names)
-    let csvHeaders = [];        // Original CSV headers
-    let columnMapping = {};     // dbField → csvHeader (set by user)
+    let csvData = [];           // raw rows with original column names
+    let csvHeaders = [];        // original CSV column names
+    let columnMapping = {};     // dbField → csvHeader (after user confirms)
 
     const dropZone          = document.getElementById('dropZone');
     const fileInput         = document.getElementById('fileInput');
@@ -358,10 +363,10 @@
     const mappingGrid       = document.getElementById('mappingGrid');
     const confirmMappingBtn = document.getElementById('confirmMappingBtn');
 
-    // ─── File Selection / Drag & Drop ────────────────────────
+    // Drag & drop / click to select
     dropZone.addEventListener('click', () => fileInput.click());
 
-    fileInput.addEventListener('change', (e) => {
+    fileInput.addEventListener('change', e => {
         const file = e.target.files[0];
         if (file) handleFile(file);
     });
@@ -382,11 +387,8 @@
 
     dropZone.addEventListener('drop', e => {
         const file = e.dataTransfer.files[0];
-        if (file && file.type === 'text/csv') {
-            handleFile(file);
-        } else {
-            showStatus('Please drop a valid .csv file', 'error');
-        }
+        if (file && file.type === 'text/csv') handleFile(file);
+        else showStatus('Please drop a valid .csv file', 'error');
     });
 
     function handleFile(file) {
@@ -395,44 +397,40 @@
         document.getElementById('fileInfo').style.display = 'block';
 
         const reader = new FileReader();
-        reader.onload = (e) => parseCSV(e.target.result);
+        reader.onload = e => parseCSV(e.target.result);
         reader.readAsText(file);
     }
 
-    // ─── Parse CSV & Show Mapping Interface ──────────────────
+    // Parse CSV → detect headers → show mapping UI
     function parseCSV(csvText) {
         csvData = [];
         const lines = csvText.trim().split('\n');
 
         if (lines.length < 1) {
-            showStatus('The file appears to be empty', 'error');
+            showStatus('File appears empty', 'error');
             return;
         }
 
-        // Headers
         csvHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
 
-        // Data rows
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
             const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
             const row = {};
-            csvHeaders.forEach((header, idx) => {
-                row[header] = values[idx] || '';
-            });
+            csvHeaders.forEach((h, idx) => { row[h] = values[idx] || ''; });
             csvData.push(row);
         }
 
         if (csvData.length === 0) {
-            showStatus('No valid data rows found in CSV', 'error');
+            showStatus('No valid rows found', 'error');
             return;
         }
 
-        showStatus(`Detected ${csvData.length} rows and ${csvHeaders.length} columns`, 'success');
+        showStatus(`Detected ${csvData.length} rows • ${csvHeaders.length} columns`, 'success');
         showMappingInterface();
     }
 
-    // ─── Build mapping UI with auto-suggestions ──────────────
+    // Build mapping UI
     function showMappingInterface() {
         mappingGrid.innerHTML = '';
         mappingSection.classList.remove('hidden');
@@ -443,9 +441,7 @@
             const div = document.createElement('div');
             div.className = 'mapping-item';
             div.innerHTML = `
-                <label class="mapping-label required">
-                    ${dbField}
-                </label>
+                <label class="mapping-label required">${dbField}</label>
                 <select class="mapping-select" data-field="${dbField}">
                     <option value="">-- Select CSV column --</option>
                     ${csvHeaders.map(h => `<option value="${h}">${h}</option>`).join('')}
@@ -454,57 +450,60 @@
             mappingGrid.appendChild(div);
         });
 
-        // Auto-suggest best matches (case-insensitive, substring)
-        document.querySelectorAll('.mapping-select').forEach(select => {
-            const fieldLower = select.dataset.field.toLowerCase().replace(/\s+/g, '');
-            const bestMatch = csvHeaders.find(h => {
+        // Auto-suggest matches
+        document.querySelectorAll('.mapping-select').forEach(sel => {
+            const field = sel.dataset.field.toLowerCase().replace(/\s+/g, '');
+            const match = csvHeaders.find(h => {
                 const hLower = h.toLowerCase().replace(/\s+/g, '');
-                return hLower === fieldLower || hLower.includes(fieldLower) || fieldLower.includes(hLower);
+                return hLower.includes(field) || field.includes(hLower);
             });
-            if (bestMatch) select.value = bestMatch;
+            if (match) sel.value = match;
         });
 
-        // Check if all required fields are mapped
-        const checkCanConfirm = () => {
-            const unmapped = requiredFields.filter(f => {
-                const sel = document.querySelector(`select[data-field="${f}"]`);
-                return !sel || !sel.value;
+        // Enable confirm button only when all required are mapped
+        const check = () => {
+            const unmapped = requiredFields.some(f => {
+                const s = document.querySelector(`select[data-field="${f}"]`);
+                return !s || !s.value;
             });
-            confirmMappingBtn.disabled = unmapped.length > 0;
+            confirmMappingBtn.disabled = unmapped;
         };
 
-        document.querySelectorAll('.mapping-select').forEach(s => s.addEventListener('change', checkCanConfirm));
-        checkCanConfirm();
+        document.querySelectorAll('.mapping-select').forEach(s => s.addEventListener('change', check));
+        check();
     }
 
-    // ─── Confirm mapping → enable preview/upload ─────────────
+    // Confirm mapping → hide mapping → enable preview
     confirmMappingBtn.addEventListener('click', () => {
         columnMapping = {};
-        document.querySelectorAll('.mapping-select').forEach(select => {
-            if (select.value) {
-                columnMapping[select.dataset.field] = select.value;
-            }
+        document.querySelectorAll('.mapping-select').forEach(s => {
+            if (s.value) columnMapping[s.dataset.field] = s.value;
         });
 
         mappingSection.classList.add('hidden');
-        showStatus('Column mapping confirmed — you can now preview & upload', 'success');
+        showStatus('Mapping confirmed — preview now shows mapped values', 'success');
         previewBtn.disabled = false;
     });
 
-    // ─── Preview using mapped columns ────────────────────────
+    // Preview: show ONLY mapped fields with correct values
     previewBtn.addEventListener('click', () => {
+        if (Object.keys(columnMapping).length < requiredFields.length) {
+            showStatus('Please map all required fields first', 'error');
+            return;
+        }
+
         const thead = document.querySelector('#previewTable thead');
         const tbody = document.querySelector('#previewTable tbody');
 
         thead.innerHTML = '';
         tbody.innerHTML = '';
 
-        // Header row with mapping info
+        // Header row
         const headerRow = document.createElement('tr');
         requiredFields.forEach(field => {
             const csvCol = columnMapping[field] || '(not mapped)';
             const th = document.createElement('th');
-            th.innerHTML = `${field}<br><small style="color:var(--text-dim);">← ${csvCol}</small>`;
+            th.innerHTML = `${field}<br><small>← ${csvCol}</small>`;
             headerRow.appendChild(th);
         });
         thead.appendChild(headerRow);
@@ -526,10 +525,10 @@
         uploadBtn.disabled = false;
     });
 
-    // ─── Upload using mapped columns ─────────────────────────
+    // Upload: send only mapped fields with correct values
     uploadBtn.addEventListener('click', async () => {
-        if (csvData.length === 0 || Object.keys(columnMapping).length < requiredFields.length) {
-            showStatus('Please map all required columns first', 'error');
+        if (Object.keys(columnMapping).length < requiredFields.length) {
+            showStatus('Mapping incomplete — cannot upload', 'error');
             return;
         }
 
@@ -547,18 +546,17 @@
                     "status": (row[columnMapping["Status Update"]] || "pending").toLowerCase()
                 };
 
-                // Map only fields that were assigned
-                Object.keys(columnMapping).forEach(dbField => {
-                    const csvCol = columnMapping[dbField];
-                    if (csvCol && row[csvCol] !== undefined) {
-                        docData[dbField] = row[csvCol];
+                requiredFields.forEach(field => {
+                    const csvCol = columnMapping[field];
+                    if (csvCol && row[csvCol] !== undefined && row[csvCol] !== '') {
+                        docData[field] = row[csvCol];
                     }
                 });
 
                 await addDoc(collection(db, "Solar-jobs"), docData);
                 success++;
             } catch (err) {
-                console.error("Upload error:", err);
+                console.error(err);
                 failed++;
             }
         }
@@ -567,12 +565,12 @@
             statusEl.textContent = `Successfully uploaded ${success} jobs!`;
             statusEl.className = 'status success';
         } else {
-            statusEl.textContent = `Uploaded ${success} jobs • ${failed} failed`;
+            statusEl.textContent = `Uploaded ${success} • ${failed} failed`;
             statusEl.className = 'status error';
         }
     });
 
-    // ─── Reset everything ────────────────────────────────────
+    // Reset
     clearBtn.addEventListener('click', () => {
         fileInput.value = '';
         document.getElementById('fileInfo').style.display = 'none';
