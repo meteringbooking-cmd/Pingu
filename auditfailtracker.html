@@ -164,6 +164,72 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
         }
+
+        /* Fail Code Filter */
+        .fail-code-filter {
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .fail-code-filter h3 {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-actions button {
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .checkbox-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin: 0;
+            padding: 0;
+        }
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-transform: none;
+            letter-spacing: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -400,7 +466,7 @@
             padding: 12px 16px;
             border-radius: 10px;
             font-size: 0.9em;
-            max-width: 300px;
+            max-width: 350px;
             z-index: 1000;
             pointer-events: none;
             opacity: 0;
@@ -420,21 +486,52 @@
         .tooltip-description {
             line-height: 1.5;
             color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(127, 127, 213, 0.3);
+        }
+        .tooltip-teams {
+            margin-top: 10px;
+        }
+        .tooltip-teams-title {
+            font-weight: 600;
+            color: #a8c0ff;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .team-list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9em;
+        }
+        .team-list-item .team-name {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .team-list-item .team-count {
+            color: #a8c0ff;
+            font-weight: 600;
+            margin-left: 10px;
         }
         
         /* Scrollbar styling */
-        .occurrence-table-container::-webkit-scrollbar {
+        .occurrence-table-container::-webkit-scrollbar,
+        .checkbox-grid::-webkit-scrollbar {
             width: 8px;
         }
-        .occurrence-table-container::-webkit-scrollbar-track {
+        .occurrence-table-container::-webkit-scrollbar-track,
+        .checkbox-grid::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
         }
-        .occurrence-table-container::-webkit-scrollbar-thumb {
+        .occurrence-table-container::-webkit-scrollbar-thumb,
+        .checkbox-grid::-webkit-scrollbar-thumb {
             background: rgba(102, 126, 234, 0.5);
             border-radius: 10px;
         }
-        .occurrence-table-container::-webkit-scrollbar-thumb:hover {
+        .occurrence-table-container::-webkit-scrollbar-thumb:hover,
+        .checkbox-grid::-webkit-scrollbar-thumb:hover {
             background: rgba(102, 126, 234, 0.7);
         }
         
@@ -492,6 +589,18 @@
             </div>
         </div>
 
+        <div class="fail-code-filter" id="failCodeFilter" style="display: none;">
+            <h3>🔍 Filter Fail Codes</h3>
+            <div class="filter-actions">
+                <button onclick="selectAllCodes()">Select All</button>
+                <button onclick="deselectAllCodes()">Deselect All</button>
+                <button onclick="selectRedCodes()">Select Red Only</button>
+                <button onclick="selectAmberCodes()">Select Amber Only</button>
+                <button onclick="selectPurpleCodes()">Select Purple Only</button>
+            </div>
+            <div class="checkbox-grid" id="checkboxGrid"></div>
+        </div>
+
         <div class="stats" id="stats"></div>
 
         <div class="main-content" id="mainContent" style="display: none;">
@@ -520,6 +629,7 @@
     <div class="tooltip" id="tooltip">
         <div class="tooltip-code"></div>
         <div class="tooltip-description"></div>
+        <div class="tooltip-teams"></div>
     </div>
 
     <script>
@@ -699,6 +809,7 @@
         let allData = [];
         let chart = null;
         const tooltip = document.getElementById('tooltip');
+        let selectedCodes = new Set(FAIL_CODES); // All codes selected by default
 
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
         document.getElementById('startDate').addEventListener('change', updateDashboard);
@@ -710,6 +821,55 @@
             return `<span class="color-badge ${color}"></span>`;
         }
 
+        function initializeCheckboxes() {
+            const grid = document.getElementById('checkboxGrid');
+            grid.innerHTML = FAIL_CODES.map(code => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="code-${code}" value="${code}" checked onchange="handleCodeToggle()">
+                    <label for="code-${code}">${getColorBadge(code)} ${code}</label>
+                </div>
+            `).join('');
+        }
+
+        function handleCodeToggle() {
+            selectedCodes.clear();
+            document.querySelectorAll('.checkbox-item input:checked').forEach(checkbox => {
+                selectedCodes.add(checkbox.value);
+            });
+            updateDashboard();
+        }
+
+        function selectAllCodes() {
+            document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = true);
+            handleCodeToggle();
+        }
+
+        function deselectAllCodes() {
+            document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = false);
+            handleCodeToggle();
+        }
+
+        function selectRedCodes() {
+            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'red';
+            });
+            handleCodeToggle();
+        }
+
+        function selectAmberCodes() {
+            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'amber';
+            });
+            handleCodeToggle();
+        }
+
+        function selectPurpleCodes() {
+            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'purple';
+            });
+            handleCodeToggle();
+        }
+
         function handleFileUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -718,7 +878,6 @@
                 complete: function(results) {
                     console.log('Raw data:', results.data);
                     
-                    // Skip first row, headers are in row 2 (index 1)
                     const headers = results.data[1];
                     console.log('Headers:', headers);
                     
@@ -727,7 +886,6 @@
                     allData = dataRows.map(row => {
                         const obj = {};
                         headers.forEach((header, i) => {
-                            // Trim whitespace from header names
                             const cleanHeader = header ? header.trim() : '';
                             obj[cleanHeader] = row[i] || '';
                         });
@@ -737,8 +895,10 @@
                     console.log('Parsed data sample:', allData[0]);
                     console.log('Team values:', allData.map(r => r['Team']).slice(0, 10));
 
+                    initializeCheckboxes();
                     populateTeamFilter();
                     setDefaultDateRange();
+                    document.getElementById('failCodeFilter').style.display = 'block';
                     updateDashboard();
                 },
                 skipEmptyLines: true
@@ -778,6 +938,24 @@
             return new Date(dateStr);
         }
 
+        function getTeamsByFailCode(data, failCode) {
+            const teamCounts = {};
+            
+            data.forEach(row => {
+                const team = row['Team'] || 'Unknown';
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code === failCode) {
+                        teamCounts[team] = (teamCounts[team] || 0) + 1;
+                    }
+                }
+            });
+
+            return Object.entries(teamCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5); // Top 5 teams
+        }
+
         function updateDashboard() {
             if (allData.length === 0) {
                 document.getElementById('noData').style.display = 'block';
@@ -810,7 +988,6 @@
         }
 
         function updateStats(data, startDate, endDate) {
-            // Count incidents by Date received within the date range
             let totalIncidents = 0;
             if (startDate && endDate) {
                 totalIncidents = allData.filter(row => {
@@ -826,7 +1003,8 @@
             let totalFailCodes = 0;
             data.forEach(row => {
                 for (let i = 1; i <= 12; i++) {
-                    if (row[`Fail Code ${i}`]) totalFailCodes++;
+                    const code = row[`Fail Code ${i}`];
+                    if (code && selectedCodes.has(code)) totalFailCodes++;
                 }
             });
 
@@ -867,13 +1045,14 @@
             data.forEach(row => {
                 for (let i = 1; i <= 12; i++) {
                     const code = row[`Fail Code ${i}`];
-                    if (code && FAIL_CODES.includes(code)) {
+                    if (code && selectedCodes.has(code)) {
                         failCodeCounts[code]++;
                     }
                 }
             });
 
             const chartData = FAIL_CODES
+                .filter(code => selectedCodes.has(code))
                 .map(code => ({ code, count: failCodeCounts[code] }))
                 .filter(item => item.count > 0)
                 .sort((a, b) => b.count - a.count)
@@ -883,19 +1062,18 @@
 
             const ctx = document.getElementById('failCodeChart').getContext('2d');
             
-            // Create color array based on fail code colors
             const backgroundColors = chartData.map(item => {
                 const color = FAIL_CODE_COLORS[item.code];
                 if (color === 'red') return 'rgba(255, 71, 87, 0.8)';
                 if (color === 'amber') return 'rgba(255, 165, 2, 0.8)';
-                return 'rgba(162, 155, 254, 0.8)'; // purple
+                return 'rgba(162, 155, 254, 0.8)';
             });
             
             const borderColors = chartData.map(item => {
                 const color = FAIL_CODE_COLORS[item.code];
                 if (color === 'red') return 'rgba(255, 71, 87, 1)';
                 if (color === 'amber') return 'rgba(255, 165, 2, 1)';
-                return 'rgba(162, 155, 254, 1)'; // purple
+                return 'rgba(162, 155, 254, 1)';
             });
 
             chart = new Chart(ctx, {
@@ -980,13 +1158,14 @@
             data.forEach(row => {
                 for (let i = 1; i <= 12; i++) {
                     const code = row[`Fail Code ${i}`];
-                    if (code && FAIL_CODES.includes(code)) {
+                    if (code && selectedCodes.has(code)) {
                         failCodeCounts[code]++;
                     }
                 }
             });
 
             const sortedCodes = FAIL_CODES
+                .filter(code => selectedCodes.has(code))
                 .map(code => ({ code, count: failCodeCounts[code] }))
                 .filter(item => item.count > 0)
                 .sort((a, b) => b.count - a.count);
@@ -1000,7 +1179,6 @@
 
             document.getElementById('occurrenceTable').innerHTML = tableHTML;
 
-            // Add event listeners for tooltips
             document.querySelectorAll('.occurrence-row').forEach(row => {
                 row.addEventListener('mouseenter', showTooltip);
                 row.addEventListener('mousemove', moveTooltip);
@@ -1023,7 +1201,7 @@
 
                 for (let i = 1; i <= 12; i++) {
                     const code = row[`Fail Code ${i}`];
-                    if (code && FAIL_CODES.includes(code)) {
+                    if (code && selectedCodes.has(code)) {
                         performerData[name].total++;
                         performerData[name].codes[code] = (performerData[name].codes[code] || 0) + 1;
                     }
@@ -1067,7 +1245,6 @@
 
             document.getElementById('performersList').innerHTML = performersHTML;
 
-            // Add event listeners for tooltips on fail code items
             document.querySelectorAll('.fail-code-item').forEach(item => {
                 item.addEventListener('mouseenter', showTooltip);
                 item.addEventListener('mousemove', moveTooltip);
@@ -1079,12 +1256,74 @@
             const code = e.currentTarget.dataset.code;
             const description = FAIL_CODE_DESCRIPTIONS[code];
             
+            if (!description && code) {
+                // If no description but we have a code, still show team rankings
+                const startDate = document.getElementById('startDate').valueAsDate;
+                const endDate = document.getElementById('endDate').valueAsDate;
+                const selectedTeam = document.getElementById('teamFilter').value;
+
+                const filtered = allData.filter(row => {
+                    const rowDate = parseDate(row['Date received']);
+                    const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                     (rowDate >= startDate && rowDate <= endDate);
+                    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                    return dateMatch && teamMatch;
+                });
+
+                const teamRankings = getTeamsByFailCode(filtered, code);
+                
+                if (teamRankings.length === 0) return;
+
+                tooltip.querySelector('.tooltip-code').textContent = code;
+                tooltip.querySelector('.tooltip-description').textContent = '';
+                
+                const teamsHTML = `
+                    <div class="tooltip-teams-title">Top Teams:</div>
+                    ${teamRankings.map(([team, count]) => `
+                        <div class="team-list-item">
+                            <span class="team-name">${team}</span>
+                            <span class="team-count">${count}</span>
+                        </div>
+                    `).join('')}
+                `;
+                tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
+                tooltip.classList.add('show');
+                moveTooltip(e);
+                return;
+            }
+
             if (!description) return;
+
+            // Get team rankings for this fail code
+            const startDate = document.getElementById('startDate').valueAsDate;
+            const endDate = document.getElementById('endDate').valueAsDate;
+            const selectedTeam = document.getElementById('teamFilter').value;
+
+            const filtered = allData.filter(row => {
+                const rowDate = parseDate(row['Date received']);
+                const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                 (rowDate >= startDate && rowDate <= endDate);
+                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                return dateMatch && teamMatch;
+            });
+
+            const teamRankings = getTeamsByFailCode(filtered, code);
 
             tooltip.querySelector('.tooltip-code').textContent = code;
             tooltip.querySelector('.tooltip-description').textContent = description;
-            tooltip.classList.add('show');
             
+            const teamsHTML = teamRankings.length > 0 ? `
+                <div class="tooltip-teams-title">Top Teams:</div>
+                ${teamRankings.map(([team, count]) => `
+                    <div class="team-list-item">
+                        <span class="team-name">${team}</span>
+                        <span class="team-count">${count}</span>
+                    </div>
+                `).join('')}
+            ` : '';
+            tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
+            
+            tooltip.classList.add('show');
             moveTooltip(e);
         }
 
@@ -1093,7 +1332,6 @@
             let left = e.pageX + 15;
             let top = e.pageY + 15;
 
-            // Prevent tooltip from going off screen
             if (left + tooltipRect.width > window.innerWidth) {
                 left = e.pageX - tooltipRect.width - 15;
             }
