@@ -124,4 +124,371 @@
             font-family: 'Syne', sans-serif;
             font-size: 1rem;
             font-weight: 600;
-            cursor: po
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--shadow); }
+        #timeline-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.9rem;
+        }
+        #timeline-table th, #timeline-table td {
+            padding: 1.2rem 1rem;
+            text-align: center;
+            border: 1px solid var(--dark-lighter);
+            vertical-align: top;
+            min-width: 140px;
+        }
+        #timeline-table th {
+            background: var(--dark-lighter);
+            color: var(--accent);
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        #timeline-table tbody tr th {
+            background: var(--dark-lighter);
+            color: var(--text);
+            text-align: left;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            min-width: 100px;
+        }
+        .job-card {
+            background: rgba(255,107,53,0.15);
+            border: 1px solid var(--primary);
+            padding: 0.8rem;
+            margin: 0.6rem 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-size: 0.85rem;
+            text-align: left;
+        }
+        .job-card:hover { 
+            transform: translateY(-2px); 
+        }
+        .job-card.pending {
+            background: rgba(255,107,53,0.15);
+            border-color: var(--primary);
+        }
+        .job-card.in-progress {
+            background: rgba(0,153,255,0.35);     /* Bright blue background */
+            border-color: var(--inprogress);
+            color: white;
+            box-shadow: 0 0 12px rgba(0,153,255,0.4);
+        }
+        .job-card.in-progress:hover {
+            background: rgba(0,153,255,0.5);
+            box-shadow: 0 0 18px rgba(0,153,255,0.6);
+        }
+        .job-card.complete { 
+            background: rgba(78,204,163,0.4); 
+            border-color: var(--success); 
+        }
+        .job-card.aborted,
+        .job-card.cancelled { 
+            background: rgba(255,107,107,0.4); 
+            border-color: var(--error); 
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 420px;
+            width: 90%;
+            border: 2px solid var(--primary);
+        }
+        .modal h3 { font-family: 'Syne', sans-serif; margin-bottom: 1.8rem; }
+        .status-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+        .status-buttons .btn { padding: 1rem; font-size: 1.1rem; }
+        .status-message {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            padding: 1rem 1.8rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            z-index: 2000;
+            display: none;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .status-message.show { display: block; }
+        .status-message.success { background: var(--success); color: var(--dark); }
+        .status-message.error { background: var(--error); color: white; }
+        @media (max-width: 768px) {
+            .container { padding: 1.5rem; }
+            #timeline-table th, #timeline-table td { min-width: 110px; padding: 1rem 0.6rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <a href="upload.html" class="back-btn">To Upload</a>
+            </div>
+            <h1>Solar Installs Dashboard</h1>
+            <p class="subtitle">Quick entry & weekly timeline (one entry per day)</p>
+        </header>
+        <div class="section">
+            <h2>Quick Job Entry</h2>
+            <form id="job-form">
+                <div class="form-group">
+                    <label for="team">Team</label>
+                    <select id="team" required><option value="">Select Team</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="postcode">Postcode</label>
+                    <input type="text" id="postcode" placeholder="e.g. SW1A 1AA" required>
+                </div>
+                <div class="form-group">
+                    <label for="job-type">Job Type</label>
+                    <select id="job-type" required>
+                        <option value="">Select Job Type</option>
+                        <option value="Solar Install">Solar Install</option>
+                        <option value="Battery">Battery</option>
+                        <option value="Survey">Survey</option>
+                        <option value="Revisit">Revisit</option>
+                        <option value="Revisit Chargeable">Revisit Chargeable</option>
+                        <option value="Aftercare">Aftercare</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="date">Start Date</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="days">Days</label>
+                    <select id="days" required>
+                        <option value="">Select Days</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Add Job</button>
+            </form>
+        </div>
+        <div class="section">
+            <h2>Jobs Timeline</h2>
+            <div class="week-nav">
+                <button id="prev-week">Previous Week</button>
+                <button id="next-week">Next Week</button>
+            </div>
+            <div style="overflow-x: auto;">
+                <table id="timeline-table">
+                    <thead id="timeline-header"></thead>
+                    <tbody id="timeline-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <h3>Update This Day</h3>
+            <div class="status-buttons">
+                <button class="btn btn-primary" data-status="in-progress">Job in Progress</button>
+                <button class="btn btn-primary" data-status="complete">Mark as Complete</button>
+                <button class="btn btn-primary" data-status="aborted">Mark as Aborted</button>
+                <button class="btn btn-primary" data-status="cancelled">Mark as Cancelled</button>
+                <button class="btn btn-secondary" onclick="closeStatusModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-message" id="status-message"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let jobs = [];
+        const teams = Array.from({length: 16}, (_, i) => `NGU${String(i+1).padStart(2, '0')}`);
+        let selectedJobId = null;
+        let currentWeekStart = getMondayOfCurrentWeek();
+
+        const teamSelect = document.getElementById('team');
+        teams.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t; opt.textContent = t;
+            teamSelect.appendChild(opt);
+        });
+
+        document.getElementById('prev-week').onclick = () => {
+            currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+            renderTimeline();
+        };
+
+        document.getElementById('next-week').onclick = () => {
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            renderTimeline();
+        };
+
+        function getMondayOfCurrentWeek() {
+            const d = new Date();
+            const day = d.getDay();
+            const diff = day === 0 ? -6 : 1 - day;
+            d.setDate(d.getDate() + diff);
+            d.setHours(0,0,0,0);
+            return d;
+        }
+
+        document.getElementById('job-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const team = document.getElementById('team').value;
+            const postcode = document.getElementById('postcode').value.trim().toUpperCase();
+            const jobType = document.getElementById('job-type').value;
+            const startDateStr = document.getElementById('date').value;
+            const days = parseInt(document.getElementById('days').value);
+
+            if (!team || !postcode || !jobType || !startDateStr || !days) return;
+
+            const startDate = new Date(startDateStr);
+
+            try {
+                for (let i = 0; i < days; i++) {
+                    const dayDate = new Date(startDate);
+                    dayDate.setDate(startDate.getDate() + i);
+                    const dayStr = dayDate.toISOString().split('T')[0];
+
+                    await addDoc(collection(db, 'workscreeninput'), {
+                        Team: team,
+                        Postcode: postcode,
+                        'Job Type': jobType,
+                        Date: dayStr,
+                        'Job Length': days,
+                        DayIndex: i + 1,
+                        Status: 'pending',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                showStatus(`Added ${days} day(s) successfully`, 'success');
+                e.target.reset();
+            } catch (err) {
+                showStatus('Error adding job: ' + err.message, 'error');
+                console.error(err);
+            }
+        });
+
+        onSnapshot(collection(db, 'workscreeninput'), snapshot => {
+            jobs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            renderTimeline();
+        });
+
+        function renderTimeline() {
+            const dates = [];
+            const start = new Date(currentWeekStart);
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                dates.push(d.toISOString().split('T')[0]);
+            }
+
+            let header = '<tr><th>Team</th>';
+            dates.forEach(date => {
+                const day = new Date(date).toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+                header += `<th>${day}</th>`;
+            });
+            header += '</tr>';
+            document.getElementById('timeline-header').innerHTML = header;
+
+            let body = '';
+            teams.forEach(team => {
+                body += `<tr><th>${team}</th>`;
+                dates.forEach(date => {
+                    const cellJobs = jobs.filter(j => j.Team === team && j.Date === date && j.Status !== 'cancelled');
+                    let content = '';
+                    cellJobs.forEach(job => {
+                        const statusClass = job.Status || 'pending';
+                        content += `
+                            <div class="job-card ${statusClass}"
+                                 onclick="openStatusModal('${job.id}')"
+                                 title="Update this specific day">
+                                ${job['Job Type']}<br>
+                                ${job.Postcode || '?'} • Day ${job.DayIndex || '?'}/${job['Job Length'] || '?'}
+                            </div>
+                        `;
+                    });
+                    body += `<td>${content}</td>`;
+                });
+                body += '</tr>';
+            });
+            document.getElementById('timeline-body').innerHTML = body;
+        }
+
+        window.openStatusModal = id => {
+            selectedJobId = id;
+            document.getElementById('status-modal').classList.add('show');
+        };
+
+        window.closeStatusModal = () => {
+            document.getElementById('status-modal').classList.remove('show');
+            selectedJobId = null;
+        };
+
+        document.querySelectorAll('.status-buttons button[data-status]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!selectedJobId) return;
+                const status = btn.dataset.status;
+                try {
+                    await updateDoc(doc(db, 'workscreeninput', selectedJobId), {
+                        Status: status,
+                        updatedAt: new Date().toISOString()
+                    });
+                    showStatus(`Day updated to ${status.replace('-', ' ')}`, 'success');
+                } catch (err) {
+                    showStatus('Update failed', 'error');
+                    console.error(err);
+                }
+                closeStatusModal();
+            });
+        });
+
+        function showStatus(msg, type = 'success') {
+            const el = document.getElementById('status-message');
+            el.textContent = msg;
+            el.className = `status-message ${type} show`;
+            setTimeout(() => el.classList.remove('show'), 4000);
+        }
+
+        renderTimeline();
+    </script>
+</body>
+</html>
