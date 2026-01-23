@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
@@ -21,6 +20,7 @@
       --success:   #10b981;
       --warning:   #f59e0b;
       --danger:    #ef4444;
+      --info:      #60a5fa;
       --border:    #334155;
     }
 
@@ -140,9 +140,10 @@
       font-weight: 700;
     }
 
-    .stat-value.complete { color: var(--success); }
-    .stat-value.aborted   { color: var(--warning); }
-    .stat-value.cancelled { color: var(--danger); }
+    .stat-value.complete  { color: var(--success); }
+    .stat-value.inprogress { color: var(--info); }
+    .stat-value.aborted    { color: var(--warning); }
+    .stat-value.cancelled  { color: var(--danger); }
 
     .jobtype-breakdown {
       margin-top: 1.5rem;
@@ -213,10 +214,10 @@
       transition: width 0.5s ease;
     }
 
-    .bar.complete  { background: var(--success); }
-    .bar.pending   { background: #475569; }
-    .bar.aborted   { background: var(--warning); }
-    .bar.cancelled { background: var(--danger); }
+    .bar.complete    { background: var(--success); }
+    .bar.inprogress  { background: var(--info); }
+    .bar.aborted     { background: var(--warning); }
+    .bar.cancelled   { background: var(--danger); }
 
     .legend {
       display: flex;
@@ -306,38 +307,46 @@
     const { days } = getWeekRange(offset);
     const weekEntries = entries.filter(e => days.includes(e.Date));
 
-    // Unique jobs ≈ distinct (Postcode + Job Type + Team)
+    // Unique jobs: distinct combination of Postcode + Job Type + Team
     const jobKeys = new Set(
-      weekEntries.map(e => `${e.Postcode}|${e['Job Type']}|${e.Team}`)
+      weekEntries.map(e => `${e.Postcode || ''}|${e['Job Type'] || ''}|${e.Team || ''}`)
     );
     const uniqueJobs = jobKeys.size;
 
     const totalJobs     = weekEntries.length;
     const completed     = weekEntries.filter(e => e.Status === 'complete').length;
+    const inprogress    = weekEntries.filter(e => !['complete','aborted','cancelled'].includes(e.Status)).length;
     const aborted       = weekEntries.filter(e => e.Status === 'aborted').length;
     const cancelled     = weekEntries.filter(e => e.Status === 'cancelled').length;
 
-    // Job type breakdown
+    // Job type breakdown — unique postcodes per type
     const byType = {};
-    JOB_TYPES.forEach(type => byType[type] = 0);
+    JOB_TYPES.forEach(type => byType[type] = new Set());
+
     weekEntries.forEach(e => {
       const t = e['Job Type'];
-      if (t && byType.hasOwnProperty(t)) byType[t]++;
+      const postcode = e.Postcode?.trim().toUpperCase();
+      if (t && byType[t] !== undefined && postcode) {
+        byType[t].add(postcode);
+      }
     });
+
+    const typeCounts = {};
+    JOB_TYPES.forEach(t => typeCounts[t] = byType[t].size);
 
     // Daily stats
     const daily = days.map(date => {
       const dayJobs = weekEntries.filter(e => e.Date === date);
       const total     = dayJobs.length;
       const comp      = dayJobs.filter(e => e.Status === 'complete').length;
+      const prog      = dayJobs.filter(e => !['complete','aborted','cancelled'].includes(e.Status)).length;
       const abo       = dayJobs.filter(e => e.Status === 'aborted').length;
       const can       = dayJobs.filter(e => e.Status === 'cancelled').length;
-      const pending   = total - comp - abo - can;
 
-      return { date, total, completed: comp, aborted: abo, cancelled: can, pending };
+      return { date, total, completed: comp, inprogress: prog, aborted: abo, cancelled: can };
     });
 
-    return { uniqueJobs, totalJobs, completed, aborted, cancelled, byType, daily };
+    return { uniqueJobs, totalJobs, completed, inprogress, aborted, cancelled, byType: typeCounts, daily };
   }
 
   function renderAll() {
@@ -377,6 +386,10 @@
               <div class="stat-value complete">${s.completed}</div>
             </div>
             <div class="stat-box">
+              <div class="stat-label">In Progress</div>
+              <div class="stat-value inprogress">${s.inprogress}</div>
+            </div>
+            <div class="stat-box">
               <div class="stat-label">Aborted</div>
               <div class="stat-value aborted">${s.aborted}</div>
             </div>
@@ -387,7 +400,7 @@
           </div>
 
           <div class="jobtype-breakdown">
-            <div class="jobtype-title">Breakdown by Job Type</div>
+            <div class="jobtype-title">Unique Postcodes by Job Type</div>
             <div class="jobtype-list">${typeRows}</div>
           </div>
         </div>
@@ -401,10 +414,10 @@
     const dailyHtml = current.daily.map(d => {
       if (d.total === 0) return '';
 
-      const cPct = d.total ? (d.completed / d.total * 100) : 0;
-      const pPct = d.total ? (d.pending   / d.total * 100) : 0;
-      const aPct = d.total ? (d.aborted   / d.total * 100) : 0;
-      const nPct = d.total ? (d.cancelled / d.total * 100) : 0;
+      const cPct = d.total ? (d.completed   / d.total * 100) : 0;
+      const pPct = d.total ? (d.inprogress  / d.total * 100) : 0;
+      const aPct = d.total ? (d.aborted     / d.total * 100) : 0;
+      const nPct = d.total ? (d.cancelled   / d.total * 100) : 0;
 
       return `
         <div class="daily-card">
@@ -414,15 +427,15 @@
           </div>
 
           <div class="daily-bars">
-            <div class="bar-segment complete"  style="width:${cPct}%"></div>
-            <div class="bar-segment pending"   style="width:${pPct}%"></div>
-            <div class="bar-segment aborted"   style="width:${aPct}%"></div>
-            <div class="bar-segment cancelled" style="width:${nPct}%"></div>
+            <div class="bar-segment complete"    style="width:${cPct}%"></div>
+            <div class="bar-segment inprogress"  style="width:${pPct}%"></div>
+            <div class="bar-segment aborted"     style="width:${aPct}%"></div>
+            <div class="bar-segment cancelled"   style="width:${nPct}%"></div>
           </div>
 
           <div class="legend">
             <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Complete (${d.completed})</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#475569"></div>Pending (${d.pending})</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--info)"></div>In Progress (${d.inprogress})</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div>Aborted (${d.aborted})</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Cancelled (${d.cancelled})</div>
           </div>
