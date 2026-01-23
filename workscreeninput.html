@@ -410,182 +410,176 @@
 
     <!-- Firebase SDK -->
     <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
-            authDomain: "pingu-solar.firebaseapp.com",
-            projectId: "pingu-solar",
-            storageBucket: "pingu-solar.firebasestorage.app",
-            messagingSenderId: "232764952866",
-            appId: "1:232764952866:web:5923b7f419de6355d6157b",
-            measurementId: "G-PFH059DZ64"
+    const firebaseConfig = {
+        apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain: "pingu-solar.firebaseapp.com",
+        projectId: "pingu-solar",
+        storageBucket: "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId: "1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId: "G-PFH059DZ64"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // ────────────────────────────────────────────────
+    // Global state
+    // ────────────────────────────────────────────────
+    let jobs = [];
+    const teams = Array.from({length: 16}, (_, i) => `NGU${String(i+1).padStart(2, '0')}`);
+    let selectedJobId = null;
+
+    // Populate team dropdown
+    const teamSelect = document.getElementById('team');
+    teams.forEach(team => {
+        const opt = document.createElement('option');
+        opt.value = team;
+        opt.textContent = team;
+        teamSelect.appendChild(opt);
+    });
+
+    // ────────────────────────────────────────────────
+    // Add new job
+    // ────────────────────────────────────────────────
+    document.getElementById('job-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const job = {
+            Team: document.getElementById('team').value,
+            Postcode: document.getElementById('postcode').value.trim().toUpperCase(),
+            'Job Type': document.getElementById('job-type').value,
+            'Install Date': document.getElementById('date').value,
+            'Job Length': parseInt(document.getElementById('days').value),
+            Status: 'pending',
+            createdAt: new Date().toISOString()
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        try {
+            await addDoc(collection(db, 'workscreeninput'), job);
+            showStatus('Job added successfully', 'success');
+            e.target.reset();
+        } catch (err) {
+            showStatus('Error adding job: ' + err.message, 'error');
+            console.error(err);
+        }
+    });
 
-        // ────────────────────────────────────────────────
-        // Global state
-        // ────────────────────────────────────────────────
-        let jobs = [];
-        const teams = Array.from({length: 16}, (_, i) => `NGU${String(i+1).padStart(2, '0')}`);
-        let selectedJobId = null;
+    // ────────────────────────────────────────────────
+    // Real-time jobs listener
+    // ────────────────────────────────────────────────
+    onSnapshot(collection(db, 'workscreeninput'), (snapshot) => {
+        jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderTimeline();
+    });
 
-        // Populate team dropdown
-        const teamSelect = document.getElementById('team');
+    // ────────────────────────────────────────────────
+    // Render timeline (unchanged)
+    // ────────────────────────────────────────────────
+    function renderTimeline() {
+        const today = new Date();
+        const start = new Date(today);
+        start.setDate(today.getDate() - 10);
+        const end = new Date(today);
+        end.setDate(today.getDate() + 21);
+
+        const dates = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            dates.push(new Date(d).toISOString().split('T')[0]);
+        }
+
+        let header = '<tr><th>Team</th>';
+        dates.forEach(date => {
+            const day = new Date(date).toLocaleDateString('en-GB', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
+            header += `<th>${day}</th>`;
+        });
+        header += '</tr>';
+        document.getElementById('timeline-header').innerHTML = header;
+
+        let body = '';
         teams.forEach(team => {
-            const opt = document.createElement('option');
-            opt.value = team;
-            opt.textContent = team;
-            teamSelect.appendChild(opt);
+            body += `<tr><th>${team}</th>`;
+            dates.forEach(date => {
+                const cellJobs = jobs.filter(job => {
+                    if (job.Team !== team) return false;
+                    if (job.Status === 'cancelled') return false;
+                    
+                    const startDate = new Date(job['Install Date']);
+                    const endDate = new Date(startDate);
+                    endDate.setDate(startDate.getDate() + (job['Job Length'] || 1) - 1);
+                    
+                    const cellDate = new Date(date);
+                    return cellDate >= startDate && cellDate <= endDate;
+                });
+
+                let cellContent = '';
+                cellJobs.forEach(job => {
+                    cellContent += `
+                        <div class="job-card ${job.Status}" 
+                             onclick="openStatusModal('${job.id}')"
+                             title="Click to update status">
+                            ${job['Job Type']}<br>
+                            ${job.Postcode || '?'} • ${job['Job Length']}d
+                        </div>
+                    `;
+                });
+                body += `<td>${cellContent}</td>`;
+            });
+            body += '</tr>';
         });
 
-        // ────────────────────────────────────────────────
-        // Add new job
-        // ────────────────────────────────────────────────
-        document.getElementById('job-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const job = {
-                Team: document.getElementById('team').value,
-                Postcode: document.getElementById('postcode').value.trim().toUpperCase(),
-                'Job Type': document.getElementById('job-type').value,
-                'Install Date': document.getElementById('date').value,
-                'Job Length': parseInt(document.getElementById('days').value),
-                Status: 'pending',
-                createdAt: new Date().toISOString()
-            };
+        document.getElementById('timeline-body').innerHTML = body;
+    }
 
+    // ────────────────────────────────────────────────
+    // Status modal handlers
+    // ────────────────────────────────────────────────
+    window.openStatusModal = function(jobId) {
+        selectedJobId = jobId;
+        document.getElementById('status-modal').classList.add('show');
+    };
+
+    window.closeStatusModal = function() {
+        document.getElementById('status-modal').classList.remove('show');
+        selectedJobId = null;
+    };
+
+    document.querySelectorAll('.status-buttons button[data-status]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            if (!selectedJobId) return;
+            
+            const status = btn.dataset.status;
+            
             try {
-                await addDoc(collection(db, 'workscreeninput'), job);
-                showStatus('Job added successfully', 'success');
-                e.target.reset();
+                await updateDoc(doc(db, 'workscreeninput', selectedJobId), { 
+                    Status: status,
+                    updatedAt: new Date().toISOString()
+                });
+                showStatus(`Job marked as ${status}`, 'success');
             } catch (err) {
-                showStatus('Error adding job: ' + err.message, 'error');
+                showStatus('Failed to update status', 'error');
                 console.error(err);
             }
+            
+            closeStatusModal();
         });
+    });
 
-        // ────────────────────────────────────────────────
-        // Real-time jobs listener
-        // ────────────────────────────────────────────────
-        onSnapshot(collection(db, 'jobs'), (snapshot) => {
-            jobs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            renderTimeline();
-        });
+    function showStatus(message, type = 'success') {
+        const el = document.getElementById('status-message');
+        el.textContent = message;
+        el.className = `status-message ${type} show`;
+        setTimeout(() => el.classList.remove('show'), 4500);
+    }
 
-        // ────────────────────────────────────────────────
-        // Render timeline
-        // ────────────────────────────────────────────────
-        function renderTimeline() {
-            const today = new Date();
-            const start = new Date(today);
-            start.setDate(today.getDate() - 10);   // show some past days
-            const end = new Date(today);
-            end.setDate(today.getDate() + 21);     // show ~3 weeks forward
-
-            const dates = [];
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                dates.push(new Date(d).toISOString().split('T')[0]);
-            }
-
-            // Header row
-            let header = '<tr><th>Team</th>';
-            dates.forEach(date => {
-                const day = new Date(date).toLocaleDateString('en-GB', {
-                    weekday: 'short',
-                    day: 'numeric',
-                    month: 'short'
-                });
-                header += `<th>${day}</th>`;
-            });
-            header += '</tr>';
-            document.getElementById('timeline-header').innerHTML = header;
-
-            // Body
-            let body = '';
-            teams.forEach(team => {
-                body += `<tr><th>${team}</th>`;
-                dates.forEach(date => {
-                    const cellJobs = jobs.filter(job => {
-                        if (job.Team !== team) return false;
-                        if (job.Status === 'cancelled') return false;
-                        
-                        const startDate = new Date(job['Install Date']);
-                        const endDate = new Date(startDate);
-                        endDate.setDate(startDate.getDate() + (job['Job Length'] || 1) - 1);
-                        
-                        const cellDate = new Date(date);
-                        return cellDate >= startDate && cellDate <= endDate;
-                    });
-
-                    let cellContent = '';
-                    cellJobs.forEach(job => {
-                        cellContent += `
-                            <div class="job-card ${job.Status}" 
-                                 onclick="openStatusModal('${job.id}')"
-                                 title="Click to update status">
-                                ${job['Job Type']}<br>
-                                ${job.Postcode || '?'} • ${job['Job Length']}d
-                            </div>
-                        `;
-                    });
-                    body += `<td>${cellContent}</td>`;
-                });
-                body += '</tr>';
-            });
-
-            document.getElementById('timeline-body').innerHTML = body;
-        }
-
-        // ────────────────────────────────────────────────
-        // Status modal handlers
-        // ────────────────────────────────────────────────
-        window.openStatusModal = function(jobId) {
-            selectedJobId = jobId;
-            document.getElementById('status-modal').classList.add('show');
-        };
-
-        window.closeStatusModal = function() {
-            document.getElementById('status-modal').classList.remove('show');
-            selectedJobId = null;
-        };
-
-        document.querySelectorAll('.status-buttons button[data-status]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (!selectedJobId) return;
-                
-                const status = btn.dataset.status;
-                
-                try {
-                    await updateDoc(doc(db, 'jobs', selectedJobId), { 
-                        Status: status,
-                        updatedAt: new Date().toISOString()
-                    });
-                    showStatus(`Job marked as ${status}`, 'success');
-                } catch (err) {
-                    showStatus('Failed to update status', 'error');
-                    console.error(err);
-                }
-                
-                closeStatusModal();
-            });
-        });
-
-        // ────────────────────────────────────────────────
-        // Toast notification
-        // ────────────────────────────────────────────────
-        function showStatus(message, type = 'success') {
-            const el = document.getElementById('status-message');
-            el.textContent = message;
-            el.className = `status-message ${type} show`;
-            setTimeout(() => el.classList.remove('show'), 4500);
-        }
-
-        // Initial render
-        renderTimeline();
-    </script>
+    renderTimeline();
+</script>
 </body>
 </html>
