@@ -358,7 +358,7 @@
     <!-- Status Modal -->
     <div class="modal" id="status-modal">
         <div class="modal-content">
-            <h3>Update Job Status</h3>
+            <h3>Update This Day's Status</h3>
             <div class="status-buttons">
                 <button class="btn btn-primary" data-status="complete">Mark as Complete</button>
                 <button class="btn btn-primary" data-status="aborted">Mark as Aborted</button>
@@ -422,7 +422,7 @@
         function getMondayOfCurrentWeek() {
             const today = new Date();
             const day = today.getDay();
-            const diff = day === 0 ? -6 : 1 - day; // Sunday = 0
+            const diff = day === 0 ? -6 : 1 - day;
             const monday = new Date(today);
             monday.setDate(today.getDate() + diff);
             monday.setHours(0,0,0,0);
@@ -464,7 +464,7 @@
         });
 
         // ────────────────────────────────────────────────
-        // Render weekly timeline
+        // Render weekly timeline – each day is independent
         // ────────────────────────────────────────────────
         function renderTimeline() {
             const dates = [];
@@ -488,7 +488,7 @@
             header += '</tr>';
             document.getElementById('timeline-header').innerHTML = header;
 
-            // Body
+            // Body – each visible card is clickable independently
             let body = '';
             teams.forEach(team => {
                 body += `<tr><th>${team}</th>`;
@@ -508,9 +508,9 @@
                     let content = '';
                     cellJobs.forEach(job => {
                         content += `
-                            <div class="job-card ${job.Status}" 
+                            <div class="job-card ${job.Status || 'pending'}" 
                                  onclick="openStatusModal('${job.id}')"
-                                 title="Click to update this job instance">
+                                 title="Click to update status for THIS DAY only">
                                 ${job['Job Type']}<br>
                                 ${job.Postcode || '?'} • ${job['Job Length']}d
                             </div>
@@ -524,7 +524,7 @@
         }
 
         // ────────────────────────────────────────────────
-        // Status modal
+        // Status modal – updates only the clicked document
         // ────────────────────────────────────────────────
         window.openStatusModal = id => {
             selectedJobId = id;
@@ -546,7 +546,7 @@
                         Status: status,
                         updatedAt: new Date().toISOString()
                     });
-                    showStatus(`Marked as ${status}`, 'success');
+                    showStatus(`This day marked as ${status}`, 'success');
                 } catch (err) {
                     showStatus('Update failed', 'error');
                     console.error(err);
