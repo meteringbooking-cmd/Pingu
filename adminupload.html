@@ -400,6 +400,37 @@
         reader.readAsText(file);
     }
 
+    // Proper CSV parsing that handles quoted values with commas
+    function parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            const nextChar = line[i + 1];
+            
+            if (char === '"' && inQuotes && nextChar === '"') {
+                // Escaped quote
+                current += '"';
+                i++; // Skip next quote
+            } else if (char === '"') {
+                // Toggle quote state
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                // Field separator
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        // Add the last field
+        result.push(current.trim());
+        return result;
+    }
+
     // Parse CSV → detect headers → show mapping UI
     function parseCSV(csvText) {
         csvData = [];
@@ -410,11 +441,11 @@
             return;
         }
 
-        csvHeaders = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+        csvHeaders = parseCSVLine(lines[0]);
 
         for (let i = 1; i < lines.length; i++) {
             if (!lines[i].trim()) continue;
-            const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const values = parseCSVLine(lines[i]);
             const row = {};
             csvHeaders.forEach((h, idx) => { row[h] = values[idx] || ''; });
             csvData.push(row);
