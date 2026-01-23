@@ -6,144 +6,169 @@
   <title>Solar Workscreen – Overview</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
     :root {
-      --bg:        #0f1117;
-      --surface:   #161b22;
-      --surface-2: #1f2937;
-      --text:      #e2e8f0;
-      --text-dim:  #94a3b8;
-      --primary:   #f97316;
-      --primary-d: #ea580c;
-      --success:   #10b981;
-      --warning:   #f59e0b;
-      --danger:    #ef4444;
+      --bg:        #0a0e17;
+      --surface:   rgba(22, 27, 34, 0.65);
+      --surface-glow: rgba(22, 27, 34, 0.85);
+      --text:      #f1f5f9;
+      --text-dim:  #cbd5e1;
+      --primary:   #fb923c;
+      --success:   #34d399;
+      --warning:   #fbbf24;
+      --danger:    #f87171;
       --info:      #60a5fa;
-      --border:    #334155;
+      --glass-border: rgba(255,255,255,0.08);
+      --shadow:    0 8px 32px rgba(0,0,0,0.45);
     }
 
-    * { margin:0; padding:0; box-sizing:border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
+      background: linear-gradient(135deg, #0a0e17 0%, #0f172a 100%);
       color: var(--text);
       min-height: 100vh;
-      line-height: 1.5;
+      background-attachment: fixed;
     }
 
     .container {
-      max-width: 1320px;
+      max-width: 1280px;
       margin: 0 auto;
-      padding: 2.5rem 1.5rem;
+      padding: 3rem 1.5rem;
     }
 
     header {
       text-align: center;
-      margin-bottom: 3rem;
+      margin-bottom: 4rem;
     }
 
     h1 {
-      font-size: 2.8rem;
+      font-size: 3.2rem;
       font-weight: 800;
-      background: linear-gradient(90deg, #f97316, #fb923c, #60a5fa);
+      letter-spacing: -1px;
+      background: linear-gradient(90deg, #fb923c, #f472b6, #60a5fa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      letter-spacing: -0.5px;
     }
 
     .subtitle {
       color: var(--text-dim);
-      font-size: 1.15rem;
-      margin-top: 0.5rem;
+      font-size: 1.2rem;
+      font-weight: 400;
+      margin-top: 0.75rem;
     }
 
-    .grid-3 {
+    .weekly-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-      gap: 1.75rem;
-      margin-bottom: 3rem;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 2rem;
+      margin-bottom: 4rem;
     }
 
-    .card {
+    .week-card {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
+      backdrop-filter: blur(16px) saturate(180%);
+      -webkit-backdrop-filter: blur(16px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
       padding: 2rem;
-      transition: all 0.2s ease;
-      aspect-ratio: 1 / 1.15;           /* more square than before */
+      box-shadow: var(--shadow);
+      transition: all 0.35s ease;
+      aspect-ratio: 1 / 1;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      position: relative;
+      overflow: hidden;
     }
 
-    .card:hover {
-      border-color: var(--primary);
-      transform: translateY(-3px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.35);
+    .week-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(251,146,60,0.08) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+    }
+
+    .week-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 24px 48px rgba(0,0,0,0.55);
+    }
+
+    .week-card:hover::before {
+      opacity: 1;
     }
 
     .card-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      margin-bottom: 1.25rem;
+      margin-bottom: 1.5rem;
     }
 
     .card-title {
-      font-size: 1.45rem;
+      font-size: 1.5rem;
       font-weight: 700;
     }
 
-    .period-label {
+    .period {
       font-size: 0.95rem;
       color: var(--text-dim);
       font-weight: 500;
     }
 
-    .mega-number {
-      font-size: 4.8rem;
-      font-weight: 800;
-      line-height: 0.9;
-      letter-spacing: -3px;
-      color: var(--primary);
+    .mega {
       text-align: center;
-      margin: 0.5rem 0;
-    }
-
-    .mega-label {
-      font-size: 1.15rem;
-      color: var(--text-dim);
-      text-align: center;
-      font-weight: 500;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 0.9rem;
       margin: 1.5rem 0;
     }
 
-    .stat-box {
-      background: var(--surface-2);
-      border-radius: 10px;
-      padding: 0.9rem 0.6rem;
+    .mega-number {
+      font-size: 5.5rem;
+      font-weight: 800;
+      line-height: 0.85;
+      letter-spacing: -4px;
+      color: var(--primary);
+    }
+
+    .mega-label {
+      font-size: 1.25rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 0.9rem;
+      margin: 1.25rem 0;
+    }
+
+    .stat {
+      background: rgba(30,41,59,0.5);
+      border-radius: 12px;
+      padding: 1rem 0.8rem;
       text-align: center;
+      backdrop-filter: blur(8px);
     }
 
     .stat-label {
       font-size: 0.82rem;
       color: var(--text-dim);
-      margin-bottom: 0.35rem;
-      line-height: 1.1;
+      margin-bottom: 0.4rem;
     }
 
     .stat-value {
-      font-size: 1.95rem;
+      font-size: 2rem;
       font-weight: 700;
       line-height: 1;
     }
@@ -153,73 +178,76 @@
     .stat-value.aborted     { color: var(--warning); }
     .stat-value.cancelled   { color: var(--danger); }
 
-    .jobtype-breakdown {
+    .jobtype-section {
       margin-top: 1.25rem;
       padding-top: 1.25rem;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid rgba(255,255,255,0.08);
     }
 
     .jobtype-title {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       font-weight: 600;
-      margin-bottom: 0.9rem;
       color: var(--text-dim);
+      margin-bottom: 0.9rem;
     }
 
     .jobtype-list {
       display: flex;
       flex-direction: column;
-      gap: 0.55rem;
-      font-size: 0.97rem;
+      gap: 0.6rem;
+      font-size: 1rem;
     }
 
     .jobtype-item {
       display: flex;
       justify-content: space-between;
+      font-weight: 500;
     }
 
     .jobtype-name  { color: var(--text); }
-    .jobtype-count { font-weight: 600; color: var(--primary); }
+    .jobtype-count { color: var(--primary); font-weight: 700; }
 
     .daily-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 2rem;
     }
 
     .daily-card {
       background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      box-shadow: var(--shadow);
     }
 
     .daily-header {
+      font-size: 1.35rem;
       font-weight: 700;
-      font-size: 1.25rem;
-      margin-bottom: 1.1rem;
+      margin-bottom: 1.25rem;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
     }
 
     .daily-total {
-      font-size: 1.4rem;
+      font-size: 1.5rem;
       color: var(--primary);
     }
 
-    .daily-bars {
-      height: 1.6rem;
-      background: var(--surface-2);
-      border-radius: 8px;
+    .progress-container {
+      height: 1.8rem;
+      background: rgba(30,41,59,0.6);
+      border-radius: 10px;
       overflow: hidden;
       display: flex;
-      margin: 1rem 0 0.8rem;
+      margin: 1.25rem 0 1rem;
     }
 
-    .bar-segment {
+    .progress-bar {
       height: 100%;
-      transition: width 0.5s ease;
+      transition: width 0.6s ease;
     }
 
     .bar.complete    { background: var(--success); }
@@ -227,18 +255,18 @@
     .bar.aborted     { background: var(--warning); }
     .bar.cancelled   { background: var(--danger); }
 
-    .legend {
+    .daily-legend {
       display: flex;
       flex-wrap: wrap;
-      gap: 1.25rem 1.75rem;
-      font-size: 0.9rem;
+      gap: 1.25rem 2rem;
+      font-size: 0.92rem;
       color: var(--text-dim);
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 0.6rem;
+      gap: 0.65rem;
     }
 
     .legend-dot {
@@ -247,15 +275,14 @@
       border-radius: 50%;
     }
 
-    @media (max-width: 960px) {
-      .grid-3 { grid-template-columns: 1fr; }
-      .mega-number { font-size: 4rem; }
-      .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
+    @media (max-width: 1100px) {
+      .weekly-grid { grid-template-columns: 1fr; }
+      .mega-number { font-size: 4.5rem; }
     }
 
-    @media (max-width: 600px) {
-      .stats-grid { grid-template-columns: repeat(2, 1fr); }
-      .card { padding: 1.5rem; aspect-ratio: 1 / 1.3; }
+    @media (max-width: 640px) {
+      .stats-row { grid-template-columns: repeat(3, 1fr); gap: 0.8rem; }
+      .week-card { padding: 1.5rem; aspect-ratio: 1 / 1.2; }
     }
   </style>
 </head>
@@ -267,7 +294,7 @@
     <div class="subtitle">Solar Installs • Real-time • Unique Jobs</div>
   </header>
 
-  <div class="grid-3" id="weekly-cards"></div>
+  <div class="weekly-grid" id="weekly-cards"></div>
 
   <div class="daily-grid" id="daily-breakdown"></div>
 </div>
@@ -321,7 +348,6 @@
     const { days } = getWeekRange(offset);
     const weekEntries = entries.filter(e => days.includes(e.Date));
 
-    // Unique jobs: distinct combination of Postcode + Job Type + Team
     const jobKeys = new Set(
       weekEntries.map(e => `${e.Postcode || ''}|${e['Job Type'] || ''}|${e.Team || ''}`)
     );
@@ -329,12 +355,10 @@
 
     const totalJobs     = weekEntries.length;
     const completed     = weekEntries.filter(e => e.Status === 'complete').length;
-    // inprogress only if explicitly "inprogress" – otherwise 0
     const inprogress    = weekEntries.filter(e => e.Status === 'inprogress').length;
     const aborted       = weekEntries.filter(e => e.Status === 'aborted').length;
     const cancelled     = weekEntries.filter(e => e.Status === 'cancelled').length;
 
-    // Job type breakdown — unique postcodes per type
     const byType = {};
     JOB_TYPES.forEach(type => byType[type] = new Set());
 
@@ -349,7 +373,6 @@
     const typeCounts = {};
     JOB_TYPES.forEach(t => typeCounts[t] = byType[t].size);
 
-    // Daily stats
     const daily = days.map(date => {
       const dayJobs = weekEntries.filter(e => e.Date === date);
       const total     = dayJobs.length;
@@ -383,41 +406,41 @@
       `).join('');
 
       return `
-        <div class="card">
+        <div class="week-card">
           <div class="card-header">
             <div class="card-title">${p.title}</div>
-            <div class="period-label">${formatWeek(p.offset)}</div>
+            <div class="period">${formatWeek(p.offset)}</div>
           </div>
 
-          <div>
+          <div class="mega">
             <div class="mega-number">${s.uniqueJobs}</div>
             <div class="mega-label">unique jobs</div>
           </div>
 
-          <div class="stats-grid">
-            <div class="stat-box">
+          <div class="stats-row">
+            <div class="stat">
               <div class="stat-label">Total</div>
               <div class="stat-value">${s.totalJobs}</div>
             </div>
-            <div class="stat-box">
+            <div class="stat">
               <div class="stat-label">Completed</div>
               <div class="stat-value complete">${s.completed}</div>
             </div>
-            <div class="stat-box">
+            <div class="stat">
               <div class="stat-label">In Progress</div>
               <div class="stat-value inprogress">${s.inprogress}</div>
             </div>
-            <div class="stat-box">
+            <div class="stat">
               <div class="stat-label">Aborted</div>
               <div class="stat-value aborted">${s.aborted}</div>
             </div>
-            <div class="stat-box">
+            <div class="stat">
               <div class="stat-label">Cancelled</div>
               <div class="stat-value cancelled">${s.cancelled}</div>
             </div>
           </div>
 
-          <div class="jobtype-breakdown">
+          <div class="jobtype-section">
             <div class="jobtype-title">Unique Postcodes by Job Type</div>
             <div class="jobtype-list">${typeRows}</div>
           </div>
@@ -427,7 +450,6 @@
 
     document.getElementById('weekly-cards').innerHTML = cardsHtml.join('');
 
-    // Daily breakdown - current week only
     const current = getWeekStats(0);
     const dailyHtml = current.daily.map(d => {
       if (d.total === 0) return '';
@@ -444,14 +466,14 @@
             <span class="daily-total">${d.total} jobs</span>
           </div>
 
-          <div class="daily-bars">
-            <div class="bar-segment complete"    style="width:${cPct}%"></div>
-            <div class="bar-segment inprogress"  style="width:${pPct}%"></div>
-            <div class="bar-segment aborted"     style="width:${aPct}%"></div>
-            <div class="bar-segment cancelled"   style="width:${nPct}%"></div>
+          <div class="progress-container">
+            <div class="progress-bar complete"   style="width:${cPct}%"></div>
+            <div class="progress-bar inprogress" style="width:${pPct}%"></div>
+            <div class="progress-bar aborted"    style="width:${aPct}%"></div>
+            <div class="progress-bar cancelled"  style="width:${nPct}%"></div>
           </div>
 
-          <div class="legend">
+          <div class="daily-legend">
             <div class="legend-item"><div class="legend-dot" style="background:var(--success)"></div>Complete (${d.completed})</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--info)"></div>In Progress (${d.inprogress})</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div>Aborted (${d.aborted})</div>
@@ -462,7 +484,7 @@
     }).filter(Boolean);
 
     document.getElementById('daily-breakdown').innerHTML =
-      dailyHtml.length ? dailyHtml.join('') : '<p style="text-align:center; color:var(--text-dim); padding:3rem 0;">No jobs scheduled this week</p>';
+      dailyHtml.length ? dailyHtml.join('') : '<p style="text-align:center; color:var(--text-dim); padding:4rem 0; font-size:1.1rem;">No jobs scheduled this week</p>';
   }
 
   function formatWeek(offset) {
