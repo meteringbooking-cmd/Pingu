@@ -372,6 +372,21 @@
         .popup-detail strong {
             color: var(--text);
         }
+
+        .geocoding-status {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-dim);
+        }
+
+        .geocoding-status.active {
+            border: 2px solid var(--accent);
+            color: var(--accent);
+        }
        
         @media (max-width: 768px) {
             .container {
@@ -403,6 +418,10 @@
             <div class="controls-card">
                 <h2>🎛️ Date Range Controls</h2>
                
+                <div id="geocoding-status" class="geocoding-status" style="display: none;">
+                    Geocoding postcodes... <span id="geocoding-progress">0/0</span>
+                </div>
+
                 <div class="control-group">
                     <div class="slider-container">
                         <div class="slider-label">
@@ -521,24 +540,30 @@
         }
        
         // Parse date flexibly (DD/MM/YYYY or ISO)
-        function parseInstallDate(dateStr) {
+        function parseDate(dateStr) {
             if (!dateStr) return null;
            
-            // Try DD/MM/YYYY
+            // Try DD/MM/YYYY format first
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
-                    const day = parts[0].padStart(2, '0');
-                    const month = parts[1].padStart(2, '0');
-                    const year = parts[2];
-                    const parsed = new Date(`${year}-${month}-${day}`);
-                    if (!isNaN(parsed.getTime())) return parsed;
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+                    const year = parseInt(parts[2], 10);
+                    const parsed = new Date(year, month, day);
+                    if (!isNaN(parsed.getTime())) {
+                        parsed.setHours(0, 0, 0, 0);
+                        return parsed;
+                    }
                 }
             }
            
             // Fallback: standard Date parsing (ISO, etc.)
             const parsed = new Date(dateStr);
-            if (!isNaN(parsed.getTime())) return parsed;
+            if (!isNaN(parsed.getTime())) {
+                parsed.setHours(0, 0, 0, 0);
+                return parsed;
+            }
            
             return null;
         }
@@ -550,6 +575,16 @@
                 month: 'short',
                 year: 'numeric'
             });
+        }
+
+        // Helper to get field value with fallbacks
+        function getFieldValue(job, ...fieldNames) {
+            for (const fieldName of fieldNames) {
+                if (job[fieldName] !== undefined && job[fieldName] !== null && job[fieldName] !== '') {
+                    return job[fieldName];
+                }
+            }
+            return '';
         }
        
         // Load jobs from Firebase collection "Solar-jobs"
@@ -572,7 +607,7 @@
                     });
                 });
                
-                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs`);
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
                
                 // Geocode + render
                 await geocodeJobs();
@@ -580,26 +615,55 @@
                
             } catch (error) {
                 console.error('Error loading jobs from Solar-jobs:', error);
-                document.getElementById('map').innerHTML = '<div class="loading">Error loading jobs from database</div>';
+                document.getElementById('map').innerHTML = '<div class="loading">Error loading jobs from database: ' + error.message + '</div>';
             }
         }
        
         // Geocode postcodes → lat/lng using Nominatim (OpenStreetMap)
         async function geocodeJobs() {
             console.log('Geocoding postcodes...');
+            
+            const statusEl = document.getElementById('geocoding-status');
+            const progressEl = document.getElementById('geocoding-progress');
+            
+            const jobsNeedingGeocode = allJobs.filter(job => {
+                const postcode = job['Postcode'] || job.Postcode;
+                return postcode && !job.coordinates;
+            });
+
+            if (jobsNeedingGeocode.length > 0) {
+                statusEl.style.display = 'block';
+                statusEl.classList.add('active');
+            }
+
+            let geocoded = 0;
            
             for (let job of allJobs) {
-                if (job.Postcode && !job.coordinates) {
-                    const coords = await geocodePostcode(job.Postcode);
+                const postcode = job['Postcode'] || job.Postcode;
+                
+                if (postcode && !job.coordinates) {
+                    geocoded++;
+                    progressEl.textContent = `${geocoded}/${jobsNeedingGeocode.length}`;
+                    
+                    const coords = await geocodePostcode(postcode);
                     if (coords) {
                         job.coordinates = coords;
+                        console.log(`✅ Geocoded ${postcode}:`, coords);
+                    } else {
+                        console.warn(`❌ Failed to geocode ${postcode}`);
                     }
+                    
                     // Polite delay to respect Nominatim usage policy (1 req/sec)
                     await new Promise(r => setTimeout(r, 1200));
                 }
             }
            
-            console.log('Geocoding finished');
+            statusEl.classList.remove('active');
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 2000);
+            
+            console.log(`Geocoding finished. ${geocoded} postcodes processed.`);
         }
        
         async function geocodePostcode(postcode) {
@@ -635,9 +699,10 @@
             document.getElementById('start-date').textContent = formatDate(now);
             document.getElementById('end-date').textContent = formatDate(endDate);
            
-            // Filter jobs in range
+            // Filter jobs in range - check multiple date fields
             const filtered = allJobs.filter(job => {
-                const d = parseInstallDate(job['Install Date'] || job['Booked Date'] || '');
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
                 return d && d >= now && d <= endDate;
             });
            
@@ -655,17 +720,24 @@
             weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            
             const weekJobs = allJobs.filter(j => {
-                const d = parseInstallDate(j['Install Date']);
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
                 return d && d >= weekStart && d <= weekEnd;
             }).length;
             document.getElementById('week-count').textContent = weekJobs;
            
             // This month
             const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            monthStart.setHours(0, 0, 0, 0);
             const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+            
             const monthJobs = allJobs.filter(j => {
-                const d = parseInstallDate(j['Install Date']);
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
                 return d && d >= monthStart && d <= monthEnd;
             }).length;
             document.getElementById('month-count').textContent = monthJobs;
@@ -697,13 +769,20 @@
                     fillOpacity: 0.85
                 });
                
+                const jobNumber = job['Job Number'] || 'N/A';
+                const address = job['Address'] || 'N/A';
+                const postcode = job['Postcode'] || 'N/A';
+                const bookedDate = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date') || 'N/A';
+                const lead = job['Lead'] || 'Unassigned';
+                const status = getFieldValue(job, 'Status Update', 'status') || 'N/A';
+
                 const popup = `
-                    <div class="popup-title">Job #${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                    <div class="popup-detail"><strong>Customer:</strong> ${escapeHtml(job['Name'] || 'N/A')}</div>
-                    <div class="popup-detail"><strong>Postcode:</strong> ${escapeHtml(job['Postcode'] || 'N/A')}</div>
-                    <div class="popup-detail"><strong>Install Date:</strong> ${escapeHtml(job['Install Date'] || 'N/A')}</div>
-                    <div class="popup-detail"><strong>Engineer:</strong> ${escapeHtml(job['Lead Engineer'] || job['Lead'] || 'Unassigned')}</div>
-                    ${job['Status Update'] ? `<div class="popup-detail"><strong>Status:</strong> ${escapeHtml(job['Status Update'])}</div>` : ''}
+                    <div class="popup-title">Job #${escapeHtml(jobNumber)}</div>
+                    <div class="popup-detail"><strong>Address:</strong> ${escapeHtml(address)}</div>
+                    <div class="popup-detail"><strong>Postcode:</strong> ${escapeHtml(postcode)}</div>
+                    <div class="popup-detail"><strong>Date:</strong> ${escapeHtml(bookedDate)}</div>
+                    <div class="popup-detail"><strong>Lead:</strong> ${escapeHtml(lead)}</div>
+                    <div class="popup-detail"><strong>Status:</strong> ${escapeHtml(status)}</div>
                 `;
                
                 marker.bindPopup(popup);
@@ -714,6 +793,9 @@
             if (withCoords.length > 0) {
                 const bounds = L.latLngBounds(withCoords.map(j => [j.coordinates.lat, j.coordinates.lng]));
                 map.fitBounds(bounds, { padding: [60, 60] });
+            } else {
+                // Reset to UK view if no jobs
+                map.setView([54.5, -3.5], 6);
             }
         }
        
@@ -734,7 +816,8 @@
         }
        
         function escapeHtml(unsafe) {
-            return unsafe
+            if (!unsafe) return '';
+            return String(unsafe)
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
