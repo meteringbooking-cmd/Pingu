@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Solar Workscreen – Overview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg:        #0f1117;
+      --surface:   #161b22;
+      --surface-2: #1f2937;
+      --text:      #e2e8f0;
+      --text-dim:  #94a3b8;
+      --primary:   #f97316;
+      --primary-d: #ea580c;
+      --success:   #10b981;
+      --danger:    #ef4444;
+      --border:    #334155;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #f97316, #fb923c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .subtitle {
+      color: var(--text-dim);
+      font-size: 1.05rem;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: border-color 0.2s;
+    }
+
+    .card:hover {
+      border-color: var(--primary);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 1.25rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .period-label {
+      font-size: 0.875rem;
+      color: var(--text-dim);
+    }
+
+    .big-number {
+      font-size: 2.75rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--primary);
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 1.25rem;
+      font-size: 0.95rem;
+    }
+
+    .stat {
+      flex: 1;
+      text-align: center;
+      padding: 0.75rem;
+      background: var(--surface-2);
+      border-radius: 8px;
+    }
+
+    .stat-label {
+      color: var(--text-dim);
+      font-size: 0.85rem;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 600;
+    }
+
+    .stat.complete .stat-value { color: var(--success); }
+    .stat.danger   .stat-value { color: var(--danger); }
+
+    .daily-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .daily-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem;
+    }
+
+    .daily-header {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+
+    .daily-bars {
+      display: flex;
+      height: 1.5rem;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 0.75rem;
+      background: var(--surface-2);
+    }
+
+    .bar {
+      height: 100%;
+      transition: width 0.4s ease;
+    }
+
+    .bar.complete { background: var(--success); }
+    .bar.pending  { background: #475569; }
+    .bar.danger   { background: var(--danger); }
+
+    .legend {
+      display: flex;
+      gap: 1.25rem;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    @media (max-width: 900px) {
+      .grid-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Workscreen Overview</h1>
+    <div class="subtitle">Solar Installs • Unique Postcodes • Real-time</div>
+  </header>
+
+  <div class="grid-3" id="weekly-cards"></div>
+
+  <div class="daily-grid" id="daily-breakdown"></div>
+</div>
+
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+    authDomain: "pingu-solar.firebaseapp.com",
+    projectId: "pingu-solar",
+    storageBucket: "pingu-solar.firebasestorage.app",
+    messagingSenderId: "232764952866",
+    appId: "1:232764952866:web:5923b7f419de6355d6157b",
+    measurementId: "G-PFH059DZ64"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let entries = [];
+
+  onSnapshot(collection(db, 'workscreeninput'), snap => {
+    entries = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  });
+
+  function getWeekRange(offsetWeeks = 0) {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const dayOfWeek = today.getDay() || 7; // Sunday → 7
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - dayOfWeek + 1 + offsetWeeks * 7);
+
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      days.push(d.toISOString().split('T')[0]);
+    }
+    return { days, monday };
+  }
+
+  function getWeekStats(offset) {
+    const { days } = getWeekRange(offset);
+    const weekEntries = entries.filter(e => days.includes(e.Date));
+
+    // Unique postcodes
+    const uniquePostcodes = new Set(weekEntries.map(e => e.Postcode)).size;
+
+    // Daily stats
+    const daily = days.map(date => {
+      const dayJobs = weekEntries.filter(e => e.Date === date);
+      const total     = dayJobs.length;
+      const completed = dayJobs.filter(e => e.Status === 'complete').length;
+      const aborted   = dayJobs.filter(e => e.Status === 'aborted' || e.Status === 'cancelled').length;
+      const pending   = total - completed - aborted;
+
+      return { date, total, completed, aborted, pending };
+    });
+
+    const totalJobs = weekEntries.length;
+    const totalCompleted = weekEntries.filter(e => e.Status === 'complete').length;
+    const totalAborted   = weekEntries.filter(e => e.Status === 'aborted' || e.Status === 'cancelled').length;
+
+    return { uniquePostcodes, totalJobs, totalCompleted, totalAborted, daily };
+  }
+
+  function renderAll() {
+    const periods = [
+      { title: "Previous Week", offset: -1, color: "#64748b" },
+      { title: "Current Week",  offset:  0, color: "var(--primary)" },
+      { title: "Next Week",     offset: +1, color: "#60a5fa" }
+    ];
+
+    const cardsHtml = periods.map(p => {
+      const stats = getWeekStats(p.offset);
+      return `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">${p.title}</div>
+            <div class="period-label">${formatWeek(p.offset)}</div>
+          </div>
+          <div class="big-number">${stats.uniquePostcodes}</div>
+          <div style="font-size:0.95rem; color:var(--text-dim); margin-top:0.25rem;">unique postcodes</div>
+
+          <div class="stats-row">
+            <div class="stat">
+              <div class="stat-label">Total Jobs</div>
+              <div class="stat-value">${stats.totalJobs}</div>
+            </div>
+            <div class="stat complete">
+              <div class="stat-label">Completed</div>
+              <div class="stat-value">${stats.totalCompleted}</div>
+            </div>
+            <div class="stat danger">
+              <div class="stat-label">Aborted / Cancelled</div>
+              <div class="stat-value">${stats.totalAborted}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    document.getElementById('weekly-cards').innerHTML = cardsHtml.join('');
+
+    // Daily breakdown - only current week
+    const current = getWeekStats(0);
+    const dailyHtml = current.daily.map(d => {
+      const total = d.total;
+      if (total === 0) return '';
+
+      const cPct = total ? (d.completed / total * 100) : 0;
+      const pPct = total ? (d.pending   / total * 100) : 0;
+      const aPct = total ? (d.aborted   / total * 100) : 0;
+
+      return `
+        <div class="daily-card">
+          <div class="daily-header">
+            ${new Date(d.date).toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'short' })}
+            <span style="float:right; color:var(--text-dim); font-weight:500;">${total} jobs</span>
+          </div>
+
+          <div class="daily-bars">
+            <div class="bar complete" style="width:${cPct}%"></div>
+            <div class="bar pending"  style="width:${pPct}%"></div>
+            <div class="bar danger"   style="width:${aPct}%"></div>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item"><div class="dot" style="background:var(--success)"></div> Complete (${d.completed})</div>
+            <div class="legend-item"><div class="dot" style="background:#475569"></div> Pending (${d.pending})</div>
+            <div class="legend-item"><div class="dot" style="background:var(--danger)"></div> Aborted (${d.aborted})</div>
+          </div>
+        </div>
+      `;
+    }).filter(Boolean);
+
+    document.getElementById('daily-breakdown').innerHTML =
+      dailyHtml.length ? dailyHtml.join('') : '<p style="text-align:center;color:var(--text-dim);">No jobs this week</p>';
+  }
+
+  function formatWeek(offset) {
+    const { monday } = getWeekRange(offset);
+    const end = new Date(monday);
+    end.setDate(monday.getDate() + 6);
+    return monday.toLocaleDateString('en-GB', {day:'numeric',month:'short'}) + ' – ' +
+           end.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+  }
+
+  // Initial render
+  renderAll();
+</script>
+</body>
+</html>
