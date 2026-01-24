@@ -404,7 +404,7 @@
                     <div class="legend-title">📍 Status Legend</div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #FFFFFF;"></div>
-                        <span>Upcoming</span>
+                        <span>Upcoming (Future)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #00FF00;"></div>
@@ -412,11 +412,11 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #0099FF;"></div>
-                        <span>In Progress</span>
+                        <span>In Progress (Future)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color flashing" style="background: #FF0000;"></div>
-                        <span>Overdue (Past Date with No Status)</span>
+                        <span>Pending/Overdue (Today or Before, Not Complete)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #AA0000;"></div>
@@ -570,27 +570,28 @@
             const jobDate = parseDate(dateStr);
             const status = getFieldValue(job, 'Status Update', 'status', 'Status').toLowerCase();
 
+            // Green if complete - ONLY completed jobs get green
+            if (status.includes('complete') || status.includes('finished') || status.includes('done')) {
+                return { color: '#00FF00', flashing: false };
+            }
+
             // Static red for aborted or cancelled
             if (status.includes('abort') || status.includes('cancel')) {
                 return { color: '#AA0000', flashing: false };
             }
 
-            // Green if complete
-            if (status.includes('complete') || status.includes('finished') || status.includes('done')) {
-                return { color: '#00FF00', flashing: false };
+            // FLASHING RED: Any job today or before that is NOT complete
+            // This includes jobs with no status, pending, in progress, upcoming, etc.
+            if (jobDate && jobDate <= now) {
+                return { color: '#FF0000', flashing: true };
             }
 
-            // Blue if in progress
+            // Blue if in progress (future dates only at this point)
             if (status.includes('progress') || status.includes('ongoing') || status.includes('active')) {
                 return { color: '#0099FF', flashing: false };
             }
 
-            // Flashing red if date is today or in the past with no meaningful status
-            if (jobDate && jobDate <= now && (!status || status === 'n/a' || status === '' || status === 'upcoming')) {
-                return { color: '#FF0000', flashing: true };
-            }
-
-            // White for upcoming (future dates or any other status)
+            // White for upcoming (future dates)
             return { color: '#FFFFFF', flashing: false };
         }
        
@@ -773,7 +774,7 @@
             }).length;
             document.getElementById('next-week-count').textContent = nextWeekJobs;
 
-            // Overdue count (past date with no status)
+            // Overdue count (today or past, not complete)
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
@@ -782,7 +783,9 @@
                 const d = parseDate(dateStr);
                 const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
                 
-                return d && d <= now && (!status || status === 'n/a' || status === '' || status === 'upcoming');
+                // Count as overdue if date is today or before AND not complete
+                const isComplete = status.includes('complete') || status.includes('finished') || status.includes('done');
+                return d && d <= now && !isComplete;
             }).length;
             document.getElementById('overdue-count').textContent = overdueJobs;
            
