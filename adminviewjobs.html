@@ -1012,6 +1012,7 @@
                                 <td>${job.days}</td>
                                 <td><span class="status-badge status-${job.status.toLowerCase().replace('-', '')}">${escapeHtml(job.status)}</span></td>
                                 <td class="notes-cell" title="${escapeHtml(job.notes)}">${escapeHtml(job.notes) || '-'}</td>
+                                <td><button class="edit-btn" onclick="openEditModal('${job.id}')">✏️ Edit</button></td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1044,6 +1045,88 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function formatDateForInput(date) {
+            if (!date) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        window.openEditModal = function(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (!job) return;
+
+            currentEditJob = job;
+
+            document.getElementById('edit-job-number').value = job.jobNumber;
+            document.getElementById('edit-job-type').value = job.jobType;
+            document.getElementById('edit-postcode').value = job.postcode;
+            document.getElementById('edit-lead').value = job.lead;
+            document.getElementById('edit-team').value = job.team;
+            document.getElementById('edit-booked-date').value = formatDateForInput(job.bookedDate);
+            document.getElementById('edit-projected-date').value = formatDateForInput(job.projectedCompletionDate);
+            document.getElementById('edit-days').value = job.days;
+            document.getElementById('edit-status').value = job.status;
+            document.getElementById('edit-notes').value = job.notes;
+
+            document.getElementById('edit-modal').classList.add('show');
+        }
+
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal').classList.remove('show');
+            currentEditJob = null;
+        }
+
+        window.saveJob = async function() {
+            if (!currentEditJob) return;
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentEditJob.id);
+
+                const bookedDateInput = document.getElementById('edit-booked-date').value;
+                const projectedDateInput = document.getElementById('edit-projected-date').value;
+
+                const bookedDate = bookedDateInput ? formatDate(new Date(bookedDateInput)) : null;
+                const projectedDate = projectedDateInput ? formatDate(new Date(projectedDateInput)) : null;
+
+                const updateData = {
+                    'Job Type': document.getElementById('edit-job-type').value,
+                    'Postcode': document.getElementById('edit-postcode').value,
+                    'Lead': document.getElementById('edit-lead').value,
+                    'Team': document.getElementById('edit-team').value,
+                    'Days': parseInt(document.getElementById('edit-days').value) || 1,
+                    'Status Update': document.getElementById('edit-status').value,
+                    'notes': document.getElementById('edit-notes').value
+                };
+
+                if (bookedDate) {
+                    updateData['Booked Date'] = bookedDate;
+                }
+
+                if (projectedDate) {
+                    updateData['Projected Completion Date'] = projectedDate;
+                }
+
+                await updateDoc(jobRef, updateData);
+
+                showToast('Job updated successfully!', 'success');
+                closeEditModal();
+                
+                await loadJobs();
+                applyFilters();
+
+            } catch (error) {
+                console.error('Error updating job:', error);
+                showToast('Failed to update job', 'error');
+            }
+        }
+
+        document.getElementById('edit-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'edit-modal') closeEditModal();
+        });
     </script>
 </body>
 </html>
