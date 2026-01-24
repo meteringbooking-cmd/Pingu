@@ -161,79 +161,6 @@
             gap: 1rem;
         }
        
-        .slider-container {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-       
-        .slider-label {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-       
-        .slider-value {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-family: 'Syne', sans-serif;
-            font-size: 1.2rem;
-            font-weight: 700;
-        }
-       
-        .slider {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: var(--dark-lighter);
-            outline: none;
-            transition: all 0.3s ease;
-        }
-       
-        .slider:hover {
-            background: var(--dark);
-        }
-       
-        .slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            cursor: pointer;
-            box-shadow: 0 4px 12px var(--shadow);
-            transition: all 0.3s ease;
-        }
-       
-        .slider::-webkit-slider-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 6px 20px var(--shadow);
-        }
-       
-        .slider::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            cursor: pointer;
-            border: none;
-            box-shadow: 0 4px 12px var(--shadow);
-            transition: all 0.3s ease;
-        }
-       
-        .slider::-moz-range-thumb:hover {
-            transform: scale(1.2);
-            box-shadow: 0 6px 20px var(--shadow);
-        }
-       
         .date-range-display {
             background: var(--dark-lighter);
             padding: 1rem;
@@ -424,34 +351,18 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Location Heat Map</h1>
-            <p class="subtitle">Visualize upcoming job locations across the UK</p>
+            <p class="subtitle">Visualize upcoming job locations across the UK (Previous, Current & Next Week)</p>
         </header>
        
         <main>
             <div class="controls-card">
-                <h2>🎛️ Date Range Controls</h2>
+                <h2>📅 Viewing 3-Week Range</h2>
                
                 <div id="geocoding-status" class="geocoding-status" style="display: none;">
                     Geocoding postcodes... <span id="geocoding-progress">0/0</span>
                 </div>
 
                 <div class="control-group">
-                    <div class="slider-container">
-                        <div class="slider-label">
-                            <span>Time Period</span>
-                            <span class="slider-value" id="range-value">Next 7 Days</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="7"
-                            max="30"
-                            value="7"
-                            class="slider"
-                            id="date-range-slider"
-                            step="1"
-                        />
-                    </div>
-                   
                     <div class="date-range-display">
                         <span>From: <strong id="start-date">Loading...</strong></span>
                         <span>To: <strong id="end-date">Loading...</strong></span>
@@ -467,12 +378,20 @@
                             <div class="stat-value" id="locations-count">0</div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">This Week</div>
+                            <div class="stat-label">Previous Week</div>
+                            <div class="stat-value" id="prev-week-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Current Week</div>
                             <div class="stat-value" id="week-count">0</div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">This Month</div>
-                            <div class="stat-value" id="month-count">0</div>
+                            <div class="stat-label">Next Week</div>
+                            <div class="stat-value" id="next-week-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Overdue</div>
+                            <div class="stat-value" id="overdue-count" style="color: #FF6B6B;">0</div>
                         </div>
                     </div>
                 </div>
@@ -484,7 +403,7 @@
                 <div class="legend">
                     <div class="legend-title">📍 Status Legend</div>
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #000000;"></div>
+                        <div class="legend-color" style="background: #FFFFFF;"></div>
                         <span>Upcoming</span>
                     </div>
                     <div class="legend-item">
@@ -497,7 +416,7 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color flashing" style="background: #FF0000;"></div>
-                        <span>Overdue (Today/Past with No Status)</span>
+                        <span>Overdue (Past Date with No Status)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #AA0000;"></div>
@@ -531,7 +450,6 @@
             window.addEventListener('DOMContentLoaded', () => {
                 initMap();
                 loadJobs();
-                setupSlider();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
@@ -544,7 +462,6 @@
         let heatLayer;
         let markersLayer;
         let allJobs = [];
-        let currentDays = 7;
        
         // Initialize map centered on UK
         function initMap() {
@@ -579,6 +496,21 @@
             mondayPrevWeek.setHours(0, 0, 0, 0);
             
             return mondayPrevWeek;
+        }
+
+        // Get Monday of current week
+        function getMondayOfCurrentWeek() {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
+            const currentDay = now.getDay();
+            const daysFromMonday = currentDay === 0 ? 6 : currentDay - 1;
+            
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
+            
+            return monday;
         }
        
         // Parse date flexibly (DD/MM/YYYY or ISO)
@@ -654,12 +586,12 @@
             }
 
             // Flashing red if date is today or in the past with no meaningful status
-            if (jobDate && jobDate <= now && (!status || status === 'n/a' || status === '')) {
+            if (jobDate && jobDate <= now && (!status || status === 'n/a' || status === '' || status === 'upcoming')) {
                 return { color: '#FF0000', flashing: true };
             }
 
             // White for upcoming (future dates or any other status)
-            return { color: '#000000', flashing: false };
+            return { color: '#FFFFFF', flashing: false };
         }
        
         // Load jobs from Firebase collection "Solar-jobs"
@@ -694,22 +626,20 @@
             }
         }
        
-        // Geocode postcodes for current week and next week only
+        // Geocode postcodes for 3-week range only
         async function geocodeJobs() {
-            console.log('Geocoding postcodes for current and next week...');
+            console.log('Geocoding postcodes for 3-week range...');
             
             const statusEl = document.getElementById('geocoding-status');
             const progressEl = document.getElementById('geocoding-progress');
             
-            // Calculate current week start and 2 weeks from now
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
+            // Calculate 3-week range
+            const startDate = getMondayOfPreviousWeek();
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 21); // 3 weeks
+            endDate.setHours(23, 59, 59, 999);
             
-            const twoWeeksFromNow = new Date(now);
-            twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
-            twoWeeksFromNow.setHours(23, 59, 59, 999);
-            
-            // Filter jobs that need geocoding (within 2 weeks and no coordinates)
+            // Filter jobs that need geocoding (within 3 weeks and no coordinates)
             const jobsNeedingGeocode = allJobs.filter(job => {
                 const postcode = job['Postcode'] || job.Postcode;
                 if (!postcode || job.coordinates) return false;
@@ -717,7 +647,7 @@
                 const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const jobDate = parseDate(dateStr);
                 
-                return jobDate && jobDate >= now && jobDate <= twoWeeksFromNow;
+                return jobDate && jobDate >= startDate && jobDate <= endDate;
             });
 
             if (jobsNeedingGeocode.length > 0) {
@@ -773,13 +703,14 @@
             return null;
         }
        
-        // Render/update map with current filter
+        // Render/update map with 3-week filter
         function updateMap() {
             // Start date is Monday of previous week
             const startDate = getMondayOfPreviousWeek();
            
+            // End date is always 3 weeks from start (previous + current + next week)
             const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + currentDays);
+            endDate.setDate(endDate.getDate() + 21); // 3 weeks = 21 days
             endDate.setHours(23, 59, 59, 999);
            
             // Update UI dates
@@ -802,39 +733,58 @@
             document.getElementById('jobs-count').textContent = filtered.length;
             document.getElementById('locations-count').textContent = uniqueLocs.size;
            
-            // This week count (current week)
+            // Previous week count
+            const prevWeekStart = getMondayOfPreviousWeek();
+            const prevWeekEnd = new Date(prevWeekStart);
+            prevWeekEnd.setDate(prevWeekEnd.getDate() + 6);
+            prevWeekEnd.setHours(23, 59, 59, 999);
+            
+            const prevWeekJobs = allJobs.filter(j => {
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= prevWeekStart && d <= prevWeekEnd;
+            }).length;
+            document.getElementById('prev-week-count').textContent = prevWeekJobs;
+
+            // Current week count
+            const currentWeekStart = getMondayOfCurrentWeek();
+            const currentWeekEnd = new Date(currentWeekStart);
+            currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
+            currentWeekEnd.setHours(23, 59, 59, 999);
+            
+            const currentWeekJobs = allJobs.filter(j => {
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= currentWeekStart && d <= currentWeekEnd;
+            }).length;
+            document.getElementById('week-count').textContent = currentWeekJobs;
+
+            // Next week count
+            const nextWeekStart = new Date(currentWeekStart);
+            nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+            const nextWeekEnd = new Date(nextWeekStart);
+            nextWeekEnd.setDate(nextWeekEnd.getDate() + 6);
+            nextWeekEnd.setHours(23, 59, 59, 999);
+            
+            const nextWeekJobs = allJobs.filter(j => {
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= nextWeekStart && d <= nextWeekEnd;
+            }).length;
+            document.getElementById('next-week-count').textContent = nextWeekJobs;
+
+            // Overdue count (past date with no status)
             const now = new Date();
             now.setHours(0, 0, 0, 0);
-            const currentDayOfWeek = now.getDay();
-            const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
             
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - daysFromMonday);
-            weekStart.setHours(0, 0, 0, 0);
-            
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            weekEnd.setHours(23, 59, 59, 999);
-            
-            const weekJobs = allJobs.filter(j => {
+            const overdueJobs = withCoords.filter(j => {
                 const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const d = parseDate(dateStr);
-                return d && d >= weekStart && d <= weekEnd;
+                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                
+                return d && d <= now && (!status || status === 'n/a' || status === '' || status === 'upcoming');
             }).length;
-            document.getElementById('week-count').textContent = weekJobs;
-           
-            // This month
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-            monthStart.setHours(0, 0, 0, 0);
-            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            monthEnd.setHours(23, 59, 59, 999);
-            
-            const monthJobs = allJobs.filter(j => {
-                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const d = parseDate(dateStr);
-                return d && d >= monthStart && d <= monthEnd;
-            }).length;
-            document.getElementById('month-count').textContent = monthJobs;
+            document.getElementById('overdue-count').textContent = overdueJobs;
            
             // Clear old layers
             markersLayer.clearLayers();
@@ -859,10 +809,10 @@
                 const marker = L.circleMarker([job.coordinates.lat, job.coordinates.lng], {
                     radius: 8,
                     fillColor: colorData.color,
-                    color: '#ffffff',
+                    color: colorData.flashing ? '#FF0000' : '#ffffff',
                     weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.85,
+                    fillOpacity: colorData.flashing ? 0.85 : 0.85,
                     className: colorData.flashing ? 'flashing-marker' : ''
                 });
                
@@ -894,22 +844,6 @@
                 // Reset to UK view if no jobs
                 map.setView([54.5, -3.5], 6);
             }
-        }
-       
-        // Slider listener
-        function setupSlider() {
-            const slider = document.getElementById('date-range-slider');
-            const valueDisplay = document.getElementById('range-value');
-           
-            slider.addEventListener('input', e => {
-                currentDays = parseInt(e.target.value);
-                let label = `Next ${currentDays} Days`;
-                if (currentDays === 7) label = 'Next 7 Days';
-                if (currentDays === 14) label = 'Next 2 Weeks';
-                if (currentDays === 30) label = 'Next Month';
-                valueDisplay.textContent = label;
-                updateMap();
-            });
         }
        
         function escapeHtml(unsafe) {
