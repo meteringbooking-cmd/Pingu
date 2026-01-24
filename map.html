@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin View Jobs | Pingu - Solar</title>
+    <title>Job Heat Map | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -18,7 +21,6 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
-            --warning: #FFC857;
             --shadow: rgba(255, 107, 53, 0.3);
         }
        
@@ -60,7 +62,7 @@
         }
        
         .container {
-            max-width: 1800px;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 2rem;
         }
@@ -123,11 +125,12 @@
             font-size: 0.95rem;
         }
        
-        .filters-card {
+        .controls-card {
             background: var(--dark-light);
             border-radius: 16px;
             padding: 2rem;
             border: 2px solid transparent;
+            transition: all 0.3s ease;
             margin-bottom: 2rem;
             animation: fadeInUp 0.6s ease-out;
         }
@@ -137,95 +140,132 @@
             to { opacity: 1; transform: translateY(0); }
         }
        
-        .filters-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
+        .controls-card h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
        
-        .filter-group {
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+       
+        .slider-container {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
        
-        .filter-label {
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             color: var(--text-dim);
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
         }
        
-        .filter-input, .filter-select {
-            background: var(--dark-lighter);
-            border: 2px solid var(--dark-lighter);
-            color: var(--text);
-            padding: 0.8rem 1rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-       
-        .filter-input:focus, .filter-select:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .filter-select option {
-            background: var(--dark-lighter);
-            color: var(--text);
-        }
-       
-        .filter-actions {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .btn {
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-        }
-
-        .btn-primary {
+        .slider-value {
             background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
         }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--shadow);
-        }
-
-        .btn-secondary {
+       
+        .slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
             background: var(--dark-lighter);
-            color: var(--text);
-            border: 2px solid var(--dark-lighter);
+            outline: none;
+            transition: all 0.3s ease;
         }
-
-        .btn-secondary:hover {
-            border-color: var(--primary);
+       
+        .slider:hover {
+            background: var(--dark);
+        }
+       
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            cursor: pointer;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s ease;
+        }
+       
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px var(--shadow);
+        }
+       
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px var(--shadow);
+            transition: all 0.3s ease;
+        }
+       
+        .slider::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 6px 20px var(--shadow);
+        }
+       
+        .date-range-display {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+       
+        .date-range-display span {
+            color: var(--text);
+        }
+       
+        .date-range-display strong {
+            color: var(--accent);
         }
        
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--dark-lighter);
             margin-top: 1rem;
         }
        
-        .stat-item {
+        .stat-box {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
             text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+       
+        .stat-box:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
         }
        
         .stat-label {
@@ -233,360 +273,132 @@
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            margin-bottom: 0.3rem;
+            margin-bottom: 0.5rem;
         }
        
         .stat-value {
             font-family: 'Syne', sans-serif;
-            font-size: 1.8rem;
+            font-size: 2rem;
             font-weight: 700;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
-        .table-container {
+       
+        .map-card {
             background: var(--dark-light);
             border-radius: 16px;
             padding: 1.5rem;
             border: 2px solid var(--dark-lighter);
             animation: fadeInUp 0.8s ease-out;
-            overflow-x: auto;
+            margin-bottom: 2rem;
         }
-
-        table {
+       
+        #map {
             width: 100%;
-            border-collapse: collapse;
-            min-width: 1200px;
+            height: 600px;
+            border-radius: 12px;
+            border: 2px solid var(--dark-lighter);
         }
-
-        thead {
-            position: sticky;
-            top: 0;
+       
+        .legend {
             background: var(--dark-light);
-            z-index: 10;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
         }
-
-        th {
+       
+        .legend-title {
             font-family: 'Syne', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--accent);
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 2px solid var(--primary);
-        }
-
-        tbody tr {
-            border-bottom: 1px solid var(--dark-lighter);
-            transition: all 0.3s ease;
-        }
-
-        tbody tr:hover {
-            background: var(--dark-lighter);
-        }
-
-        td {
-            padding: 1rem;
-            color: var(--text);
-            font-size: 0.9rem;
-        }
-
-        .job-number {
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.3rem 0.8rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
+            font-size: 1rem;
             font-weight: 600;
-            text-transform: uppercase;
+            color: var(--text);
+            margin-bottom: 0.5rem;
         }
-
-        .status-scheduled {
-            background: linear-gradient(135deg, var(--secondary), #E5B84F);
-            color: var(--dark);
-        }
-
-        .status-in-progress {
-            background: linear-gradient(135deg, var(--accent), #00B8D9);
-            color: white;
-        }
-
-        .status-complete {
-            background: linear-gradient(135deg, var(--success), #3DB88E);
-            color: white;
-        }
-
-        .status-aborted {
-            background: linear-gradient(135deg, var(--error), #E55A5A);
-            color: white;
-        }
-
-        .status-cancelled {
-            background: linear-gradient(135deg, #FF3B3B, #C92A2A);
-            color: white;
-        }
-
-        .notes-cell {
-            max-width: 200px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            color: var(--text-dim);
+       
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.3rem;
             font-size: 0.85rem;
+            color: var(--text-dim);
         }
-
-        .notes-cell:hover {
-            white-space: normal;
-            overflow: visible;
+       
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
         }
-
+       
         .loading {
             text-align: center;
             padding: 3rem;
             color: var(--text-dim);
             font-size: 1.1rem;
         }
-
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-dim);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 2rem;
-            right: 2rem;
+       
+        .leaflet-popup-content-wrapper {
             background: var(--dark-light);
             color: var(--text);
-            padding: 1rem 1.5rem;
             border-radius: 8px;
-            border: 2px solid var(--success);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-            z-index: 2000;
-            animation: slideIn 0.3s ease-out;
-            display: none;
-        }
-       
-        .toast.show {
-            display: block;
-        }
-       
-        .toast.error {
-            border-color: var(--error);
-        }
-       
-        @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        .edit-btn {
-            background: linear-gradient(135deg, var(--accent), #00B8D9);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .edit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.4);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-       
-        .modal.show {
-            display: flex;
-        }
-       
-        .modal-content {
-            background: var(--dark-light);
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 700px;
-            width: 90%;
             border: 2px solid var(--primary);
-            max-height: 80vh;
-            overflow-y: auto;
         }
        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--dark-lighter);
+        .leaflet-popup-content {
+            margin: 1rem;
+            font-family: 'JetBrains Mono', monospace;
         }
        
-        .modal-title {
+        .leaflet-popup-tip {
+            background: var(--dark-light);
+        }
+       
+        .popup-title {
             font-family: 'Syne', sans-serif;
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
         }
        
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--text-dim);
-            font-size: 2rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-            line-height: 1;
-        }
-       
-        .close-btn:hover {
-            color: var(--error);
-        }
-       
-        .modal-body {
-            display: grid;
-            gap: 1rem;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-label {
-            color: var(--text-dim);
+        .popup-detail {
             font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            margin-bottom: 0.3rem;
         }
-
-        .form-input, .form-select, .form-textarea {
-            background: var(--dark-lighter);
-            border: 2px solid var(--dark-lighter);
-            color: var(--text);
-            padding: 0.8rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-select option {
-            background: var(--dark-lighter);
+       
+        .popup-detail strong {
             color: var(--text);
         }
 
-        .form-textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .modal-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .btn-cancel {
+        .geocoding-status {
             background: var(--dark-lighter);
-            color: var(--text);
-            border: 2px solid var(--dark-lighter);
-            padding: 0.8rem 1.5rem;
+            padding: 1rem;
             border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
+            margin-bottom: 1rem;
+            text-align: center;
             font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            color: var(--text-dim);
         }
 
-        .btn-cancel:hover {
-            border-color: var(--error);
+        .geocoding-status.active {
+            border: 2px solid var(--accent);
+            color: var(--accent);
         }
-
-        .btn-save {
-            background: linear-gradient(135deg, var(--success), #3DB88E);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-save:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(78, 204, 163, 0.4);
-        }
-
+       
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
             }
-
-            .filters-grid {
-                grid-template-columns: 1fr;
+           
+            #map {
+                height: 400px;
             }
-
-            .filter-actions {
-                flex-direction: column;
-            }
-
-            .btn {
-                width: 100%;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-actions {
-                grid-template-columns: 1fr;
+           
+            .stats-row {
+                grid-template-columns: 1fr 1fr;
             }
         }
     </style>
@@ -598,142 +410,86 @@
                 <a href="index.html" class="logo">Pingu - Solar</a>
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
-            <h1>View All Jobs</h1>
-            <p class="subtitle">Filter and view all solar installation jobs</p>
+            <h1>Job Location Heat Map</h1>
+            <p class="subtitle">Visualize upcoming job locations across the UK</p>
         </header>
        
-        <div class="filters-card">
-            <div class="filters-grid">
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-start-date">Start Date</label>
-                    <input type="date" id="filter-start-date" class="filter-input">
+        <main>
+            <div class="controls-card">
+                <h2>🎛️ Date Range Controls</h2>
+               
+                <div id="geocoding-status" class="geocoding-status" style="display: none;">
+                    Geocoding postcodes... <span id="geocoding-progress">0/0</span>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-end-date">End Date</label>
-                    <input type="date" id="filter-end-date" class="filter-input">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-lead">Lead Engineer</label>
-                    <select id="filter-lead" class="filter-select">
-                        <option value="">All Leads</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-team">Team</label>
-                    <select id="filter-team" class="filter-select">
-                        <option value="">All Teams</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-status">Status</label>
-                    <select id="filter-status" class="filter-select">
-                        <option value="">All Statuses</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="In-Progress">In-Progress</option>
-                        <option value="Complete">Complete</option>
-                        <option value="Aborted">Aborted</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                </div>
-            </div>
 
-            <div class="filter-actions">
-                <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
-                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
-            </div>
-
-            <div class="stats-row">
-                <div class="stat-item">
-                    <div class="stat-label">Total Jobs</div>
-                    <div class="stat-value" id="total-jobs">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Filtered Jobs</div>
-                    <div class="stat-value" id="filtered-jobs">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Total Days</div>
-                    <div class="stat-value" id="total-days">0</div>
-                </div>
-            </div>
-        </div>
-       
-        <div class="table-container">
-            <div id="table-content">
-                <div class="loading">Loading jobs from Firebase...</div>
-            </div>
-        </div>
-    </div>
-   
-    <div class="toast" id="toast"></div>
-
-    <!-- Edit Job Modal -->
-    <div class="modal" id="edit-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">Edit Job</h2>
-                <button class="close-btn" onclick="closeEditModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label" for="edit-job-number">Job Number</label>
-                        <input type="text" id="edit-job-number" class="form-input" readonly>
+                <div class="control-group">
+                    <div class="slider-container">
+                        <div class="slider-label">
+                            <span>Time Period</span>
+                            <span class="slider-value" id="range-value">Next 7 Days</span>
+                        </div>
+                        <input
+                            type="range"
+                            min="7"
+                            max="30"
+                            value="7"
+                            class="slider"
+                            id="date-range-slider"
+                            step="1"
+                        />
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-job-type">Job Type</label>
-                        <input type="text" id="edit-job-type" class="form-input">
+                   
+                    <div class="date-range-display">
+                        <span>From: <strong id="start-date">Loading...</strong></span>
+                        <span>To: <strong id="end-date">Loading...</strong></span>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-postcode">Postcode</label>
-                        <input type="text" id="edit-postcode" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-lead">Lead Engineer</label>
-                        <input type="text" id="edit-lead" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-team">Team</label>
-                        <input type="text" id="edit-team" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-booked-date">Booked Date</label>
-                        <input type="date" id="edit-booked-date" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-projected-date">Projected Completion</label>
-                        <input type="date" id="edit-projected-date" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-days">Days</label>
-                        <input type="number" id="edit-days" class="form-input" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-status">Status</label>
-                        <select id="edit-status" class="form-select">
-                            <option value="Scheduled">Scheduled</option>
-                            <option value="In-Progress">In-Progress</option>
-                            <option value="Complete">Complete</option>
-                            <option value="Aborted">Aborted</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
-                    </div>
-                    <div class="form-group full-width">
-                        <label class="form-label" for="edit-notes">Notes</label>
-                        <textarea id="edit-notes" class="form-textarea" placeholder="Add notes about this job..."></textarea>
+                   
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <div class="stat-label">Jobs in Range</div>
+                            <div class="stat-value" id="jobs-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">Locations</div>
+                            <div class="stat-value" id="locations-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">This Week</div>
+                            <div class="stat-value" id="week-count">0</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-label">This Month</div>
+                            <div class="stat-value" id="month-count">0</div>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                    <button class="btn-save" onclick="saveJob()">💾 Save Changes</button>
+            </div>
+           
+            <div class="map-card">
+                <div id="map"></div>
+               
+                <div class="legend">
+                    <div class="legend-title">📍 Heat Map Legend</div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FF0000;"></div>
+                        <span>High Density (Multiple Jobs)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #FFFF00;"></div>
+                        <span>Medium Density</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #00FF00;"></div>
+                        <span>Low Density (Single Job)</span>
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -748,32 +504,51 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+            window.firebaseModules = { collection, getDocs, query, orderBy };
             console.log('✅ Firebase initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
-                window.loadJobs();
+                initMap();
+                loadJobs();
+                setupSlider();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
-            document.getElementById('table-content').innerHTML =
-                '<div class="empty-state">Firebase connection failed</div>';
+            document.getElementById('map').innerHTML = '<div class="loading">Firebase connection failed</div>';
         }
     </script>
    
     <script>
+        let map;
+        let heatLayer;
+        let markersLayer;
         let allJobs = [];
-        let filteredJobs = [];
-        let currentEditJob = null;
+        let currentDays = 7;
        
+        // Initialize map centered on UK
+        function initMap() {
+            map = L.map('map').setView([54.5, -3.5], 6);
+           
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18
+            }).addTo(map);
+           
+            markersLayer = L.layerGroup().addTo(map);
+           
+            console.log('🗺️ Map initialized');
+        }
+       
+        // Parse date flexibly (DD/MM/YYYY or ISO)
         function parseDate(dateStr) {
             if (!dateStr) return null;
            
+            // Try DD/MM/YYYY format first
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
                     const day = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1;
+                    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
                     const year = parseInt(parts[2], 10);
                     const parsed = new Date(year, month, day);
                     if (!isNaN(parsed.getTime())) {
@@ -783,6 +558,7 @@
                 }
             }
            
+            // Fallback: standard Date parsing (ISO, etc.)
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) {
                 parsed.setHours(0, 0, 0, 0);
@@ -792,15 +568,27 @@
             return null;
         }
        
+        // Format date for display
         function formatDate(date) {
-            if (!date) return 'N/A';
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
+            return date.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        // Helper to get field value with fallbacks
+        function getFieldValue(job, ...fieldNames) {
+            for (const fieldName of fieldNames) {
+                if (job[fieldName] !== undefined && job[fieldName] !== null && job[fieldName] !== '') {
+                    return job[fieldName];
+                }
+            }
+            return '';
         }
        
-        window.loadJobs = async function() {
+        // Load jobs from Firebase collection "Solar-jobs"
+        async function loadJobs() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
                
@@ -812,321 +600,230 @@
                 const querySnapshot = await getDocs(jobsQuery);
                
                 allJobs = [];
-                const leads = new Set();
-                const teams = new Set();
-                
                 querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    
-                    const dateFields = [
-                        'Booked Date',
-                        'Projected Completion Date', 
-                        'Install Date',
-                        'installedDate',
-                        'bookingDate'
-                    ];
-                    
-                    let bookedDate = null;
-                    
-                    for (const field of dateFields) {
-                        if (data[field]) {
-                            bookedDate = parseDate(data[field]);
-                            if (bookedDate) break;
-                        }
-                    }
-                   
-                    let jobLength = 1;
-                    const durationFields = [
-                        'Days',
-                        'Job Length (days)',
-                        'Job Length',
-                        'jobLength',
-                        'Duration',
-                        'duration'
-                    ];
-                   
-                    for (const field of durationFields) {
-                        if (data[field] !== undefined && data[field] !== '') {
-                            const parsed = parseInt(data[field], 10);
-                            if (!isNaN(parsed) && parsed > 0) {
-                                jobLength = parsed;
-                                break;
-                            }
-                        }
-                    }
-
-                    const engineerFields = ['Lead', 'Lead Engineer', 'Engineer', 'engineer'];
-                    let lead = 'Unassigned';
-                    
-                    for (const field of engineerFields) {
-                        if (data[field] && data[field].trim()) {
-                            lead = data[field];
-                            break;
-                        }
-                    }
-
-                    const team = data['Team'] || data['team'] || 'N/A';
-                    const jobType = data['Job Type'] || 'Standard';
-                    const status = data['Status Update'] || data['status'] || 'Scheduled';
-                    const projectedCompletionDate = parseDate(data['Projected Completion Date']);
-                   
                     allJobs.push({
                         id: docSnap.id,
-                        jobNumber: data['Job Number'] || 'N/A',
-                        jobType: jobType,
-                        postcode: data['Postcode'] || 'N/A',
-                        lead: lead,
-                        team: team,
-                        bookedDate: bookedDate,
-                        projectedCompletionDate: projectedCompletionDate,
-                        days: jobLength,
-                        status: status,
-                        notes: data['notes'] || '',
-                        ...data
+                        ...docSnap.data()
                     });
-
-                    if (lead && lead !== 'Unassigned') leads.add(lead);
-                    if (team && team !== 'N/A') teams.add(team);
                 });
                
-                populateFilterDropdowns(leads, teams);
-                
-                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs`);
-                
-                filteredJobs = [...allJobs];
-                renderTable();
-                updateStats();
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
+               
+                // Geocode + render
+                await geocodeJobs();
+                updateMap();
                
             } catch (error) {
                 console.error('Error loading jobs from Solar-jobs:', error);
-                document.getElementById('table-content').innerHTML =
-                    `<div class="empty-state">Error loading jobs from database: ${error.message}</div>`;
+                document.getElementById('map').innerHTML = '<div class="loading">Error loading jobs from database: ' + error.message + '</div>';
             }
         }
-
-        function populateFilterDropdowns(leads, teams) {
-            const leadSelect = document.getElementById('filter-lead');
-            const teamSelect = document.getElementById('filter-team');
-
-            leadSelect.innerHTML = '<option value="">All Leads</option>';
-            Array.from(leads).sort().forEach(lead => {
-                const option = document.createElement('option');
-                option.value = lead;
-                option.textContent = lead;
-                leadSelect.appendChild(option);
-            });
-
-            teamSelect.innerHTML = '<option value="">All Teams</option>';
-            Array.from(teams).sort().forEach(team => {
-                const option = document.createElement('option');
-                option.value = team;
-                option.textContent = team;
-                teamSelect.appendChild(option);
-            });
-        }
-
-        window.applyFilters = function() {
-            const startDate = document.getElementById('filter-start-date').value;
-            const endDate = document.getElementById('filter-end-date').value;
-            const lead = document.getElementById('filter-lead').value;
-            const team = document.getElementById('filter-team').value;
-            const status = document.getElementById('filter-status').value;
-
-            filteredJobs = allJobs.filter(job => {
-                if (startDate && job.bookedDate) {
-                    const filterStart = new Date(startDate);
-                    filterStart.setHours(0, 0, 0, 0);
-                    if (job.bookedDate < filterStart) return false;
-                }
-
-                if (endDate && job.bookedDate) {
-                    const filterEnd = new Date(endDate);
-                    filterEnd.setHours(23, 59, 59, 999);
-                    if (job.bookedDate > filterEnd) return false;
-                }
-
-                if (lead && job.lead !== lead) return false;
-                if (team && job.team !== team) return false;
-                if (status && job.status !== status) return false;
-
-                return true;
-            });
-
-            renderTable();
-            updateStats();
-            showToast(`Filters applied: ${filteredJobs.length} jobs found`, 'success');
-        }
-
-        window.clearFilters = function() {
-            document.getElementById('filter-start-date').value = '';
-            document.getElementById('filter-end-date').value = '';
-            document.getElementById('filter-lead').value = '';
-            document.getElementById('filter-team').value = '';
-            document.getElementById('filter-status').value = '';
-
-            filteredJobs = [...allJobs];
-            renderTable();
-            updateStats();
-            showToast('Filters cleared', 'success');
-        }
-
-        function renderTable() {
-            if (filteredJobs.length === 0) {
-                document.getElementById('table-content').innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📋</div>
-                        <h3 style="font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">No Jobs Found</h3>
-                        <p>No jobs match the current filters</p>
-                    </div>
-                `;
-                return;
-            }
-
-            const html = `
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Job Number</th>
-                            <th>Job Type</th>
-                            <th>Postcode</th>
-                            <th>Lead</th>
-                            <th>Team</th>
-                            <th>Booked Date</th>
-                            <th>Projected Completion</th>
-                            <th>Days</th>
-                            <th>Status</th>
-                            <th>Notes</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${filteredJobs.map(job => `
-                            <tr>
-                                <td class="job-number">#${escapeHtml(job.jobNumber)}</td>
-                                <td>${escapeHtml(job.jobType)}</td>
-                                <td>${escapeHtml(job.postcode)}</td>
-                                <td>${escapeHtml(job.lead)}</td>
-                                <td>${escapeHtml(job.team)}</td>
-                                <td>${formatDate(job.bookedDate)}</td>
-                                <td>${formatDate(job.projectedCompletionDate)}</td>
-                                <td>${job.days}</td>
-                                <td><span class="status-badge status-${job.status.toLowerCase().replace('-', '')}">${escapeHtml(job.status)}</span></td>
-                                <td class="notes-cell" title="${escapeHtml(job.notes)}">${escapeHtml(job.notes) || '-'}</td>
-                                <td><button class="edit-btn" onclick="openEditModal('${job.id}')">✏️ Edit</button></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-
-            document.getElementById('table-content').innerHTML = html;
-        }
-
-        function updateStats() {
-            document.getElementById('total-jobs').textContent = allJobs.length;
-            document.getElementById('filtered-jobs').textContent = filteredJobs.length;
+       
+        // Geocode postcodes → lat/lng using Nominatim (OpenStreetMap)
+        async function geocodeJobs() {
+            console.log('Geocoding postcodes...');
             
-            const totalDays = filteredJobs.reduce((sum, job) => sum + (job.days || 0), 0);
-            document.getElementById('total-days').textContent = totalDays;
-        }
+            const statusEl = document.getElementById('geocoding-status');
+            const progressEl = document.getElementById('geocoding-progress');
+            
+            const jobsNeedingGeocode = allJobs.filter(job => {
+                const postcode = job['Postcode'] || job.Postcode;
+                return postcode && !job.coordinates;
+            });
 
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
+            if (jobsNeedingGeocode.length > 0) {
+                statusEl.style.display = 'block';
+                statusEl.classList.add('active');
+            }
+
+            let geocoded = 0;
            
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function formatDateForInput(date) {
-            if (!date) return '';
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        window.openEditModal = function(jobId) {
-            const job = allJobs.find(j => j.id === jobId);
-            if (!job) return;
-
-            currentEditJob = job;
-
-            document.getElementById('edit-job-number').value = job.jobNumber;
-            document.getElementById('edit-job-type').value = job.jobType;
-            document.getElementById('edit-postcode').value = job.postcode;
-            document.getElementById('edit-lead').value = job.lead;
-            document.getElementById('edit-team').value = job.team;
-            document.getElementById('edit-booked-date').value = formatDateForInput(job.bookedDate);
-            document.getElementById('edit-projected-date').value = formatDateForInput(job.projectedCompletionDate);
-            document.getElementById('edit-days').value = job.days;
-            document.getElementById('edit-status').value = job.status;
-            document.getElementById('edit-notes').value = job.notes;
-
-            document.getElementById('edit-modal').classList.add('show');
-        }
-
-        window.closeEditModal = function() {
-            document.getElementById('edit-modal').classList.remove('show');
-            currentEditJob = null;
-        }
-
-        window.saveJob = async function() {
-            if (!currentEditJob) return;
-
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', currentEditJob.id);
-
-                const bookedDateInput = document.getElementById('edit-booked-date').value;
-                const projectedDateInput = document.getElementById('edit-projected-date').value;
-
-                const bookedDate = bookedDateInput ? formatDate(new Date(bookedDateInput)) : null;
-                const projectedDate = projectedDateInput ? formatDate(new Date(projectedDateInput)) : null;
-
-                const updateData = {
-                    'Job Type': document.getElementById('edit-job-type').value,
-                    'Postcode': document.getElementById('edit-postcode').value,
-                    'Lead': document.getElementById('edit-lead').value,
-                    'Team': document.getElementById('edit-team').value,
-                    'Days': parseInt(document.getElementById('edit-days').value) || 1,
-                    'Status Update': document.getElementById('edit-status').value,
-                    'notes': document.getElementById('edit-notes').value
-                };
-
-                if (bookedDate) {
-                    updateData['Booked Date'] = bookedDate;
-                }
-
-                if (projectedDate) {
-                    updateData['Projected Completion Date'] = projectedDate;
-                }
-
-                await updateDoc(jobRef, updateData);
-
-                showToast('Job updated successfully!', 'success');
-                closeEditModal();
+            for (let job of allJobs) {
+                const postcode = job['Postcode'] || job.Postcode;
                 
-                await loadJobs();
-                applyFilters();
+                if (postcode && !job.coordinates) {
+                    geocoded++;
+                    progressEl.textContent = `${geocoded}/${jobsNeedingGeocode.length}`;
+                    
+                    const coords = await geocodePostcode(postcode);
+                    if (coords) {
+                        job.coordinates = coords;
+                        console.log(`✅ Geocoded ${postcode}:`, coords);
+                    } else {
+                        console.warn(`❌ Failed to geocode ${postcode}`);
+                    }
+                    
+                    // Polite delay to respect Nominatim usage policy (1 req/sec)
+                    await new Promise(r => setTimeout(r, 1200));
+                }
+            }
+           
+            statusEl.classList.remove('active');
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 2000);
+            
+            console.log(`Geocoding finished. ${geocoded} postcodes processed.`);
+        }
+       
+        async function geocodePostcode(postcode) {
+            try {
+                const clean = postcode.trim().replace(/\s+/g, '+');
+                const url = `https://nominatim.openstreetmap.org/search?q=${clean},+UK&format=json&limit=1`;
+               
+                const res = await fetch(url);
+                const data = await res.json();
+               
+                if (data && data.length > 0) {
+                    return {
+                        lat: parseFloat(data[0].lat),
+                        lng: parseFloat(data[0].lon)
+                    };
+                }
+            } catch (err) {
+                console.warn(`Geocode failed for ${postcode}:`, err);
+            }
+            return null;
+        }
+       
+        // Render/update map with current filter
+        function updateMap() {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+           
+            const endDate = new Date(now);
+            endDate.setDate(endDate.getDate() + currentDays);
+            endDate.setHours(23, 59, 59, 999);
+           
+            // Update UI dates
+            document.getElementById('start-date').textContent = formatDate(now);
+            document.getElementById('end-date').textContent = formatDate(endDate);
+           
+            // Filter jobs in range - check multiple date fields
+            const filtered = allJobs.filter(job => {
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= now && d <= endDate;
+            });
+           
+            // Only jobs with coordinates
+            const withCoords = filtered.filter(j => j.coordinates);
+           
+            // Stats
+            const uniqueLocs = new Set(withCoords.map(j => `${j.coordinates.lat.toFixed(4)},${j.coordinates.lng.toFixed(4)}`));
+           
+            document.getElementById('jobs-count').textContent = filtered.length;
+            document.getElementById('locations-count').textContent = uniqueLocs.size;
+           
+            // This week count
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            
+            const weekJobs = allJobs.filter(j => {
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= weekStart && d <= weekEnd;
+            }).length;
+            document.getElementById('week-count').textContent = weekJobs;
+           
+            // This month
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            monthStart.setHours(0, 0, 0, 0);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            monthEnd.setHours(23, 59, 59, 999);
+            
+            const monthJobs = allJobs.filter(j => {
+                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const d = parseDate(dateStr);
+                return d && d >= monthStart && d <= monthEnd;
+            }).length;
+            document.getElementById('month-count').textContent = monthJobs;
+           
+            // Clear old layers
+            markersLayer.clearLayers();
+            if (heatLayer) map.removeLayer(heatLayer);
+           
+            // Heatmap data: [lat, lng, intensity]
+            const heatPoints = withCoords.map(j => [j.coordinates.lat, j.coordinates.lng, 1]);
+           
+            if (heatPoints.length > 0) {
+                heatLayer = L.heatLayer(heatPoints, {
+                    radius: 25,
+                    blur: 15,
+                    maxZoom: 10,
+                    gradient: { 0.0: '#00FF00', 0.5: '#FFFF00', 1.0: '#FF0000' }
+                }).addTo(map);
+            }
+           
+            // Markers with popups
+            withCoords.forEach(job => {
+                const marker = L.circleMarker([job.coordinates.lat, job.coordinates.lng], {
+                    radius: 7,
+                    fillColor: '#FF6B35',
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.85
+                });
+               
+                const jobNumber = job['Job Number'] || 'N/A';
+                const address = job['Address'] || 'N/A';
+                const postcode = job['Postcode'] || 'N/A';
+                const bookedDate = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date') || 'N/A';
+                const lead = job['Lead'] || 'Unassigned';
+                const status = getFieldValue(job, 'Status Update', 'status') || 'N/A';
 
-            } catch (error) {
-                console.error('Error updating job:', error);
-                showToast('Failed to update job', 'error');
+                const popup = `
+                    <div class="popup-title">Job #${escapeHtml(jobNumber)}</div>
+                    <div class="popup-detail"><strong>Address:</strong> ${escapeHtml(address)}</div>
+                    <div class="popup-detail"><strong>Postcode:</strong> ${escapeHtml(postcode)}</div>
+                    <div class="popup-detail"><strong>Date:</strong> ${escapeHtml(bookedDate)}</div>
+                    <div class="popup-detail"><strong>Lead:</strong> ${escapeHtml(lead)}</div>
+                    <div class="popup-detail"><strong>Status:</strong> ${escapeHtml(status)}</div>
+                `;
+               
+                marker.bindPopup(popup);
+                markersLayer.addLayer(marker);
+            });
+           
+            // Auto-fit bounds if jobs exist
+            if (withCoords.length > 0) {
+                const bounds = L.latLngBounds(withCoords.map(j => [j.coordinates.lat, j.coordinates.lng]));
+                map.fitBounds(bounds, { padding: [60, 60] });
+            } else {
+                // Reset to UK view if no jobs
+                map.setView([54.5, -3.5], 6);
             }
         }
-
-        document.getElementById('edit-modal').addEventListener('click', (e) => {
-            if (e.target.id === 'edit-modal') closeEditModal();
-        });
+       
+        // Slider listener
+        function setupSlider() {
+            const slider = document.getElementById('date-range-slider');
+            const valueDisplay = document.getElementById('range-value');
+           
+            slider.addEventListener('input', e => {
+                currentDays = parseInt(e.target.value);
+                let label = `Next ${currentDays} Days`;
+                if (currentDays === 7) label = 'Next 7 Days';
+                if (currentDays === 14) label = 'Next 2 Weeks';
+                if (currentDays === 30) label = 'Next Month';
+                valueDisplay.textContent = label;
+                updateMap();
+            });
+        }
+       
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
     </script>
 </body>
 </html>
