@@ -321,9 +321,9 @@
        
         .job-card {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 0.6rem;
+            padding: 0.5rem;
             border-radius: 6px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
@@ -333,7 +333,8 @@
             z-index: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
+            gap: 0.15rem;
             user-select: none;
             overflow: hidden;
         }
@@ -380,50 +381,57 @@
         .job-number {
             font-weight: 700;
             color: var(--dark);
-            margin-bottom: 0.2rem;
+            font-size: 0.8rem;
+            line-height: 1.1;
             pointer-events: none;
             position: relative;
             z-index: 1;
         }
 
         .job-type {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--dark);
             opacity: 0.95;
             font-weight: 600;
-            margin-bottom: 0.2rem;
+            line-height: 1.1;
             pointer-events: none;
             position: relative;
             z-index: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
        
         .job-customer {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: var(--dark);
             opacity: 0.9;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            line-height: 1.1;
             pointer-events: none;
             position: relative;
             z-index: 1;
         }
        
         .job-postcode {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: var(--dark);
-            opacity: 0.8;
+            opacity: 0.85;
+            line-height: 1.1;
             pointer-events: none;
             position: relative;
             z-index: 1;
         }
        
         .job-days {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: var(--dark);
             opacity: 0.9;
-            margin-top: 0.2rem;
+            margin-top: auto;
             font-weight: 600;
+            line-height: 1.1;
             pointer-events: none;
             position: relative;
             z-index: 1;
@@ -1202,6 +1210,9 @@
                         const completionPercent = jobLength > 1 && completedDays.length > 0 
                             ? (completedDays.length / jobLength) * 100 
                             : 0;
+
+                        // For multi-day jobs, allow text to wrap and fill the space
+                        const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
                        
                         html += `
                             <div class="job-card ${statusClass}"
@@ -1210,8 +1221,8 @@
                                 ${completionPercent > 0 && completionPercent < 100 ? 
                                     `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
                                 <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                                <div class="job-type">📋 ${escapeHtml(job.jobType)}</div>
-                                <div class="job-customer">${escapeHtml(job['Address'] || 'No Address')}</div>
+                                <div class="job-type" style="${textStyle}">📋 ${escapeHtml(job.jobType)}</div>
+                                <div class="job-customer" style="${textStyle}">${escapeHtml(job['Address'] || 'No Address')}</div>
                                 <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
                                 ${jobLength > 1 ? `<div class="job-days">📅 ${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength} day${jobLength > 1 ? 's' : ''}</div>` : ''}
                             </div>
