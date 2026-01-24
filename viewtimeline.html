@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Timeline | Pingu - Solar</title>
+    <title>Export Data | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -18,12 +18,7 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
-            --warning: #FFC857;
             --shadow: rgba(255, 107, 53, 0.3);
-            --in-progress: #00D9FF;
-            --complete: #4ECCA3;
-            --aborted: #FF6B6B;
-            --cancelled: #9A9AB0;
         }
        
         * {
@@ -64,7 +59,7 @@
         }
        
         .container {
-            max-width: 100%;
+            max-width: 1600px;
             margin: 0 auto;
             padding: 2rem;
         }
@@ -72,9 +67,6 @@
         header {
             margin-bottom: 2rem;
             animation: slideDown 0.8s ease-out;
-            max-width: 1600px;
-            margin-left: auto;
-            margin-right: auto;
         }
        
         @keyframes slideDown {
@@ -130,17 +122,14 @@
             font-size: 0.95rem;
         }
        
-        .controls-card {
+        .card {
             background: var(--dark-light);
             border-radius: 16px;
             padding: 2rem;
             border: 2px solid transparent;
-            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
             animation: fadeInUp 0.6s ease-out;
-            max-width: 1600px;
-            margin-left: auto;
-            margin-right: auto;
-            margin-bottom: 2rem;
         }
        
         @keyframes fadeInUp {
@@ -148,27 +137,43 @@
             to { opacity: 1; transform: translateY(0); }
         }
        
-        .controls-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-            margin-bottom: 1rem;
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
         }
        
-        .control-group {
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+       
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+       
+        .filter-group {
             display: flex;
             flex-direction: column;
             gap: 0.5rem;
         }
        
-        .control-label {
+        .filter-label {
             color: var(--text-dim);
             font-size: 0.85rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
+            font-weight: 600;
         }
        
-        .control-input {
+        .filter-input, .filter-select {
             background: var(--dark-lighter);
             border: 2px solid var(--dark-lighter);
             color: var(--text);
@@ -179,276 +184,68 @@
             transition: all 0.3s ease;
         }
        
-        .control-input:focus {
+        .filter-input:focus, .filter-select:focus {
             outline: none;
             border-color: var(--primary);
         }
        
-        .timeline-container {
-            background: var(--dark-light);
-            border-radius: 16px;
-            padding: 1.5rem;
-            border: 2px solid var(--dark-lighter);
-            animation: fadeInUp 0.8s ease-out;
-            overflow-x: auto;
-            max-width: 100%;
-        }
-       
-        .timeline-wrapper {
-            min-width: 1200px;
-            position: relative;
-        }
-       
-        .timeline-header {
-            display: grid;
-            grid-template-columns: 200px 1fr;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            position: sticky;
-            top: 0;
-            background: var(--dark-light);
-            z-index: 10;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--primary);
-        }
-       
-        .engineer-header {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--accent);
-            display: flex;
-            align-items: center;
-        }
-       
-        .dates-header {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(120px, 1fr);
-            gap: 1px;
-        }
-       
-        .date-cell {
-            background: var(--dark-lighter);
-            padding: 0.8rem;
-            text-align: center;
+        .btn {
+            padding: 0.8rem 1.8rem;
+            border: none;
             border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
-       
-        .date-day {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-        }
-       
-        .date-number {
             font-family: 'Syne', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
         }
        
-        .date-month {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-        }
-       
-        .date-cell.today {
+        .btn-primary {
             background: linear-gradient(135deg, var(--primary), var(--accent));
             color: white;
         }
        
-        .date-cell.today .date-day,
-        .date-cell.today .date-number,
-        .date-cell.today .date-month {
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+       
+        .btn-secondary {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--text-dim);
+        }
+       
+        .btn-secondary:hover {
+            border-color: var(--primary);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #3DB88E);
             color: white;
         }
-       
-        .timeline-body {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-       
-        .engineer-row {
-            display: grid;
-            grid-template-columns: 200px 1fr;
-            gap: 1rem;
-            min-height: 80px;
-        }
-       
-        .engineer-name {
-            background: var(--dark-lighter);
-            padding: 1rem;
-            border-radius: 8px;
-            font-weight: 600;
-            color: var(--text);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            position: sticky;
-            left: 0;
-            z-index: 5;
-        }
-       
-        .engineer-icon {
-            font-size: 1.3rem;
-        }
-       
-        .timeline-grid {
-            display: grid;
-            grid-auto-flow: column;
-            grid-auto-columns: minmax(120px, 1fr);
-            gap: 1px;
-            position: relative;
-        }
-       
-        .day-column {
-            background: var(--dark);
-            border-radius: 4px;
-            min-height: 80px;
-            position: relative;
-            transition: all 0.2s ease;
-        }
-       
-        .day-column.drag-over {
-            background: var(--dark-lighter);
-            border: 2px dashed var(--accent);
-        }
-       
-        .job-card {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 0.5rem 0.4rem;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: 2px solid transparent;
-            position: absolute;
-            top: 0.5rem;
-            height: calc(100% - 1rem);
-            z-index: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 0.25rem;
-            user-select: none;
-            overflow: hidden;
-        }
-       
-        .job-card.dragging {
-            opacity: 0.4;
-            cursor: grabbing;
-        }
-       
-        .job-card:hover {
+
+        .btn-success:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--shadow);
-            border-color: white;
-            z-index: 2;
-        }
-
-        .job-card.status-in-progress {
-            background: linear-gradient(135deg, var(--in-progress), #00B8D9);
-        }
-
-        .job-card.status-complete {
-            background: linear-gradient(135deg, var(--complete), #3DB88E);
-        }
-
-        .job-card.status-aborted {
-            background: linear-gradient(135deg, var(--aborted), #E55A5A);
-        }
-
-        .job-card.status-cancelled {
-            background: linear-gradient(135deg, var(--cancelled), #7A7A8F);
-        }
-
-        /* Partial completion overlay */
-        .job-card .completion-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            height: 100%;
-            background: linear-gradient(135deg, var(--complete), #3DB88E);
-            pointer-events: none;
-            transition: width 0.3s ease;
+            box-shadow: 0 10px 30px rgba(78, 204, 163, 0.3);
         }
        
-        .job-number {
-            font-weight: 800;
-            color: var(--dark);
-            font-size: 0.85rem;
-            line-height: 1.2;
-            pointer-events: none;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-
-        .job-type {
-            font-size: 0.7rem;
-            color: var(--dark);
-            opacity: 0.95;
-            font-weight: 600;
-            line-height: 1.2;
-            pointer-events: none;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-       
-        .job-postcode {
-            font-size: 0.7rem;
-            color: var(--dark);
-            opacity: 0.9;
-            line-height: 1.2;
-            font-weight: 600;
-            pointer-events: none;
-            position: relative;
-            z-index: 1;
-            text-align: center;
-        }
-       
-        .job-days {
-            font-size: 0.6rem;
-            color: var(--dark);
-            opacity: 0.95;
-            font-weight: 700;
-            line-height: 1;
-            pointer-events: none;
-            position: absolute;
-            bottom: 0.3rem;
-            right: 0.3rem;
-            z-index: 1;
-            background: rgba(255, 255, 255, 0.3);
-            padding: 0.15rem 0.3rem;
-            border-radius: 3px;
-        }
-       
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-dim);
-        }
-       
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: var(--text-dim);
-            font-size: 1.1rem;
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
         }
        
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 1rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--dark-lighter);
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--dark-lighter);
+            border-radius: 12px;
         }
        
         .stat-item {
@@ -473,207 +270,115 @@
             background-clip: text;
         }
        
-        /* Modal */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(10px);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
+        .preview-container {
+            background: var(--dark-lighter);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            max-height: 600px;
+            overflow: auto;
         }
        
-        .modal.show {
-            display: flex;
-        }
-       
-        .modal-content {
-            background: var(--dark-light);
-            border-radius: 16px;
-            padding: 2rem;
-            max-width: 600px;
-            width: 90%;
-            border: 2px solid var(--primary);
-            max-height: 80vh;
-            overflow-y: auto;
-        }
-       
-        .modal-header {
+        .preview-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid var(--dark-lighter);
-        }
-       
-        .modal-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.5rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-       
-        .close-btn {
-            background: none;
-            border: none;
-            color: var(--text-dim);
-            font-size: 2rem;
-            cursor: pointer;
-            transition: color 0.3s ease;
-            line-height: 1;
-        }
-       
-        .close-btn:hover {
-            color: var(--error);
-        }
-       
-        .modal-body {
-            display: grid;
-            gap: 1rem;
-        }
-       
-        .detail-row {
-            display: grid;
-            grid-template-columns: 120px 1fr;
-            gap: 1rem;
-            padding: 0.8rem;
-            background: var(--dark-lighter);
-            border-radius: 8px;
-        }
-       
-        .detail-label {
-            color: var(--text-dim);
-            font-size: 0.85rem;
-        }
-       
-        .detail-value {
-            color: var(--text);
-            font-weight: 500;
         }
 
-        /* Status Modal */
-        .status-buttons {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        .status-btn {
-            padding: 1rem;
-            border: 2px solid transparent;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: white;
-        }
-
-        .status-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-
-        .status-btn.in-progress {
-            background: linear-gradient(135deg, var(--in-progress), #00B8D9);
-        }
-
-        .status-btn.complete {
-            background: linear-gradient(135deg, var(--complete), #3DB88E);
-        }
-
-        .status-btn.aborted {
-            background: linear-gradient(135deg, var(--aborted), #E55A5A);
-        }
-
-        .status-btn.cancelled {
-            background: linear---cancelled), #7A7A8F);
-        }
-
-        /* Completion Day Selector */
-        .completion-selector {
-            margin-top: 1.5rem;
-            padding: 1.5rem;
-            background: var(--dark-lighter);
-            border-radius: 8px;
-        }
-
-        .completion-title {
-            font-size: 0.9rem;
-            color: var(--text-dim);
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-
-        .day-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        .preview-controls {
+            display: flex;
             gap: 0.5rem;
+            align-items: center;
         }
 
-        .day-btn {
-            padding: 0.8rem;
-            background: var(--dark);
-            border: 2px solid var(--dark-lighter);
+        .preview-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
             border-radius: 6px;
-            color: var(--text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
-
-        .day-btn:hover {
-            border-color: var(--primary);
+       
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
         }
-
-        .day-btn.selected {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-color: white;
-            color: white;
-            font-weight: 700;
-        }
-
-        .completion-actions {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-
-        .action-btn {
+       
+        table th, table td {
             padding: 0.8rem;
-            border: none;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
+            text-align: left;
+            border-bottom: 1px solid var(--dark);
+        }
+       
+        table th {
+            color: var(--accent);
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+            background: var(--dark-lighter);
+            z-index: 10;
+        }
+       
+        table td {
+            color: var(--text-dim);
+        }
+       
+        table tr:hover {
+            background: var(--dark-light);
+        }
+       
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+       
+        .status-pending {
+            background: var(--secondary);
+            color: var(--dark);
+        }
+       
+        .status-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+       
+        .status-outstanding, .status-in-progress {
+            background: var(--accent);
+            color: var(--dark);
         }
 
-        .action-btn.cancel {
-            background: var(--dark);
-            color: var(--text);
-            border: 2px solid var(--dark-lighter);
+        .status-aborted {
+            background: var(--error);
+            color: white;
         }
 
-        .action-btn.confirm {
-            background: linear-gradient(135deg, var(--success), #3DB88E);
+        .status-cancelled {
+            background: var(--text-dim);
             color: white;
         }
        
-        /* Toast Notification */
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+       
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+       
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -701,14 +406,65 @@
             from { transform: translateX(400px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
-
-        .debug-info {
-            background: var(--dark-lighter);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            font-size: 0.85rem;
+       
+        .loading {
+            text-align: center;
+            padding: 3rem;
             color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 0.5rem;
+        }
+       
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .field-selector {
+            background: var(--dark-lighter);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .field-selector-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .field-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .field-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .field-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .field-checkbox label {
+            cursor: pointer;
+            color: var(--text);
+            font-size: 0.85rem;
         }
        
         @media (max-width: 768px) {
@@ -716,20 +472,20 @@
                 padding: 1rem;
             }
            
-            .timeline-wrapper {
-                min-width: 800px;
+            .filter-grid {
+                grid-template-columns: 1fr;
             }
            
-            .engineer-row {
-                grid-template-columns: 150px 1fr;
+            .action-buttons {
+                flex-direction: column;
             }
            
-            .timeline-header {
-                grid-template-columns: 150px 1fr;
+            .btn {
+                width: 100%;
             }
 
-            .status-buttons {
-                grid-template-columns: 1fr;
+            .preview-container {
+                overflow-x: auto;
             }
         }
     </style>
@@ -741,97 +497,102 @@
                 <a href="index.html" class="logo">Pingu - Solar</a>
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
-            <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule of upcoming jobs by engineer - Click to update status</p>
+            <h1>Export Data</h1>
+            <p class="subtitle">Filter and export job data to CSV format</p>
         </header>
        
-        <div class="controls-card">
-            <div class="controls-row">
-                <div class="control-group">
-                    <label class="control-label" for="start-date">Start Date</label>
-                    <input type="date" id="start-date" class="control-input">
+        <!-- Filters Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📊 Export Filters</h2>
+            </div>
+           
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Status Filter</label>
+                    <select class="filter-select" id="status-filter">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="In-Progress">In-Progress</option>
+                        <option value="complete">Complete</option>
+                        <option value="outstanding">Outstanding</option>
+                        <option value="Aborted">Aborted</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
                 </div>
-                <div class="control-group">
-                    <label class="control-label" for="days-count">Days to Show</label>
-                    <input type="number" id="days-count" class="control-input" value="14" min="7" max="60">
+               
+                <div class="filter-group">
+                    <label class="filter-label">Start Date</label>
+                    <input type="date" class="filter-input" id="start-date">
                 </div>
-                <div class="control-group" style="display: flex; align-items: flex-end;">
-                    <button onclick="updateTimeline()" class="control-input" style="cursor: pointer; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; font-weight: 700; border: none;">
-                        Update Timeline
-                    </button>
+               
+                <div class="filter-group">
+                    <label class="filter-label">End Date</label>
+                    <input type="date" class="filter-input" id="end-date">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Date Field</label>
+                    <select class="filter-select" id="date-field">
+                        <option value="Booked Date">Booked Date</option>
+                        <option value="Projected Completion Date">Completion Date</option>
+                        <option value="uploadDate">Upload Date</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Field Selector -->
+            <div class="field-selector">
+                <div class="field-selector-title">Select Fields to Export</div>
+                <div style="margin-bottom: 1rem;">
+                    <button class="btn btn-secondary preview-btn" onclick="selectAllFields()">Select All</button>
+                    <button class="btn btn-secondary preview-btn" onclick="deselectAllFields()">Deselect All</button>
+                </div>
+                <div class="field-checkboxes" id="field-checkboxes">
+                    <!-- Checkboxes will be populated here -->
                 </div>
             </div>
            
-            <div class="stats-row">
-                <div class="stat-item">
-                    <div class="stat-label">Total Jobs</div>
-                    <div class="stat-value" id="total-jobs">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Engineers</div>
-                    <div class="stat-value" id="total-engineers">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Date Range</div>
-                    <div class="stat-value" id="date-range">14</div>
-                </div>
-            </div>
-
-            <div class="debug-info" id="debug-info" style="display: none;">
-                Debug info will appear here
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    🔍 Apply Filters & Preview
+                </button>
+                <button class="btn btn-secondary" onclick="clearFilters()">
+                    ↺ Clear Filters
+                </button>
             </div>
         </div>
        
-        <div class="timeline-container">
-            <div id="timeline-content">
-                <div class="loading">Loading timeline from Firebase...</div>
+        <!-- Stats Row -->
+        <div class="stats-row" id="stats-row">
+            <div class="stat-item">
+                <div class="stat-label">Total Jobs</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Filtered Jobs</div>
+                <div class="stat-value" id="stat-filtered">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Date Range</div>
+                <div class="stat-value" id="stat-range">All</div>
             </div>
         </div>
-    </div>
-   
-    <!-- Status Update Modal -->
-    <div class="modal" id="status-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="status-modal-title">Update Job Status</h2>
-                <button class="close-btn" onclick="closeStatusModal()">×</button>
+       
+        <!-- Preview Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📋 Export Preview</h2>
+                <button class="btn btn-success" onclick="exportToCSV()" id="export-btn" disabled>
+                    💾 Download CSV
+                </button>
             </div>
-            <div class="modal-body">
-                <div class="detail-row">
-                    <div class="detail-label">Job Number</div>
-                    <div class="detail-value" id="status-job-number"></div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Job Type</div>
-                    <div class="detail-value" id="status-job-type"></div>
-                </div>
-                <div class="detail-row">
-                    <div class="detail-label">Current Status</div>
-                    <div class="detail-value" id="status-current"></div>
-                </div>
-
-                <div class="status-buttons">
-                    <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">
-                        🔄 In-Progress
-                    </button>
-                    <button class="status-btn complete" onclick="showCompletionSelector()">
-                        ✅ Complete
-                    </button>
-                    <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">
-                        ⚠️ Aborted
-                    </button>
-                    <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">
-                        ❌ Cancelled
-                    </button>
-                </div>
-
-                <div class="completion-selector" id="completion-selector" style="display: none;">
-                    <div class="completion-title">Which day(s) are complete?</div>
-                    <div class="day-buttons" id="day-buttons"></div>
-                    <div class="completion-actions">
-                        <button class="action-btn cancel" onclick="hideCompletionSelector()">Cancel</button>
-                        <button class="action-btn confirm" onclick="confirmPartialCompletion()">Confirm</button>
-                    </div>
+           
+            <div class="preview-container" id="preview-container">
+                <div class="empty-state">
+                    <div class="empty-icon">📄</div>
+                    <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Data to Preview</h3>
+                    <p>Apply filters above to preview your export</p>
                 </div>
             </div>
         </div>
@@ -842,7 +603,7 @@
    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -857,36 +618,140 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+            window.firebaseModules = { collection, getDocs, query, orderBy };
             console.log('✅ Firebase initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
-                window.initializeTimeline();
+                window.loadJobs();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
-            document.getElementById('timeline-content').innerHTML =
-                '<div class="empty-state">Firebase connection failed</div>';
+            document.getElementById('preview-container').innerHTML =
+                '<div class="empty-state"><div class="empty-icon">⚠️</div><h3 style="font-family: Syne, sans-serif;">Firebase Connection Failed</h3></div>';
         }
     </script>
    
     <script>
         let allJobs = [];
-        let currentJob = null;
-        let timelineDates = [];
-        let selectedCompletionDays = [];
-       
-        // Initialize timeline with default values
-        window.initializeTimeline = function() {
-            const today = new Date();
-            document.getElementById('start-date').valueAsDate = today;
-            loadJobs();
+        let filteredJobs = [];
+        let availableFields = [];
+
+        // Common fields that should be exported
+        const defaultFields = [
+            'Job Type',
+            'Job Number',
+            'Address',
+            'Postcode',
+            'Booked Date',
+            'Projected Completion Date',
+            'Days',
+            'Panel No.',
+            'Status Update',
+            'PO',
+            'Lead',
+            'Team Number'
+        ];
+
+        // Load jobs from Firebase
+        window.loadJobs = async function() {
+            try {
+                document.getElementById('preview-container').innerHTML = '<div class="loading">Loading jobs from Firebase...</div>';
+               
+                const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
+               
+                const jobsQuery = query(
+                    collection(window.db, 'Solar-jobs'),
+                    orderByFn('uploadDate', 'desc')
+                );
+               
+                const querySnapshot = await getDocs(jobsQuery);
+               
+                allJobs = [];
+                querySnapshot.forEach((docSnap) => {
+                    allJobs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+               
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs`);
+               
+                // Extract all unique fields from jobs
+                extractAvailableFields();
+                
+                // Initialize field checkboxes
+                initializeFieldCheckboxes();
+                
+                // Update stats
+                document.getElementById('stat-total').textContent = allJobs.length;
+                document.getElementById('stat-filtered').textContent = allJobs.length;
+               
+                // Show initial preview with all jobs
+                filteredJobs = [...allJobs];
+                renderPreview();
+               
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                document.getElementById('preview-container').innerHTML =
+                    `<div class="empty-state"><div class="empty-icon">⚠️</div><h3 style="font-family: Syne, sans-serif;">Error Loading Jobs</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        // Extract all available fields from the jobs
+        function extractAvailableFields() {
+            const fieldSet = new Set();
+            
+            allJobs.forEach(job => {
+                Object.keys(job).forEach(key => {
+                    if (key !== 'id') {
+                        fieldSet.add(key);
+                    }
+                });
+            });
+            
+            availableFields = Array.from(fieldSet).sort();
+        }
+
+        // Initialize field checkboxes
+        function initializeFieldCheckboxes() {
+            const container = document.getElementById('field-checkboxes');
+            
+            container.innerHTML = availableFields.map(field => {
+                const isDefault = defaultFields.includes(field);
+                return `
+                    <div class="field-checkbox">
+                        <input type="checkbox" id="field-${escapeId(field)}" value="${escapeHtml(field)}" ${isDefault ? 'checked' : ''}>
+                        <label for="field-${escapeId(field)}">${escapeHtml(field)}</label>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Select all fields
+        window.selectAllFields = function() {
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+        }
+
+        // Deselect all fields
+        window.deselectAllFields = function() {
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        // Get selected fields
+        function getSelectedFields() {
+            const selected = [];
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]:checked').forEach(cb => {
+                selected.push(cb.value);
+            });
+            return selected;
         }
        
         // Parse date in DD/MM/YYYY format or ISO
         function parseDate(dateStr) {
             if (!dateStr) return null;
            
+            // Try DD/MM/YYYY format
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
@@ -901,6 +766,7 @@
                 }
             }
            
+            // Try ISO format
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) {
                 parsed.setHours(0, 0, 0, 0);
@@ -910,166 +776,214 @@
             return null;
         }
        
-        // Format date as DD/MM/YYYY for storage/display
-        function formatDate(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        }
-       
-        // Load jobs from Firebase collection "Solar-jobs"
-        async function loadJobs() {
-            try {
-                const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
+        // Apply filters
+        window.applyFilters = function() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const dateField = document.getElementById('date-field').value;
+           
+            filteredJobs = allJobs.filter(job => {
+                // Status filter
+                if (statusFilter !== 'all') {
+                    const jobStatus = (job['Status Update'] || job['status'] || 'pending').toLowerCase();
+                    if (jobStatus !== statusFilter.toLowerCase()) {
+                        return false;
+                    }
+                }
                
-                const jobsQuery = query(
-                    collection(window.db, 'Solar-jobs'),
-                    orderByFn('uploadDate', 'desc')
-                );
-               
-                const querySnapshot = await getDocs(jobsQuery);
-               
-                allJobs = [];
-                let debugInfo = [];
-                
-                querySnapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    
-                    const dateFields = [
-                        'Booked Date',
-                        'Projected Completion Date', 
-                        'Install Date',
-                        'installedDate',
-                        'bookingDate'
-                    ];
-                    
-                    let jobDate = null;
-                    let usedDateField = null;
-                    
-                    for (const field of dateFields) {
-                        if (data[field]) {
-                            jobDate = parseDate(data[field]);
-                            if (jobDate) {
-                                usedDateField = field;
-                                break;
-                            }
-                        }
+                // Date filter
+                if (startDate || endDate) {
+                    const jobDateStr = job[dateField];
+                    const jobDate = parseDate(jobDateStr);
+                   
+                    if (!jobDate) return false;
+                   
+                    if (startDate) {
+                        const start = new Date(startDate);
+                        start.setHours(0, 0, 0, 0);
+                        if (jobDate < start) return false;
                     }
                    
-                    if (jobDate) {
-                        let jobLength = 1;
-                        const durationFields = [
-                            'Days',
-                            'Job Length (days)',
-                            'Job Length',
-                            'jobLength',
-                            'Duration',
-                            'duration'
-                        ];
-                       
-                        for (const field of durationFields) {
-                            if (data[field] !== undefined && data[field] !== '') {
-                                const parsed = parseInt(data[field], 10);
-                                if (!isNaN(parsed) && parsed > 0) {
-                                    jobLength = parsed;
-                                    break;
-                                }
-                            }
-                        }
-
-                        const engineerFields = ['Lead', 'Lead Engineer', 'Engineer', 'engineer'];
-                        let engineer = 'Unassigned';
-                        
-                        for (const field of engineerFields) {
-                            if (data[field] && data[field].trim()) {
-                                engineer = data[field];
-                                break;
-                            }
-                        }
-
-                        // Get job type
-                        const jobType = data['Job Type'] || 'Standard';
-
-                        // Get status and completion info
-                        const status = data['Status Update'] || data['status'] || 'Scheduled';
-                        const completedDays = data['completedDays'] || [];
-                       
-                        allJobs.push({
-                            id: docSnap.id,
-                            ...data,
-                            parsedDate: jobDate,
-                            usedDateField: usedDateField,
-                            jobLength: jobLength,
-                            engineer: engineer,
-                            jobType: jobType,
-                            status: status,
-                            completedDays: completedDays
-                        });
-
-                        debugInfo.push(`Job ${data['Job Number'] || docSnap.id}: ${jobType}, Date = ${formatDate(jobDate)}, Duration = ${jobLength} days`);
+                    if (endDate) {
+                        const end = new Date(endDate);
+                        end.setHours(23, 59, 59, 999);
+                        if (jobDate > end) return false;
                     }
+                }
+               
+                return true;
+            });
+           
+            // Update stats
+            document.getElementById('stat-filtered').textContent = filteredJobs.length;
+           
+            let rangeText = 'All';
+            if (startDate && endDate) {
+                rangeText = `${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            } else if (startDate) {
+                rangeText = `From ${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            } else if (endDate) {
+                rangeText = `Until ${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            }
+            document.getElementById('stat-range').textContent = rangeText;
+           
+            renderPreview();
+            showToast(`Filtered to ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''}`, 'success');
+        }
+       
+        // Clear filters
+        window.clearFilters = function() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('start-date').value = '';
+            document.getElementById('end-date').value = '';
+            document.getElementById('date-field').value = 'Booked Date';
+           
+            filteredJobs = [...allJobs];
+            document.getElementById('stat-filtered').textContent = allJobs.length;
+            document.getElementById('stat-range').textContent = 'All';
+           
+            renderPreview();
+            showToast('Filters cleared', 'success');
+        }
+       
+        // Render preview table
+        function renderPreview() {
+            const container = document.getElementById('preview-container');
+            const exportBtn = document.getElementById('export-btn');
+           
+            if (filteredJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Jobs Match Filters</h3>
+                        <p>Try adjusting your filter criteria</p>
+                    </div>
+                `;
+                exportBtn.disabled = true;
+                return;
+            }
+           
+            exportBtn.disabled = false;
+
+            const selectedFields = getSelectedFields();
+            
+            if (selectedFields.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Fields Selected</h3>
+                        <p>Please select at least one field to export</p>
+                    </div>
+                `;
+                exportBtn.disabled = true;
+                return;
+            }
+           
+            const previewLimit = Math.min(filteredJobs.length, 100);
+            const jobsToShow = filteredJobs.slice(0, previewLimit);
+           
+            const tableHTML = `
+                <div class="preview-header">
+                    <span>Preview (showing ${previewLimit} of ${filteredJobs.length} jobs)</span>
+                    <div class="preview-controls">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; margin-right: 1rem;">${selectedFields.length} fields selected</span>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            ${selectedFields.map(field => `<th>${escapeHtml(field)}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jobsToShow.map(job => `
+                            <tr>
+                                ${selectedFields.map(field => {
+                                    let value = job[field] || '';
+                                    
+                                    // Special formatting for status
+                                    if (field === 'Status Update' || field === 'status') {
+                                        const status = (value || 'pending').toLowerCase();
+                                        return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'pending')}</span></td>`;
+                                    }
+                                    
+                                    return `<td>${escapeHtml(String(value))}</td>`;
+                                }).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${filteredJobs.length > previewLimit ? `
+                    <div style="text-align: center; margin-top: 1rem; color: var(--text-dim); font-size: 0.85rem;">
+                        + ${filteredJobs.length - previewLimit} more jobs (will be included in export)
+                    </div>
+                ` : ''}
+            `;
+           
+            container.innerHTML = tableHTML;
+        }
+       
+        // Export to CSV
+        window.exportToCSV = function() {
+            if (filteredJobs.length === 0) {
+                showToast('No jobs to export', 'error');
+                return;
+            }
+
+            const selectedFields = getSelectedFields();
+            
+            if (selectedFields.length === 0) {
+                showToast('Please select at least one field to export', 'error');
+                return;
+            }
+           
+            // Create CSV content
+            let csv = selectedFields.map(field => escapeCSV(field)).join(',') + '\n';
+           
+            filteredJobs.forEach(job => {
+                const row = selectedFields.map(field => {
+                    let value = job[field] || '';
+                    return escapeCSV(String(value));
                 });
-               
-                console.log(`✅ Loaded ${allJobs.length} jobs with valid dates from Solar-jobs`);
-                
-                const debugEl = document.getElementById('debug-info');
-                if (allJobs.length > 0) {
-                    debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs:</strong><br>` + 
-                        debugInfo.slice(0, 5).join('<br>') + 
-                        (debugInfo.length > 5 ? `<br>... and ${debugInfo.length - 5} more` : '');
-                    debugEl.style.display = 'block';
-                    
-                    setTimeout(() => {
-                        debugEl.style.display = 'none';
-                    }, 10000);
-                }
-                
-                buildTimeline();
-               
-            } catch (error) {
-                console.error('Error loading jobs from Solar-jobs:', error);
-                document.getElementById('timeline-content').innerHTML =
-                    `<div class="empty-state">Error loading jobs from database: ${error.message}</div>`;
-            }
+                csv += row.join(',') + '\n';
+            });
+           
+            // Create filename with timestamp and filters
+            const now = new Date();
+            const timestamp = now.toISOString().split('T')[0];
+            const statusFilter = document.getElementById('status-filter').value;
+            const filterSuffix = statusFilter !== 'all' ? `-${statusFilter}` : '';
+            const filename = `pingu-solar-export-${timestamp}${filterSuffix}.csv`;
+           
+            // Download
+            downloadFile(csv, filename, 'text/csv');
+            showToast(`Exported ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''} to ${filename}`, 'success');
         }
        
-        // Update job status in Firebase
-        async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-               
-                const updateData = {
-                    'Status Update': newStatus
-                };
-
-                if (completedDays !== null) {
-                    updateData.completedDays = completedDays;
-                }
-               
-                await updateDoc(jobRef, updateData);
-               
-                // Update local cache
-                const job = allJobs.find(j => j.id === jobId);
-                if (job) {
-                    job.status = newStatus;
-                    job['Status Update'] = newStatus;
-                    if (completedDays !== null) {
-                        job.completedDays = completedDays;
-                    }
-                }
-               
-                showToast(`Job status updated to: ${newStatus}`, 'success');
-                buildTimeline();
-               
-            } catch (error) {
-                console.error('Error updating job status:', error);
-                showToast('Failed to update job status', 'error');
+        // Escape CSV value
+        function escapeCSV(value) {
+            value = String(value);
+            if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+                value = '"' + value.replace(/"/g, '""') + '"';
             }
+            return value;
         }
        
-        // Show toast notification
+        // Download file
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+       
+        // Show toast
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -1077,286 +991,21 @@
            
             setTimeout(() => {
                 toast.classList.remove('show');
-            }, 3000);
+            }, 4000);
         }
        
-        // Build the visual timeline
-        function buildTimeline() {
-            const startDateInput = document.getElementById('start-date').value;
-            const startDate = startDateInput ? new Date(startDateInput) : new Date();
-            startDate.setHours(0, 0, 0, 0);
-           
-            const daysCount = parseInt(document.getElementById('days-count').value) || 14;
-           
-            timelineDates = [];
-            for (let i = 0; i < daysCount; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                timelineDates.push(date);
-            }
-           
-            const endDate = new Date(timelineDates[timelineDates.length - 1]);
-            endDate.setHours(23, 59, 59, 999);
-           
-            const filteredJobs = allJobs.filter(job => {
-                const jobStart = new Date(job.parsedDate);
-                jobStart.setHours(0, 0, 0, 0);
-               
-                const jobEnd = new Date(jobStart);
-                jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
-                jobEnd.setHours(23, 59, 59, 999);
-               
-                return jobStart <= endDate && jobEnd >= startDate;
-            });
-           
-            const engineerJobs = {};
-            filteredJobs.forEach(job => {
-                const engineer = job.engineer || 'Unassigned';
-                if (!engineerJobs[engineer]) engineerJobs[engineer] = [];
-                engineerJobs[engineer].push(job);
-            });
-           
-            document.getElementById('total-jobs').textContent = filteredJobs.length;
-            document.getElementById('total-engineers').textContent = Object.keys(engineerJobs).length;
-            document.getElementById('date-range').textContent = daysCount;
-           
-            if (Object.keys(engineerJobs).length === 0) {
-                document.getElementById('timeline-content').innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">📅</div>
-                        <h3 style="font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">No Jobs Scheduled</h3>
-                        <p>No jobs found in this date range</p>
-                    </div>
-                `;
-                return;
-            }
-           
-            const html = `
-                <div class="timeline-wrapper">
-                    <div class="timeline-header">
-                        <div class="engineer-header">👷 Engineer</div>
-                        <div class="dates-header">
-                            ${timelineDates.map(date => {
-                                const isToday = date.toDateString() === new Date().toDateString();
-                                return `
-                                    <div class="date-cell ${isToday ? 'today' : ''}">
-                                        <div class="date-day">${formatDay(date)}</div>
-                                        <div class="date-number">${date.getDate()}</div>
-                                        <div class="date-month">${formatMonth(date)}</div>
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                   
-                    <div class="timeline-body">
-                        ${Object.keys(engineerJobs).sort().map(engineer => `
-                            <div class="engineer-row">
-                                <div class="engineer-name">
-                                    <span class="engineer-icon">👤</span>
-                                    <span>${escapeHtml(engineer)}</span>
-                                </div>
-                                <div class="timeline-grid">
-                                    ${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-           
-            document.getElementById('timeline-content').innerHTML = html;
-           
-            setTimeout(initializeJobCards, 100);
-        }
-       
-        function renderEngineerJobs(jobs, dates, startDate) {
-            let html = '';
-           
-            dates.forEach((date, dateIndex) => {
-                html += `<div class="day-column" data-date="${date.toISOString()}" data-date-index="${dateIndex}">`;
-               
-                jobs.forEach(job => {
-                    const jobStart = new Date(job.parsedDate);
-                    jobStart.setHours(0, 0, 0, 0);
-                   
-                    if (jobStart.toDateString() === date.toDateString()) {
-                        const jobLength = job.jobLength || 1;
-                        const daysRemaining = dates.length - dateIndex;
-                        const visibleSpan = Math.min(jobLength, daysRemaining);
-                       
-                        const columnWidth = 120;
-                        const gap = 1;
-                        const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
-
-                        // Determine status class
-                        const status = job.status || 'Scheduled';
-                        let statusClass = '';
-                        if (status === 'In-Progress') statusClass = 'status-in-progress';
-                        else if (status === 'Complete') statusClass = 'status-complete';
-                        else if (status === 'Aborted') statusClass = 'status-aborted';
-                        else if (status === 'Cancelled') statusClass = 'status-cancelled';
-
-                        // Calculate completion percentage for multi-day jobs
-                        const completedDays = job.completedDays || [];
-                        const completionPercent = jobLength > 1 && completedDays.length > 0 
-                            ? (completedDays.length / jobLength) * 100 
-                            : 0;
-
-                        // For multi-day jobs, allow text to wrap and fill the space
-                        const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
-                       
-                        html += `
-                            <div class="job-card ${statusClass}"
-                                 data-job-id="${job.id}"
-                                 style="width: ${spanWidth}px; left: 0.5rem;">
-                                ${completionPercent > 0 && completionPercent < 100 ? 
-                                    `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
-                                <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                                <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
-                                <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-                                ${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}
-                            </div>
-                        `;
-                    }
-                });
-               
-                html += '</div>';
-            });
-           
-            return html;
-        }
-       
-        function initializeJobCards() {
-            document.querySelectorAll('.job-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    const jobId = card.getAttribute('data-job-id');
-                    showStatusModal(jobId);
-                });
-            });
-        }
-       
-        function showStatusModal(jobId) {
-            const job = allJobs.find(j => j.id === jobId);
-            if (!job) return;
-           
-            currentJob = job;
-            selectedCompletionDays = [...(job.completedDays || [])];
-           
-            document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
-            document.getElementById('status-job-type').textContent = job.jobType || 'Standard';
-            document.getElementById('status-current').textContent = job.status || 'Scheduled';
-           
-            document.getElementById('completion-selector').style.display = 'none';
-            document.getElementById('status-modal').classList.add('show');
-        }
-
-        function closeStatusModal() {
-            document.getElementById('status-modal').classList.remove('show');
-            currentJob = null;
-            selectedCompletionDays = [];
-        }
-
-        window.updateJobStatus = function(newStatus) {
-            if (!currentJob) return;
-
-            if (newStatus === 'Complete' && currentJob.jobLength > 1) {
-                // For multi-day jobs, don't auto-complete, let user choose days
-                return;
-            }
-
-            updateJobStatusInDB(currentJob.id, newStatus, newStatus === 'Complete' ? null : currentJob.completedDays);
-            closeStatusModal();
-        }
-
-        window.showCompletionSelector = function() {
-            if (!currentJob) return;
-
-            const jobLength = currentJob.jobLength || 1;
-
-            if (jobLength === 1) {
-                // Single day job - just mark as complete
-                updateJobStatusInDB(currentJob.id, 'Complete');
-                closeStatusModal();
-                return;
-            }
-
-            // Multi-day job - show day selector
-            const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
-                const dayNum = i + 1;
-                const isSelected = selectedCompletionDays.includes(dayNum);
-                return `<button class="day-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompletionDay(${dayNum})">Day ${dayNum}</button>`;
-            }).join('');
-
-            document.getElementById('day-buttons').innerHTML = dayButtonsHtml;
-            document.getElementById('completion-selector').style.display = 'block';
-        }
-
-        window.hideCompletionSelector = function() {
-            document.getElementById('completion-selector').style.display = 'none';
-        }
-
-        window.toggleCompletionDay = function(dayNum) {
-            const index = selectedCompletionDays.indexOf(dayNum);
-            if (index > -1) {
-                selectedCompletionDays.splice(index, 1);
-            } else {
-                selectedCompletionDays.push(dayNum);
-            }
-            selectedCompletionDays.sort((a, b) => a - b);
-
-            // Update button visuals
-            document.querySelectorAll('.day-btn').forEach(btn => {
-                const text = btn.textContent;
-                const num = parseInt(text.replace('Day ', ''));
-                if (selectedCompletionDays.includes(num)) {
-                    btn.classList.add('selected');
-                } else {
-                    btn.classList.remove('selected');
-                }
-            });
-        }
-
-        window.confirmPartialCompletion = function() {
-            if (!currentJob) return;
-
-            const jobLength = currentJob.jobLength || 1;
-            let newStatus = 'In-Progress';
-
-            if (selectedCompletionDays.length === jobLength) {
-                newStatus = 'Complete';
-            } else if (selectedCompletionDays.length > 0) {
-                newStatus = 'In-Progress';
-            }
-
-            updateJobStatusInDB(currentJob.id, newStatus, selectedCompletionDays);
-            closeStatusModal();
-        }
-       
-        function updateTimeline() {
-            buildTimeline();
-        }
-       
-        function formatDay(date) {
-            return date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
-        }
-       
-        function formatMonth(date) {
-            return date.toLocaleDateString('en-GB', { month: 'short' });
-        }
-       
+        // Escape HTML
         function escapeHtml(text) {
+            if (!text) return '';
             const div = document.createElement('div');
-            div.textContent = text;
+            div.textContent = String(text);
             return div.innerHTML;
         }
-       
-        document.getElementById('status-modal').addEventListener('click', e => {
-            if (e.target.id === 'status-modal') closeStatusModal();
-        });
-       
-        window.updateTimeline = updateTimeline;
-        window.closeStatusModal = closeStatusModal;
+
+        // Escape ID for use in HTML id attributes
+        function escapeId(text) {
+            return String(text).replace(/[^a-zA-Z0-9-_]/g, '-');
+        }
     </script>
 </body>
 </html>
