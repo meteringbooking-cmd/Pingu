@@ -301,8 +301,6 @@
        
         .timeline-grid {
             display: grid;
-            grid-auto-flow: dense;
-            grid-auto-rows: 70px;
             gap: 1px;
             position: relative;
         }
@@ -1196,7 +1194,7 @@
                 `;
                 
                 const templateParams = {
-                    to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk',
+                    to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk',
                     job_number: jobNumber,
                     postcode: postcode,
                     engineer: engineer,
@@ -1320,6 +1318,8 @@
         }
        
         function renderEngineerJobs(jobs, dates, startDate) {
+            const numCols = dates.length;
+            
             // Sort jobs by start date
             const sortedJobs = [...jobs].sort((a, b) => {
                 return a.parsedDate.getTime() - b.parsedDate.getTime();
@@ -1327,11 +1327,7 @@
             
             // Track which grid cells are occupied [row][col]
             const gridOccupancy = [];
-            
-            // Calculate grid template columns based on number of dates
-            const numCols = dates.length;
-            
-            let html = `<div style="grid-template-columns: repeat(${numCols}, minmax(120px, 1fr));">`;
+            const jobPlacements = [];
             
             sortedJobs.forEach(job => {
                 const jobStart = new Date(job.parsedDate);
@@ -1376,10 +1372,31 @@
                             gridOccupancy[targetRow][col] = true;
                         }
                         foundRow = true;
+                        
+                        jobPlacements.push({
+                            job: job,
+                            row: targetRow,
+                            col: startCol,
+                            span: visibleSpan
+                        });
                     } else {
                         targetRow++;
                     }
                 }
+            });
+            
+            // Determine total rows needed
+            const totalRows = gridOccupancy.length;
+            
+            // Build HTML
+            let html = `<div class="timeline-grid" style="
+                grid-template-columns: repeat(${numCols}, minmax(120px, 1fr));
+                grid-template-rows: repeat(${totalRows}, 70px);
+            ">`;
+            
+            // Render each job card
+            jobPlacements.forEach(placement => {
+                const { job, row, col, span } = placement;
                 
                 const status = job.status || 'Scheduled';
                 let statusClass = '';
@@ -1389,15 +1406,16 @@
                 else if (status === 'Cancelled') statusClass = 'status-cancelled';
 
                 const completedDays = job.completedDays || [];
+                const jobLength = job.jobLength || 1;
                 const completionPercent = jobLength > 1 && completedDays.length > 0 
                     ? (completedDays.length / jobLength) * 100 
                     : 0;
 
-                const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
+                const textStyle = span > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
                 
-                // Grid positioning: column starts at 1-based index
-                const gridColumn = `${startCol + 1} / span ${visibleSpan}`;
-                const gridRow = targetRow + 1;
+                // Grid positioning (1-based indexing)
+                const gridColumn = `${col + 1} / span ${span}`;
+                const gridRow = row + 1;
                
                 html += `
                     <div class="job-card ${statusClass}"
