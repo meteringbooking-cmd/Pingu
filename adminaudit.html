@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Audit Dashboard | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -849,6 +850,10 @@
             window.db = getFirestore(app);
             window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, where };
             console.log('✅ Firebase initialized');
+            
+            // Initialize EmailJS
+            emailjs.init("ziLnha91scpGjFABh");
+            console.log('✅ EmailJS initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
                 window.loadCompletedJobs();
@@ -1165,6 +1170,9 @@
                 else if (pendingAuditStatus === 'issues') statusLabel = 'With Issues';
                 else if (pendingAuditStatus === 'unable') statusLabel = 'Unable to Audit';
 
+                // Send email notification
+                await sendAuditNotificationEmail(currentJob, pendingAuditStatus, notes);
+
                 showToast(`Audit status updated to: ${statusLabel}`, 'success');
                 closeAuditModal();
                 updateStats();
@@ -1173,6 +1181,126 @@
             } catch (error) {
                 console.error('Error updating audit status:', error);
                 showToast('Failed to update audit status', 'error');
+            }
+        }
+
+        async function sendAuditNotificationEmail(job, auditStatus, notes) {
+            try {
+                console.log('Sending audit notification email for job:', job.jobNumber);
+                
+                const jobNumber = job.jobNumber || 'N/A';
+                const postcode = job.postcode || 'N/A';
+                const engineer = job.engineer || 'Unassigned';
+                const completionDate = formatDate(job.completionDate);
+                
+                let auditOutcome = '';
+                let outcomeColor = '';
+                let outcomeIcon = '';
+                
+                if (auditStatus === 'pass') {
+                    auditOutcome = 'Audit Completed - No Issues';
+                    outcomeColor = '#4ECCA3';
+                    outcomeIcon = '✅';
+                } else if (auditStatus === 'issues') {
+                    auditOutcome = 'Audit Completed - With Issues';
+                    outcomeColor = '#FFC857';
+                    outcomeIcon = '⚠️';
+                } else if (auditStatus === 'unable') {
+                    auditOutcome = 'Unable to Audit';
+                    outcomeColor = '#FF6B6B';
+                    outcomeIcon = '❌';
+                }
+                
+                const auditDate = new Date().toLocaleDateString('en-GB', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                const emailHTML = `
+                    <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;">
+                        <div style="background: white; padding: 30px; border-radius: 8px; max-width: 600px; margin: 0 auto; border-top: 4px solid ${outcomeColor};">
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <h1 style="color: #FF6B35; margin: 0; font-size: 1.8rem;">Job Audit Notification</h1>
+                                <p style="color: #666; margin-top: 10px;">Audit completed on ${auditDate}</p>
+                            </div>
+                            
+                            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                <h2 style="color: #FF6B35; margin-top: 0; margin-bottom: 20px; font-size: 1.2rem;">Job Details</h2>
+                                
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <tr>
+                                        <td style="padding: 10px 0; color: #666; font-weight: 600; width: 140px;">Job Number:</td>
+                                        <td style="padding: 10px 0; color: #333; font-weight: bold;">#${jobNumber}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 0; color: #666; font-weight: 600;">Lead Engineer:</td>
+                                        <td style="padding: 10px 0; color: #333;">${engineer}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 0; color: #666; font-weight: 600;">Completion Date:</td>
+                                        <td style="padding: 10px 0; color: #333;">${completionDate}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 0; color: #666; font-weight: 600;">Postcode:</td>
+                                        <td style="padding: 10px 0; color: #333;">${postcode}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px 0; color: #666; font-weight: 600;">Job Status:</td>
+                                        <td style="padding: 10px 0; color: #333;">Complete</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <div style="background: ${outcomeColor}15; padding: 20px; border-radius: 8px; border-left: 4px solid ${outcomeColor}; margin-bottom: 20px;">
+                                <h3 style="margin: 0 0 10px 0; color: ${outcomeColor}; font-size: 1.1rem;">
+                                    ${outcomeIcon} Audit Outcome
+                                </h3>
+                                <p style="margin: 0; color: #333; font-size: 1.05rem; font-weight: 600;">
+                                    ${auditOutcome}
+                                </p>
+                            </div>
+                            
+                            ${notes ? `
+                                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                                    <h3 style="margin: 0 0 10px 0; color: #666; font-size: 1rem;">Audit Notes</h3>
+                                    <p style="margin: 0; color: #333; line-height: 1.6; white-space: pre-wrap;">${notes}</p>
+                                </div>
+                            ` : ''}
+                            
+                            <p style="margin-top: 30px; color: #666; font-size: 0.85rem; text-align: center; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                                This is an automated notification from Pingu Solar Management System.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+                const templateParams = {
+                    to_email: 'gareth.mckenna@next-gen.uk, becky.henderson@next-gen.uk, barry.dixon@next-gen.uk',
+                    job_number: jobNumber,
+                    lead: engineer,
+                    date: completionDate,
+                    postcode: postcode,
+                    status: 'Complete',
+                    audit_outcome: auditOutcome,
+                    audit_notes: notes || 'No additional notes',
+                    message_html: emailHTML
+                };
+                
+                const response = await emailjs.send(
+                    'service_w9v5gzh',
+                    'template_3uquf4y',
+                    templateParams
+                );
+                
+                console.log('✅ Audit notification email sent successfully:', response);
+                showToast('Audit notification email sent', 'success');
+                
+            } catch (error) {
+                console.error('❌ Failed to send audit notification email:', error);
+                // Don't show error toast - audit was still saved successfully
+                console.warn('Audit saved but email notification failed');
             }
         }
 
