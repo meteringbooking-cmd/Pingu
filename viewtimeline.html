@@ -18,7 +18,12 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
+            --warning: #FFC857;
             --shadow: rgba(255, 107, 53, 0.3);
+            --in-progress: #00D9FF;
+            --complete: #4ECCA3;
+            --aborted: #FF6B6B;
+            --cancelled: #9A9AB0;
         }
        
         * {
@@ -319,7 +324,7 @@
             padding: 0.6rem;
             border-radius: 6px;
             font-size: 0.8rem;
-            cursor: grab;
+            cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
             position: absolute;
@@ -330,10 +335,7 @@
             flex-direction: column;
             justify-content: center;
             user-select: none;
-        }
-       
-        .job-card:active {
-            cursor: grabbing;
+            overflow: hidden;
         }
        
         .job-card.dragging {
@@ -347,12 +349,52 @@
             border-color: white;
             z-index: 2;
         }
+
+        .job-card.status-in-progress {
+            background: linear-gradient(135deg, var(--in-progress), #00B8D9);
+        }
+
+        .job-card.status-complete {
+            background: linear-gradient(135deg, var(--complete), #3DB88E);
+        }
+
+        .job-card.status-aborted {
+            background: linear-gradient(135deg, var(--aborted), #E55A5A);
+        }
+
+        .job-card.status-cancelled {
+            background: linear-gradient(135deg, var(--cancelled), #7A7A8F);
+        }
+
+        /* Partial completion overlay */
+        .job-card .completion-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(135deg, var(--complete), #3DB88E);
+            pointer-events: none;
+            transition: width 0.3s ease;
+        }
        
         .job-number {
             font-weight: 700;
             color: var(--dark);
             margin-bottom: 0.2rem;
             pointer-events: none;
+            position: relative;
+            z-index: 1;
+        }
+
+        .job-type {
+            font-size: 0.7rem;
+            color: var(--dark);
+            opacity: 0.95;
+            font-weight: 600;
+            margin-bottom: 0.2rem;
+            pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
        
         .job-customer {
@@ -363,6 +405,8 @@
             overflow: hidden;
             text-overflow: ellipsis;
             pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
        
         .job-postcode {
@@ -370,6 +414,8 @@
             color: var(--dark);
             opacity: 0.8;
             pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
        
         .job-days {
@@ -379,6 +425,8 @@
             margin-top: 0.2rem;
             font-weight: 600;
             pointer-events: none;
+            position: relative;
+            z-index: 1;
         }
        
         .empty-state {
@@ -510,6 +558,120 @@
             color: var(--text);
             font-weight: 500;
         }
+
+        /* Status Modal */
+        .status-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .status-btn {
+            padding: 1rem;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .status-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-btn.in-progress {
+            background: linear-gradient(135deg, var(--in-progress), #00B8D9);
+        }
+
+        .status-btn.complete {
+            background: linear-gradient(135deg, var(--complete), #3DB88E);
+        }
+
+        .status-btn.aborted {
+            background: linear-gradient(135deg, var(--aborted), #E55A5A);
+        }
+
+        .status-btn.cancelled {
+            background: linear---cancelled), #7A7A8F);
+        }
+
+        /* Completion Day Selector */
+        .completion-selector {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+        }
+
+        .completion-title {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .day-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .day-btn {
+            padding: 0.8rem;
+            background: var(--dark);
+            border: 2px solid var(--dark-lighter);
+            border-radius: 6px;
+            color: var(--text);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .day-btn:hover {
+            border-color: var(--primary);
+        }
+
+        .day-btn.selected {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-color: white;
+            color: white;
+            font-weight: 700;
+        }
+
+        .completion-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .action-btn {
+            padding: 0.8rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn.cancel {
+            background: var(--dark);
+            color: var(--text);
+            border: 2px solid var(--dark-lighter);
+        }
+
+        .action-btn.confirm {
+            background: linear-gradient(135deg, var(--success), #3DB88E);
+            color: white;
+        }
        
         /* Toast Notification */
         .toast {
@@ -565,6 +727,10 @@
             .timeline-header {
                 grid-template-columns: 150px 1fr;
             }
+
+            .status-buttons {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -576,7 +742,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule of upcoming jobs by engineer - drag to reschedule</p>
+            <p class="subtitle">Visual schedule of upcoming jobs by engineer - Click to update status</p>
         </header>
        
         <div class="controls-card">
@@ -623,14 +789,51 @@
         </div>
     </div>
    
-    <!-- Job Details Modal -->
-    <div class="modal" id="job-modal">
+    <!-- Status Update Modal -->
+    <div class="modal" id="status-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="modal-title">Job Details</h2>
-                <button class="close-btn" onclick="closeModal()">×</button>
+                <h2 class="modal-title" id="status-modal-title">Update Job Status</h2>
+                <button class="close-btn" onclick="closeStatusModal()">×</button>
             </div>
-            <div class="modal-body" id="modal-body"></div>
+            <div class="modal-body">
+                <div class="detail-row">
+                    <div class="detail-label">Job Number</div>
+                    <div class="detail-value" id="status-job-number"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Job Type</div>
+                    <div class="detail-value" id="status-job-type"></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Current Status</div>
+                    <div class="detail-value" id="status-current"></div>
+                </div>
+
+                <div class="status-buttons">
+                    <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">
+                        🔄 In-Progress
+                    </button>
+                    <button class="status-btn complete" onclick="showCompletionSelector()">
+                        ✅ Complete
+                    </button>
+                    <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">
+                        ⚠️ Aborted
+                    </button>
+                    <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">
+                        ❌ Cancelled
+                    </button>
+                </div>
+
+                <div class="completion-selector" id="completion-selector" style="display: none;">
+                    <div class="completion-title">Which day(s) are complete?</div>
+                    <div class="day-buttons" id="day-buttons"></div>
+                    <div class="completion-actions">
+                        <button class="action-btn cancel" onclick="hideCompletionSelector()">Cancel</button>
+                        <button class="action-btn confirm" onclick="confirmPartialCompletion()">Confirm</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
    
@@ -670,9 +873,8 @@
     <script>
         let allJobs = [];
         let currentJob = null;
-        let draggedJobId = null;
         let timelineDates = [];
-        let isDragging = false;
+        let selectedCompletionDays = [];
        
         // Initialize timeline with default values
         window.initializeTimeline = function() {
@@ -685,12 +887,11 @@
         function parseDate(dateStr) {
             if (!dateStr) return null;
            
-            // Try DD/MM/YYYY format (most common in your data)
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
                     const day = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+                    const month = parseInt(parts[1], 10) - 1;
                     const year = parseInt(parts[2], 10);
                     const parsed = new Date(year, month, day);
                     if (!isNaN(parsed.getTime())) {
@@ -700,7 +901,6 @@
                 }
             }
            
-            // Try ISO or other standard formats
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) {
                 parsed.setHours(0, 0, 0, 0);
@@ -736,7 +936,6 @@
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-                    // Try multiple date field names that might be in your data
                     const dateFields = [
                         'Booked Date',
                         'Projected Completion Date', 
@@ -759,7 +958,6 @@
                     }
                    
                     if (jobDate) {
-                        // Try to get job duration from multiple possible field names
                         let jobLength = 1;
                         const durationFields = [
                             'Days',
@@ -780,7 +978,6 @@
                             }
                         }
 
-                        // Try to get engineer name from multiple possible field names
                         const engineerFields = ['Lead', 'Lead Engineer', 'Engineer', 'engineer'];
                         let engineer = 'Unassigned';
                         
@@ -790,6 +987,13 @@
                                 break;
                             }
                         }
+
+                        // Get job type
+                        const jobType = data['Job Type'] || 'Standard';
+
+                        // Get status and completion info
+                        const status = data['Status Update'] || data['status'] || 'Scheduled';
+                        const completedDays = data['completedDays'] || [];
                        
                         allJobs.push({
                             id: docSnap.id,
@@ -797,16 +1001,18 @@
                             parsedDate: jobDate,
                             usedDateField: usedDateField,
                             jobLength: jobLength,
-                            engineer: engineer
+                            engineer: engineer,
+                            jobType: jobType,
+                            status: status,
+                            completedDays: completedDays
                         });
 
-                        debugInfo.push(`Job ${data['Job Number'] || docSnap.id}: Date from "${usedDateField}" = ${formatDate(jobDate)}, Duration = ${jobLength} days, Engineer = ${engineer}`);
+                        debugInfo.push(`Job ${data['Job Number'] || docSnap.id}: ${jobType}, Date = ${formatDate(jobDate)}, Duration = ${jobLength} days`);
                     }
                 });
                
                 console.log(`✅ Loaded ${allJobs.length} jobs with valid dates from Solar-jobs`);
                 
-                // Show debug info
                 const debugEl = document.getElementById('debug-info');
                 if (allJobs.length > 0) {
                     debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs:</strong><br>` + 
@@ -828,34 +1034,38 @@
             }
         }
        
-        // Update job date in Firebase
-        async function updateJobDate(jobId, newDate) {
+        // Update job status in Firebase
+        async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'Solar-jobs', jobId);
                
-                const formattedDate = formatDate(newDate);
-                
-                // Find which date field this job was using
-                const job = allJobs.find(j => j.id === jobId);
-                const dateField = job?.usedDateField || 'Booked Date';
-               
-                await updateDoc(jobRef, {
-                    [dateField]: formattedDate
-                });
-               
-                // Update local cache
-                if (job) {
-                    job[dateField] = formattedDate;
-                    job.parsedDate = newDate;
+                const updateData = {
+                    'Status Update': newStatus
+                };
+
+                if (completedDays !== null) {
+                    updateData.completedDays = completedDays;
                 }
                
-                showToast(`Job moved to ${formattedDate}`, 'success');
+                await updateDoc(jobRef, updateData);
+               
+                // Update local cache
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    job.status = newStatus;
+                    job['Status Update'] = newStatus;
+                    if (completedDays !== null) {
+                        job.completedDays = completedDays;
+                    }
+                }
+               
+                showToast(`Job status updated to: ${newStatus}`, 'success');
                 buildTimeline();
                
             } catch (error) {
-                console.error('Error updating job date:', error);
-                showToast('Failed to update job schedule', 'error');
+                console.error('Error updating job status:', error);
+                showToast('Failed to update job status', 'error');
             }
         }
        
@@ -878,7 +1088,6 @@
            
             const daysCount = parseInt(document.getElementById('days-count').value) || 14;
            
-            // Generate date range
             timelineDates = [];
             for (let i = 0; i < daysCount; i++) {
                 const date = new Date(startDate);
@@ -886,7 +1095,6 @@
                 timelineDates.push(date);
             }
            
-            // Filter jobs that overlap the visible range
             const endDate = new Date(timelineDates[timelineDates.length - 1]);
             endDate.setHours(23, 59, 59, 999);
            
@@ -901,7 +1109,6 @@
                 return jobStart <= endDate && jobEnd >= startDate;
             });
            
-            // Group by engineer
             const engineerJobs = {};
             filteredJobs.forEach(job => {
                 const engineer = job.engineer || 'Unassigned';
@@ -909,7 +1116,6 @@
                 engineerJobs[engineer].push(job);
             });
            
-            // Update stats
             document.getElementById('total-jobs').textContent = filteredJobs.length;
             document.getElementById('total-engineers').textContent = Object.keys(engineerJobs).length;
             document.getElementById('date-range').textContent = daysCount;
@@ -925,7 +1131,6 @@
                 return;
             }
            
-            // Build HTML
             const html = `
                 <div class="timeline-wrapper">
                     <div class="timeline-header">
@@ -962,8 +1167,7 @@
            
             document.getElementById('timeline-content').innerHTML = html;
            
-            // Enable drag & drop after render
-            setTimeout(initializeDragAndDrop, 100);
+            setTimeout(initializeJobCards, 100);
         }
        
         function renderEngineerJobs(jobs, dates, startDate) {
@@ -984,17 +1188,32 @@
                         const columnWidth = 120;
                         const gap = 1;
                         const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
+
+                        // Determine status class
+                        const status = job.status || 'Scheduled';
+                        let statusClass = '';
+                        if (status === 'In-Progress') statusClass = 'status-in-progress';
+                        else if (status === 'Complete') statusClass = 'status-complete';
+                        else if (status === 'Aborted') statusClass = 'status-aborted';
+                        else if (status === 'Cancelled') statusClass = 'status-cancelled';
+
+                        // Calculate completion percentage for multi-day jobs
+                        const completedDays = job.completedDays || [];
+                        const completionPercent = jobLength > 1 && completedDays.length > 0 
+                            ? (completedDays.length / jobLength) * 100 
+                            : 0;
                        
                         html += `
-                            <div class="job-card"
-                                 draggable="true"
+                            <div class="job-card ${statusClass}"
                                  data-job-id="${job.id}"
-                                 data-engineer="${escapeHtml(job.engineer)}"
                                  style="width: ${spanWidth}px; left: 0.5rem;">
+                                ${completionPercent > 0 && completionPercent < 100 ? 
+                                    `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
                                 <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                                <div class="job-type">📋 ${escapeHtml(job.jobType)}</div>
                                 <div class="job-customer">${escapeHtml(job['Address'] || 'No Address')}</div>
                                 <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-                                ${jobLength > 1 ? `<div class="job-days">📅 ${jobLength} day${jobLength > 1 ? 's' : ''}</div>` : ''}
+                                ${jobLength > 1 ? `<div class="job-days">📅 ${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength} day${jobLength > 1 ? 's' : ''}</div>` : ''}
                             </div>
                         `;
                     }
@@ -1006,106 +1225,110 @@
             return html;
         }
        
-        function initializeDragAndDrop() {
+        function initializeJobCards() {
             document.querySelectorAll('.job-card').forEach(card => {
-                card.addEventListener('dragstart', handleDragStart);
-                card.addEventListener('dragend', handleDragEnd);
                 card.addEventListener('click', (e) => {
-                    if (!isDragging) {
-                        const jobId = card.getAttribute('data-job-id');
-                        showJobDetails(jobId);
-                    }
+                    const jobId = card.getAttribute('data-job-id');
+                    showStatusModal(jobId);
                 });
             });
-           
-            document.querySelectorAll('.day-column').forEach(col => {
-                col.addEventListener('dragover', handleDragOver);
-                col.addEventListener('dragenter', handleDragEnter);
-                col.addEventListener('dragleave', handleDragLeave);
-                col.addEventListener('drop', handleDrop);
-            });
         }
        
-        function handleDragStart(e) {
-            isDragging = true;
-            draggedJobId = this.getAttribute('data-job-id');
-            this.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', draggedJobId);
-        }
-       
-        function handleDragEnd() {
-            this.classList.remove('dragging');
-            document.querySelectorAll('.day-column').forEach(c => c.classList.remove('drag-over'));
-            setTimeout(() => { isDragging = false; }, 100);
-        }
-       
-        function handleDragOver(e) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-        }
-       
-        function handleDragEnter(e) {
-            if (e.currentTarget.classList.contains('day-column')) {
-                e.currentTarget.classList.add('drag-over');
-            }
-        }
-       
-        function handleDragLeave(e) {
-            if (e.currentTarget.classList.contains('day-column')) {
-                e.currentTarget.classList.remove('drag-over');
-            }
-        }
-       
-        function handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-           
-            let target = e.target;
-            while (target && !target.classList.contains('day-column')) {
-                target = target.parentElement;
-            }
-           
-            if (target && draggedJobId) {
-                target.classList.remove('drag-over');
-                const newDateStr = target.getAttribute('data-date');
-                const newDate = new Date(newDateStr);
-               
-                const job = allJobs.find(j => j.id === draggedJobId);
-                if (job && job.parsedDate.toDateString() !== newDate.toDateString()) {
-                    updateJobDate(draggedJobId, newDate);
-                }
-            }
-        }
-       
-        function showJobDetails(jobId) {
+        function showStatusModal(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
            
             currentJob = job;
+            selectedCompletionDays = [...(job.completedDays || [])];
            
-            document.getElementById('modal-title').textContent = `Job #${job['Job Number'] || 'N/A'}`;
+            document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
+            document.getElementById('status-job-type').textContent = job.jobType || 'Standard';
+            document.getElementById('status-current').textContent = job.status || 'Scheduled';
            
-            const body = document.getElementById('modal-body');
-            body.innerHTML = `
-                <div class="detail-row"><div class="detail-label">Job Type</div><div class="detail-value">${escapeHtml(job['Job Type'] || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Address</div><div class="detail-value">${escapeHtml(job['Address'] || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Postcode</div><div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Booked Date</div><div class="detail-value">${escapeHtml(job['Booked Date'] || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Completion Date</div><div class="detail-value">${escapeHtml(job['Projected Completion Date'] || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Duration</div><div class="detail-value">${job.jobLength} day${job.jobLength !== 1 ? 's' : ''}</div></div>
-                <div class="detail-row"><div class="detail-label">Engineer</div><div class="detail-value">${escapeHtml(job.engineer)}</div></div>
-                <div class="detail-row"><div class="detail-label">Status</div><div class="detail-value">${escapeHtml(job['Status Update'] || job.status || 'N/A')}</div></div>
-                <div class="detail-row"><div class="detail-label">Team Number</div><div class="detail-value">${escapeHtml(job['Team Number'] || 'N/A')}</div></div>
-                ${job['PO'] ? `<div class="detail-row"><div class="detail-label">PO</div><div class="detail-value">${escapeHtml(job['PO'])}</div></div>` : ''}
-                ${job['Panel No.'] ? `<div class="detail-row"><div class="detail-label">Panels</div><div class="detail-value">${escapeHtml(job['Panel No.'])}</div></div>` : ''}
-            `;
-           
-            document.getElementById('job-modal').classList.add('show');
+            document.getElementById('completion-selector').style.display = 'none';
+            document.getElementById('status-modal').classList.add('show');
         }
-       
-        function closeModal() {
-            document.getElementById('job-modal').classList.remove('show');
+
+        function closeStatusModal() {
+            document.getElementById('status-modal').classList.remove('show');
+            currentJob = null;
+            selectedCompletionDays = [];
+        }
+
+        window.updateJobStatus = function(newStatus) {
+            if (!currentJob) return;
+
+            if (newStatus === 'Complete' && currentJob.jobLength > 1) {
+                // For multi-day jobs, don't auto-complete, let user choose days
+                return;
+            }
+
+            updateJobStatusInDB(currentJob.id, newStatus, newStatus === 'Complete' ? null : currentJob.completedDays);
+            closeStatusModal();
+        }
+
+        window.showCompletionSelector = function() {
+            if (!currentJob) return;
+
+            const jobLength = currentJob.jobLength || 1;
+
+            if (jobLength === 1) {
+                // Single day job - just mark as complete
+                updateJobStatusInDB(currentJob.id, 'Complete');
+                closeStatusModal();
+                return;
+            }
+
+            // Multi-day job - show day selector
+            const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
+                const dayNum = i + 1;
+                const isSelected = selectedCompletionDays.includes(dayNum);
+                return `<button class="day-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompletionDay(${dayNum})">Day ${dayNum}</button>`;
+            }).join('');
+
+            document.getElementById('day-buttons').innerHTML = dayButtonsHtml;
+            document.getElementById('completion-selector').style.display = 'block';
+        }
+
+        window.hideCompletionSelector = function() {
+            document.getElementById('completion-selector').style.display = 'none';
+        }
+
+        window.toggleCompletionDay = function(dayNum) {
+            const index = selectedCompletionDays.indexOf(dayNum);
+            if (index > -1) {
+                selectedCompletionDays.splice(index, 1);
+            } else {
+                selectedCompletionDays.push(dayNum);
+            }
+            selectedCompletionDays.sort((a, b) => a - b);
+
+            // Update button visuals
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const text = btn.textContent;
+                const num = parseInt(text.replace('Day ', ''));
+                if (selectedCompletionDays.includes(num)) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+        }
+
+        window.confirmPartialCompletion = function() {
+            if (!currentJob) return;
+
+            const jobLength = currentJob.jobLength || 1;
+            let newStatus = 'In-Progress';
+
+            if (selectedCompletionDays.length === jobLength) {
+                newStatus = 'Complete';
+            } else if (selectedCompletionDays.length > 0) {
+                newStatus = 'In-Progress';
+            }
+
+            updateJobStatusInDB(currentJob.id, newStatus, selectedCompletionDays);
+            closeStatusModal();
         }
        
         function updateTimeline() {
@@ -1126,15 +1349,12 @@
             return div.innerHTML;
         }
        
-        // Close modal when clicking outside content
-        document.getElementById('job-modal').addEventListener('click', e => {
-            if (e.target.id === 'job-modal') closeModal();
+        document.getElementById('status-modal').addEventListener('click', e => {
+            if (e.target.id === 'status-modal') closeStatusModal();
         });
        
-        // Expose functions to window for button onclick
         window.updateTimeline = updateTimeline;
-        window.showJobDetails = showJobDetails;
-        window.closeModal = closeModal;
+        window.closeStatusModal = closeStatusModal;
     </script>
 </body>
 </html>
