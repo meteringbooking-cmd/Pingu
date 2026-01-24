@@ -312,6 +312,10 @@
             min-height: 80px;
             position: relative;
             transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 0.5rem 0.25rem;
         }
        
         .day-column.drag-over {
@@ -321,22 +325,21 @@
        
         .job-card {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 0.5rem 0.4rem;
+            padding: 0.4rem 0.3rem;
             border-radius: 6px;
             font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.3s ease;
             border: 2px solid transparent;
-            position: absolute;
-            top: 0.5rem;
-            height: calc(100% - 1rem);
-            z-index: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
             gap: 0.25rem;
             user-select: none;
             overflow: hidden;
+            position: relative;
+            min-height: 65px;
+            flex-shrink: 0;
         }
        
         .job-card.dragging {
@@ -426,6 +429,11 @@
             background: rgba(255, 255, 255, 0.3);
             padding: 0.15rem 0.3rem;
             border-radius: 3px;
+        }
+
+        /* Multi-day job spanning */
+        .job-card.multi-day {
+            grid-column: span var(--span-days);
         }
        
         .empty-state {
@@ -1214,51 +1222,69 @@
         }
        
         function renderEngineerJobs(jobs, dates, startDate) {
-            let html = '';
-           
+            // Build a map of jobs for each date
+            const jobsByDate = new Map();
+            
             dates.forEach((date, dateIndex) => {
-                html += `<div class="day-column" data-date="${date.toISOString()}" data-date-index="${dateIndex}">`;
-               
+                jobsByDate.set(dateIndex, []);
+                
                 jobs.forEach(job => {
                     const jobStart = new Date(job.parsedDate);
                     jobStart.setHours(0, 0, 0, 0);
-                   
-                    if (jobStart.toDateString() === date.toDateString()) {
-                        const jobLength = job.jobLength || 1;
-                        const daysRemaining = dates.length - dateIndex;
-                        const visibleSpan = Math.min(jobLength, daysRemaining);
-                       
-                        const columnWidth = 120;
-                        const gap = 1;
-                        const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
-
-                        const status = job.status || 'Scheduled';
-                        let statusClass = '';
-                        if (status === 'In-Progress') statusClass = 'status-in-progress';
-                        else if (status === 'Complete') statusClass = 'status-complete';
-                        else if (status === 'Aborted') statusClass = 'status-aborted';
-                        else if (status === 'Cancelled') statusClass = 'status-cancelled';
-
-                        const completedDays = job.completedDays || [];
-                        const completionPercent = jobLength > 1 && completedDays.length > 0 
-                            ? (completedDays.length / jobLength) * 100 
-                            : 0;
-
-                        const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
-                       
-                        html += `
-                            <div class="job-card ${statusClass}"
-                                 data-job-id="${job.id}"
-                                 style="width: ${spanWidth}px; left: 0.5rem;">
-                                ${completionPercent > 0 && completionPercent < 100 ? 
-                                    `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
-                                <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                                <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
-                                <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-                                ${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}
-                            </div>
-                        `;
+                    
+                    const jobEnd = new Date(jobStart);
+                    jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
+                    jobEnd.setHours(23, 59, 59, 999);
+                    
+                    // Check if this job spans this date
+                    if (date >= jobStart && date <= jobEnd) {
+                        // Only add to the starting date column
+                        if (jobStart.toDateString() === date.toDateString()) {
+                            jobsByDate.get(dateIndex).push({
+                                job: job,
+                                startIndex: dateIndex,
+                                isStart: true
+                            });
+                        }
                     }
+                });
+            });
+            
+            let html = '';
+            
+            dates.forEach((date, dateIndex) => {
+                const dateJobs = jobsByDate.get(dateIndex);
+                
+                html += `<div class="day-column" data-date="${date.toISOString()}" data-date-index="${dateIndex}">`;
+                
+                dateJobs.forEach(({job, startIndex}) => {
+                    const jobLength = job.jobLength || 1;
+                    const status = job.status || 'Scheduled';
+                    
+                    let statusClass = '';
+                    if (status === 'In-Progress') statusClass = 'status-in-progress';
+                    else if (status === 'Complete') statusClass = 'status-complete';
+                    else if (status === 'Aborted') statusClass = 'status-aborted';
+                    else if (status === 'Cancelled') statusClass = 'status-cancelled';
+
+                    const completedDays = job.completedDays || [];
+                    const completionPercent = jobLength > 1 && completedDays.length > 0 
+                        ? (completedDays.length / jobLength) * 100 
+                        : 0;
+
+                    const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
+                   
+                    html += `
+                        <div class="job-card ${statusClass}"
+                             data-job-id="${job.id}">
+                            ${completionPercent > 0 && completionPercent < 100 ? 
+                                `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
+                            <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                            <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
+                            <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
+                            ${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}
+                        </div>
+                    `;
                 });
                
                 html += '</div>';
