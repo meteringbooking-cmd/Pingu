@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,6 +60,11 @@
             0%, 100% { transform: translate(0, 0) rotate(0deg); }
             33% { transform: translate(30px, -30px) rotate(120deg); }
             66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
        
         .container {
@@ -331,6 +337,10 @@
             height: 20px;
             border-radius: 4px;
         }
+
+        .legend-color.flashing {
+            animation: flash 1.5s ease-in-out infinite;
+        }
        
         .loading {
             text-align: center;
@@ -386,6 +396,10 @@
         .geocoding-status.active {
             border: 2px solid var(--accent);
             color: var(--accent);
+        }
+
+        .flashing-marker {
+            animation: flash 1.5s ease-in-out infinite;
         }
        
         @media (max-width: 768px) {
@@ -469,18 +483,26 @@
                 <div id="map"></div>
                
                 <div class="legend">
-                    <div class="legend-title">📍 Heat Map Legend</div>
+                    <div class="legend-title">📍 Status Legend</div>
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #FF0000;"></div>
-                        <span>High Density (Multiple Jobs)</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color" style="background: #FFFF00;"></div>
-                        <span>Medium Density</span>
+                        <div class="legend-color" style="background: #FFFFFF;"></div>
+                        <span>Upcoming</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #00FF00;"></div>
-                        <span>Low Density (Single Job)</span>
+                        <span>Complete</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #0099FF;"></div>
+                        <span>In Progress</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color flashing" style="background: #FF0000;"></div>
+                        <span>Overdue (Today/Past with No Status)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #AA0000;"></div>
+                        <span>Aborted/Cancelled</span>
                     </div>
                 </div>
             </div>
@@ -548,7 +570,7 @@
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
                     const day = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+                    const month = parseInt(parts[1], 10) - 1;
                     const year = parseInt(parts[2], 10);
                     const parsed = new Date(year, month, day);
                     if (!isNaN(parsed.getTime())) {
@@ -586,6 +608,39 @@
             }
             return '';
         }
+
+        // Determine marker color based on status and date
+        function getMarkerColor(job) {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
+            const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+            const jobDate = parseDate(dateStr);
+            const status = getFieldValue(job, 'Status Update', 'status', 'Status').toLowerCase();
+
+            // Static red for aborted or cancelled
+            if (status.includes('abort') || status.includes('cancel')) {
+                return { color: '#AA0000', flashing: false };
+            }
+
+            // Green if complete
+            if (status.includes('complete') || status.includes('finished') || status.includes('done')) {
+                return { color: '#00FF00', flashing: false };
+            }
+
+            // Blue if in progress
+            if (status.includes('progress') || status.includes('ongoing') || status.includes('active')) {
+                return { color: '#0099FF', flashing: false };
+            }
+
+            // Flashing red if date is today or in the past with no meaningful status
+            if (jobDate && jobDate <= now && (!status || status === 'n/a' || status === '')) {
+                return { color: '#FF0000', flashing: true };
+            }
+
+            // White for upcoming (future dates or any other status)
+            return { color: '#FFFFFF', flashing: false };
+        }
        
         // Load jobs from Firebase collection "Solar-jobs"
         async function loadJobs() {
@@ -619,16 +674,30 @@
             }
         }
        
-        // Geocode postcodes → lat/lng using Nominatim (OpenStreetMap)
+        // Geocode postcodes for current week and next week only
         async function geocodeJobs() {
-            console.log('Geocoding postcodes...');
+            console.log('Geocoding postcodes for current and next week...');
             
             const statusEl = document.getElementById('geocoding-status');
             const progressEl = document.getElementById('geocoding-progress');
             
+            // Calculate current week start and 2 weeks from now
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
+            const twoWeeksFromNow = new Date(now);
+            twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+            twoWeeksFromNow.setHours(23, 59, 59, 999);
+            
+            // Filter jobs that need geocoding (within 2 weeks and no coordinates)
             const jobsNeedingGeocode = allJobs.filter(job => {
                 const postcode = job['Postcode'] || job.Postcode;
-                return postcode && !job.coordinates;
+                if (!postcode || job.coordinates) return false;
+                
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const jobDate = parseDate(dateStr);
+                
+                return jobDate && jobDate >= now && jobDate <= twoWeeksFromNow;
             });
 
             if (jobsNeedingGeocode.length > 0) {
@@ -638,24 +707,22 @@
 
             let geocoded = 0;
            
-            for (let job of allJobs) {
+            for (let job of jobsNeedingGeocode) {
                 const postcode = job['Postcode'] || job.Postcode;
                 
-                if (postcode && !job.coordinates) {
-                    geocoded++;
-                    progressEl.textContent = `${geocoded}/${jobsNeedingGeocode.length}`;
-                    
-                    const coords = await geocodePostcode(postcode);
-                    if (coords) {
-                        job.coordinates = coords;
-                        console.log(`✅ Geocoded ${postcode}:`, coords);
-                    } else {
-                        console.warn(`❌ Failed to geocode ${postcode}`);
-                    }
-                    
-                    // Polite delay to respect Nominatim usage policy (1 req/sec)
-                    await new Promise(r => setTimeout(r, 1200));
+                geocoded++;
+                progressEl.textContent = `${geocoded}/${jobsNeedingGeocode.length}`;
+                
+                const coords = await geocodePostcode(postcode);
+                if (coords) {
+                    job.coordinates = coords;
+                    console.log(`✅ Geocoded ${postcode}:`, coords);
+                } else {
+                    console.warn(`❌ Failed to geocode ${postcode}`);
                 }
+                
+                // Polite delay to respect Nominatim usage policy (1 req/sec)
+                await new Promise(r => setTimeout(r, 1200));
             }
            
             statusEl.classList.remove('active');
@@ -758,15 +825,18 @@
                 }).addTo(map);
             }
            
-            // Markers with popups
+            // Markers with popups - colored by status
             withCoords.forEach(job => {
+                const colorData = getMarkerColor(job);
+                
                 const marker = L.circleMarker([job.coordinates.lat, job.coordinates.lng], {
-                    radius: 7,
-                    fillColor: '#FF6B35',
+                    radius: 8,
+                    fillColor: colorData.color,
                     color: '#ffffff',
                     weight: 2,
                     opacity: 1,
-                    fillOpacity: 0.85
+                    fillOpacity: 0.85,
+                    className: colorData.flashing ? 'flashing-marker' : ''
                 });
                
                 const jobNumber = job['Job Number'] || 'N/A';
@@ -774,7 +844,7 @@
                 const postcode = job['Postcode'] || 'N/A';
                 const bookedDate = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date') || 'N/A';
                 const lead = job['Lead'] || 'Unassigned';
-                const status = getFieldValue(job, 'Status Update', 'status') || 'N/A';
+                const status = getFieldValue(job, 'Status Update', 'status', 'Status') || 'N/A';
 
                 const popup = `
                     <div class="popup-title">Job #${escapeHtml(jobNumber)}</div>
