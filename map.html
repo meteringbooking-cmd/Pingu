@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -425,7 +424,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Location Heat Map</h1>
-            <p class="subtitle">Visualise upcoming job locations across the UK</p>
+            <p class="subtitle">Visualize upcoming job locations across the UK</p>
         </header>
        
         <main>
@@ -485,7 +484,7 @@
                 <div class="legend">
                     <div class="legend-title">📍 Status Legend</div>
                     <div class="legend-item">
-                        <div class="legend-color" style="background: #000000;"></div>
+                        <div class="legend-color" style="background: #FFFFFF;"></div>
                         <span>Upcoming</span>
                     </div>
                     <div class="legend-item">
@@ -559,6 +558,27 @@
             markersLayer = L.layerGroup().addTo(map);
            
             console.log('🗺️ Map initialized');
+        }
+       
+        // Get Monday of previous week
+        function getMondayOfPreviousWeek() {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            
+            // Get current day of week (0 = Sunday, 1 = Monday, etc.)
+            const currentDay = now.getDay();
+            
+            // Calculate days to subtract to get to Monday of previous week
+            // If today is Sunday (0), go back 6 days to last Monday, then back 7 more = 13 days
+            // If today is Monday (1), go back 7 days to last Monday
+            // If today is Tuesday (2), go back 8 days, etc.
+            const daysToSubtract = currentDay === 0 ? 13 : (currentDay + 6);
+            
+            const mondayPrevWeek = new Date(now);
+            mondayPrevWeek.setDate(now.getDate() - daysToSubtract);
+            mondayPrevWeek.setHours(0, 0, 0, 0);
+            
+            return mondayPrevWeek;
         }
        
         // Parse date flexibly (DD/MM/YYYY or ISO)
@@ -638,8 +658,8 @@
                 return { color: '#FF0000', flashing: true };
             }
 
-            // Black for upcoming (future dates or any other status)
-            return { color: '#000000', flashing: false };
+            // White for upcoming (future dates or any other status)
+            return { color: '#FFFFFF', flashing: false };
         }
        
         // Load jobs from Firebase collection "Solar-jobs"
@@ -755,22 +775,22 @@
        
         // Render/update map with current filter
         function updateMap() {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
+            // Start date is Monday of previous week
+            const startDate = getMondayOfPreviousWeek();
            
-            const endDate = new Date(now);
+            const endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + currentDays);
             endDate.setHours(23, 59, 59, 999);
            
             // Update UI dates
-            document.getElementById('start-date').textContent = formatDate(now);
+            document.getElementById('start-date').textContent = formatDate(startDate);
             document.getElementById('end-date').textContent = formatDate(endDate);
            
             // Filter jobs in range - check multiple date fields
             const filtered = allJobs.filter(job => {
                 const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const d = parseDate(dateStr);
-                return d && d >= now && d <= endDate;
+                return d && d >= startDate && d <= endDate;
             });
            
             // Only jobs with coordinates
@@ -782,9 +802,16 @@
             document.getElementById('jobs-count').textContent = filtered.length;
             document.getElementById('locations-count').textContent = uniqueLocs.size;
            
-            // This week count
+            // This week count (current week)
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const currentDayOfWeek = now.getDay();
+            const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+            
             const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+            weekStart.setDate(now.getDate() - daysFromMonday);
+            weekStart.setHours(0, 0, 0, 0);
+            
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekEnd.getDate() + 6);
             weekEnd.setHours(23, 59, 59, 999);
