@@ -367,6 +367,21 @@
             background: var(--text-dim);
             color: white;
         }
+
+        .status-approved {
+            background: var(--success);
+            color: white;
+        }
+
+        .status-pending-review {
+            background: var(--secondary);
+            color: var(--dark);
+        }
+
+        .status-failed {
+            background: var(--error);
+            color: white;
+        }
        
         .empty-state {
             text-align: center;
@@ -647,6 +662,7 @@
             'Days',
             'Panel No.',
             'Status Update',
+            'auditStatus',
             'PO',
             'Lead',
             'Team Number'
@@ -902,10 +918,16 @@
                                 ${selectedFields.map(field => {
                                     let value = job[field] || '';
                                     
-                                    // Special formatting for status
+                                    // Special formatting for status fields
                                     if (field === 'Status Update' || field === 'status') {
                                         const status = (value || 'pending').toLowerCase();
                                         return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'pending')}</span></td>`;
+                                    }
+                                    
+                                    // Special formatting for audit status
+                                    if (field === 'auditStatus') {
+                                        const status = (value || 'pending-review').toLowerCase().replace(/\s+/g, '-');
+                                        return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'Pending Review')}</span></td>`;
                                     }
                                     
                                     return `<td>${escapeHtml(String(value))}</td>`;
