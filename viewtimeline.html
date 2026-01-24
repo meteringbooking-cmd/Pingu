@@ -367,7 +367,6 @@
             background: linear-gradient(135deg, var(--cancelled), #7A7A8F);
         }
 
-        /* Partial completion overlay */
         .job-card .completion-overlay {
             position: absolute;
             top: 0;
@@ -473,7 +472,6 @@
             background-clip: text;
         }
        
-        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -559,7 +557,6 @@
             font-weight: 500;
         }
 
-        /* Status Modal */
         .status-buttons {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -597,10 +594,10 @@
         }
 
         .status-btn.cancelled {
-            background: linear---cancelled), #7A7A8F);
+            background: linear-gradient(135deg, #FF3B3B, #C92A2A);
+            border: 2px solid #FF6B6B;
         }
 
-        /* Completion Day Selector */
         .completion-selector {
             margin-top: 1.5rem;
             padding: 1.5rem;
@@ -672,8 +669,61 @@
             background: linear-gradient(135deg, var(--success), #3DB88E);
             color: white;
         }
+
+        .notes-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+
+        .notes-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .notes-textarea {
+            width: 100%;
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            min-height: 100px;
+            resize: vertical;
+            transition: all 0.3s ease;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .save-notes-btn {
+            margin-top: 0.5rem;
+            padding: 0.8rem 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .save-notes-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
        
-        /* Toast Notification */
         .toast {
             position: fixed;
             bottom: 2rem;
@@ -789,7 +839,6 @@
         </div>
     </div>
    
-    <!-- Status Update Modal -->
     <div class="modal" id="status-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -833,11 +882,16 @@
                         <button class="action-btn confirm" onclick="confirmPartialCompletion()">Confirm</button>
                     </div>
                 </div>
+
+                <div class="notes-section">
+                    <label class="notes-label" for="job-notes">Job Notes</label>
+                    <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
+                    <button class="save-notes-btn" onclick="saveJobNotes()">💾 Save Notes</button>
+                </div>
             </div>
         </div>
     </div>
    
-    <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
    
     <script type="module">
@@ -876,14 +930,12 @@
         let timelineDates = [];
         let selectedCompletionDays = [];
        
-        // Initialize timeline with default values
         window.initializeTimeline = function() {
             const today = new Date();
             document.getElementById('start-date').valueAsDate = today;
             loadJobs();
         }
        
-        // Parse date in DD/MM/YYYY format or ISO
         function parseDate(dateStr) {
             if (!dateStr) return null;
            
@@ -910,7 +962,6 @@
             return null;
         }
        
-        // Format date as DD/MM/YYYY for storage/display
         function formatDate(date) {
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -918,7 +969,6 @@
             return `${day}/${month}/${year}`;
         }
        
-        // Load jobs from Firebase collection "Solar-jobs"
         async function loadJobs() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
@@ -988,10 +1038,7 @@
                             }
                         }
 
-                        // Get job type
                         const jobType = data['Job Type'] || 'Standard';
-
-                        // Get status and completion info
                         const status = data['Status Update'] || data['status'] || 'Scheduled';
                         const completedDays = data['completedDays'] || [];
                        
@@ -1034,7 +1081,6 @@
             }
         }
        
-        // Update job status in Firebase
         async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
             try {
                 const { doc, updateDoc } = window.firebaseModules;
@@ -1050,7 +1096,6 @@
                
                 await updateDoc(jobRef, updateData);
                
-                // Update local cache
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
                     job.status = newStatus;
@@ -1069,7 +1114,6 @@
             }
         }
        
-        // Show toast notification
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
@@ -1080,7 +1124,6 @@
             }, 3000);
         }
        
-        // Build the visual timeline
         function buildTimeline() {
             const startDateInput = document.getElementById('start-date').value;
             const startDate = startDateInput ? new Date(startDateInput) : new Date();
@@ -1189,7 +1232,6 @@
                         const gap = 1;
                         const spanWidth = (columnWidth * visibleSpan) + (gap * (visibleSpan - 1));
 
-                        // Determine status class
                         const status = job.status || 'Scheduled';
                         let statusClass = '';
                         if (status === 'In-Progress') statusClass = 'status-in-progress';
@@ -1197,13 +1239,11 @@
                         else if (status === 'Aborted') statusClass = 'status-aborted';
                         else if (status === 'Cancelled') statusClass = 'status-cancelled';
 
-                        // Calculate completion percentage for multi-day jobs
                         const completedDays = job.completedDays || [];
                         const completionPercent = jobLength > 1 && completedDays.length > 0 
                             ? (completedDays.length / jobLength) * 100 
                             : 0;
 
-                        // For multi-day jobs, allow text to wrap and fill the space
                         const textStyle = jobLength > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
                        
                         html += `
@@ -1246,6 +1286,7 @@
             document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
             document.getElementById('status-job-type').textContent = job.jobType || 'Standard';
             document.getElementById('status-current').textContent = job.status || 'Scheduled';
+            document.getElementById('job-notes').value = job.notes || '';
            
             document.getElementById('completion-selector').style.display = 'none';
             document.getElementById('status-modal').classList.add('show');
@@ -1261,7 +1302,6 @@
             if (!currentJob) return;
 
             if (newStatus === 'Complete' && currentJob.jobLength > 1) {
-                // For multi-day jobs, don't auto-complete, let user choose days
                 return;
             }
 
@@ -1275,13 +1315,11 @@
             const jobLength = currentJob.jobLength || 1;
 
             if (jobLength === 1) {
-                // Single day job - just mark as complete
                 updateJobStatusInDB(currentJob.id, 'Complete');
                 closeStatusModal();
                 return;
             }
 
-            // Multi-day job - show day selector
             const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
                 const dayNum = i + 1;
                 const isSelected = selectedCompletionDays.includes(dayNum);
@@ -1305,7 +1343,6 @@
             }
             selectedCompletionDays.sort((a, b) => a - b);
 
-            // Update button visuals
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const text = btn.textContent;
                 const num = parseInt(text.replace('Day ', ''));
@@ -1331,6 +1368,32 @@
 
             updateJobStatusInDB(currentJob.id, newStatus, selectedCompletionDays);
             closeStatusModal();
+        }
+
+        window.saveJobNotes = async function() {
+            if (!currentJob) return;
+
+            const notes = document.getElementById('job-notes').value;
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+               
+                await updateDoc(jobRef, {
+                    notes: notes
+                });
+               
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) {
+                    job.notes = notes;
+                }
+               
+                showToast('Notes saved successfully', 'success');
+               
+            } catch (error) {
+                console.error('Error saving notes:', error);
+                showToast('Failed to save notes', 'error');
+            }
         }
        
         function updateTimeline() {
