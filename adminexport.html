@@ -1,1 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Data | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+       
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+       
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+       
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+       
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+       
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+       
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
+        }
+       
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+       
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+       
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+       
+        .back-btn {
+            background: var(--dark-light);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+       
+        .back-btn:hover {
+            background: var(--dark-lighter);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+       
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+       
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+       
+        .card {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: 1.5rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+       
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+       
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+       
+        .card-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+       
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+       
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+       
+        .filter-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+       
+        .filter-input, .filter-select {
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+       
+        .filter-input:focus, .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+       
+        .btn {
+            padding: 0.8rem 1.8rem;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+       
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+        }
+       
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+       
+        .btn-secondary {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--text-dim);
+        }
+       
+        .btn-secondary:hover {
+            border-color: var(--primary);
+        }
 
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #3DB88E);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(78, 204, 163, 0.3);
+        }
+       
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+       
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--dark-lighter);
+            border-radius: 12px;
+        }
+       
+        .stat-item {
+            text-align: center;
+        }
+       
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+       
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+       
+        .preview-container {
+            background: var(--dark-lighter);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            max-height: 600px;
+            overflow: auto;
+        }
+       
+        .preview-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .preview-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+       
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+       
+        table th, table td {
+            padding: 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid var(--dark);
+        }
+       
+        table th {
+            color: var(--accent);
+            font-weight: 600;
+            font-family: 'Syne', sans-serif;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+            background: var(--dark-lighter);
+            z-index: 10;
+        }
+       
+        table td {
+            color: var(--text-dim);
+        }
+       
+        table tr:hover {
+            background: var(--dark-light);
+        }
+       
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+       
+        .status-pending {
+            background: var(--secondary);
+            color: var(--dark);
+        }
+       
+        .status-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+       
+        .status-outstanding, .status-in-progress {
+            background: var(--accent);
+            color: var(--dark);
+        }
+
+        .status-aborted {
+            background: var(--error);
+            color: white;
+        }
+
+        .status-cancelled {
+            background: var(--text-dim);
+            color: white;
+        }
+       
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+       
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+       
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark-light);
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            display: none;
+        }
+       
+        .toast.show {
+            display: block;
+        }
+       
+        .toast.error {
+            border-color: var(--error);
+        }
+       
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+       
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+            margin-left: 0.5rem;
+        }
+       
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .field-selector {
+            background: var(--dark-lighter);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+        }
+
+        .field-selector-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .field-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.8rem;
+        }
+
+        .field-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .field-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .field-checkbox label {
+            cursor: pointer;
+            color: var(--text);
+            font-size: 0.85rem;
+        }
+       
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+           
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
+           
+            .action-buttons {
+                flex-direction: column;
+            }
+           
+            .btn {
+                width: 100%;
+            }
+
+            .preview-container {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <a href="admin.html" class="back-btn">← Back to Admin</a>
+            </div>
+            <h1>Export Data</h1>
+            <p class="subtitle">Filter and export job data to CSV format</p>
+        </header>
+       
+        <!-- Filters Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📊 Export Filters</h2>
+            </div>
+           
+            <div class="filter-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Status Filter</label>
+                    <select class="filter-select" id="status-filter">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="In-Progress">In-Progress</option>
+                        <option value="complete">Complete</option>
+                        <option value="outstanding">Outstanding</option>
+                        <option value="Aborted">Aborted</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+               
+                <div class="filter-group">
+                    <label class="filter-label">Start Date</label>
+                    <input type="date" class="filter-input" id="start-date">
+                </div>
+               
+                <div class="filter-group">
+                    <label class="filter-label">End Date</label>
+                    <input type="date" class="filter-input" id="end-date">
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label">Date Field</label>
+                    <select class="filter-select" id="date-field">
+                        <option value="Booked Date">Booked Date</option>
+                        <option value="Projected Completion Date">Completion Date</option>
+                        <option value="uploadDate">Upload Date</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Field Selector -->
+            <div class="field-selector">
+                <div class="field-selector-title">Select Fields to Export</div>
+                <div style="margin-bottom: 1rem;">
+                    <button class="btn btn-secondary preview-btn" onclick="selectAllFields()">Select All</button>
+                    <button class="btn btn-secondary preview-btn" onclick="deselectAllFields()">Deselect All</button>
+                </div>
+                <div class="field-checkboxes" id="field-checkboxes">
+                    <!-- Checkboxes will be populated here -->
+                </div>
+            </div>
+           
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="applyFilters()">
+                    🔍 Apply Filters & Preview
+                </button>
+                <button class="btn btn-secondary" onclick="clearFilters()">
+                    ↺ Clear Filters
+                </button>
+            </div>
+        </div>
+       
+        <!-- Stats Row -->
+        <div class="stats-row" id="stats-row">
+            <div class="stat-item">
+                <div class="stat-label">Total Jobs</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Filtered Jobs</div>
+                <div class="stat-value" id="stat-filtered">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Date Range</div>
+                <div class="stat-value" id="stat-range">All</div>
+            </div>
+        </div>
+       
+        <!-- Preview Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">📋 Export Preview</h2>
+                <button class="btn btn-success" onclick="exportToCSV()" id="export-btn" disabled>
+                    💾 Download CSV
+                </button>
+            </div>
+           
+            <div class="preview-container" id="preview-container">
+                <div class="empty-state">
+                    <div class="empty-icon">📄</div>
+                    <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Data to Preview</h3>
+                    <p>Apply filters above to preview your export</p>
+                </div>
+            </div>
+        </div>
+    </div>
+   
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+   
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+       
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+       
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, getDocs, query, orderBy };
+            console.log('✅ Firebase initialized');
+           
+            window.addEventListener('DOMContentLoaded', () => {
+                window.loadJobs();
+            });
+        } catch (error) {
+            console.error('❌ Firebase error:', error);
+            document.getElementById('preview-container').innerHTML =
+                '<div class="empty-state"><div class="empty-icon">⚠️</div><h3 style="font-family: Syne, sans-serif;">Firebase Connection Failed</h3></div>';
+        }
+    </script>
+   
+    <script>
+        let allJobs = [];
+        let filteredJobs = [];
+        let availableFields = [];
+
+        // Common fields that should be exported
+        const defaultFields = [
+            'Job Type',
+            'Job Number',
+            'Address',
+            'Postcode',
+            'Booked Date',
+            'Projected Completion Date',
+            'Days',
+            'Panel No.',
+            'Status Update',
+            'PO',
+            'Lead',
+            'Team Number'
+        ];
+
+        // Load jobs from Firebase
+        window.loadJobs = async function() {
+            try {
+                document.getElementById('preview-container').innerHTML = '<div class="loading">Loading jobs from Firebase...</div>';
+               
+                const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
+               
+                const jobsQuery = query(
+                    collection(window.db, 'Solar-jobs'),
+                    orderByFn('uploadDate', 'desc')
+                );
+               
+                const querySnapshot = await getDocs(jobsQuery);
+               
+                allJobs = [];
+                querySnapshot.forEach((docSnap) => {
+                    allJobs.push({ id: docSnap.id, ...docSnap.data() });
+                });
+               
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs`);
+               
+                // Extract all unique fields from jobs
+                extractAvailableFields();
+                
+                // Initialize field checkboxes
+                initializeFieldCheckboxes();
+                
+                // Update stats
+                document.getElementById('stat-total').textContent = allJobs.length;
+                document.getElementById('stat-filtered').textContent = allJobs.length;
+               
+                // Show initial preview with all jobs
+                filteredJobs = [...allJobs];
+                renderPreview();
+               
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                document.getElementById('preview-container').innerHTML =
+                    `<div class="empty-state"><div class="empty-icon">⚠️</div><h3 style="font-family: Syne, sans-serif;">Error Loading Jobs</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        // Extract all available fields from the jobs
+        function extractAvailableFields() {
+            const fieldSet = new Set();
+            
+            allJobs.forEach(job => {
+                Object.keys(job).forEach(key => {
+                    if (key !== 'id') {
+                        fieldSet.add(key);
+                    }
+                });
+            });
+            
+            availableFields = Array.from(fieldSet).sort();
+        }
+
+        // Initialize field checkboxes
+        function initializeFieldCheckboxes() {
+            const container = document.getElementById('field-checkboxes');
+            
+            container.innerHTML = availableFields.map(field => {
+                const isDefault = defaultFields.includes(field);
+                return `
+                    <div class="field-checkbox">
+                        <input type="checkbox" id="field-${escapeId(field)}" value="${escapeHtml(field)}" ${isDefault ? 'checked' : ''}>
+                        <label for="field-${escapeId(field)}">${escapeHtml(field)}</label>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Select all fields
+        window.selectAllFields = function() {
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+        }
+
+        // Deselect all fields
+        window.deselectAllFields = function() {
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+        }
+
+        // Get selected fields
+        function getSelectedFields() {
+            const selected = [];
+            document.querySelectorAll('.field-checkbox input[type="checkbox"]:checked').forEach(cb => {
+                selected.push(cb.value);
+            });
+            return selected;
+        }
+       
+        // Parse date in DD/MM/YYYY format or ISO
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+           
+            // Try DD/MM/YYYY format
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const year = parseInt(parts[2], 10);
+                    const parsed = new Date(year, month, day);
+                    if (!isNaN(parsed.getTime())) {
+                        parsed.setHours(0, 0, 0, 0);
+                        return parsed;
+                    }
+                }
+            }
+           
+            // Try ISO format
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) {
+                parsed.setHours(0, 0, 0, 0);
+                return parsed;
+            }
+           
+            return null;
+        }
+       
+        // Apply filters
+        window.applyFilters = function() {
+            const statusFilter = document.getElementById('status-filter').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const dateField = document.getElementById('date-field').value;
+           
+            filteredJobs = allJobs.filter(job => {
+                // Status filter
+                if (statusFilter !== 'all') {
+                    const jobStatus = (job['Status Update'] || job['status'] || 'pending').toLowerCase();
+                    if (jobStatus !== statusFilter.toLowerCase()) {
+                        return false;
+                    }
+                }
+               
+                // Date filter
+                if (startDate || endDate) {
+                    const jobDateStr = job[dateField];
+                    const jobDate = parseDate(jobDateStr);
+                   
+                    if (!jobDate) return false;
+                   
+                    if (startDate) {
+                        const start = new Date(startDate);
+                        start.setHours(0, 0, 0, 0);
+                        if (jobDate < start) return false;
+                    }
+                   
+                    if (endDate) {
+                        const end = new Date(endDate);
+                        end.setHours(23, 59, 59, 999);
+                        if (jobDate > end) return false;
+                    }
+                }
+               
+                return true;
+            });
+           
+            // Update stats
+            document.getElementById('stat-filtered').textContent = filteredJobs.length;
+           
+            let rangeText = 'All';
+            if (startDate && endDate) {
+                rangeText = `${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} - ${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            } else if (startDate) {
+                rangeText = `From ${new Date(startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            } else if (endDate) {
+                rangeText = `Until ${new Date(endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`;
+            }
+            document.getElementById('stat-range').textContent = rangeText;
+           
+            renderPreview();
+            showToast(`Filtered to ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''}`, 'success');
+        }
+       
+        // Clear filters
+        window.clearFilters = function() {
+            document.getElementById('status-filter').value = 'all';
+            document.getElementById('start-date').value = '';
+            document.getElementById('end-date').value = '';
+            document.getElementById('date-field').value = 'Booked Date';
+           
+            filteredJobs = [...allJobs];
+            document.getElementById('stat-filtered').textContent = allJobs.length;
+            document.getElementById('stat-range').textContent = 'All';
+           
+            renderPreview();
+            showToast('Filters cleared', 'success');
+        }
+       
+        // Render preview table
+        function renderPreview() {
+            const container = document.getElementById('preview-container');
+            const exportBtn = document.getElementById('export-btn');
+           
+            if (filteredJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Jobs Match Filters</h3>
+                        <p>Try adjusting your filter criteria</p>
+                    </div>
+                `;
+                exportBtn.disabled = true;
+                return;
+            }
+           
+            exportBtn.disabled = false;
+
+            const selectedFields = getSelectedFields();
+            
+            if (selectedFields.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 0.5rem;">No Fields Selected</h3>
+                        <p>Please select at least one field to export</p>
+                    </div>
+                `;
+                exportBtn.disabled = true;
+                return;
+            }
+           
+            const previewLimit = Math.min(filteredJobs.length, 100);
+            const jobsToShow = filteredJobs.slice(0, previewLimit);
+           
+            const tableHTML = `
+                <div class="preview-header">
+                    <span>Preview (showing ${previewLimit} of ${filteredJobs.length} jobs)</span>
+                    <div class="preview-controls">
+                        <span style="color: var(--text-dim); font-size: 0.85rem; margin-right: 1rem;">${selectedFields.length} fields selected</span>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            ${selectedFields.map(field => `<th>${escapeHtml(field)}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${jobsToShow.map(job => `
+                            <tr>
+                                ${selectedFields.map(field => {
+                                    let value = job[field] || '';
+                                    
+                                    // Special formatting for status
+                                    if (field === 'Status Update' || field === 'status') {
+                                        const status = (value || 'pending').toLowerCase();
+                                        return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'pending')}</span></td>`;
+                                    }
+                                    
+                                    return `<td>${escapeHtml(String(value))}</td>`;
+                                }).join('')}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                ${filteredJobs.length > previewLimit ? `
+                    <div style="text-align: center; margin-top: 1rem; color: var(--text-dim); font-size: 0.85rem;">
+                        + ${filteredJobs.length - previewLimit} more jobs (will be included in export)
+                    </div>
+                ` : ''}
+            `;
+           
+            container.innerHTML = tableHTML;
+        }
+       
+        // Export to CSV
+        window.exportToCSV = function() {
+            if (filteredJobs.length === 0) {
+                showToast('No jobs to export', 'error');
+                return;
+            }
+
+            const selectedFields = getSelectedFields();
+            
+            if (selectedFields.length === 0) {
+                showToast('Please select at least one field to export', 'error');
+                return;
+            }
+           
+            // Create CSV content
+            let csv = selectedFields.map(field => escapeCSV(field)).join(',') + '\n';
+           
+            filteredJobs.forEach(job => {
+                const row = selectedFields.map(field => {
+                    let value = job[field] || '';
+                    return escapeCSV(String(value));
+                });
+                csv += row.join(',') + '\n';
+            });
+           
+            // Create filename with timestamp and filters
+            const now = new Date();
+            const timestamp = now.toISOString().split('T')[0];
+            const statusFilter = document.getElementById('status-filter').value;
+            const filterSuffix = statusFilter !== 'all' ? `-${statusFilter}` : '';
+            const filename = `pingu-solar-export-${timestamp}${filterSuffix}.csv`;
+           
+            // Download
+            downloadFile(csv, filename, 'text/csv');
+            showToast(`Exported ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''} to ${filename}`, 'success');
+        }
+       
+        // Escape CSV value
+        function escapeCSV(value) {
+            value = String(value);
+            if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
+                value = '"' + value.replace(/"/g, '""') + '"';
+            }
+            return value;
+        }
+       
+        // Download file
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+       
+        // Show toast
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
+           
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 4000);
+        }
+       
+        // Escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+
+        // Escape ID for use in HTML id attributes
+        function escapeId(text) {
+            return String(text).replace(/[^a-zA-Z0-9-_]/g, '-');
+        }
+    </script>
+</body>
+</html>
