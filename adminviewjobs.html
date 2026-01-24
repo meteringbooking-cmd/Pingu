@@ -389,6 +389,181 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
+        .edit-btn {
+            background: linear-gradient(135deg, var(--accent), #00B8D9);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 217, 255, 0.4);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+       
+        .modal.show {
+            display: flex;
+        }
+       
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 700px;
+            width: 90%;
+            border: 2px solid var(--primary);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+       
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+       
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+       
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            line-height: 1;
+        }
+       
+        .close-btn:hover {
+            color: var(--error);
+        }
+       
+        .modal-body {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-select option {
+            background: var(--dark-lighter);
+            color: var(--text);
+        }
+
+        .form-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .btn-cancel {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--dark-lighter);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            border-color: var(--error);
+        }
+
+        .btn-save {
+            background: linear-gradient(135deg, var(--success), #3DB88E);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(78, 204, 163, 0.4);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -404,6 +579,14 @@
 
             .btn {
                 width: 100%;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-actions {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -483,10 +666,74 @@
     </div>
    
     <div class="toast" id="toast"></div>
+
+    <!-- Edit Job Modal -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit Job</h2>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-job-number">Job Number</label>
+                        <input type="text" id="edit-job-number" class="form-input" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-job-type">Job Type</label>
+                        <input type="text" id="edit-job-type" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-postcode">Postcode</label>
+                        <input type="text" id="edit-postcode" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-lead">Lead Engineer</label>
+                        <input type="text" id="edit-lead" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-team">Team</label>
+                        <input type="text" id="edit-team" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-booked-date">Booked Date</label>
+                        <input type="date" id="edit-booked-date" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-projected-date">Projected Completion</label>
+                        <input type="date" id="edit-projected-date" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-days">Days</label>
+                        <input type="number" id="edit-days" class="form-input" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-status">Status</label>
+                        <select id="edit-status" class="form-select">
+                            <option value="Scheduled">Scheduled</option>
+                            <option value="In-Progress">In-Progress</option>
+                            <option value="Complete">Complete</option>
+                            <option value="Aborted">Aborted</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="form-group full-width">
+                        <label class="form-label" for="edit-notes">Notes</label>
+                        <textarea id="edit-notes" class="form-textarea" placeholder="Add notes about this job..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button class="btn-save" onclick="saveJob()">💾 Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -501,7 +748,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy };
+            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
             console.log('✅ Firebase initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
@@ -517,6 +764,7 @@
     <script>
         let allJobs = [];
         let filteredJobs = [];
+        let currentEditJob = null;
        
         function parseDate(dateStr) {
             if (!dateStr) return null;
@@ -748,6 +996,7 @@
                             <th>Days</th>
                             <th>Status</th>
                             <th>Notes</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
