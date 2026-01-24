@@ -337,7 +337,7 @@
             padding: 2rem;
             border-radius: 8px;
             font-family: Arial, sans-serif;
-            max-height: 500px;
+            max-height: 600px;
             overflow-y: auto;
         }
 
@@ -525,7 +525,7 @@
         </div>
 
         <div class="preview-card">
-            <h2>👁️ Email Preview (Today's Jobs)</h2>
+            <h2>👁️ Email Preview (4 PM Format with Stats)</h2>
             <div class="email-preview" id="email-preview">
                 <p style="color: #999;">Loading preview...</p>
             </div>
@@ -570,6 +570,14 @@
         let clockInterval = null;
         let todaysJobs = [];
         let lastSentTime = null;
+        let jobStats = {
+            assigned: 0,
+            inProgress: 0,
+            completed: 0,
+            aborted: 0,
+            cancelled: 0,
+            delayed: 0
+        };
 
         const SEND_TIMES = [
             { hour: 10, minute: 0, label: '10:00 AM' },
@@ -619,6 +627,19 @@
             return '';
         }
 
+        function isJobDelayed(job, jobDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Check if job date is before or equal to today
+            if (jobDate <= today) {
+                const status = job.status || '';
+                // Job is delayed if it should have been done today or before but isn't complete
+                return status !== 'Complete' && status !== 'Cancelled' && status !== 'Aborted';
+            }
+            return false;
+        }
+
         window.loadTodaysJobs = async function() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
@@ -637,6 +658,14 @@
                 todayEnd.setHours(23, 59, 59, 999);
                
                 todaysJobs = [];
+                jobStats = {
+                    assigned: 0,
+                    inProgress: 0,
+                    completed: 0,
+                    aborted: 0,
+                    cancelled: 0,
+                    delayed: 0
+                };
                 
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
@@ -645,18 +674,33 @@
                     const jobDate = parseDate(dateStr);
 
                     if (jobDate && jobDate >= today && jobDate <= todayEnd) {
+                        const status = getFieldValue(data, 'Status Update', 'status', 'Status') || 'Scheduled';
+                        const delayed = isJobDelayed(data, jobDate);
+                        
                         todaysJobs.push({
                             jobNumber: data['Job Number'] || 'N/A',
                             postcode: data['Postcode'] || 'N/A',
                             lead: getFieldValue(data, 'Lead', 'Lead Engineer', 'Engineer') || 'Unassigned',
                             jobType: data['Job Type'] || 'Standard',
-                            status: getFieldValue(data, 'Status Update', 'status', 'Status') || 'Scheduled',
-                            bookedDate: formatDate(jobDate)
+                            status: status,
+                            bookedDate: formatDate(jobDate),
+                            delayed: delayed
                         });
+
+                        // Update stats
+                        jobStats.assigned++;
+                        
+                        if (status === 'In-Progress') jobStats.inProgress++;
+                        else if (status === 'Complete') jobStats.completed++;
+                        else if (status === 'Aborted') jobStats.aborted++;
+                        else if (status === 'Cancelled') jobStats.cancelled++;
+                        
+                        if (delayed) jobStats.delayed++;
                     }
                 });
                
                 console.log(`✅ Loaded ${todaysJobs.length} jobs for today`);
+                console.log('📊 Stats:', jobStats);
                 document.getElementById('todays-jobs-count').textContent = todaysJobs.length;
                 
                 refreshPreview();
@@ -670,55 +714,8 @@
         window.refreshPreview = function() {
             const preview = document.getElementById('email-preview');
             
-            if (todaysJobs.length === 0) {
-                preview.innerHTML = `
-                    <h3>Daily Job Summary - ${new Date().toLocaleDateString('en-GB', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                    })}</h3>
-                    <p>No jobs scheduled for today.</p>
-                `;
-                return;
-            }
-
-            const html = `
-                <h3>Daily Job Summary - ${new Date().toLocaleDateString('en-GB', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                })}</h3>
-                <p>Total jobs today: <strong>${todaysJobs.length}</strong></p>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Job Number</th>
-                            <th>Postcode</th>
-                            <th>Lead</th>
-                            <th>Job Type</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${todaysJobs.map(job => `
-                            <tr>
-                                <td><strong>#${job.jobNumber}</strong></td>
-                                <td>${job.postcode}</td>
-                                <td>${job.lead}</td>
-                                <td>${job.jobType}</td>
-                                <td>${job.status}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-                <p style="margin-top: 1.5rem; color: #666; font-size: 0.9rem;">
-                    This is an automated message from Pingu Solar Management System.
-                </p>
-            `;
-
-            preview.innerHTML = html;
+            // Always show 4 PM format in preview
+            preview.innerHTML = generateEmailHTML(true);
         }
 
         window.startClock = function() {
@@ -848,16 +845,16 @@
                         lastSentTime.getMinutes() !== currentMinute ||
                         lastSentTime.getDate() !== now.getDate()) {
                         
-                        sendScheduledEmail(time.label);
+                        sendScheduledEmail(time.label, time.hour === 16);
                         lastSentTime = new Date();
                     }
                 }
             });
         }
 
-        async function sendScheduledEmail(timeLabel) {
+        async function sendScheduledEmail(timeLabel, is4PM) {
             addLog(`Sending scheduled email for ${timeLabel}...`, 'success');
-            await sendEmail(true, timeLabel);
+            await sendEmail(true, timeLabel, is4PM);
         }
 
         window.sendManualEmail = async function() {
@@ -869,21 +866,21 @@
             }
 
             document.getElementById('manual-btn').disabled = true;
-            addLog('Sending test email...', 'success');
+            addLog('Sending test email (4 PM format)...', 'success');
             
-            await sendEmail(false, 'Manual Test');
+            await sendEmail(false, 'Manual Test', true);
             
             document.getElementById('manual-btn').disabled = false;
         }
 
-        async function sendEmail(isScheduled, timeLabel) {
+        async function sendEmail(isScheduled, timeLabel, is4PM) {
             try {
                 const recipientEmail = document.getElementById('recipient-email').value.trim();
 
                 // Reload today's jobs to get latest data
                 await window.loadTodaysJobs();
 
-                const emailContent = generateEmailHTML();
+                const emailContent = generateEmailHTML(is4PM);
 
                 const templateParams = {
                     to_email: recipientEmail,
@@ -914,18 +911,20 @@
             }
         }
 
-        function generateEmailHTML() {
+        function generateEmailHTML(is4PM) {
+            const dateStr = new Date().toLocaleDateString('en-GB', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+
             if (todaysJobs.length === 0) {
                 return `
                     <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;">
                         <div style="background: white; padding: 30px; border-radius: 8px; max-width: 800px; margin: 0 auto;">
                             <h2 style="color: #FF6B35; margin-bottom: 20px;">
-                                Daily Job Summary - ${new Date().toLocaleDateString('en-GB', { 
-                                    weekday: 'long', 
-                                    year: 'numeric', 
-                                    month: 'long', 
-                                    day: 'numeric' 
-                                })}
+                                Daily Job Summary - ${dateStr}
                             </h2>
                             <p>No jobs scheduled for today.</p>
                             <p style="margin-top: 30px; color: #666; font-size: 0.9rem;">
@@ -936,17 +935,47 @@
                 `;
             }
 
+            let statsHTML = '';
+            if (is4PM) {
+                statsHTML = `
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #4ECCA3;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Assigned</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #4ECCA3;">${jobStats.assigned}</div>
+                        </div>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #00D9FF;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">In-Progress</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #00D9FF;">${jobStats.inProgress}</div>
+                        </div>
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #4ECCA3;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Completed</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #4ECCA3;">${jobStats.completed}</div>
+                        </div>
+                        <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #FF6B6B;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Aborted</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #FF6B6B;">${jobStats.aborted}</div>
+                        </div>
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #9A9AB0;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Cancelled</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #9A9AB0;">${jobStats.cancelled}</div>
+                        </div>
+                        <div style="background: #ffebee; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #FF6B35;">
+                            <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Delayed</div>
+                            <div style="font-size: 2rem; font-weight: bold; color: #FF6B35;">${jobStats.delayed}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
             return `
                 <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;">
                     <div style="background: white; padding: 30px; border-radius: 8px; max-width: 800px; margin: 0 auto;">
                         <h2 style="color: #FF6B35; margin-bottom: 20px;">
-                            Daily Job Summary - ${new Date().toLocaleDateString('en-GB', { 
-                                weekday: 'long', 
-                                year: 'numeric', 
-                                month: 'long', 
-                                day: 'numeric' 
-                            })}
+                            Daily Job Summary - ${dateStr}
                         </h2>
+                        
+                        ${statsHTML}
+                        
                         <p style="font-size: 1.1rem; margin-bottom: 20px;">
                             Total jobs today: <strong style="color: #FF6B35;">${todaysJobs.length}</strong>
                         </p>
@@ -961,17 +990,36 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${todaysJobs.map((job, index) => `
-                                    <tr style="background: ${index % 2 === 0 ? '#f9f9f9' : 'white'}; border-bottom: 1px solid #e0e0e0;">
-                                        <td style="padding: 12px;"><strong>#${job.jobNumber}</strong></td>
-                                        <td style="padding: 12px;">${job.postcode}</td>
-                                        <td style="padding: 12px;">${job.lead}</td>
-                                        <td style="padding: 12px;">${job.jobType}</td>
-                                        <td style="padding: 12px;">${job.status}</td>
-                                    </tr>
-                                `).join('')}
+                                ${todaysJobs.map((job, index) => {
+                                    const rowBg = job.delayed 
+                                        ? '#ffebee' 
+                                        : (index % 2 === 0 ? '#f9f9f9' : 'white');
+                                    const borderStyle = job.delayed 
+                                        ? 'border-left: 4px solid #FF6B35;' 
+                                        : '';
+                                    
+                                    return `
+                                        <tr style="background: ${rowBg}; border-bottom: 1px solid #e0e0e0; ${borderStyle}">
+                                            <td style="padding: 12px;"><strong>#${job.jobNumber}</strong></td>
+                                            <td style="padding: 12px;">${job.postcode}</td>
+                                            <td style="padding: 12px;">${job.lead}</td>
+                                            <td style="padding: 12px;">${job.jobType}</td>
+                                            <td style="padding: 12px;">${job.status}</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
                             </tbody>
                         </table>
+                        
+                        ${jobStats.delayed > 0 ? `
+                            <div style="margin-top: 20px; padding: 15px; background: #ffebee; border-left: 4px solid #FF6B35; border-radius: 4px;">
+                                <strong style="color: #FF6B35;">⚠️ ${jobStats.delayed} Delayed Job${jobStats.delayed > 1 ? 's' : ''}</strong>
+                                <p style="margin: 5px 0 0 0; color: #666; font-size: 0.9rem;">
+                                    Jobs highlighted in red should have been completed today but are not yet marked as complete.
+                                </p>
+                            </div>
+                        ` : ''}
+                        
                         <p style="margin-top: 30px; color: #666; font-size: 0.9rem;">
                             This is an automated message from Pingu Solar Management System.
                         </p>
