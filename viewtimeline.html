@@ -1104,6 +1104,11 @@
                 if (completedDays !== null) {
                     updateData.completedDays = completedDays;
                 }
+
+                // Store completion timestamp when job becomes fully complete
+                if (newStatus === 'Complete') {
+                    updateData.completedTimestamp = new Date().toISOString();
+                }
                
                 await updateDoc(jobRef, updateData);
                
@@ -1114,6 +1119,9 @@
                     job['Status Update'] = newStatus;
                     if (completedDays !== null) {
                         job.completedDays = completedDays;
+                    }
+                    if (newStatus === 'Complete') {
+                        job.completedTimestamp = new Date().toISOString();
                     }
                     
                     // Check if job just became fully complete
@@ -1194,7 +1202,7 @@
                 `;
                 
                 const templateParams = {
-                    to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk',
+                    to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk',
                     job_number: jobNumber,
                     postcode: postcode,
                     engineer: engineer,
