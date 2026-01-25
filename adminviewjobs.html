@@ -624,18 +624,6 @@
                         <option value="">All Teams</option>
                     </select>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label" for="filter-status">Status</label>
-                    <select id="filter-status" class="filter-select">
-                        <option value="">All Statuses</option>
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="In-Progress">In-Progress</option>
-                        <option value="Complete">Complete</option>
-                        <option value="Aborted">Aborted</option>
-                        <option value="Cancelled">Cancelled</option>
-                    </select>
-                </div>
-            </div>
 
             <div class="filter-actions">
                 <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
@@ -707,16 +695,6 @@
                     <div class="form-group">
                         <label class="form-label" for="edit-days">Days</label>
                         <input type="number" id="edit-days" class="form-input" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label" for="edit-status">Status</label>
-                        <select id="edit-status" class="form-select">
-                            <option value="Scheduled">Scheduled</option>
-                            <option value="In-Progress">In-Progress</option>
-                            <option value="Complete">Complete</option>
-                            <option value="Aborted">Aborted</option>
-                            <option value="Cancelled">Cancelled</option>
-                        </select>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label" for="edit-notes">Notes</label>
@@ -867,7 +845,6 @@
 
                     const team = data['Team'] || data['team'] || 'N/A';
                     const jobType = data['Job Type'] || 'Standard';
-                    const status = data['Status Update'] || data['status'] || 'Scheduled';
                     const projectedCompletionDate = parseDate(data['Projected Completion Date']);
                    
                     allJobs.push({
@@ -880,7 +857,6 @@
                         bookedDate: bookedDate,
                         projectedCompletionDate: projectedCompletionDate,
                         days: jobLength,
-                        status: status,
                         notes: data['notes'] || '',
                         ...data
                     });
@@ -930,7 +906,6 @@
             const endDate = document.getElementById('filter-end-date').value;
             const lead = document.getElementById('filter-lead').value;
             const team = document.getElementById('filter-team').value;
-            const status = document.getElementById('filter-status').value;
 
             filteredJobs = allJobs.filter(job => {
                 if (startDate && job.bookedDate) {
@@ -947,7 +922,6 @@
 
                 if (lead && job.lead !== lead) return false;
                 if (team && job.team !== team) return false;
-                if (status && job.status !== status) return false;
 
                 return true;
             });
@@ -962,7 +936,6 @@
             document.getElementById('filter-end-date').value = '';
             document.getElementById('filter-lead').value = '';
             document.getElementById('filter-team').value = '';
-            document.getElementById('filter-status').value = '';
 
             filteredJobs = [...allJobs];
             renderTable();
@@ -994,7 +967,6 @@
                             <th>Booked Date</th>
                             <th>Projected Completion</th>
                             <th>Days</th>
-                            <th>Status</th>
                             <th>Notes</th>
                             <th>Actions</th>
                         </tr>
@@ -1010,7 +982,6 @@
                                 <td>${formatDate(job.bookedDate)}</td>
                                 <td>${formatDate(job.projectedCompletionDate)}</td>
                                 <td>${job.days}</td>
-                                <td><span class="status-badge status-${job.status.toLowerCase().replace('-', '')}">${escapeHtml(job.status)}</span></td>
                                 <td class="notes-cell" title="${escapeHtml(job.notes)}">${escapeHtml(job.notes) || '-'}</td>
                                 <td><button class="edit-btn" onclick="openEditModal('${job.id}')">✏️ Edit</button></td>
                             </tr>
@@ -1068,7 +1039,6 @@
             document.getElementById('edit-booked-date').value = formatDateForInput(job.bookedDate);
             document.getElementById('edit-projected-date').value = formatDateForInput(job.projectedCompletionDate);
             document.getElementById('edit-days').value = job.days;
-            document.getElementById('edit-status').value = job.status;
             document.getElementById('edit-notes').value = job.notes;
 
             document.getElementById('edit-modal').classList.add('show');
@@ -1098,7 +1068,6 @@
                     'Lead': document.getElementById('edit-lead').value,
                     'Team': document.getElementById('edit-team').value,
                     'Days': parseInt(document.getElementById('edit-days').value) || 1,
-                    'Status Update': document.getElementById('edit-status').value,
                     'notes': document.getElementById('edit-notes').value
                 };
 
