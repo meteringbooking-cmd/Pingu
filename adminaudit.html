@@ -1065,16 +1065,30 @@
                 // Calculate pending time for pending jobs
                 let pendingTimeHTML = '';
                 if (job.auditStatus === 'pending' && job.completedTimestamp) {
-                    const timeDiff = now - job.completedTimestamp;
-                    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-                    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                    
-                    pendingTimeHTML = `
-                        <div class="pending-time">
-                            <span class="pending-time-icon">⏱️</span>
-                            <span>Pending: <span class="pending-time-value">${hours}h ${minutes}m</span></span>
-                        </div>
-                    `;
+                    try {
+                        // Ensure completedTimestamp is a Date object
+                        const timestamp = job.completedTimestamp instanceof Date 
+                            ? job.completedTimestamp 
+                            : new Date(job.completedTimestamp);
+                        
+                        // Check if timestamp is valid
+                        if (isNaN(timestamp.getTime())) {
+                            console.error('Invalid timestamp for job:', job.jobNumber, job.completedTimestamp);
+                        } else {
+                            const timeDiff = now - timestamp;
+                            const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                            const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                            
+                            pendingTimeHTML = `
+                                <div class="pending-time">
+                                    <span class="pending-time-icon">⏱️</span>
+                                    <span>Pending: <span class="pending-time-value">${hours}h ${minutes}m</span></span>
+                                </div>
+                            `;
+                        }
+                    } catch (error) {
+                        console.error('Error calculating pending time for job:', job.jobNumber, error);
+                    }
                 }
 
                 return `
@@ -1482,7 +1496,12 @@
 
                 // Calculate pending times for each job
                 const jobsWithPendingTime = pendingJobs.map(job => {
-                    const timeDiff = now - job.completedTimestamp;
+                    // Ensure timestamp is a Date object
+                    const timestamp = job.completedTimestamp instanceof Date 
+                        ? job.completedTimestamp 
+                        : new Date(job.completedTimestamp);
+                    
+                    const timeDiff = now - timestamp;
                     const hours = Math.floor(timeDiff / (1000 * 60 * 60));
                     const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
                     const days = Math.floor(hours / 24);
