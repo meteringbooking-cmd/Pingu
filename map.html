@@ -375,12 +375,12 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Location Heat Map</h1>
-            <p class="subtitle">Visualize upcoming job locations across the UK (Previous, Current & Next Week)</p>
+            <p class="subtitle">Visualise job locations across the UK (Current Week Only)</p>
         </header>
        
         <main>
             <div class="controls-card">
-                <h2>📅 Viewing 3-Week Range</h2>
+                <h2>📅 Viewing Current Week</h2>
                
                 <div class="live-indicator">
                     <div class="live-dot"></div>
@@ -399,7 +399,7 @@
                    
                     <div class="stats-row">
                         <div class="stat-box">
-                            <div class="stat-label">Jobs in Range</div>
+                            <div class="stat-label">Jobs This Week</div>
                             <div class="stat-value" id="jobs-count">0</div>
                         </div>
                         <div class="stat-box">
@@ -407,16 +407,16 @@
                             <div class="stat-value" id="locations-count">0</div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">Previous Week</div>
-                            <div class="stat-value" id="prev-week-count">0</div>
+                            <div class="stat-label">Complete</div>
+                            <div class="stat-value" id="complete-count" style="color: #00FF00;">0</div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">Current Week</div>
-                            <div class="stat-value" id="week-count">0</div>
+                            <div class="stat-label">In Progress</div>
+                            <div class="stat-value" id="progress-count" style="color: #0099FF;">0</div>
                         </div>
                         <div class="stat-box">
-                            <div class="stat-label">Next Week</div>
-                            <div class="stat-value" id="next-week-count">0</div>
+                            <div class="stat-label">Upcoming</div>
+                            <div class="stat-value" id="upcoming-count">0</div>
                         </div>
                         <div class="stat-box">
                             <div class="stat-label">Overdue</div>
@@ -649,20 +649,20 @@
             return { color: '#000000', flashing: false };
         }
        
-        // Geocode postcodes for 3-week range only
+        // Geocode postcodes for current week only
         async function geocodeJobs() {
-            console.log('Geocoding postcodes for 3-week range...');
+            console.log('Geocoding postcodes for current week...');
             
             const statusEl = document.getElementById('geocoding-status');
             const progressEl = document.getElementById('geocoding-progress');
             
-            // Calculate 3-week range
-            const startDate = getMondayOfPreviousWeek();
+            // Calculate current week range (Monday to Sunday)
+            const startDate = getMondayOfCurrentWeek();
             const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 21); // 3 weeks
+            endDate.setDate(endDate.getDate() + 6); // Sunday of current week
             endDate.setHours(23, 59, 59, 999);
             
-            // Filter jobs that need geocoding (within 3 weeks and no coordinates)
+            // Filter jobs that need geocoding (within current week and no coordinates)
             const jobsNeedingGeocode = allJobs.filter(job => {
                 const postcode = job['Postcode'] || job.Postcode;
                 if (!postcode || job.coordinates) return false;
@@ -728,14 +728,14 @@
             return null;
         }
        
-        // Render/update map with 3-week filter
+        // Render/update map with current week filter
         function updateMap() {
-            // Start date is Monday of previous week
-            const startDate = getMondayOfPreviousWeek();
+            // Start date is Monday of current week
+            const startDate = getMondayOfCurrentWeek();
            
-            // End date is always 3 weeks from start (previous + current + next week)
+            // End date is Sunday of current week
             const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 21); // 3 weeks = 21 days
+            endDate.setDate(endDate.getDate() + 6); // 6 days after Monday = Sunday
             endDate.setHours(23, 59, 59, 999);
            
             // Update UI dates
@@ -758,45 +758,32 @@
             document.getElementById('jobs-count').textContent = filtered.length;
             document.getElementById('locations-count').textContent = uniqueLocs.size;
            
-            // Previous week count
-            const prevWeekStart = getMondayOfPreviousWeek();
-            const prevWeekEnd = new Date(prevWeekStart);
-            prevWeekEnd.setDate(prevWeekEnd.getDate() + 6);
-            prevWeekEnd.setHours(23, 59, 59, 999);
-            
-            const prevWeekJobs = allJobs.filter(j => {
-                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const d = parseDate(dateStr);
-                return d && d >= prevWeekStart && d <= prevWeekEnd;
+            // Count by status for current week
+            const completeJobs = withCoords.filter(j => {
+                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                return status.includes('complete') || status.includes('finished') || status.includes('done');
             }).length;
-            document.getElementById('prev-week-count').textContent = prevWeekJobs;
+            document.getElementById('complete-count').textContent = completeJobs;
 
-            // Current week count
-            const currentWeekStart = getMondayOfCurrentWeek();
-            const currentWeekEnd = new Date(currentWeekStart);
-            currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
-            currentWeekEnd.setHours(23, 59, 59, 999);
-            
-            const currentWeekJobs = allJobs.filter(j => {
-                const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const d = parseDate(dateStr);
-                return d && d >= currentWeekStart && d <= currentWeekEnd;
+            const progressJobs = withCoords.filter(j => {
+                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                return status.includes('progress') || status.includes('ongoing') || status.includes('active');
             }).length;
-            document.getElementById('week-count').textContent = currentWeekJobs;
+            document.getElementById('progress-count').textContent = progressJobs;
 
-            // Next week count
-            const nextWeekStart = new Date(currentWeekStart);
-            nextWeekStart.setDate(nextWeekStart.getDate() + 7);
-            const nextWeekEnd = new Date(nextWeekStart);
-            nextWeekEnd.setDate(nextWeekEnd.getDate() + 6);
-            nextWeekEnd.setHours(23, 59, 59, 999);
-            
-            const nextWeekJobs = allJobs.filter(j => {
+            const upcomingJobs = withCoords.filter(j => {
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
                 const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const d = parseDate(dateStr);
-                return d && d >= nextWeekStart && d <= nextWeekEnd;
+                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                
+                // Future dates that aren't complete or in progress
+                const isComplete = status.includes('complete') || status.includes('finished') || status.includes('done');
+                const isProgress = status.includes('progress') || status.includes('ongoing') || status.includes('active');
+                return d && d > now && !isComplete && !isProgress;
             }).length;
-            document.getElementById('next-week-count').textContent = nextWeekJobs;
+            document.getElementById('upcoming-count').textContent = upcomingJobs;
 
             // Overdue count (today or past, not complete)
             const now = new Date();
