@@ -846,6 +846,7 @@
         </div>
     </div>
    
+    <!-- Status Modal -->
     <div class="modal" id="status-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -894,6 +895,37 @@
                     <label class="notes-label" for="job-notes">Job Notes</label>
                     <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
                     <button class="save-notes-btn" onclick="saveJobNotes()">💾 Save Notes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div class="modal" id="invoice-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">💰 Invoice Details</h2>
+                <button class="close-btn" onclick="closeInvoiceModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row" style="background: linear-gradient(135deg, rgba(78, 236, 163, 0.1), rgba(0, 217, 255, 0.1)); border: 2px solid var(--success);">
+                    <div class="detail-label">Job Number</div>
+                    <div class="detail-value" id="invoice-job-number"></div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <label class="notes-label" for="invoice-octopus">Invoiceable Figure to Octopus (£)</label>
+                    <input type="number" id="invoice-octopus" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <label class="notes-label" for="invoice-lead">Figure Owed to Lead Engineer (£)</label>
+                    <input type="number" id="invoice-lead" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                </div>
+
+                <div class="completion-actions" style="margin-top: 2rem;">
+                    <button class="action-btn cancel" onclick="closeInvoiceModal()">Cancel</button>
+                    <button class="action-btn confirm" onclick="submitInvoiceDetails()">💾 Submit</button>
                 </div>
             </div>
         </div>
@@ -1124,8 +1156,9 @@
                         job.completedTimestamp = new Date().toISOString();
                     }
                     
-                    // Check if job just became fully complete
+                    // Check if job just became fully complete - show invoice modal
                     if (newStatus === 'Complete' && previousStatus !== 'Complete') {
+                        showInvoiceModal(job);
                         await sendJobCompletionEmail(job);
                     }
                 }
@@ -1136,6 +1169,53 @@
             } catch (error) {
                 console.error('Error updating job status:', error);
                 showToast('Failed to update job status', 'error');
+            }
+        }
+
+        function showInvoiceModal(job) {
+            currentJob = job;
+            document.getElementById('invoice-job-number').textContent = job['Job Number'] || 'N/A';
+            
+            // Pre-fill with existing values if available
+            document.getElementById('invoice-octopus').value = job.invoiceOctopus || '';
+            document.getElementById('invoice-lead').value = job.invoiceLead || '';
+            
+            document.getElementById('invoice-modal').classList.add('show');
+        }
+
+        window.closeInvoiceModal = function() {
+            document.getElementById('invoice-modal').classList.remove('show');
+        }
+
+        window.submitInvoiceDetails = async function() {
+            if (!currentJob) return;
+
+            const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus').value) || 0;
+            const invoiceLead = parseFloat(document.getElementById('invoice-lead').value) || 0;
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+               
+                await updateDoc(jobRef, {
+                    invoiceOctopus: invoiceOctopus,
+                    invoiceLead: invoiceLead,
+                    invoiceSubmittedAt: new Date().toISOString()
+                });
+               
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) {
+                    job.invoiceOctopus = invoiceOctopus;
+                    job.invoiceLead = invoiceLead;
+                    job.invoiceSubmittedAt = new Date().toISOString();
+                }
+               
+                showToast(`Invoice details saved: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+                closeInvoiceModal();
+               
+            } catch (error) {
+                console.error('Error saving invoice details:', error);
+                showToast('Failed to save invoice details', 'error');
             }
         }
         
@@ -1190,7 +1270,7 @@
                             
                             <div style="background: #e8f8f3; padding: 15px; border-radius: 8px; border-left: 4px solid #4ECCA3;">
                                 <p style="margin: 0; color: #333; font-size: 0.95rem;">
-                                    <strong>Status:</strong> All days for this job have been marked as complete.
+                                    <strong>Status:</strong> All days for this job have been marked as complete. Invoice details will be submitted separately.
                                 </p>
                             </div>
                             
@@ -1592,6 +1672,10 @@
        
         document.getElementById('status-modal').addEventListener('click', e => {
             if (e.target.id === 'status-modal') closeStatusModal();
+        });
+
+        document.getElementById('invoice-modal').addEventListener('click', e => {
+            if (e.target.id === 'invoice-modal') closeInvoiceModal();
         });
        
         window.updateTimeline = updateTimeline;
