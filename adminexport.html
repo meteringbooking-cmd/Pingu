@@ -651,7 +651,7 @@
         let filteredJobs = [];
         let availableFields = [];
 
-        // Common fields that should be exported
+        // Common fields that should be exported (including notes and invoice fields)
         const defaultFields = [
             'Job Type',
             'Job Number',
@@ -665,7 +665,10 @@
             'auditStatus',
             'PO',
             'Lead',
-            'Team Number'
+            'Team Number',
+            'notes',
+            'invoiceOctopus',
+            'invoiceLead'
         ];
 
         // Load jobs from Firebase
@@ -929,6 +932,14 @@
                                         const status = (value || 'pending-review').toLowerCase().replace(/\s+/g, '-');
                                         return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'Pending Review')}</span></td>`;
                                     }
+
+                                    // Format currency fields
+                                    if (field === 'invoiceOctopus' || field === 'invoiceLead') {
+                                        if (value && !isNaN(value)) {
+                                            return `<td>£${parseFloat(value).toFixed(2)}</td>`;
+                                        }
+                                        return `<td></td>`;
+                                    }
                                     
                                     return `<td>${escapeHtml(String(value))}</td>`;
                                 }).join('')}
@@ -966,6 +977,12 @@
             filteredJobs.forEach(job => {
                 const row = selectedFields.map(field => {
                     let value = job[field] || '';
+                    
+                    // Format currency fields for CSV
+                    if ((field === 'invoiceOctopus' || field === 'invoiceLead') && value && !isNaN(value)) {
+                        value = parseFloat(value).toFixed(2);
+                    }
+                    
                     return escapeCSV(String(value));
                 });
                 csv += row.join(',') + '\n';
