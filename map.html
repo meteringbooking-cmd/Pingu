@@ -65,6 +65,11 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
        
         .container {
             max-width: 1600px;
@@ -324,6 +329,25 @@
             color: var(--accent);
         }
 
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--dark-lighter);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
         .flashing-marker {
             animation: flash 1.5s ease-in-out infinite;
         }
@@ -358,6 +382,11 @@
             <div class="controls-card">
                 <h2>📅 Viewing 3-Week Range</h2>
                
+                <div class="live-indicator">
+                    <div class="live-dot"></div>
+                    <span>Live Updates Active</span>
+                </div>
+
                 <div id="geocoding-status" class="geocoding-status" style="display: none;">
                     Geocoding postcodes... <span id="geocoding-progress">0/0</span>
                 </div>
@@ -429,7 +458,7 @@
    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -444,12 +473,12 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy };
+            window.firebaseModules = { collection, onSnapshot, query, orderBy };
             console.log('✅ Firebase initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
                 initMap();
-                loadJobs();
+                setupRealtimeListener();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
@@ -462,6 +491,7 @@
         let heatLayer;
         let markersLayer;
         let allJobs = [];
+        let unsubscribe = null;
        
         // Initialize map centered on UK
         function initMap() {
@@ -476,19 +506,44 @@
            
             console.log('🗺️ Map initialized');
         }
+
+        // Setup real-time listener for Firebase updates
+        function setupRealtimeListener() {
+            const { collection, onSnapshot, query, orderBy: orderByFn } = window.firebaseModules;
+            
+            const jobsQuery = query(
+                collection(window.db, 'Solar-jobs'),
+                orderByFn('uploadDate', 'desc')
+            );
+
+            // Listen for real-time updates
+            unsubscribe = onSnapshot(jobsQuery, async (snapshot) => {
+                console.log('🔄 Data updated, refreshing map...');
+                
+                allJobs = [];
+                snapshot.forEach((docSnap) => {
+                    allJobs.push({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    });
+                });
+                
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
+                
+                // Geocode new jobs + update map
+                await geocodeJobs();
+                updateMap();
+            }, (error) => {
+                console.error('Error in real-time listener:', error);
+            });
+        }
        
         // Get Monday of previous week
         function getMondayOfPreviousWeek() {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
-            // Get current day of week (0 = Sunday, 1 = Monday, etc.)
             const currentDay = now.getDay();
-            
-            // Calculate days to subtract to get to Monday of previous week
-            // If today is Sunday (0), go back 6 days to last Monday, then back 7 more = 13 days
-            // If today is Monday (1), go back 7 days to last Monday
-            // If today is Tuesday (2), go back 8 days, etc.
             const daysToSubtract = currentDay === 0 ? 13 : (currentDay + 6);
             
             const mondayPrevWeek = new Date(now);
@@ -581,7 +636,6 @@
             }
 
             // FLASHING RED: Any job today or before that is NOT complete
-            // This includes jobs with no status, pending, in progress, upcoming, etc.
             if (jobDate && jobDate <= now) {
                 return { color: '#FF0000', flashing: true };
             }
@@ -591,40 +645,8 @@
                 return { color: '#0099FF', flashing: false };
             }
 
-            // White for upcoming (future dates)
+            // Black for upcoming (future dates)
             return { color: '#000000', flashing: false };
-        }
-       
-        // Load jobs from Firebase collection "Solar-jobs"
-        async function loadJobs() {
-            try {
-                const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
-               
-                const jobsQuery = query(
-                    collection(window.db, 'Solar-jobs'),
-                    orderByFn('uploadDate', 'desc')
-                );
-               
-                const querySnapshot = await getDocs(jobsQuery);
-               
-                allJobs = [];
-                querySnapshot.forEach((docSnap) => {
-                    allJobs.push({
-                        id: docSnap.id,
-                        ...docSnap.data()
-                    });
-                });
-               
-                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
-               
-                // Geocode + render
-                await geocodeJobs();
-                updateMap();
-               
-            } catch (error) {
-                console.error('Error loading jobs from Solar-jobs:', error);
-                document.getElementById('map').innerHTML = '<div class="loading">Error loading jobs from database: ' + error.message + '</div>';
-            }
         }
        
         // Geocode postcodes for 3-week range only
@@ -676,10 +698,12 @@
                 await new Promise(r => setTimeout(r, 1200));
             }
            
-            statusEl.classList.remove('active');
-            setTimeout(() => {
-                statusEl.style.display = 'none';
-            }, 2000);
+            if (jobsNeedingGeocode.length > 0) {
+                statusEl.classList.remove('active');
+                setTimeout(() => {
+                    statusEl.style.display = 'none';
+                }, 2000);
+            }
             
             console.log(`Geocoding finished. ${geocoded} postcodes processed.`);
         }
@@ -858,6 +882,13 @@
                 .replace(/"/g, "&quot;")
                 .replace(/'/g, "&#039;");
         }
+
+        // Cleanup listener when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        });
     </script>
 </body>
 </html>
