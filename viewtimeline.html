@@ -1758,26 +1758,36 @@ if (newStatus === 'Complete' && previousStatus !== 'Complete') {
     }
 }
 
-        window.showCompletionSelector = function() {
-            if (!currentJob) return;
+        window.showCompletionSelector = async function() {
+    if (!currentJob) return;
 
-            const jobLength = currentJob.jobLength || 1;
+    const jobLength = currentJob.jobLength || 1;
 
-            if (jobLength === 1) {
-                updateJobStatusInDB(currentJob.id, 'Complete');
-                closeStatusModal();
-                return;
-            }
+    if (jobLength === 1) {
+        // Store job reference BEFORE closing modal
+        const jobToUpdate = currentJob;
+        const jobId = currentJob.id;
+        
+        // Close status modal first
+        closeStatusModal();
+        
+        // Update status in database
+        await updateJobStatusInDB(jobId, 'Complete');
+        
+        // Show invoice modal immediately
+        showInvoiceModal(jobToUpdate);
+        return;
+    }
 
-            const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
-                const dayNum = i + 1;
-                const isSelected = selectedCompletionDays.includes(dayNum);
-                return `<button class="day-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompletionDay(${dayNum})">Day ${dayNum}</button>`;
-            }).join('');
+    const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
+        const dayNum = i + 1;
+        const isSelected = selectedCompletionDays.includes(dayNum);
+        return `<button class="day-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompletionDay(${dayNum})">Day ${dayNum}</button>`;
+    }).join('');
 
-            document.getElementById('day-buttons').innerHTML = dayButtonsHtml;
-            document.getElementById('completion-selector').style.display = 'block';
-        }
+    document.getElementById('day-buttons').innerHTML = dayButtonsHtml;
+    document.getElementById('completion-selector').style.display = 'block';
+}
 
         window.hideCompletionSelector = function() {
             document.getElementById('completion-selector').style.display = 'none';
