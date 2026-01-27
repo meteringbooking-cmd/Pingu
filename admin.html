@@ -403,6 +403,11 @@
             color: var(--dark);
         }
       
+        .status-in-progress {
+            background: #4A9EFF;
+            color: white;
+        }
+      
         .status-complete {
             background: var(--success);
             color: var(--dark);
@@ -410,6 +415,16 @@
       
         .status-outstanding {
             background: var(--error);
+            color: white;
+        }
+      
+        .status-aborted {
+            background: #6C757D;
+            color: white;
+        }
+      
+        .status-cancelled {
+            background: #DC6E3C;
             color: white;
         }
       
@@ -777,8 +792,10 @@
                             <label class="form-label">Status Update *</label>
                             <select class="form-select" id="status-update" required>
                                 <option value="">No Status</option>
-                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
                                 <option value="complete">Complete</option>
+                                <option value="aborted">Aborted</option>
+                                <option value="cancelled">Cancelled</option>
                             </select>
                         </div>
                         <div class="form-group">
@@ -958,8 +975,10 @@
                         <label class="form-label">Status Update</label>
                         <select class="form-select" id="edit-status-update">
                             <option value="">No Status</option>
-                            <option value="pending">Pending</option>
+                            <option value="in-progress">In Progress</option>
                             <option value="complete">Complete</option>
+                            <option value="aborted">Aborted</option>
+                            <option value="cancelled">Cancelled</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -1080,12 +1099,13 @@
         }
 
         // Helper function to check if a job is outstanding
-        // Outstanding = date before today AND no status update (or status is not complete)
+        // Outstanding = date before today AND (no status OR status is "in-progress")
+        // Excludes: complete, aborted, cancelled jobs
         function isOutstanding(job) {
-            const status = getStatus(job);
+            const status = getStatus(job).toLowerCase();
             
-            // If status is complete, it's not outstanding
-            if (status && status.toLowerCase() === 'complete') {
+            // Exclude completed, aborted, or cancelled jobs
+            if (status === 'complete' || status === 'aborted' || status === 'cancelled') {
                 return false;
             }
             
@@ -1109,8 +1129,8 @@
             today.setHours(0, 0, 0, 0);
             jobDate.setHours(0, 0, 0, 0);
             
-            // Outstanding if date is before today
-            return jobDate < today;
+            // Outstanding if date is before today and status is empty or "in-progress"
+            return jobDate < today && (status === '' || status === 'in-progress');
         }
 
         // Helper function to check if a job is complete
@@ -1249,14 +1269,26 @@
                 let statusClass = 'status-pending';
                 let statusText = 'No Status';
                 
-                if (isComplete(job)) {
+                const status = getStatus(job).toLowerCase();
+                
+                if (status === 'complete') {
                     statusClass = 'status-complete';
                     statusText = 'complete';
                 } else if (isOutstanding(job)) {
                     statusClass = 'status-outstanding';
                     statusText = 'outstanding';
-                } else if (getStatus(job)) {
-                    statusText = getStatus(job);
+                } else if (status === 'in-progress') {
+                    statusClass = 'status-in-progress';
+                    statusText = 'in-progress';
+                } else if (status === 'aborted') {
+                    statusClass = 'status-aborted';
+                    statusText = 'aborted';
+                } else if (status === 'cancelled') {
+                    statusClass = 'status-cancelled';
+                    statusText = 'cancelled';
+                } else if (status === 'pending') {
+                    statusClass = 'status-pending';
+                    statusText = 'pending';
                 }
                 
                 return `
@@ -1287,14 +1319,26 @@
                 let statusClass = 'status-pending';
                 let statusText = 'No Status';
                 
-                if (isComplete(job)) {
+                const status = getStatus(job).toLowerCase();
+                
+                if (status === 'complete') {
                     statusClass = 'status-complete';
                     statusText = 'complete';
                 } else if (isOutstanding(job)) {
                     statusClass = 'status-outstanding';
                     statusText = 'outstanding';
-                } else if (getStatus(job)) {
-                    statusText = getStatus(job);
+                } else if (status === 'in-progress') {
+                    statusClass = 'status-in-progress';
+                    statusText = 'in-progress';
+                } else if (status === 'aborted') {
+                    statusClass = 'status-aborted';
+                    statusText = 'aborted';
+                } else if (status === 'cancelled') {
+                    statusClass = 'status-cancelled';
+                    statusText = 'cancelled';
+                } else if (status === 'pending') {
+                    statusClass = 'status-pending';
+                    statusText = 'pending';
                 }
                 
                 return `
@@ -1329,14 +1373,26 @@
                 let statusClass = 'status-pending';
                 let statusText = 'No Status';
                 
-                if (isComplete(job)) {
+                const status = getStatus(job).toLowerCase();
+                
+                if (status === 'complete') {
                     statusClass = 'status-complete';
                     statusText = 'complete';
                 } else if (isOutstanding(job)) {
                     statusClass = 'status-outstanding';
                     statusText = 'outstanding';
-                } else if (getStatus(job)) {
-                    statusText = getStatus(job);
+                } else if (status === 'in-progress') {
+                    statusClass = 'status-in-progress';
+                    statusText = 'in-progress';
+                } else if (status === 'aborted') {
+                    statusClass = 'status-aborted';
+                    statusText = 'aborted';
+                } else if (status === 'cancelled') {
+                    statusClass = 'status-cancelled';
+                    statusText = 'cancelled';
+                } else if (status === 'pending') {
+                    statusClass = 'status-pending';
+                    statusText = 'pending';
                 }
                 
                 return `
