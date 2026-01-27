@@ -1210,50 +1210,50 @@
         }
        
         async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-               
-                const updateData = {
-                    'Status Update': newStatus
-                };
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+       
+        const updateData = {
+            'Status Update': newStatus
+        };
 
-                if (completedDays !== null) {
-                    updateData.completedDays = completedDays;
-                }
+        if (completedDays !== null) {
+            updateData.completedDays = completedDays;
+        }
 
-                if (newStatus === 'Complete') {
-                    updateData.completedTimestamp = new Date().toISOString();
-                }
-               
-                await updateDoc(jobRef, updateData);
-               
-                const job = allJobs.find(j => j.id === jobId);
-                if (job) {
-                    const previousStatus = job.status;
-                    job.status = newStatus;
-                    job['Status Update'] = newStatus;
-                    if (completedDays !== null) {
-                        job.completedDays = completedDays;
-                    }
-                    if (newStatus === 'Complete') {
-                        job.completedTimestamp = new Date().toISOString();
-                    }
-                    
-                    // Only send email when marking as complete (invoice modal handled separately)
-if (newStatus === 'Complete' && previousStatus !== 'Complete') {
-    await sendJobCompletionEmail(job);
-}
-                }
-               
-                showToast(`Job status updated to: ${newStatus}`, 'success');
-                buildTimeline();
-               
-            } catch (error) {
-                console.error('Error updating job status:', error);
-                showToast('Failed to update job status', 'error');
+        if (newStatus === 'Complete') {
+            updateData.completedTimestamp = new Date().toISOString();
+        }
+       
+        await updateDoc(jobRef, updateData);
+       
+        const job = allJobs.find(j => j.id === jobId);
+        if (job) {
+            const previousStatus = job.status;
+            job.status = newStatus;
+            job['Status Update'] = newStatus;
+            if (completedDays !== null) {
+                job.completedDays = completedDays;
+            }
+            if (newStatus === 'Complete') {
+                job.completedTimestamp = new Date().toISOString();
+            }
+            
+            // Only send email when marking as complete (invoice modal handled separately)
+            if (newStatus === 'Complete' && previousStatus !== 'Complete') {
+                await sendJobCompletionEmail(job);
             }
         }
+       
+        showToast(`Job status updated to: ${newStatus}`, 'success');
+        // Timeline rebuild is now handled by calling functions
+       
+    } catch (error) {
+        console.error('Error updating job status:', error);
+        showToast('Failed to update job status', 'error');
+    }
+}
 
         function showInvoiceModal(job) {
             currentJob = job;
@@ -1266,8 +1266,10 @@ if (newStatus === 'Complete' && previousStatus !== 'Complete') {
         }
 
         window.closeInvoiceModal = function() {
-            document.getElementById('invoice-modal').classList.remove('show');
-        }
+    document.getElementById('invoice-modal').classList.remove('show');
+    // Rebuild timeline after invoice modal closes
+    buildTimeline();
+}
 
         window.submitInvoiceDetails = async function() {
     if (!currentJob) {
@@ -1302,7 +1304,8 @@ if (newStatus === 'Complete' && previousStatus !== 'Complete') {
                 }
                
                 showToast(`Invoice details saved: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
-                closeInvoiceModal();
+closeInvoiceModal();
+// Timeline rebuilds automatically in closeInvoiceModal()
                
             } catch (error) {
                 console.error('Error saving invoice details:', error);
@@ -1755,6 +1758,9 @@ if (newStatus === 'Complete' && previousStatus !== 'Complete') {
     // Show invoice modal immediately if complete
     if (newStatus === 'Complete') {
         showInvoiceModal(jobToUpdate);
+    } else {
+        // Rebuild timeline for non-complete statuses
+        buildTimeline();
     }
 }
 
@@ -1838,6 +1844,9 @@ if (newStatus === 'Complete' && previousStatus !== 'Complete') {
     // Show invoice modal immediately if fully complete
     if (newStatus === 'Complete') {
         showInvoiceModal(jobToUpdate);
+    } else {
+        // Rebuild timeline for partial completion
+        buildTimeline();
     }
 }
 
