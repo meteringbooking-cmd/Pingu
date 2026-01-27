@@ -1521,31 +1521,42 @@
                     const projectedEnd = new Date(job.projectedCompletionDate);
                     projectedEnd.setHours(0, 0, 0, 0);
                     
-                    // Calculate days until projected completion
-                    const daysDiff = Math.floor((projectedEnd - jobStart) / (1000 * 60 * 60 * 24)) + 1;
+                    // Calculate days between booked date and projected completion
+                    const daysBetween = Math.floor((projectedEnd - jobStart) / (1000 * 60 * 60 * 24));
                     
-                    if (daysDiff < jobLength && daysDiff > 0) {
-                        // Job needs to be split
-                        const firstSegmentDays = daysDiff;
-                        const secondSegmentDays = jobLength - daysDiff;
+                    // If there's a gap (projected completion is later than consecutive days would allow)
+                    if (daysBetween >= jobLength) {
+                        // Split the job - divide days between start and end dates
+                        const daysPerSegment = Math.ceil(jobLength / 2);
+                        const firstSegmentDays = daysPerSegment;
+                        const secondSegmentDays = jobLength - daysPerSegment;
                         
+                        // First segment starts at booked date
                         segments.push({
                             startCol: startCol,
-                            span: Math.min(firstSegmentDays, dates.length - startCol),
+                            span: firstSegmentDays,
                             isFirst: true
                         });
                         
-                        // Calculate where second segment should start (after projected completion)
-                        const secondStartCol = startCol + daysDiff;
-                        if (secondStartCol < dates.length) {
+                        // Find column for projected completion date
+                        let projectedCol = -1;
+                        for (let i = 0; i < dates.length; i++) {
+                            if (dates[i].toDateString() === projectedEnd.toDateString()) {
+                                projectedCol = i;
+                                break;
+                            }
+                        }
+                        
+                        // Second segment starts at projected completion date
+                        if (projectedCol !== -1 && projectedCol < dates.length) {
                             segments.push({
-                                startCol: secondStartCol,
-                                span: Math.min(secondSegmentDays, dates.length - secondStartCol),
+                                startCol: projectedCol,
+                                span: secondSegmentDays,
                                 isLast: true
                             });
                         }
                     } else {
-                        // No split needed
+                        // No split needed - consecutive days
                         const daysRemaining = dates.length - startCol;
                         segments.push({
                             startCol: startCol,
