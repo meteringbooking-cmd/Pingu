@@ -1004,10 +1004,20 @@
         let selectedCompletionDays = [];
        
         window.initializeTimeline = function() {
-            const today = new Date();
-            document.getElementById('start-date').valueAsDate = today;
-            loadJobs();
-        }
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days
+    
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
+    
+    const startDateInput = document.getElementById('start-date');
+    startDateInput.valueAsDate = monday;
+    startDateInput.disabled = true; // Lock the date input
+    
+    loadJobs();
+}
        
         function parseDate(dateStr) {
             if (!dateStr) return null;
