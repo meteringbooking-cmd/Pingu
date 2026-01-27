@@ -441,7 +441,7 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #0099FF;"></div>
-                        <span>In Progress (Future)</span>
+                        <span>In Progress</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color flashing" style="background: #FF0000;"></div>
@@ -616,36 +616,46 @@
             return '';
         }
 
+        // Get status ONLY from Status Update field (ignore "status" field completely)
+        function getStatusUpdate(job) {
+            const statusUpdate = job['Status Update'];
+            if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                return String(statusUpdate).toLowerCase();
+            }
+            return '';
+        }
+
         // Determine marker color based on status and date
+        // ONLY uses "Status Update" field, ignores "status" field
         function getMarkerColor(job) {
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
             const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
             const jobDate = parseDate(dateStr);
-            const status = getFieldValue(job, 'Status Update', 'status', 'Status').toLowerCase();
+            const statusUpdate = getStatusUpdate(job); // Only check Status Update field
 
             // Green if complete - ONLY completed jobs get green
-            if (status.includes('complete') || status.includes('finished') || status.includes('done')) {
+            if (statusUpdate === 'complete') {
                 return { color: '#00FF00', flashing: false };
             }
 
-            // Static red for aborted or cancelled
-            if (status.includes('abort') || status.includes('cancel')) {
+            // Static dark red for aborted or cancelled
+            if (statusUpdate === 'aborted' || statusUpdate === 'cancelled') {
                 return { color: '#AA0000', flashing: false };
             }
 
-            // FLASHING RED: Any job today or before that is NOT complete
+            // Blue if in progress (regardless of date)
+            if (statusUpdate === 'in-progress') {
+                return { color: '#0099FF', flashing: false };
+            }
+
+            // FLASHING RED: Any job today or before that is NOT complete/cancelled/aborted
             if (jobDate && jobDate <= now) {
                 return { color: '#FF0000', flashing: true };
             }
 
-            // Blue if in progress (future dates only at this point)
-            if (status.includes('progress') || status.includes('ongoing') || status.includes('active')) {
-                return { color: '#0099FF', flashing: false };
-            }
-
-            // Black for upcoming (future dates)
+            // Black for upcoming (future dates with no status or other statuses)
             return { color: '#000000', flashing: false };
         }
        
@@ -758,16 +768,14 @@
             document.getElementById('jobs-count').textContent = filtered.length;
             document.getElementById('locations-count').textContent = uniqueLocs.size;
            
-            // Count by status for current week
+            // Count by status for current week - ONLY use Status Update field
             const completeJobs = withCoords.filter(j => {
-                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
-                return status.includes('complete') || status.includes('finished') || status.includes('done');
+                return getStatusUpdate(j) === 'complete';
             }).length;
             document.getElementById('complete-count').textContent = completeJobs;
 
             const progressJobs = withCoords.filter(j => {
-                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
-                return status.includes('progress') || status.includes('ongoing') || status.includes('active');
+                return getStatusUpdate(j) === 'in-progress';
             }).length;
             document.getElementById('progress-count').textContent = progressJobs;
 
@@ -776,27 +784,26 @@
                 now.setHours(0, 0, 0, 0);
                 const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const d = parseDate(dateStr);
-                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                const statusUpdate = getStatusUpdate(j);
                 
-                // Future dates that aren't complete or in progress
-                const isComplete = status.includes('complete') || status.includes('finished') || status.includes('done');
-                const isProgress = status.includes('progress') || status.includes('ongoing') || status.includes('active');
-                return d && d > now && !isComplete && !isProgress;
+                // Future dates that aren't complete, in-progress, aborted, or cancelled
+                return d && d > now && statusUpdate !== 'complete' && statusUpdate !== 'in-progress' && 
+                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled';
             }).length;
             document.getElementById('upcoming-count').textContent = upcomingJobs;
 
-            // Overdue count (today or past, not complete)
+            // Overdue count (today or past, not complete/aborted/cancelled)
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
             const overdueJobs = withCoords.filter(j => {
                 const dateStr = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const d = parseDate(dateStr);
-                const status = getFieldValue(j, 'Status Update', 'status', 'Status').toLowerCase();
+                const statusUpdate = getStatusUpdate(j);
                 
-                // Count as overdue if date is today or before AND not complete
-                const isComplete = status.includes('complete') || status.includes('finished') || status.includes('done');
-                return d && d <= now && !isComplete;
+                // Count as overdue if date is today or before AND not complete/aborted/cancelled
+                return d && d <= now && statusUpdate !== 'complete' && 
+                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled';
             }).length;
             document.getElementById('overdue-count').textContent = overdueJobs;
            
@@ -835,7 +842,7 @@
                 const postcode = job['Postcode'] || 'N/A';
                 const bookedDate = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date') || 'N/A';
                 const lead = job['Lead'] || 'Unassigned';
-                const status = getFieldValue(job, 'Status Update', 'status', 'Status') || 'N/A';
+                const statusUpdate = job['Status Update'] || 'No Status';
 
                 const popup = `
                     <div class="popup-title">Job #${escapeHtml(jobNumber)}</div>
@@ -843,7 +850,7 @@
                     <div class="popup-detail"><strong>Postcode:</strong> ${escapeHtml(postcode)}</div>
                     <div class="popup-detail"><strong>Date:</strong> ${escapeHtml(bookedDate)}</div>
                     <div class="popup-detail"><strong>Lead:</strong> ${escapeHtml(lead)}</div>
-                    <div class="popup-detail"><strong>Status:</strong> ${escapeHtml(status)}</div>
+                    <div class="popup-detail"><strong>Status:</strong> ${escapeHtml(statusUpdate)}</div>
                 `;
                
                 marker.bindPopup(popup);
