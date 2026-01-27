@@ -1099,18 +1099,33 @@
         }
 
         // Helper function to check if a job is outstanding
-        // Outstanding = date before today AND (no status OR status is "in-progress")
+        // Outstanding = date before today AND (no Status Update field OR status is "in-progress")
         // Excludes: complete, aborted, cancelled jobs
         function isOutstanding(job) {
-            const status = getStatus(job); // This returns '' if no status exists
-            const statusLower = status.toLowerCase();
+            // Check if the Status Update field exists in the job
+            const hasStatusField = ('Status Update' in job) || ('status' in job);
             
-            // Exclude completed, aborted, or cancelled jobs
-            if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
-                return false;
+            if (hasStatusField) {
+                const status = getStatus(job);
+                const statusLower = status.toLowerCase();
+                
+                // If status exists and is complete/aborted/cancelled, exclude it
+                if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
+                    return false;
+                }
+                
+                // If status exists but is NOT in-progress, exclude it (e.g., "pending")
+                if (statusLower !== '' && statusLower !== 'in-progress') {
+                    return false;
+                }
             }
             
-            // Check if date is before today
+            // If we get here, the job either:
+            // 1. Has no Status Update field at all, OR
+            // 2. Has Status Update = "" (empty), OR
+            // 3. Has Status Update = "in-progress"
+            
+            // Now check if date is before today
             const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
             if (!dateStr) return false;
             
@@ -1130,15 +1145,8 @@
             today.setHours(0, 0, 0, 0);
             jobDate.setHours(0, 0, 0, 0);
             
-            // Outstanding if:
-            // 1. Date is before today
-            // 2. AND (status is empty/no field OR status is "in-progress")
-            if (jobDate < today) {
-                // No status field at all, or status is empty string, or status is "in-progress"
-                return status === '' || statusLower === 'in-progress';
-            }
-            
-            return false;
+            // Outstanding if date is before today
+            return jobDate < today;
         }
 
         // Helper function to check if a job is complete
