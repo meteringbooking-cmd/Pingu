@@ -959,6 +959,29 @@
                     </div>
                 </div>
 
+                    <!-- Invoice Section - Hidden by default -->
+<div class="invoice-section" id="invoice-section" style="display: none;">
+    <div style="background: linear-gradient(135deg, rgba(78, 236, 163, 0.1), rgba(0, 217, 255, 0.1)); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--success); margin-bottom: 1.5rem;">
+        <h3 style="color: var(--success); margin: 0 0 1rem 0; font-family: 'Syne', sans-serif; font-size: 1.2rem;">
+            💰 Invoice Details Required
+        </h3>
+        
+        <div style="margin-bottom: 1.5rem;">
+            <label class="notes-label" for="invoice-octopus-inline">Invoiceable Figure to Octopus (£)</label>
+            <input type="number" id="invoice-octopus-inline" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+            <label class="notes-label" for="invoice-lead-inline">Figure Owed to Lead Engineer (£)</label>
+            <input type="number" id="invoice-lead-inline" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+        </div>
+
+        <button class="save-notes-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
+            💾 Submit Invoice & Mark Complete
+        </button>
+    </div>
+</div>
+
                 <div class="notes-section">
                     <label class="notes-label" for="job-notes">Job Notes</label>
                     <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
@@ -1399,6 +1422,91 @@ closeInvoiceModal();
                 showToast('Email notification failed: ' + error.message, 'error');
             }
         }
+
+        // Show invoice section inline in the status modal
+window.showInlineInvoiceSection = function() {
+    if (!currentJob) return;
+
+    // Hide status buttons and completion selector
+    document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
+    document.getElementById('completion-selector').style.display = 'none';
+    
+    // Pre-fill invoice values if they exist
+    document.getElementById('invoice-octopus-inline').value = currentJob.invoiceOctopus || '';
+    document.getElementById('invoice-lead-inline').value = currentJob.invoiceLead || '';
+    
+    // Show invoice section
+    document.getElementById('invoice-section').style.display = 'block';
+    
+    // Scroll to invoice section
+    setTimeout(() => {
+        document.getElementById('invoice-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+}
+
+// Submit invoice and mark job as complete
+window.submitInlineInvoice = async function() {
+    if (!currentJob) return;
+
+    const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus-inline').value) || 0;
+    const invoiceLead = parseFloat(document.getElementById('invoice-lead-inline').value) || 0;
+
+    // Validate that at least one field has a value
+    if (invoiceOctopus === 0 && invoiceLead === 0) {
+        showToast('Please enter at least one invoice amount', 'error');
+        return;
+    }
+
+    const jobId = currentJob.id;
+    const jobNumber = currentJob['Job Number'] || 'N/A';
+
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+        
+        console.log(`Saving invoice and completing job ID: ${jobId}, Job Number: ${jobNumber}`);
+        
+        // Determine if this is a multi-day job with selected days
+        const completedDays = selectedCompletionDays.length > 0 ? selectedCompletionDays : null;
+        
+        // Update with both invoice data and completion status
+        await updateDoc(jobRef, {
+            'Status Update': 'Complete',
+            completedTimestamp: new Date().toISOString(),
+            completedDays: completedDays,
+            invoiceOctopus: invoiceOctopus,
+            invoiceLead: invoiceLead,
+            invoiceSubmittedAt: new Date().toISOString()
+        });
+        
+        // Update local job object
+        const job = allJobs.find(j => j.id === jobId);
+        if (job) {
+            job.status = 'Complete';
+            job['Status Update'] = 'Complete';
+            job.completedTimestamp = new Date().toISOString();
+            job.invoiceOctopus = invoiceOctopus;
+            job.invoiceLead = invoiceLead;
+            job.invoiceSubmittedAt = new Date().toISOString();
+            if (completedDays) {
+                job.completedDays = completedDays;
+            }
+            
+            // Send completion email
+            await sendJobCompletionEmail(job);
+        }
+        
+        showToast(`Job completed! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+        
+        // Close modal and rebuild timeline
+        closeStatusModal();
+        buildTimeline();
+        
+    } catch (error) {
+        console.error('Error saving invoice and completing job:', error);
+        showToast('Failed to save invoice details', 'error');
+    }
+}
        
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
@@ -1733,10 +1841,17 @@ closeInvoiceModal();
 
 
         function closeStatusModal() {
-            document.getElementById('status-modal').classList.remove('show');
-            currentJob = null;
-            selectedCompletionDays = [];
-        }
+    document.getElementById('status-modal').classList.remove('show');
+    
+    // Reset invoice section
+    document.getElementById('invoice-section').style.display = 'none';
+    document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
+    document.getElementById('invoice-octopus-inline').value = '';
+    document.getElementById('invoice-lead-inline').value = '';
+    
+    currentJob = null;
+    selectedCompletionDays = [];
+}
 
         window.updateJobStatus = async function(newStatus) {
     if (!currentJob) return;
@@ -1745,23 +1860,17 @@ closeInvoiceModal();
         return;
     }
 
-    // Store job reference BEFORE closing modal
-    const jobToUpdate = currentJob;
-    const jobId = currentJob.id;
-    
-    // Close status modal first
-    closeStatusModal();
-    
-    // Update status in database
-    await updateJobStatusInDB(jobId, newStatus, newStatus === 'Complete' ? null : currentJob.completedDays);
-    
-    // Show invoice modal immediately if complete
+    // If marking as complete, show invoice section instead of closing modal
     if (newStatus === 'Complete') {
-        showInvoiceModal(jobToUpdate);
-    } else {
-        // Rebuild timeline for non-complete statuses
-        buildTimeline();
+        showInlineInvoiceSection();
+        return;
     }
+
+    // For non-complete statuses, update normally
+    const jobId = currentJob.id;
+    closeStatusModal();
+    await updateJobStatusInDB(jobId, newStatus, currentJob.completedDays);
+    buildTimeline();
 }
 
         window.showCompletionSelector = async function() {
@@ -1770,18 +1879,8 @@ closeInvoiceModal();
     const jobLength = currentJob.jobLength || 1;
 
     if (jobLength === 1) {
-        // Store job reference BEFORE closing modal
-        const jobToUpdate = currentJob;
-        const jobId = currentJob.id;
-        
-        // Close status modal first
-        closeStatusModal();
-        
-        // Update status in database
-        await updateJobStatusInDB(jobId, 'Complete');
-        
-        // Show invoice modal immediately
-        showInvoiceModal(jobToUpdate);
+        // Show invoice section inline for single-day jobs
+        showInlineInvoiceSection();
         return;
     }
 
@@ -1831,23 +1930,19 @@ closeInvoiceModal();
         newStatus = 'In-Progress';
     }
 
-    // Store job reference BEFORE closing modal
-    const jobToUpdate = currentJob;
-    const jobId = currentJob.id;
-    
-    // Close status modal first
-    closeStatusModal();
-    
-    // Update status in database
-    await updateJobStatusInDB(jobId, newStatus, selectedCompletionDays);
-    
-    // Show invoice modal immediately if fully complete
+    // If fully complete, show invoice section
     if (newStatus === 'Complete') {
-        showInvoiceModal(jobToUpdate);
-    } else {
-        // Rebuild timeline for partial completion
-        buildTimeline();
+        // Hide completion selector, show invoice section
+        document.getElementById('completion-selector').style.display = 'none';
+        showInlineInvoiceSection();
+        return;
     }
+
+    // For partial completion, update normally
+    const jobId = currentJob.id;
+    closeStatusModal();
+    await updateJobStatusInDB(jobId, newStatus, selectedCompletionDays);
+    buildTimeline();
 }
 
         window.saveJobNotes = async function() {
