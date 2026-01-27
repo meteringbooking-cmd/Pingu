@@ -258,7 +258,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1200px;
+            min-width: 1400px;
         }
 
         thead {
@@ -332,6 +332,17 @@
         .status-cancelled {
             background: linear-gradient(135deg, #FF3B3B, #C92A2A);
             color: white;
+        }
+
+        .status-pending {
+            background: linear-gradient(135deg, var(--warning), #E5B84F);
+            color: var(--dark);
+        }
+
+        .status-none {
+            background: var(--dark-lighter);
+            color: var(--text-dim);
+            border: 1px solid var(--dark-lighter);
         }
 
         .notes-cell {
@@ -632,6 +643,18 @@
                         <option value="">All Teams</option>
                     </select>
                 </div>
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-status">Status</label>
+                    <select id="filter-status" class="filter-select">
+                        <option value="">All Statuses</option>
+                        <option value="none">No Status</option>
+                        <option value="in-progress">In Progress</option>
+                        <option value="complete">Complete</option>
+                        <option value="aborted">Aborted</option>
+                        <option value="cancelled">Cancelled</option>
+                        <option value="pending">Pending</option>
+                    </select>
+                </div>
             </div>
 
             <div class="filter-actions">
@@ -692,6 +715,17 @@
                     <div class="form-group">
                         <label class="form-label" for="edit-team">Team</label>
                         <input type="text" id="edit-team" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-status">Status Update</label>
+                        <select id="edit-status" class="form-select">
+                            <option value="">No Status</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="complete">Complete</option>
+                            <option value="aborted">Aborted</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="pending">Pending</option>
+                        </select>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="edit-booked-date">Booked Date</label>
@@ -786,6 +820,35 @@
             const year = date.getFullYear();
             return `${day}/${month}/${year}`;
         }
+
+        // Get status ONLY from Status Update field (ignore "status" field)
+        function getStatusUpdate(job) {
+            const statusUpdate = job['Status Update'];
+            if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                return String(statusUpdate).toLowerCase();
+            }
+            return '';
+        }
+
+        // Get status badge HTML
+        function getStatusBadge(job) {
+            const status = getStatusUpdate(job);
+            
+            if (!status) {
+                return '<span class="status-badge status-none">No Status</span>';
+            }
+            
+            const statusMap = {
+                'in-progress': { class: 'status-in-progress', text: 'In Progress' },
+                'complete': { class: 'status-complete', text: 'Complete' },
+                'aborted': { class: 'status-aborted', text: 'Aborted' },
+                'cancelled': { class: 'status-cancelled', text: 'Cancelled' },
+                'pending': { class: 'status-pending', text: 'Pending' }
+            };
+            
+            const statusInfo = statusMap[status] || { class: 'status-none', text: status };
+            return `<span class="status-badge ${statusInfo.class}">${statusInfo.text}</span>`;
+        }
        
         window.loadJobs = async function() {
             try {
@@ -867,6 +930,7 @@
                         projectedCompletionDate: projectedCompletionDate,
                         days: jobLength,
                         notes: data['notes'] || '',
+                        statusUpdate: getStatusUpdate({ 'Status Update': data['Status Update'] }),
                         ...data
                     });
 
@@ -917,6 +981,7 @@
             const endDate = document.getElementById('filter-end-date').value;
             const lead = document.getElementById('filter-lead').value;
             const team = document.getElementById('filter-team').value;
+            const status = document.getElementById('filter-status').value;
 
             filteredJobs = allJobs.filter(job => {
                 // Job number search (partial match)
@@ -946,6 +1011,12 @@
                 if (lead && job.lead !== lead) return false;
                 if (team && job.team !== team) return false;
 
+                // Status filter
+                if (status) {
+                    if (status === 'none' && job.statusUpdate !== '') return false;
+                    if (status !== 'none' && job.statusUpdate !== status) return false;
+                }
+
                 return true;
             });
 
@@ -961,6 +1032,7 @@
             document.getElementById('filter-end-date').value = '';
             document.getElementById('filter-lead').value = '';
             document.getElementById('filter-team').value = '';
+            document.getElementById('filter-status').value = '';
 
             filteredJobs = [...allJobs];
             renderTable();
@@ -989,6 +1061,7 @@
                             <th>Postcode</th>
                             <th>Lead</th>
                             <th>Team</th>
+                            <th>Status</th>
                             <th>Booked Date</th>
                             <th>Projected Completion</th>
                             <th>Days</th>
@@ -1004,6 +1077,7 @@
                                 <td>${escapeHtml(job.postcode)}</td>
                                 <td>${escapeHtml(job.lead)}</td>
                                 <td>${escapeHtml(job.team)}</td>
+                                <td>${getStatusBadge(job)}</td>
                                 <td>${formatDate(job.bookedDate)}</td>
                                 <td>${formatDate(job.projectedCompletionDate)}</td>
                                 <td>${job.days}</td>
@@ -1061,6 +1135,7 @@
             document.getElementById('edit-postcode').value = job.postcode;
             document.getElementById('edit-lead').value = job.lead;
             document.getElementById('edit-team').value = job.team;
+            document.getElementById('edit-status').value = job.statusUpdate;
             document.getElementById('edit-booked-date').value = formatDateForInput(job.bookedDate);
             document.getElementById('edit-projected-date').value = formatDateForInput(job.projectedCompletionDate);
             document.getElementById('edit-days').value = job.days;
@@ -1083,6 +1158,7 @@
 
                 const bookedDateInput = document.getElementById('edit-booked-date').value;
                 const projectedDateInput = document.getElementById('edit-projected-date').value;
+                const statusValue = document.getElementById('edit-status').value;
 
                 const bookedDate = bookedDateInput ? formatDate(new Date(bookedDateInput)) : null;
                 const projectedDate = projectedDateInput ? formatDate(new Date(projectedDateInput)) : null;
@@ -1095,6 +1171,11 @@
                     'Days': parseInt(document.getElementById('edit-days').value) || 1,
                     'notes': document.getElementById('edit-notes').value
                 };
+
+                // Only add Status Update if a value was selected
+                if (statusValue) {
+                    updateData['Status Update'] = statusValue;
+                }
 
                 if (bookedDate) {
                     updateData['Booked Date'] = bookedDate;
