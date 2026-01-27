@@ -1094,36 +1094,49 @@
         }
 
         // Helper function to get status
+        // ONLY checks "Status Update" field, ignores "status" field completely
         function getStatus(job) {
-            return getFieldValue(job, 'Status Update', 'status') || '';
+            const statusUpdate = job['Status Update'];
+            if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                return statusUpdate;
+            }
+            return '';
         }
 
         // Helper function to check if a job is outstanding
-        // Outstanding = date before today AND (no Status Update field OR status is "in-progress")
+        // Outstanding = date before today AND (no "Status Update" field OR "Status Update" is "in-progress")
         // Excludes: complete, aborted, cancelled jobs
+        // NOTE: Ignores "status" field completely - only checks "Status Update"
         function isOutstanding(job) {
-            // Check if the Status Update field exists in the job
-            const hasStatusField = ('Status Update' in job) || ('status' in job);
+            // Check if the "Status Update" field exists in the job (ignore "status" field)
+            const hasStatusUpdateField = 'Status Update' in job;
             
-            if (hasStatusField) {
-                const status = getStatus(job);
-                const statusLower = status.toLowerCase();
+            if (hasStatusUpdateField) {
+                const statusUpdate = job['Status Update'];
                 
-                // If status exists and is complete/aborted/cancelled, exclude it
-                if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
-                    return false;
+                // If Status Update exists and has a value
+                if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                    const statusLower = String(statusUpdate).toLowerCase();
+                    
+                    // If status is complete/aborted/cancelled, exclude it
+                    if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
+                        return false;
+                    }
+                    
+                    // If status is NOT in-progress, exclude it (e.g., "pending")
+                    if (statusLower !== 'in-progress') {
+                        return false;
+                    }
+                    
+                    // If we get here, status is "in-progress" - continue to date check
                 }
-                
-                // If status exists but is NOT in-progress, exclude it (e.g., "pending")
-                if (statusLower !== '' && statusLower !== 'in-progress') {
-                    return false;
-                }
+                // If Status Update field exists but is empty/null, continue to date check
             }
             
             // If we get here, the job either:
-            // 1. Has no Status Update field at all, OR
-            // 2. Has Status Update = "" (empty), OR
-            // 3. Has Status Update = "in-progress"
+            // 1. Has no "Status Update" field at all, OR
+            // 2. Has "Status Update" = "" (empty/null), OR
+            // 3. Has "Status Update" = "in-progress"
             
             // Now check if date is before today
             const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
@@ -1199,8 +1212,10 @@
             allJobs.slice(0, 5).forEach(job => {
                 console.log({
                     jobNumber: job['Job Number'],
-                    hasStatusField: 'Status Update' in job,
-                    statusValue: job['Status Update'],
+                    hasStatusUpdateField: 'Status Update' in job,
+                    statusUpdateValue: job['Status Update'],
+                    hasStatusField: 'status' in job,
+                    statusValue: job['status'],
                     getStatusResult: getStatus(job),
                     isOutstanding: isOutstanding(job),
                     date: getFieldValue(job, 'Booked Date', 'Projected Completion Date')
@@ -1211,6 +1226,11 @@
             const completed = allJobs.filter(j => isComplete(j));
             
             console.log(`Total: ${total}, Outstanding: ${outstanding.length}, Completed: ${completed.length}`);
+            console.log('Outstanding jobs:', outstanding.map(j => ({
+                jobNumber: j['Job Number'],
+                hasStatusUpdate: 'Status Update' in j,
+                statusUpdate: j['Status Update']
+            })));
           
             // Parse dates from either Booked Date or Projected Completion Date
             const thisMonth = allJobs.filter(j => {
