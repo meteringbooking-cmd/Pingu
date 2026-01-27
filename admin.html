@@ -1102,10 +1102,11 @@
         // Outstanding = date before today AND (no status OR status is "in-progress")
         // Excludes: complete, aborted, cancelled jobs
         function isOutstanding(job) {
-            const status = getStatus(job).toLowerCase();
+            const status = getStatus(job); // This returns '' if no status exists
+            const statusLower = status.toLowerCase();
             
             // Exclude completed, aborted, or cancelled jobs
-            if (status === 'complete' || status === 'aborted' || status === 'cancelled') {
+            if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
                 return false;
             }
             
@@ -1129,8 +1130,15 @@
             today.setHours(0, 0, 0, 0);
             jobDate.setHours(0, 0, 0, 0);
             
-            // Outstanding if date is before today and status is empty or "in-progress"
-            return jobDate < today && (status === '' || status === 'in-progress');
+            // Outstanding if:
+            // 1. Date is before today
+            // 2. AND (status is empty/no field OR status is "in-progress")
+            if (jobDate < today) {
+                // No status field at all, or status is empty string, or status is "in-progress"
+                return status === '' || statusLower === 'in-progress';
+            }
+            
+            return false;
         }
 
         // Helper function to check if a job is complete
@@ -1177,8 +1185,24 @@
             await loadJobs();
           
             const total = allJobs.length;
-            const outstanding = allJobs.filter(j => isOutstanding(j)).length;
-            const completed = allJobs.filter(j => isComplete(j)).length;
+            
+            // Debug: Log some jobs to see their status fields
+            console.log('Sample jobs for debugging:');
+            allJobs.slice(0, 5).forEach(job => {
+                console.log({
+                    jobNumber: job['Job Number'],
+                    hasStatusField: 'Status Update' in job,
+                    statusValue: job['Status Update'],
+                    getStatusResult: getStatus(job),
+                    isOutstanding: isOutstanding(job),
+                    date: getFieldValue(job, 'Booked Date', 'Projected Completion Date')
+                });
+            });
+            
+            const outstanding = allJobs.filter(j => isOutstanding(j));
+            const completed = allJobs.filter(j => isComplete(j));
+            
+            console.log(`Total: ${total}, Outstanding: ${outstanding.length}, Completed: ${completed.length}`);
           
             // Parse dates from either Booked Date or Projected Completion Date
             const thisMonth = allJobs.filter(j => {
@@ -1203,8 +1227,8 @@
             }).length;
           
             document.getElementById('stat-total').textContent = total;
-            document.getElementById('stat-outstanding').textContent = outstanding;
-            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-outstanding').textContent = outstanding.length;
+            document.getElementById('stat-completed').textContent = completed.length;
             document.getElementById('stat-month').textContent = thisMonth;
         }
       
