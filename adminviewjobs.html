@@ -605,6 +605,14 @@
         <div class="filters-card">
             <div class="filters-grid">
                 <div class="filter-group">
+                    <label class="filter-label" for="filter-job-number">Job Number</label>
+                    <input type="text" id="filter-job-number" class="filter-input" placeholder="Search by job #...">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label" for="filter-postcode">Postcode</label>
+                    <input type="text" id="filter-postcode" class="filter-input" placeholder="Search by postcode...">
+                </div>
+                <div class="filter-group">
                     <label class="filter-label" for="filter-start-date">Start Date</label>
                     <input type="date" id="filter-start-date" class="filter-input">
                 </div>
@@ -624,6 +632,7 @@
                         <option value="">All Teams</option>
                     </select>
                 </div>
+            </div>
 
             <div class="filter-actions">
                 <button class="btn btn-primary" onclick="applyFilters()">Apply Filters</button>
@@ -902,12 +911,25 @@
         }
 
         window.applyFilters = function() {
+            const jobNumber = document.getElementById('filter-job-number').value.toLowerCase().trim();
+            const postcode = document.getElementById('filter-postcode').value.toLowerCase().trim();
             const startDate = document.getElementById('filter-start-date').value;
             const endDate = document.getElementById('filter-end-date').value;
             const lead = document.getElementById('filter-lead').value;
             const team = document.getElementById('filter-team').value;
 
             filteredJobs = allJobs.filter(job => {
+                // Job number search (partial match)
+                if (jobNumber && !job.jobNumber.toLowerCase().includes(jobNumber)) {
+                    return false;
+                }
+
+                // Postcode search (partial match)
+                if (postcode && !job.postcode.toLowerCase().includes(postcode)) {
+                    return false;
+                }
+
+                // Date range filters
                 if (startDate && job.bookedDate) {
                     const filterStart = new Date(startDate);
                     filterStart.setHours(0, 0, 0, 0);
@@ -920,6 +942,7 @@
                     if (job.bookedDate > filterEnd) return false;
                 }
 
+                // Lead and Team filters
                 if (lead && job.lead !== lead) return false;
                 if (team && job.team !== team) return false;
 
@@ -932,6 +955,8 @@
         }
 
         window.clearFilters = function() {
+            document.getElementById('filter-job-number').value = '';
+            document.getElementById('filter-postcode').value = '';
             document.getElementById('filter-start-date').value = '';
             document.getElementById('filter-end-date').value = '';
             document.getElementById('filter-lead').value = '';
@@ -1096,6 +1121,10 @@
         document.getElementById('edit-modal').addEventListener('click', (e) => {
             if (e.target.id === 'edit-modal') closeEditModal();
         });
+
+        // Enable real-time filtering as user types
+        document.getElementById('filter-job-number').addEventListener('input', applyFilters);
+        document.getElementById('filter-postcode').addEventListener('input', applyFilters);
     </script>
 </body>
 </html>
