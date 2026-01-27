@@ -343,7 +343,8 @@
             background: var(--audit-pass);
         }
 
-        .job-card.audit-issues::before {
+        .job-card.audit-issues::before,
+        .job-card.audit-complete-with-issues::before {
             background: var(--audit-issues);
         }
 
@@ -397,7 +398,8 @@
             color: var(--audit-pass);
         }
 
-        .audit-badge.issues {
+        .audit-badge.issues,
+        .audit-badge.complete-with-issues {
             background: rgba(255, 200, 87, 0.2);
             color: var(--audit-issues);
         }
@@ -810,7 +812,7 @@
                         <option value="all">All Jobs</option>
                         <option value="pending" selected>Pending Audit</option>
                         <option value="pass">No Issues</option>
-                        <option value="issues">With Issues</option>
+                        <option value="complete-with-issues">Complete With Issues</option>
                         <option value="unable">Unable to Audit</option>
                         <option value="in-progress">Audit - In Progress</option>
                     </select>
@@ -908,8 +910,8 @@
                         <button class="audit-btn pass" onclick="setAuditStatus('pass')">
                             ✅ No Issues
                         </button>
-                        <button class="audit-btn issues" onclick="setAuditStatus('issues')">
-                            ⚠️ With Issues
+                        <button class="audit-btn issues" onclick="setAuditStatus('complete-with-issues')">
+                            ⚠️ Complete With Issues
                         </button>
                         <button class="audit-btn unable" onclick="setAuditStatus('unable')">
                             ❌ Unable to Audit
@@ -1054,7 +1056,14 @@
                     // Get completedTimestamp from Firebase (when job was marked complete)
                     let completedTimestamp = null;
                     if (data['completedTimestamp']) {
-                        completedTimestamp = new Date(data['completedTimestamp']);
+                        // Convert Firestore timestamp or string to Date
+                        if (typeof data['completedTimestamp'] === 'string') {
+                            completedTimestamp = new Date(data['completedTimestamp']);
+                        } else if (data['completedTimestamp'].toDate) {
+                            completedTimestamp = data['completedTimestamp'].toDate();
+                        } else {
+                            completedTimestamp = new Date(data['completedTimestamp']);
+                        }
                     } else if (status === 'Complete') {
                         // Log warning for completed jobs missing timestamp
                         console.warn(`Job #${data['Job Number']} missing completedTimestamp - using fallback`);
@@ -1101,7 +1110,7 @@
             document.getElementById('pending-audit').textContent = completedJobs.filter(j => j.auditStatus === 'pending').length;
             document.getElementById('audit-in-progress').textContent = completedJobs.filter(j => j.auditStatus === 'in-progress').length;
             document.getElementById('audit-pass').textContent = completedJobs.filter(j => j.auditStatus === 'pass').length;
-            document.getElementById('audit-issues').textContent = completedJobs.filter(j => j.auditStatus === 'issues').length;
+            document.getElementById('audit-issues').textContent = completedJobs.filter(j => j.auditStatus === 'complete-with-issues').length;
             document.getElementById('audit-unable').textContent = completedJobs.filter(j => j.auditStatus === 'unable').length;
         }
 
@@ -1127,7 +1136,7 @@
                 let auditLabel = 'Pending Audit';
                 
                 if (job.auditStatus === 'pass') auditLabel = 'No Issues';
-                else if (job.auditStatus === 'issues') auditLabel = 'With Issues';
+                else if (job.auditStatus === 'complete-with-issues') auditLabel = 'Complete With Issues';
                 else if (job.auditStatus === 'unable') auditLabel = 'Unable to Audit';
                 else if (job.auditStatus === 'in-progress') auditLabel = 'In Progress';
 
@@ -1148,15 +1157,25 @@
                         
                         if (!isNaN(timestamp.getTime())) {
                             const timeDiff = now - timestamp;
-                            const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                            const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
+                            const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                             const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
                             
                             const pendingLabel = job.auditStatus === 'in-progress' ? 'In Progress' : 'Pending';
                             
+                            let timeString = '';
+                            if (days > 0) {
+                                timeString = `${days}d ${hours}h ${minutes}m`;
+                            } else if (hours > 0) {
+                                timeString = `${hours}h ${minutes}m`;
+                            } else {
+                                timeString = `${minutes}m`;
+                            }
+                            
                             pendingTimeHTML = `
                                 <div class="pending-time">
                                     <span class="pending-time-icon">⏱️</span>
-                                    <span>${pendingLabel}: <span class="pending-time-value">${hours}h ${minutes}m</span></span>
+                                    <span>${pendingLabel}: <span class="pending-time-value">${timeString}</span></span>
                                 </div>
                             `;
                         }
@@ -1275,7 +1294,7 @@
             
             let statusText = 'Pending Audit';
             if (job.auditStatus === 'pass') statusText = 'Audit Completed - No Issues';
-            else if (job.auditStatus === 'issues') statusText = 'Audit Completed - With Issues';
+            else if (job.auditStatus === 'complete-with-issues') statusText = 'Audit Completed - Complete With Issues';
             else if (job.auditStatus === 'unable') statusText = 'Unable to Audit';
             else if (job.auditStatus === 'in-progress') statusText = 'Audit - In Progress';
             
@@ -1295,8 +1314,8 @@
         window.setAuditStatus = function(status) {
             pendingAuditStatus = status;
 
-            // If status is 'issues', require notes
-            if (status === 'issues') {
+            // If status is 'complete-with-issues', require notes
+            if (status === 'complete-with-issues') {
                 const notes = document.getElementById('audit-notes').value.trim();
                 if (!notes) {
                     showToast('Please add notes explaining the issues found', 'error');
@@ -1318,8 +1337,8 @@
 
             const notes = document.getElementById('audit-notes').value.trim();
 
-            // Validate notes for 'issues' status
-            if (pendingAuditStatus === 'issues' && !notes) {
+            // Validate notes for 'complete-with-issues' status
+            if (pendingAuditStatus === 'complete-with-issues' && !notes) {
                 showToast('Notes are required when marking issues', 'error');
                 return;
             }
@@ -1343,7 +1362,7 @@
 
                 let statusLabel = 'pending';
                 if (pendingAuditStatus === 'pass') statusLabel = 'No Issues';
-                else if (pendingAuditStatus === 'issues') statusLabel = 'With Issues';
+                else if (pendingAuditStatus === 'complete-with-issues') statusLabel = 'Complete With Issues';
                 else if (pendingAuditStatus === 'unable') statusLabel = 'Unable to Audit';
                 else if (pendingAuditStatus === 'in-progress') statusLabel = 'In Progress';
 
@@ -1380,8 +1399,8 @@
                     auditOutcome = 'Audit Completed - No Issues';
                     outcomeColor = '#4ECCA3';
                     outcomeIcon = '✅';
-                } else if (auditStatus === 'issues') {
-                    auditOutcome = 'Audit Completed - With Issues';
+                } else if (auditStatus === 'complete-with-issues') {
+                    auditOutcome = 'Audit Completed - Complete With Issues';
                     outcomeColor = '#FFC857';
                     outcomeIcon = '⚠️';
                 } else if (auditStatus === 'unable') {
@@ -1456,7 +1475,7 @@
                 `;
                 
                 const templateParams = {
-                    to_email: 'gareth.mckenna@next-gen.uk, becky.henderson@next-gen.uk, barry.dixon@next-gen.uk',
+                    to_email: 'barry.dixon@next-gen.uk, gareth.mckenna@next-gen.uk, becky.henderson@next-gen.uk',
                     job_number: jobNumber,
                     lead: engineer,
                     date: completionDate,
@@ -1473,8 +1492,8 @@
                     templateParams
                 );
                 
-                console.log('✅ Audit notification email sent successfully:', response);
-                showToast('Audit notification email sent', 'success');
+                console.log('✅ Audit notification email sent successfully to barry.dixon@next-gen.uk, gareth.mckenna@next-gen.uk, becky.henderson@next-gen.uk:', response);
+                showToast('Audit notification email sent to all recipients', 'success');
                 
             } catch (error) {
                 console.error('❌ Failed to send audit notification email:', error);
