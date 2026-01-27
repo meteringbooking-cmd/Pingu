@@ -1240,10 +1240,10 @@
                         job.completedTimestamp = new Date().toISOString();
                     }
                     
-                    if (newStatus === 'Complete' && previousStatus !== 'Complete') {
-                        showInvoiceModal(job);
-                        await sendJobCompletionEmail(job);
-                    }
+                    // Only send email when marking as complete (invoice modal handled separately)
+if (newStatus === 'Complete' && previousStatus !== 'Complete') {
+    await sendJobCompletionEmail(job);
+}
                 }
                
                 showToast(`Job status updated to: ${newStatus}`, 'success');
@@ -1270,14 +1270,23 @@
         }
 
         window.submitInvoiceDetails = async function() {
-            if (!currentJob) return;
+    if (!currentJob) {
+        showToast('Error: No job selected', 'error');
+        return;
+    }
 
-            const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus').value) || 0;
-            const invoiceLead = parseFloat(document.getElementById('invoice-lead').value) || 0;
+    const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus').value) || 0;
+    const invoiceLead = parseFloat(document.getElementById('invoice-lead').value) || 0;
 
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+    // Store job ID to ensure we update the correct job
+    const jobId = currentJob.id;
+    const jobNumber = currentJob['Job Number'] || 'N/A';
+
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+        
+        console.log(`Saving invoice for job ID: ${jobId}, Job Number: ${jobNumber}`);
                
                 await updateDoc(jobRef, {
                     invoiceOctopus: invoiceOctopus,
@@ -1726,16 +1735,28 @@
             selectedCompletionDays = [];
         }
 
-        window.updateJobStatus = function(newStatus) {
-            if (!currentJob) return;
+        window.updateJobStatus = async function(newStatus) {
+    if (!currentJob) return;
 
-            if (newStatus === 'Complete' && currentJob.jobLength > 1) {
-                return;
-            }
+    if (newStatus === 'Complete' && currentJob.jobLength > 1) {
+        return;
+    }
 
-            updateJobStatusInDB(currentJob.id, newStatus, newStatus === 'Complete' ? null : currentJob.completedDays);
-            closeStatusModal();
-        }
+    // Store job reference BEFORE closing modal
+    const jobToUpdate = currentJob;
+    const jobId = currentJob.id;
+    
+    // Close status modal first
+    closeStatusModal();
+    
+    // Update status in database
+    await updateJobStatusInDB(jobId, newStatus, newStatus === 'Complete' ? null : currentJob.completedDays);
+    
+    // Show invoice modal immediately if complete
+    if (newStatus === 'Complete') {
+        showInvoiceModal(jobToUpdate);
+    }
+}
 
         window.showCompletionSelector = function() {
             if (!currentJob) return;
@@ -1782,21 +1803,33 @@
             });
         }
 
-        window.confirmPartialCompletion = function() {
-            if (!currentJob) return;
+        window.confirmPartialCompletion = async function() {
+    if (!currentJob) return;
 
-            const jobLength = currentJob.jobLength || 1;
-            let newStatus = 'In-Progress';
+    const jobLength = currentJob.jobLength || 1;
+    let newStatus = 'In-Progress';
 
-            if (selectedCompletionDays.length === jobLength) {
-                newStatus = 'Complete';
-            } else if (selectedCompletionDays.length > 0) {
-                newStatus = 'In-Progress';
-            }
+    if (selectedCompletionDays.length === jobLength) {
+        newStatus = 'Complete';
+    } else if (selectedCompletionDays.length > 0) {
+        newStatus = 'In-Progress';
+    }
 
-            updateJobStatusInDB(currentJob.id, newStatus, selectedCompletionDays);
-            closeStatusModal();
-        }
+    // Store job reference BEFORE closing modal
+    const jobToUpdate = currentJob;
+    const jobId = currentJob.id;
+    
+    // Close status modal first
+    closeStatusModal();
+    
+    // Update status in database
+    await updateJobStatusInDB(jobId, newStatus, selectedCompletionDays);
+    
+    // Show invoice modal immediately if fully complete
+    if (newStatus === 'Complete') {
+        showInvoiceModal(jobToUpdate);
+    }
+}
 
         window.saveJobNotes = async function() {
             if (!currentJob) return;
