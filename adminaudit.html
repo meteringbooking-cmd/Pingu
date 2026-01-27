@@ -416,6 +416,39 @@
             font-weight: 600;
         }
 
+        .job-status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-complete {
+            background: rgba(78, 236, 163, 0.2);
+            color: var(--success);
+        }
+
+        .status-in-progress {
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--accent);
+        }
+
+        .status-scheduled {
+            background: rgba(154, 154, 176, 0.2);
+            color: var(--text-dim);
+        }
+
+        .status-aborted {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--error);
+        }
+
+        .status-cancelled {
+            background: rgba(154, 154, 176, 0.2);
+            color: var(--text-dim);
+        }
+
         .job-notes-preview {
             margin-top: 1rem;
             padding: 0.8rem;
@@ -703,7 +736,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>🔍 Job Audit Dashboard</h1>
-            <p class="subtitle">Review and audit completed jobs</p>
+            <p class="subtitle">Review and audit all jobs - filter by status</p>
         </header>
 
         <div class="filters-card">
@@ -773,8 +806,12 @@
 
             <div class="stats-row">
                 <div class="stat-item">
-                    <div class="stat-label">Total Complete</div>
-                    <div class="stat-value" id="total-complete">0</div>
+                    <div class="stat-label">Total Jobs</div>
+                    <div class="stat-value" id="total-jobs">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Complete</div>
+                    <div class="stat-value pass" id="total-complete">0</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Pending Audit</div>
@@ -796,7 +833,7 @@
         </div>
 
         <div class="jobs-grid" id="jobs-grid">
-            <div class="loading">Loading completed jobs from Firebase...</div>
+            <div class="loading">Loading jobs from Firebase...</div>
         </div>
     </div>
 
@@ -824,6 +861,10 @@
                     <div class="detail-row">
                         <div class="detail-label">Job Type</div>
                         <div class="detail-value" id="modal-job-type"></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Job Status</div>
+                        <div class="detail-value" id="modal-job-status"></div>
                     </div>
                     <div class="detail-row">
                         <div class="detail-label">Completion Date</div>
@@ -894,7 +935,7 @@
             console.log('✅ EmailJS initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
-                window.loadCompletedJobs();
+                window.loadAllJobs();
             });
         } catch (error) {
             console.error('❌ Firebase error:', error);
@@ -944,7 +985,7 @@
             });
         }
 
-        window.loadCompletedJobs = async function() {
+        window.loadAllJobs = async function() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
                
@@ -961,69 +1002,61 @@
                     const data = docSnap.data();
                     const status = data['Status Update'] || data['status'] || 'Scheduled';
                     
-                    // Only include completed jobs
-                    if (status === 'Complete') {
-                        const dateFields = ['Booked Date', 'Projected Completion Date', 'Install Date'];
-                        let jobDate = null;
-                        
-                        for (const field of dateFields) {
-                            if (data[field]) {
-                                jobDate = parseDate(data[field]);
-                                if (jobDate) break;
-                            }
+                    const dateFields = ['Booked Date', 'Projected Completion Date', 'Install Date'];
+                    let jobDate = null;
+                    
+                    for (const field of dateFields) {
+                        if (data[field]) {
+                            jobDate = parseDate(data[field]);
+                            if (jobDate) break;
                         }
-
-                        const engineerFields = ['Lead', 'Lead Engineer', 'Engineer', 'engineer'];
-                        let engineer = 'Unassigned';
-                        
-                        for (const field of engineerFields) {
-                            if (data[field] && data[field].trim()) {
-                                engineer = data[field];
-                                break;
-                            }
-                        }
-
-                        // Get completedTimestamp from Firebase (when job was marked complete)
-                        let completedTimestamp = null;
-                        if (data['completedTimestamp']) {
-                            completedTimestamp = new Date(data['completedTimestamp']);
-                        } else {
-                            // Log warning for jobs missing timestamp (older completed jobs)
-                            console.warn(`Job #${data['Job Number']} missing completedTimestamp - using fallback`);
-                            completedTimestamp = jobDate || new Date();
-                        }
-
-                        // Use completedTimestamp for display, fallback to jobDate
-                        const displayDate = completedTimestamp || jobDate;
-
-                        allJobs.push({
-                            id: docSnap.id,
-                            jobNumber: data['Job Number'] || 'N/A',
-                            postcode: data['Postcode'] || 'N/A',
-                            engineer: engineer,
-                            jobType: data['Job Type'] || 'Standard',
-                            completionDate: displayDate,
-                            completedTimestamp: completedTimestamp,
-                            auditStatus: data['auditStatus'] || 'pending',
-                            auditNotes: data['auditNotes'] || '',
-                            auditDate: data['auditDate'] ? parseDate(data['auditDate']) : null,
-                            ...data
-                        });
                     }
+
+                    const engineerFields = ['Lead', 'Lead Engineer', 'Engineer', 'engineer'];
+                    let engineer = 'Unassigned';
+                    
+                    for (const field of engineerFields) {
+                        if (data[field] && data[field].trim()) {
+                            engineer = data[field];
+                            break;
+                        }
+                    }
+
+                    // Get completedTimestamp from Firebase (when job was marked complete)
+                    let completedTimestamp = null;
+                    if (data['completedTimestamp']) {
+                        completedTimestamp = new Date(data['completedTimestamp']);
+                    } else if (status === 'Complete') {
+                        // Log warning for completed jobs missing timestamp
+                        console.warn(`Job #${data['Job Number']} missing completedTimestamp - using fallback`);
+                        completedTimestamp = jobDate || new Date();
+                    }
+
+                    // Use completedTimestamp for display, fallback to jobDate
+                    const displayDate = completedTimestamp || jobDate;
+
+                    allJobs.push({
+                        id: docSnap.id,
+                        jobNumber: data['Job Number'] || 'N/A',
+                        postcode: data['Postcode'] || 'N/A',
+                        engineer: engineer,
+                        jobType: data['Job Type'] || 'Standard',
+                        completionDate: displayDate,
+                        completedTimestamp: completedTimestamp,
+                        status: status,
+                        auditStatus: data['auditStatus'] || 'pending',
+                        auditNotes: data['auditNotes'] || '',
+                        auditDate: data['auditDate'] ? parseDate(data['auditDate']) : null,
+                        ...data
+                    });
                 });
                
-                console.log(`✅ Loaded ${allJobs.length} completed jobs`);
+                console.log(`✅ Loaded ${allJobs.length} jobs from database`);
                 
-                // Apply default filter (pending audit)
-                const auditStatusFilter = document.getElementById('audit-status').value;
-                if (auditStatusFilter === 'pending') {
-                    filteredJobs = allJobs.filter(j => j.auditStatus === 'pending');
-                } else {
-                    filteredJobs = [...allJobs];
-                }
+                // Apply default filter based on audit status selector
+                applyFilters();
                 
                 updateStats();
-                renderJobs();
                
             } catch (error) {
                 console.error('Error loading jobs:', error);
@@ -1033,11 +1066,13 @@
         }
 
         function updateStats() {
-            document.getElementById('total-complete').textContent = allJobs.length;
-            document.getElementById('pending-audit').textContent = allJobs.filter(j => j.auditStatus === 'pending').length;
-            document.getElementById('audit-pass').textContent = allJobs.filter(j => j.auditStatus === 'pass').length;
-            document.getElementById('audit-issues').textContent = allJobs.filter(j => j.auditStatus === 'issues').length;
-            document.getElementById('audit-unable').textContent = allJobs.filter(j => j.auditStatus === 'unable').length;
+            document.getElementById('total-jobs').textContent = allJobs.length;
+            const completedJobs = allJobs.filter(j => j.status === 'Complete');
+            document.getElementById('total-complete').textContent = completedJobs.length;
+            document.getElementById('pending-audit').textContent = completedJobs.filter(j => j.auditStatus === 'pending').length;
+            document.getElementById('audit-pass').textContent = completedJobs.filter(j => j.auditStatus === 'pass').length;
+            document.getElementById('audit-issues').textContent = completedJobs.filter(j => j.auditStatus === 'issues').length;
+            document.getElementById('audit-unable').textContent = completedJobs.filter(j => j.auditStatus === 'unable').length;
         }
 
         function renderJobs() {
@@ -1048,7 +1083,7 @@
                     <div class="empty-state">
                         <div class="empty-state-icon">📋</div>
                         <h3 style="font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem;">No Jobs Found</h3>
-                        <p>No completed jobs match your current filters</p>
+                        <p>No jobs match your current filters</p>
                     </div>
                 `;
                 return;
@@ -1065,19 +1100,22 @@
                 else if (job.auditStatus === 'issues') auditLabel = 'With Issues';
                 else if (job.auditStatus === 'unable') auditLabel = 'Unable to Audit';
 
-                // Calculate pending time for pending jobs
+                // Job status badge
+                let statusClass = 'status-scheduled';
+                if (job.status === 'Complete') statusClass = 'status-complete';
+                else if (job.status === 'In-Progress') statusClass = 'status-in-progress';
+                else if (job.status === 'Aborted') statusClass = 'status-aborted';
+                else if (job.status === 'Cancelled') statusClass = 'status-cancelled';
+
+                // Calculate pending time for completed jobs pending audit
                 let pendingTimeHTML = '';
-                if (job.auditStatus === 'pending' && job.completedTimestamp) {
+                if (job.status === 'Complete' && job.auditStatus === 'pending' && job.completedTimestamp) {
                     try {
-                        // Ensure completedTimestamp is a Date object
                         const timestamp = job.completedTimestamp instanceof Date 
                             ? job.completedTimestamp 
                             : new Date(job.completedTimestamp);
                         
-                        // Check if timestamp is valid
-                        if (isNaN(timestamp.getTime())) {
-                            console.error('Invalid timestamp for job:', job.jobNumber, job.completedTimestamp);
-                        } else {
+                        if (!isNaN(timestamp.getTime())) {
                             const timeDiff = now - timestamp;
                             const hours = Math.floor(timeDiff / (1000 * 60 * 60));
                             const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
@@ -1102,6 +1140,10 @@
                         </div>
                         <div class="job-details">
                             <div class="job-detail">
+                                <span class="job-detail-label">Status:</span>
+                                <span class="job-status-badge ${statusClass}">${escapeHtml(job.status)}</span>
+                            </div>
+                            <div class="job-detail">
                                 <span class="job-detail-label">Postcode:</span>
                                 <span class="job-detail-value">${escapeHtml(job.postcode)}</span>
                             </div>
@@ -1113,10 +1155,12 @@
                                 <span class="job-detail-label">Job Type:</span>
                                 <span class="job-detail-value">${escapeHtml(job.jobType)}</span>
                             </div>
-                            <div class="job-detail">
-                                <span class="job-detail-label">Completed:</span>
-                                <span class="job-detail-value">${formatDate(job.completionDate)}</span>
-                            </div>
+                            ${job.status === 'Complete' ? `
+                                <div class="job-detail">
+                                    <span class="job-detail-label">Completed:</span>
+                                    <span class="job-detail-value">${formatDate(job.completionDate)}</span>
+                                </div>
+                            ` : ''}
                         </div>
                         ${pendingTimeHTML}
                         ${job.auditNotes ? `
@@ -1146,17 +1190,22 @@
                     return false;
                 }
 
-                // Date range filter
-                if (dateFrom && job.completionDate < dateFrom) {
-                    return false;
-                }
-                if (dateTo && job.completionDate > dateTo) {
-                    return false;
+                // Date range filter (only for jobs with completion dates)
+                if (job.completionDate) {
+                    if (dateFrom && job.completionDate < dateFrom) {
+                        return false;
+                    }
+                    if (dateTo && job.completionDate > dateTo) {
+                        return false;
+                    }
                 }
 
                 // Audit status filter
-                if (auditStatus !== 'all' && job.auditStatus !== auditStatus) {
-                    return false;
+                if (auditStatus !== 'all') {
+                    // Filter by audit status
+                    if (job.auditStatus !== auditStatus) {
+                        return false;
+                    }
                 }
 
                 return true;
@@ -1188,7 +1237,8 @@
             document.getElementById('modal-postcode').textContent = job.postcode;
             document.getElementById('modal-engineer').textContent = job.engineer;
             document.getElementById('modal-job-type').textContent = job.jobType;
-            document.getElementById('modal-completion-date').textContent = formatDate(job.completionDate);
+            document.getElementById('modal-job-status').textContent = job.status;
+            document.getElementById('modal-completion-date').textContent = job.status === 'Complete' ? formatDate(job.completionDate) : 'Not completed';
             
             let statusText = 'Pending Audit';
             if (job.auditStatus === 'pass') statusText = 'Audit Completed - No Issues';
@@ -1262,8 +1312,10 @@
                 else if (pendingAuditStatus === 'issues') statusLabel = 'With Issues';
                 else if (pendingAuditStatus === 'unable') statusLabel = 'Unable to Audit';
 
-                // Send email notification
-                await sendAuditNotificationEmail(currentJob, pendingAuditStatus, notes);
+                // Send email notification if job is complete
+                if (currentJob.status === 'Complete') {
+                    await sendAuditNotificationEmail(currentJob, pendingAuditStatus, notes);
+                }
 
                 showToast(`Audit status updated to: ${statusLabel}`, 'success');
                 closeAuditModal();
@@ -1391,7 +1443,6 @@
                 
             } catch (error) {
                 console.error('❌ Failed to send audit notification email:', error);
-                // Don't show error toast - audit was still saved successfully
                 console.warn('Audit saved but email notification failed');
             }
         }
@@ -1427,7 +1478,7 @@
                 return;
             }
 
-            emailSchedulerInterval = setInterval(checkEmailSchedule, 30000); // Check every 30 seconds
+            emailSchedulerInterval = setInterval(checkEmailSchedule, 30000);
             
             document.getElementById('email-scheduler-status').textContent = 'Active';
             document.getElementById('email-scheduler-status').style.color = '#4ECCA3';
@@ -1457,7 +1508,6 @@
             const now = new Date();
             const currentDay = now.getDay();
             
-            // Only run on weekdays (Monday = 1, Friday = 5)
             if (currentDay === 0 || currentDay === 6) {
                 return;
             }
@@ -1465,11 +1515,9 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
 
-            // Check if it's 7 AM
             if (currentHour === 7 && currentMinute === 0) {
                 const today = now.toDateString();
                 
-                // Only send once per day
                 if (lastEmailSentDate !== today) {
                     sendPendingAuditSummary();
                     lastEmailSentDate = today;
@@ -1481,8 +1529,8 @@
             try {
                 console.log('📧 Sending pending audit summary email...');
 
-                // Get all pending audit jobs
-                const pendingJobs = allJobs.filter(j => j.auditStatus === 'pending');
+                const completedJobs = allJobs.filter(j => j.status === 'Complete');
+                const pendingJobs = completedJobs.filter(j => j.auditStatus === 'pending');
 
                 if (pendingJobs.length === 0) {
                     console.log('No pending audits to report');
@@ -1497,9 +1545,7 @@
                     day: 'numeric'
                 });
 
-                // Calculate pending times for each job
                 const jobsWithPendingTime = pendingJobs.map(job => {
-                    // Ensure timestamp is a Date object
                     const timestamp = job.completedTimestamp instanceof Date 
                         ? job.completedTimestamp 
                         : new Date(job.completedTimestamp);
@@ -1524,7 +1570,6 @@
                     };
                 });
 
-                // Sort by longest pending time first
                 jobsWithPendingTime.sort((a, b) => b.pendingHours - a.pendingHours);
 
                 const emailHTML = `
