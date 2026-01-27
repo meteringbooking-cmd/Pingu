@@ -184,6 +184,12 @@
             outline: none;
             border-color: var(--primary);
         }
+
+        .control-input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background: var(--dark);
+        }
        
         .timeline-container {
             background: var(--dark-light);
@@ -372,6 +378,50 @@
             background: linear-gradient(135deg, var(--complete), #3DB88E);
             pointer-events: none;
             transition: width 0.3s ease;
+        }
+
+        /* Arrow connector for split jobs */
+        .job-arrow {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.8;
+        }
+
+        .job-arrow::after {
+            content: '▶';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-size: 12px;
+        }
+
+        .job-card.has-continuation::after {
+            content: '→';
+            position: absolute;
+            right: 0.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 1rem;
+            font-weight: 900;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .job-card.is-continuation::before {
+            content: '←';
+            position: absolute;
+            left: 0.2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: white;
+            font-size: 1rem;
+            font-weight: 900;
+            text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
         }
        
         .job-number {
@@ -800,7 +850,7 @@
         <div class="controls-card">
             <div class="controls-row">
                 <div class="control-group">
-                    <label class="control-label" for="start-date">Start Date</label>
+                    <label class="control-label" for="start-date">Start Date (Locked to Monday)</label>
                     <input type="date" id="start-date" class="control-input">
                 </div>
                 <div class="control-group">
@@ -1004,20 +1054,20 @@
         let selectedCompletionDays = [];
        
         window.initializeTimeline = function() {
-    const today = new Date();
-    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days
-    
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - daysFromMonday);
-    monday.setHours(0, 0, 0, 0);
-    
-    const startDateInput = document.getElementById('start-date');
-    startDateInput.valueAsDate = monday;
-    startDateInput.disabled = true; // Lock the date input
-    
-    loadJobs();
-}
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days
+            
+            const monday = new Date(today);
+            monday.setDate(today.getDate() - daysFromMonday);
+            monday.setHours(0, 0, 0, 0);
+            
+            const startDateInput = document.getElementById('start-date');
+            startDateInput.valueAsDate = monday;
+            startDateInput.disabled = true; // Lock the date input
+            
+            loadJobs();
+        }
        
         function parseDate(dateStr) {
             if (!dateStr) return null;
@@ -1447,6 +1497,8 @@
        
         function renderEngineerJobs(jobs, dates, startDate) {
             const numCols = dates.length;
+            const endDate = new Date(dates[dates.length - 1]);
+            endDate.setHours(23, 59, 59, 999);
             
             // Sort jobs by start date
             const sortedJobs = [...jobs].sort((a, b) => {
@@ -1461,6 +1513,11 @@
                 const jobStart = new Date(job.parsedDate);
                 jobStart.setHours(0, 0, 0, 0);
                 
+                // Calculate job end based on job length
+                const jobEnd = new Date(jobStart);
+                jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
+                jobEnd.setHours(23, 59, 59, 999);
+                
                 // Find which column this job starts in
                 let startCol = -1;
                 for (let i = 0; i < dates.length; i++) {
@@ -1470,11 +1527,19 @@
                     }
                 }
                 
-                if (startCol === -1) return; // Job doesn't start in visible range
+                // If job starts before visible range, check if it extends into it
+                if (startCol === -1 && jobStart < startDate && jobEnd >= startDate) {
+                    startCol = 0; // Starts at beginning of visible range
+                }
+                
+                if (startCol === -1) return; // Job doesn't appear in visible range
                 
                 const jobLength = job.jobLength || 1;
                 const daysRemaining = dates.length - startCol;
                 const visibleSpan = Math.min(jobLength, daysRemaining);
+                
+                // Check if job extends beyond visible range
+                const hasContinuation = jobEnd > endDate;
                 
                 // Find the first available row for this job
                 let targetRow = 0;
@@ -1505,7 +1570,9 @@
                             job: job,
                             row: targetRow,
                             col: startCol,
-                            span: visibleSpan
+                            span: visibleSpan,
+                            hasContinuation: hasContinuation,
+                            isContinuation: jobStart < startDate
                         });
                     } else {
                         targetRow++;
@@ -1524,7 +1591,7 @@
             
             // Render each job card
             jobPlacements.forEach(placement => {
-                const { job, row, col, span } = placement;
+                const { job, row, col, span, hasContinuation, isContinuation } = placement;
                 
                 const status = job.status || 'Scheduled';
                 let statusClass = '';
@@ -1544,9 +1611,14 @@
                 // Grid positioning (1-based indexing)
                 const gridColumn = `${col + 1} / span ${span}`;
                 const gridRow = row + 1;
+
+                // Add continuation classes
+                let continuationClass = '';
+                if (hasContinuation) continuationClass += ' has-continuation';
+                if (isContinuation) continuationClass += ' is-continuation';
                
                 html += `
-                    <div class="job-card ${statusClass}"
+                    <div class="job-card ${statusClass}${continuationClass}"
                          data-job-id="${job.id}"
                          style="grid-column: ${gridColumn}; grid-row: ${gridRow};">
                         ${completionPercent > 0 && completionPercent < 100 ? 
