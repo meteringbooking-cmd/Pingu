@@ -184,12 +184,6 @@
             outline: none;
             border-color: var(--primary);
         }
-
-        .control-input:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            background: var(--dark);
-        }
        
         .timeline-container {
             background: var(--dark-light);
@@ -379,50 +373,6 @@
             pointer-events: none;
             transition: width 0.3s ease;
         }
-
-        /* Arrow connector for split jobs */
-        .job-arrow {
-            position: absolute;
-            height: 3px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            pointer-events: none;
-            z-index: 1;
-            opacity: 0.8;
-        }
-
-        .job-arrow::after {
-            content: '▶';
-            position: absolute;
-            right: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--accent);
-            font-size: 12px;
-        }
-
-        .job-card.has-continuation::after {
-            content: '→';
-            position: absolute;
-            right: 0.2rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: white;
-            font-size: 1rem;
-            font-weight: 900;
-            text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .job-card.is-continuation::before {
-            content: '←';
-            position: absolute;
-            left: 0.2rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: white;
-            font-size: 1rem;
-            font-weight: 900;
-            text-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
-        }
        
         .job-number {
             font-weight: 800;
@@ -478,6 +428,44 @@
         /* Multi-day job spanning */
         .job-card.multi-day {
             grid-column: span var(--span-days);
+        }
+
+        /* Arrow connector styles */
+        .job-arrow {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--primary));
+            pointer-events: none;
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            box-shadow: 0 2px 8px rgba(0, 217, 255, 0.5);
+        }
+
+        .job-arrow::after {
+            content: '→';
+            color: var(--primary);
+            font-size: 1.2rem;
+            font-weight: 900;
+            margin-right: -8px;
+            text-shadow: 0 0 8px rgba(255, 107, 53, 0.8);
+            animation: arrowPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes arrowPulse {
+            0%, 100% { transform: translateX(0); opacity: 1; }
+            50% { transform: translateX(5px); opacity: 0.7; }
+        }
+
+        .job-arrow.split-indicator {
+            border-top: 2px dashed var(--warning);
+            background: transparent;
+        }
+
+        .job-arrow.split-indicator::after {
+            content: '⚡';
+            color: var(--warning);
         }
        
         .empty-state {
@@ -844,13 +832,13 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule of upcoming jobs by engineer - Click to update status</p>
+            <p class="subtitle">Visual schedule with connected segments - Click jobs to update status</p>
         </header>
        
         <div class="controls-card">
             <div class="controls-row">
                 <div class="control-group">
-                    <label class="control-label" for="start-date">Start Date (Locked to Monday)</label>
+                    <label class="control-label" for="start-date">Start Date</label>
                     <input type="date" id="start-date" class="control-input">
                 </div>
                 <div class="control-group">
@@ -885,7 +873,7 @@
             
             <div class="debug-info" id="email-notifications" style="display: block; background: linear-gradient(135deg, rgba(78, 236, 163, 0.1), rgba(0, 217, 255, 0.1)); border: 2px solid var(--success);">
                 <strong>📧 Email Notifications Active</strong><br>
-                <span style="font-size: 0.8rem;">Automatic emails will be sent to Kevin Boyd, Liam Bannister and Dean Bramwell when jobs are marked as complete.</span>
+                <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete. Arrows (→) connect split job segments.</span>
             </div>
         </div>
        
@@ -1055,8 +1043,8 @@
        
         window.initializeTimeline = function() {
             const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days
+            const dayOfWeek = today.getDay();
+            const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
             
             const monday = new Date(today);
             monday.setDate(today.getDate() - daysFromMonday);
@@ -1064,7 +1052,7 @@
             
             const startDateInput = document.getElementById('start-date');
             startDateInput.valueAsDate = monday;
-            startDateInput.disabled = true; // Lock the date input
+            startDateInput.disabled = true;
             
             loadJobs();
         }
@@ -1174,11 +1162,18 @@
                         const jobType = data['Job Type'] || 'Standard';
                         const status = data['Status Update'] || data['status'] || 'Scheduled';
                         const completedDays = data['completedDays'] || [];
+                        
+                        // Parse projected completion date if available
+                        let projectedCompletionDate = null;
+                        if (data['Projected Completion Date']) {
+                            projectedCompletionDate = parseDate(data['Projected Completion Date']);
+                        }
                        
                         allJobs.push({
                             id: docSnap.id,
                             ...data,
                             parsedDate: jobDate,
+                            projectedCompletionDate: projectedCompletionDate,
                             usedDateField: usedDateField,
                             jobLength: jobLength,
                             engineer: engineer,
@@ -1227,7 +1222,6 @@
                     updateData.completedDays = completedDays;
                 }
 
-                // Store completion timestamp when job becomes fully complete
                 if (newStatus === 'Complete') {
                     updateData.completedTimestamp = new Date().toISOString();
                 }
@@ -1246,7 +1240,6 @@
                         job.completedTimestamp = new Date().toISOString();
                     }
                     
-                    // Check if job just became fully complete - show invoice modal
                     if (newStatus === 'Complete' && previousStatus !== 'Complete') {
                         showInvoiceModal(job);
                         await sendJobCompletionEmail(job);
@@ -1266,7 +1259,6 @@
             currentJob = job;
             document.getElementById('invoice-job-number').textContent = job['Job Number'] || 'N/A';
             
-            // Pre-fill with existing values if available
             document.getElementById('invoice-octopus').value = job.invoiceOctopus || '';
             document.getElementById('invoice-lead').value = job.invoiceLead || '';
             
@@ -1497,28 +1489,19 @@
        
         function renderEngineerJobs(jobs, dates, startDate) {
             const numCols = dates.length;
-            const endDate = new Date(dates[dates.length - 1]);
-            endDate.setHours(23, 59, 59, 999);
             
-            // Sort jobs by start date
             const sortedJobs = [...jobs].sort((a, b) => {
                 return a.parsedDate.getTime() - b.parsedDate.getTime();
             });
             
-            // Track which grid cells are occupied [row][col]
             const gridOccupancy = [];
             const jobPlacements = [];
+            const arrows = [];
             
             sortedJobs.forEach(job => {
                 const jobStart = new Date(job.parsedDate);
                 jobStart.setHours(0, 0, 0, 0);
                 
-                // Calculate job end based on job length
-                const jobEnd = new Date(jobStart);
-                jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1));
-                jobEnd.setHours(23, 59, 59, 999);
-                
-                // Find which column this job starts in
                 let startCol = -1;
                 for (let i = 0; i < dates.length; i++) {
                     if (dates[i].toDateString() === jobStart.toDateString()) {
@@ -1527,71 +1510,122 @@
                     }
                 }
                 
-                // If job starts before visible range, check if it extends into it
-                if (startCol === -1 && jobStart < startDate && jobEnd >= startDate) {
-                    startCol = 0; // Starts at beginning of visible range
-                }
-                
-                if (startCol === -1) return; // Job doesn't appear in visible range
+                if (startCol === -1) return;
                 
                 const jobLength = job.jobLength || 1;
-                const daysRemaining = dates.length - startCol;
-                const visibleSpan = Math.min(jobLength, daysRemaining);
                 
-                // Check if job extends beyond visible range
-                const hasContinuation = jobEnd > endDate;
+                // Check if job needs to be split based on projected completion date
+                let segments = [];
                 
-                // Find the first available row for this job
-                let targetRow = 0;
-                let foundRow = false;
-                
-                while (!foundRow) {
-                    if (!gridOccupancy[targetRow]) {
-                        gridOccupancy[targetRow] = new Array(numCols).fill(false);
-                    }
+                if (job.projectedCompletionDate && jobLength > 1) {
+                    const projectedEnd = new Date(job.projectedCompletionDate);
+                    projectedEnd.setHours(0, 0, 0, 0);
                     
-                    // Check if this row has space for the job
-                    let hasSpace = true;
-                    for (let col = startCol; col < startCol + visibleSpan; col++) {
-                        if (gridOccupancy[targetRow][col]) {
-                            hasSpace = false;
-                            break;
-                        }
-                    }
+                    // Calculate days until projected completion
+                    const daysDiff = Math.floor((projectedEnd - jobStart) / (1000 * 60 * 60 * 24)) + 1;
                     
-                    if (hasSpace) {
-                        // Mark these cells as occupied
-                        for (let col = startCol; col < startCol + visibleSpan; col++) {
-                            gridOccupancy[targetRow][col] = true;
-                        }
-                        foundRow = true;
+                    if (daysDiff < jobLength && daysDiff > 0) {
+                        // Job needs to be split
+                        const firstSegmentDays = daysDiff;
+                        const secondSegmentDays = jobLength - daysDiff;
                         
-                        jobPlacements.push({
-                            job: job,
-                            row: targetRow,
-                            col: startCol,
-                            span: visibleSpan,
-                            hasContinuation: hasContinuation,
-                            isContinuation: jobStart < startDate
+                        segments.push({
+                            startCol: startCol,
+                            span: Math.min(firstSegmentDays, dates.length - startCol),
+                            isFirst: true
                         });
+                        
+                        // Calculate where second segment should start (after projected completion)
+                        const secondStartCol = startCol + daysDiff;
+                        if (secondStartCol < dates.length) {
+                            segments.push({
+                                startCol: secondStartCol,
+                                span: Math.min(secondSegmentDays, dates.length - secondStartCol),
+                                isLast: true
+                            });
+                        }
                     } else {
-                        targetRow++;
+                        // No split needed
+                        const daysRemaining = dates.length - startCol;
+                        segments.push({
+                            startCol: startCol,
+                            span: Math.min(jobLength, daysRemaining),
+                            isFirst: true,
+                            isLast: true
+                        });
                     }
+                } else {
+                    // Single segment
+                    const daysRemaining = dates.length - startCol;
+                    segments.push({
+                        startCol: startCol,
+                        span: Math.min(jobLength, daysRemaining),
+                        isFirst: true,
+                        isLast: true
+                    });
                 }
+                
+                // Place each segment
+                segments.forEach((segment, segmentIndex) => {
+                    let targetRow = 0;
+                    let foundRow = false;
+                    
+                    while (!foundRow) {
+                        if (!gridOccupancy[targetRow]) {
+                            gridOccupancy[targetRow] = new Array(numCols).fill(false);
+                        }
+                        
+                        let hasSpace = true;
+                        for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
+                            if (gridOccupancy[targetRow][col]) {
+                                hasSpace = false;
+                                break;
+                            }
+                        }
+                        
+                        if (hasSpace) {
+                            for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
+                                gridOccupancy[targetRow][col] = true;
+                            }
+                            foundRow = true;
+                            
+                            jobPlacements.push({
+                                job: job,
+                                row: targetRow,
+                                col: segment.startCol,
+                                span: segment.span,
+                                isFirst: segment.isFirst,
+                                isLast: segment.isLast,
+                                segmentIndex: segmentIndex
+                            });
+                            
+                            // Create arrow if this is not the last segment
+                            if (!segment.isLast && segmentIndex < segments.length - 1) {
+                                const nextSegment = segments[segmentIndex + 1];
+                                arrows.push({
+                                    fromCol: segment.startCol + segment.span,
+                                    toCol: nextSegment.startCol,
+                                    row: targetRow,
+                                    jobId: job.id
+                                });
+                            }
+                        } else {
+                            targetRow++;
+                        }
+                    }
+                });
             });
             
-            // Determine total rows needed
             const totalRows = gridOccupancy.length;
             
-            // Build HTML
             let html = `<div class="timeline-grid" style="
                 grid-template-columns: repeat(${numCols}, minmax(120px, 1fr));
                 grid-template-rows: repeat(${totalRows}, 70px);
             ">`;
             
-            // Render each job card
+            // Render job cards
             jobPlacements.forEach(placement => {
-                const { job, row, col, span, hasContinuation, isContinuation } = placement;
+                const { job, row, col, span, isFirst, isLast } = placement;
                 
                 const status = job.status || 'Scheduled';
                 let statusClass = '';
@@ -1608,17 +1642,11 @@
 
                 const textStyle = span > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
                 
-                // Grid positioning (1-based indexing)
                 const gridColumn = `${col + 1} / span ${span}`;
                 const gridRow = row + 1;
-
-                // Add continuation classes
-                let continuationClass = '';
-                if (hasContinuation) continuationClass += ' has-continuation';
-                if (isContinuation) continuationClass += ' is-continuation';
                
                 html += `
-                    <div class="job-card ${statusClass}${continuationClass}"
+                    <div class="job-card ${statusClass}"
                          data-job-id="${job.id}"
                          style="grid-column: ${gridColumn}; grid-row: ${gridRow};">
                         ${completionPercent > 0 && completionPercent < 100 ? 
@@ -1628,6 +1656,22 @@
                         <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
                         ${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}
                     </div>
+                `;
+            });
+            
+            // Render arrows
+            arrows.forEach(arrow => {
+                const arrowWidth = (arrow.toCol - arrow.fromCol) * 120; // Approximate column width
+                const arrowLeft = arrow.fromCol * 120; // Approximate position
+                const arrowTop = (arrow.row * 70) + 35; // Center of row
+                
+                html += `
+                    <div class="job-arrow" style="
+                        grid-column: ${arrow.fromCol + 1} / ${arrow.toCol + 1};
+                        grid-row: ${arrow.row + 1};
+                        align-self: center;
+                        margin: 0 10px;
+                    "></div>
                 `;
             });
            
