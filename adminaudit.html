@@ -25,6 +25,7 @@
             --audit-issues: #FFC857;
             --audit-unable: #FF6B6B;
             --audit-pending: #9A9AB0;
+            --audit-in-progress: #00D9FF;
         }
        
         * {
@@ -302,6 +303,13 @@
             color: var(--audit-pending);
         }
 
+        .stat-value.in-progress {
+            background: linear-gradient(135deg, var(--audit-in-progress), #00B8D9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
         .jobs-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -341,6 +349,10 @@
 
         .job-card.audit-unable::before {
             background: var(--audit-unable);
+        }
+
+        .job-card.audit-in-progress::before {
+            background: var(--audit-in-progress);
         }
 
         .job-card:hover {
@@ -393,6 +405,11 @@
         .audit-badge.unable {
             background: rgba(255, 107, 107, 0.2);
             color: var(--audit-unable);
+        }
+
+        .audit-badge.in-progress {
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--audit-in-progress);
         }
 
         .job-details {
@@ -607,7 +624,7 @@
 
         .audit-actions {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
             margin-top: 1rem;
         }
@@ -640,6 +657,10 @@
 
         .audit-btn.unable {
             background: linear-gradient(135deg, var(--audit-unable), #E55A5A);
+        }
+
+        .audit-btn.in-progress {
+            background: linear-gradient(135deg, var(--audit-in-progress), #00B8D9);
         }
 
         .notes-section {
@@ -791,6 +812,7 @@
                         <option value="pass">No Issues</option>
                         <option value="issues">With Issues</option>
                         <option value="unable">Unable to Audit</option>
+                        <option value="in-progress">Audit - In Progress</option>
                     </select>
                 </div>
             </div>
@@ -816,6 +838,10 @@
                 <div class="stat-item">
                     <div class="stat-label">Pending Audit</div>
                     <div class="stat-value pending" id="pending-audit">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">In Progress</div>
+                    <div class="stat-value in-progress" id="audit-in-progress">0</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">No Issues</div>
@@ -887,6 +913,9 @@
                         </button>
                         <button class="audit-btn unable" onclick="setAuditStatus('unable')">
                             ❌ Unable to Audit
+                        </button>
+                        <button class="audit-btn in-progress" onclick="setAuditStatus('in-progress')">
+                            🔄 Audit - In Progress
                         </button>
                     </div>
 
@@ -1070,6 +1099,7 @@
             const completedJobs = allJobs.filter(j => j.status === 'Complete');
             document.getElementById('total-complete').textContent = completedJobs.length;
             document.getElementById('pending-audit').textContent = completedJobs.filter(j => j.auditStatus === 'pending').length;
+            document.getElementById('audit-in-progress').textContent = completedJobs.filter(j => j.auditStatus === 'in-progress').length;
             document.getElementById('audit-pass').textContent = completedJobs.filter(j => j.auditStatus === 'pass').length;
             document.getElementById('audit-issues').textContent = completedJobs.filter(j => j.auditStatus === 'issues').length;
             document.getElementById('audit-unable').textContent = completedJobs.filter(j => j.auditStatus === 'unable').length;
@@ -1099,6 +1129,7 @@
                 if (job.auditStatus === 'pass') auditLabel = 'No Issues';
                 else if (job.auditStatus === 'issues') auditLabel = 'With Issues';
                 else if (job.auditStatus === 'unable') auditLabel = 'Unable to Audit';
+                else if (job.auditStatus === 'in-progress') auditLabel = 'In Progress';
 
                 // Job status badge
                 let statusClass = 'status-scheduled';
@@ -1107,9 +1138,9 @@
                 else if (job.status === 'Aborted') statusClass = 'status-aborted';
                 else if (job.status === 'Cancelled') statusClass = 'status-cancelled';
 
-                // Calculate pending time for completed jobs pending audit
+                // Calculate pending time for completed jobs pending audit or in-progress
                 let pendingTimeHTML = '';
-                if (job.status === 'Complete' && job.auditStatus === 'pending' && job.completedTimestamp) {
+                if (job.status === 'Complete' && (job.auditStatus === 'pending' || job.auditStatus === 'in-progress') && job.completedTimestamp) {
                     try {
                         const timestamp = job.completedTimestamp instanceof Date 
                             ? job.completedTimestamp 
@@ -1120,10 +1151,12 @@
                             const hours = Math.floor(timeDiff / (1000 * 60 * 60));
                             const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
                             
+                            const pendingLabel = job.auditStatus === 'in-progress' ? 'In Progress' : 'Pending';
+                            
                             pendingTimeHTML = `
                                 <div class="pending-time">
                                     <span class="pending-time-icon">⏱️</span>
-                                    <span>Pending: <span class="pending-time-value">${hours}h ${minutes}m</span></span>
+                                    <span>${pendingLabel}: <span class="pending-time-value">${hours}h ${minutes}m</span></span>
                                 </div>
                             `;
                         }
@@ -1244,6 +1277,7 @@
             if (job.auditStatus === 'pass') statusText = 'Audit Completed - No Issues';
             else if (job.auditStatus === 'issues') statusText = 'Audit Completed - With Issues';
             else if (job.auditStatus === 'unable') statusText = 'Unable to Audit';
+            else if (job.auditStatus === 'in-progress') statusText = 'Audit - In Progress';
             
             document.getElementById('modal-current-status').textContent = statusText;
             document.getElementById('audit-notes').value = job.auditNotes || '';
@@ -1311,9 +1345,10 @@
                 if (pendingAuditStatus === 'pass') statusLabel = 'No Issues';
                 else if (pendingAuditStatus === 'issues') statusLabel = 'With Issues';
                 else if (pendingAuditStatus === 'unable') statusLabel = 'Unable to Audit';
+                else if (pendingAuditStatus === 'in-progress') statusLabel = 'In Progress';
 
-                // Send email notification if job is complete
-                if (currentJob.status === 'Complete') {
+                // Send email notification if job is complete and audit is finalized (not in-progress)
+                if (currentJob.status === 'Complete' && pendingAuditStatus !== 'in-progress') {
                     await sendAuditNotificationEmail(currentJob, pendingAuditStatus, notes);
                 }
 
