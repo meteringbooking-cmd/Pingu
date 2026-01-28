@@ -1939,7 +1939,9 @@ window.confirmPartialCompletion = async function() {
 
     const jobLength = currentJob.jobLength || 1;
 
-    console.log('Confirming partial completion. Selected days:', selectedCompletionDays, 'Job length:', jobLength);
+    console.log('✅ FIXED VERSION - Confirming partial completion');
+    console.log('Selected days:', selectedCompletionDays);
+    console.log('Job length:', jobLength);
 
     // Validate that at least one day is selected
     if (selectedCompletionDays.length === 0) {
@@ -1949,44 +1951,50 @@ window.confirmPartialCompletion = async function() {
 
     // If ALL days are selected, show invoice section
     if (selectedCompletionDays.length === jobLength) {
-        // Hide completion selector, show invoice section
         document.getElementById('completion-selector').style.display = 'none';
         showInlineInvoiceSection();
         return;
     }
 
     // For PARTIAL completion (not all days), update to In-Progress
-    const jobId = currentJob.id;
-    closeStatusModal();
-    await updateJobStatusInDB(jobId, 'In-Progress', selectedCompletionDays);
-    buildTimeline();
-}
-
-        window.saveJobNotes = async function() {
-            if (!currentJob) return;
-
-            const notes = document.getElementById('job-notes').value;
-
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
-               
-                await updateDoc(jobRef, {
-                    notes: notes
-                });
-               
-                const job = allJobs.find(j => j.id === currentJob.id);
-                if (job) {
-                    job.notes = notes;
-                }
-               
-                showToast('Notes saved successfully', 'success');
-               
-            } catch (error) {
-                console.error('Error saving notes:', error);
-                showToast('Failed to save notes', 'error');
-            }
+   const jobId = currentJob.id;
+    
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+       
+        console.log('🔧 FIXED: Updating Firebase directly with:', {
+            'Status Update': 'In-Progress',
+            completedDays: selectedCompletionDays
+        });
+        
+        // Update Firebase
+        await updateDoc(jobRef, {
+            'Status Update': 'In-Progress',
+            completedDays: selectedCompletionDays,
+            lastUpdated: new Date().toISOString()
+        });
+       
+        console.log('✅ Firebase update successful!');
+        
+        // Update local job object
+        const job = allJobs.find(j => j.id === jobId);
+        if (job) {
+            job.status = 'In-Progress';
+            job['Status Update'] = 'In-Progress';
+            job.completedDays = selectedCompletionDays;
         }
+       
+        showToast(`✅ ${selectedCompletionDays.length} of ${jobLength} days marked complete`, 'success');
+        closeStatusModal();
+        buildTimeline();
+        
+    } catch (error) {
+        console.error('❌ Error updating Firebase:', error);
+        console.error('Error details:', error.message);
+        showToast('Failed to update job status: ' + error.message, 'error');
+    }
+}
        
         function updateTimeline() {
             buildTimeline();
