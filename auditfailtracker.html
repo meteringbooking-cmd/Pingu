@@ -587,6 +587,12 @@
                     <option value="all">All Teams</option>
                 </select>
             </div>
+            <div class="control-group">
+    <label for="teamNumberFilter">Team Number</label>
+    <select id="teamNumberFilter">
+        <option value="all">All Team Numbers</option>
+    </select>
+</div>
         </div>
 
         <div class="fail-code-filter" id="failCodeFilter" style="display: none;">
@@ -815,6 +821,7 @@
         document.getElementById('startDate').addEventListener('change', updateDashboard);
         document.getElementById('endDate').addEventListener('change', updateDashboard);
         document.getElementById('teamFilter').addEventListener('change', updateDashboard);
+        document.getElementById('teamNumberFilter').addEventListener('change', updateDashboard);
 
         function getColorBadge(code) {
             const color = FAIL_CODE_COLORS[code] || 'purple';
@@ -897,7 +904,8 @@
 
                     initializeCheckboxes();
                     populateTeamFilter();
-                    setDefaultDateRange();
+populateTeamNumberFilter();
+setDefaultDateRange();
                     document.getElementById('failCodeFilter').style.display = 'block';
                     updateDashboard();
                 },
@@ -916,6 +924,18 @@
                 select.appendChild(option);
             });
         }
+
+        function populateTeamNumberFilter() {
+    const teamNumbers = [...new Set(allData.map(r => r['Team Number']).filter(Boolean))].sort();
+    const select = document.getElementById('teamNumberFilter');
+    select.innerHTML = '<option value="all">All Team Numbers</option>';
+    teamNumbers.forEach(teamNumber => {
+        const option = document.createElement('option');
+        option.value = teamNumber;
+        option.textContent = teamNumber;
+        select.appendChild(option);
+    });
+}
 
         function setDefaultDateRange() {
             const dates = allData
@@ -970,16 +990,18 @@
             document.getElementById('stats').style.display = 'grid';
 
             const startDate = document.getElementById('startDate').valueAsDate;
-            const endDate = document.getElementById('endDate').valueAsDate;
-            const selectedTeam = document.getElementById('teamFilter').value;
+const endDate = document.getElementById('endDate').valueAsDate;
+const selectedTeam = document.getElementById('teamFilter').value;
+const selectedTeamNumber = document.getElementById('teamNumberFilter').value;
 
-            const filtered = allData.filter(row => {
-                const rowDate = parseDate(row['Date received']);
-                const dateMatch = (!startDate || !endDate || !rowDate) || 
-                                 (rowDate >= startDate && rowDate <= endDate);
-                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-                return dateMatch && teamMatch;
-            });
+const filtered = allData.filter(row => {
+    const rowDate = parseDate(row['Date received']);
+    const dateMatch = (!startDate || !endDate || !rowDate) || 
+                     (rowDate >= startDate && rowDate <= endDate);
+    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+    const teamNumberMatch = selectedTeamNumber === 'all' || row['Team Number'] === selectedTeamNumber;
+    return dateMatch && teamMatch && teamNumberMatch;
+});
 
             updateStats(filtered, startDate, endDate);
             updateChart(filtered);
@@ -1261,14 +1283,16 @@
                 const startDate = document.getElementById('startDate').valueAsDate;
                 const endDate = document.getElementById('endDate').valueAsDate;
                 const selectedTeam = document.getElementById('teamFilter').value;
+const selectedTeamNumber = document.getElementById('teamNumberFilter').value;
 
-                const filtered = allData.filter(row => {
-                    const rowDate = parseDate(row['Date received']);
-                    const dateMatch = (!startDate || !endDate || !rowDate) || 
-                                     (rowDate >= startDate && rowDate <= endDate);
-                    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-                    return dateMatch && teamMatch;
-                });
+const filtered = allData.filter(row => {
+    const rowDate = parseDate(row['Date received']);
+    const dateMatch = (!startDate || !endDate || !rowDate) || 
+                     (rowDate >= startDate && rowDate <= endDate);
+    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+    const teamNumberMatch = selectedTeamNumber === 'all' || row['Team Number'] === selectedTeamNumber;
+    return dateMatch && teamMatch && teamNumberMatch;
+});
 
                 const teamRankings = getTeamsByFailCode(filtered, code);
                 
