@@ -458,7 +458,7 @@
    
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, onSnapshot, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -473,7 +473,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, onSnapshot, query, orderBy };
+            window.firebaseModules = { collection, onSnapshot, query, orderBy, doc, updateDoc };
             console.log('✅ Firebase initialized');
            
             window.addEventListener('DOMContentLoaded', () => {
@@ -518,7 +518,7 @@
 
             // Listen for real-time updates
             unsubscribe = onSnapshot(jobsQuery, async (snapshot) => {
-                console.log('🔄 Data updated, refreshing map...');
+                console.log('🔄 Data updated, processing changes...');
                 
                 allJobs = [];
                 snapshot.forEach((docSnap) => {
@@ -530,8 +530,11 @@
                 
                 console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
                 
-                // Geocode new jobs + update map
+                // Only geocode jobs that don't have coordinates yet
+                // Since coordinates are now stored in Firebase, we won't re-geocode on status updates
                 await geocodeJobs();
+                
+                // Update map (this just changes colors, doesn't re-geocode)
                 updateMap();
             }, (error) => {
                 console.error('Error in real-time listener:', error);
@@ -659,9 +662,9 @@
             return { color: '#000000', flashing: false };
         }
        
-        // Geocode postcodes for current week only
+        // Geocode postcodes for current week only - and SAVE to Firebase
         async function geocodeJobs() {
-            console.log('Geocoding postcodes for current week...');
+            console.log('Checking for jobs that need geocoding...');
             
             const statusEl = document.getElementById('geocoding-status');
             const progressEl = document.getElementById('geocoding-progress');
@@ -672,10 +675,10 @@
             endDate.setDate(endDate.getDate() + 6); // Sunday of current week
             endDate.setHours(23, 59, 59, 999);
             
-            // Filter jobs that need geocoding (within current week and no coordinates)
+            // Filter jobs that need geocoding (within current week and no coordinates in Firebase)
             const jobsNeedingGeocode = allJobs.filter(job => {
                 const postcode = job['Postcode'] || job.Postcode;
-                if (!postcode || job.coordinates) return false;
+                if (!postcode || job.coordinates) return false; // Skip if no postcode or already has coordinates
                 
                 const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const jobDate = parseDate(dateStr);
@@ -683,10 +686,15 @@
                 return jobDate && jobDate >= startDate && jobDate <= endDate;
             });
 
-            if (jobsNeedingGeocode.length > 0) {
-                statusEl.style.display = 'block';
-                statusEl.classList.add('active');
+            if (jobsNeedingGeocode.length === 0) {
+                console.log('✅ No jobs need geocoding - all current week jobs have coordinates');
+                return;
             }
+
+            console.log(`📍 Found ${jobsNeedingGeocode.length} jobs needing geocoding`);
+            
+            statusEl.style.display = 'block';
+            statusEl.classList.add('active');
 
             let geocoded = 0;
            
@@ -698,8 +706,13 @@
                 
                 const coords = await geocodePostcode(postcode);
                 if (coords) {
+                    // Save to memory
                     job.coordinates = coords;
-                    console.log(`✅ Geocoded ${postcode}:`, coords);
+                    
+                    // Save to Firebase so we don't need to geocode again
+                    await saveCoordinatesToFirebase(job.id, coords);
+                    
+                    console.log(`✅ Geocoded and saved ${postcode}:`, coords);
                 } else {
                     console.warn(`❌ Failed to geocode ${postcode}`);
                 }
@@ -708,14 +721,28 @@
                 await new Promise(r => setTimeout(r, 1200));
             }
            
-            if (jobsNeedingGeocode.length > 0) {
-                statusEl.classList.remove('active');
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 2000);
-            }
+            statusEl.classList.remove('active');
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 2000);
             
-            console.log(`Geocoding finished. ${geocoded} postcodes processed.`);
+            console.log(`✅ Geocoding complete. ${geocoded} postcodes processed and saved.`);
+        }
+
+        // Save coordinates to Firebase
+        async function saveCoordinatesToFirebase(jobId, coordinates) {
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', jobId);
+                
+                await updateDoc(jobRef, {
+                    coordinates: coordinates
+                });
+                
+                console.log(`💾 Saved coordinates for job ${jobId}`);
+            } catch (error) {
+                console.error(`❌ Failed to save coordinates for job ${jobId}:`, error);
+            }
         }
        
         async function geocodePostcode(postcode) {
