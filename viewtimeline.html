@@ -1991,10 +1991,58 @@ window.confirmPartialCompletion = async function() {
         
     } catch (error) {
         console.error('❌ Error updating Firebase:', error);
-        console.error('Error details:', error.message);
+           console.error('Error details:', error.message);
         showToast('Failed to update job status: ' + error.message, 'error');
     }
 }
+
+// ============================================================
+// ADD THIS ENTIRE FUNCTION (it was missing!)
+// ============================================================
+window.saveJobNotes = async function() {
+    if (!currentJob) {
+        console.error('❌ No current job selected');
+        showToast('Error: No job selected', 'error');
+        return;
+    }
+
+    const notes = document.getElementById('job-notes').value;
+    const jobId = currentJob.id;
+    const jobNumber = currentJob['Job Number'] || 'N/A';
+
+    console.log('💾 Saving notes for job:', jobNumber);
+    console.log('Notes length:', notes.length, 'characters');
+
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+       
+        console.log('🔧 Updating Firebase notes...');
+        
+        await updateDoc(jobRef, {
+            notes: notes,
+            notesUpdatedAt: new Date().toISOString()
+        });
+       
+        console.log('✅ Firebase notes saved!');
+        
+        const job = allJobs.find(j => j.id === jobId);
+        if (job) {
+            job.notes = notes;
+            job.notesUpdatedAt = new Date().toISOString();
+        }
+       
+        showToast('✅ Notes saved successfully', 'success');
+       
+    } catch (error) {
+        console.error('❌ Error saving notes:', error);
+        console.error('Error details:', error.message);
+        showToast('Failed to save notes: ' + error.message, 'error');
+    }
+}
+// ============================================================
+// END OF ADDED FUNCTION
+// ============================================================
        
         function updateTimeline() {
             buildTimeline();
