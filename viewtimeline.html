@@ -1931,32 +1931,31 @@ window.submitInlineInvoice = async function() {
             });
         }
 
-        window.confirmPartialCompletion = async function() {
+window.confirmPartialCompletion = async function() {
     if (!currentJob) return;
 
     const jobLength = currentJob.jobLength || 1;
-    let newStatus = 'In-Progress';
 
     console.log('Confirming partial completion. Selected days:', selectedCompletionDays, 'Job length:', jobLength);
 
-    if (selectedCompletionDays.length === jobLength) {
-        newStatus = 'Complete';
-    } else if (selectedCompletionDays.length > 0) {
-        newStatus = 'In-Progress';
+    // Validate that at least one day is selected
+    if (selectedCompletionDays.length === 0) {
+        showToast('Please select at least one day to complete', 'error');
+        return;
     }
 
-    // If fully complete, show invoice section
-    if (newStatus === 'Complete') {
+    // If ALL days are selected, show invoice section
+    if (selectedCompletionDays.length === jobLength) {
         // Hide completion selector, show invoice section
         document.getElementById('completion-selector').style.display = 'none';
         showInlineInvoiceSection();
         return;
     }
 
-    // For partial completion, update normally
+    // For PARTIAL completion (not all days), update to In-Progress
     const jobId = currentJob.id;
     closeStatusModal();
-    await updateJobStatusInDB(jobId, newStatus, selectedCompletionDays);
+    await updateJobStatusInDB(jobId, 'In-Progress', selectedCompletionDays);
     buildTimeline();
 }
 
