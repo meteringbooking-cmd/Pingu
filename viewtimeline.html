@@ -888,7 +888,7 @@
             
             <div class="debug-info" id="email-notifications" style="display: block; background: linear-gradient(135deg, rgba(78, 236, 163, 0.1), rgba(0, 217, 255, 0.1)); border: 2px solid var(--success);">
                 <strong>📧 Email Notifications Active</strong><br>
-                <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete. Arrows (→) connect split job segments.</span>
+                <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete. Arrows (→) connect split job segments on the same row.</span>
             </div>
         </div>
        
@@ -1642,6 +1642,9 @@
             const jobPlacements = [];
             const arrows = [];
             
+            // Group jobs by ID to track segments of the same job
+            const jobSegments = new Map();
+            
             sortedJobs.forEach(job => {
                 const jobStart = new Date(job.parsedDate);
                 jobStart.setHours(0, 0, 0, 0);
@@ -1720,53 +1723,101 @@
                     });
                 }
                 
-                // Place each segment
-                segments.forEach((segment, segmentIndex) => {
-                    let targetRow = 0;
+                // KEY CHANGE: For split jobs, find a single row that can fit ALL segments
+                let targetRow = null;
+                
+                if (segments.length > 1) {
+                    // Find a row where ALL segments can fit
+                    let rowIndex = 0;
+                    let foundValidRow = false;
+                    
+                    while (!foundValidRow) {
+                        if (!gridOccupancy[rowIndex]) {
+                            gridOccupancy[rowIndex] = new Array(numCols).fill(false);
+                        }
+                        
+                        // Check if ALL segments can fit in this row
+                        let allSegmentsFit = true;
+                        for (const segment of segments) {
+                            for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
+                                if (col < numCols && gridOccupancy[rowIndex][col]) {
+                                    allSegmentsFit = false;
+                                    break;
+                                }
+                            }
+                            if (!allSegmentsFit) break;
+                        }
+                        
+                        if (allSegmentsFit) {
+                            targetRow = rowIndex;
+                            foundValidRow = true;
+                            
+                            // Mark all cells for all segments as occupied
+                            for (const segment of segments) {
+                                for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
+                                    if (col < numCols) {
+                                        gridOccupancy[rowIndex][col] = true;
+                                    }
+                                }
+                            }
+                        } else {
+                            rowIndex++;
+                        }
+                    }
+                } else {
+                    // Single segment - use normal placement logic
+                    const segment = segments[0];
+                    let rowIndex = 0;
                     let foundRow = false;
                     
                     while (!foundRow) {
-                        if (!gridOccupancy[targetRow]) {
-                            gridOccupancy[targetRow] = new Array(numCols).fill(false);
+                        if (!gridOccupancy[rowIndex]) {
+                            gridOccupancy[rowIndex] = new Array(numCols).fill(false);
                         }
                         
                         let hasSpace = true;
                         for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
-                            if (gridOccupancy[targetRow][col]) {
+                            if (col < numCols && gridOccupancy[rowIndex][col]) {
                                 hasSpace = false;
                                 break;
                             }
                         }
                         
                         if (hasSpace) {
+                            targetRow = rowIndex;
                             for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
-                                gridOccupancy[targetRow][col] = true;
+                                if (col < numCols) {
+                                    gridOccupancy[rowIndex][col] = true;
+                                }
                             }
                             foundRow = true;
-                            
-                            jobPlacements.push({
-                                job: job,
-                                row: targetRow,
-                                col: segment.startCol,
-                                span: segment.span,
-                                isFirst: segment.isFirst,
-                                isLast: segment.isLast,
-                                segmentIndex: segmentIndex
-                            });
-                            
-                            // Create arrow if this is not the last segment
-                            if (!segment.isLast && segmentIndex < segments.length - 1) {
-                                const nextSegment = segments[segmentIndex + 1];
-                                arrows.push({
-                                    fromCol: segment.startCol + segment.span,
-                                    toCol: nextSegment.startCol,
-                                    row: targetRow,
-                                    jobId: job.id
-                                });
-                            }
                         } else {
-                            targetRow++;
+                            rowIndex++;
                         }
+                    }
+                }
+                
+                // Place all segments in the target row
+                segments.forEach((segment, segmentIndex) => {
+                    jobPlacements.push({
+                        job: job,
+                        row: targetRow,
+                        col: segment.startCol,
+                        span: segment.span,
+                        isFirst: segment.isFirst,
+                        isLast: segment.isLast,
+                        segmentIndex: segmentIndex
+                    });
+                    
+                    // Create arrow if this is not the last segment
+                    if (!segment.isLast && segmentIndex < segments.length - 1) {
+                        const nextSegment = segments[segmentIndex + 1];
+                        arrows.push({
+                            fromCol: segment.startCol + segment.span,
+                            toCol: nextSegment.startCol,
+                            row: targetRow,
+                            jobId: job.id
+                        });
                     }
                 });
             });
