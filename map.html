@@ -492,6 +492,7 @@
         let markersLayer;
         let allJobs = [];
         let unsubscribe = null;
+        let isFirstLoad = true;
        
         // Initialize map centered on UK
         function initMap() {
@@ -518,7 +519,7 @@
 
             // Listen for real-time updates
             unsubscribe = onSnapshot(jobsQuery, async (snapshot) => {
-                console.log('🔄 Data updated, processing changes...');
+                console.log('🔄 Data updated from Firebase');
                 
                 allJobs = [];
                 snapshot.forEach((docSnap) => {
@@ -530,32 +531,21 @@
                 
                 console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs collection`);
                 
-                // Only geocode jobs that don't have coordinates yet
-                // Since coordinates are now stored in Firebase, we won't re-geocode on status updates
-                await geocodeJobs();
+                // On first load, geocode missing postcodes
+                // On subsequent updates, just update the map with new colors
+                if (isFirstLoad) {
+                    await geocodeJobs();
+                    isFirstLoad = false;
+                } else {
+                    console.log('📍 Updating map with status changes (no re-geocoding)');
+                }
                 
-                // Update map (this just changes colors, doesn't re-geocode)
                 updateMap();
             }, (error) => {
                 console.error('Error in real-time listener:', error);
             });
         }
        
-        // Get Monday of previous week
-        function getMondayOfPreviousWeek() {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-            
-            const currentDay = now.getDay();
-            const daysToSubtract = currentDay === 0 ? 13 : (currentDay + 6);
-            
-            const mondayPrevWeek = new Date(now);
-            mondayPrevWeek.setDate(now.getDate() - daysToSubtract);
-            mondayPrevWeek.setHours(0, 0, 0, 0);
-            
-            return mondayPrevWeek;
-        }
-
         // Get Monday of current week
         function getMondayOfCurrentWeek() {
             const now = new Date();
@@ -662,9 +652,9 @@
             return { color: '#000000', flashing: false };
         }
        
-        // Geocode postcodes for current week only - and SAVE to Firebase
+        // Geocode postcodes for current week only - saves to Firebase
         async function geocodeJobs() {
-            console.log('Checking for jobs that need geocoding...');
+            console.log('🔍 Checking for postcodes that need geocoding...');
             
             const statusEl = document.getElementById('geocoding-status');
             const progressEl = document.getElementById('geocoding-progress');
@@ -675,10 +665,15 @@
             endDate.setDate(endDate.getDate() + 6); // Sunday of current week
             endDate.setHours(23, 59, 59, 999);
             
-            // Filter jobs that need geocoding (within current week and no coordinates in Firebase)
+            // Filter jobs that need geocoding (within current week and no coordinates)
             const jobsNeedingGeocode = allJobs.filter(job => {
                 const postcode = job['Postcode'] || job.Postcode;
-                if (!postcode || job.coordinates) return false; // Skip if no postcode or already has coordinates
+                if (!postcode) return false;
+                
+                // Check if coordinates already exist in Firebase
+                if (job.geocoded_lat !== undefined && job.geocoded_lng !== undefined) {
+                    return false;
+                }
                 
                 const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const jobDate = parseDate(dateStr);
@@ -687,16 +682,16 @@
             });
 
             if (jobsNeedingGeocode.length === 0) {
-                console.log('✅ No jobs need geocoding - all current week jobs have coordinates');
+                console.log('✅ All postcodes already geocoded!');
                 return;
             }
 
-            console.log(`📍 Found ${jobsNeedingGeocode.length} jobs needing geocoding`);
-            
+            console.log(`📍 Need to geocode ${jobsNeedingGeocode.length} postcodes`);
             statusEl.style.display = 'block';
             statusEl.classList.add('active');
 
             let geocoded = 0;
+            const { doc, updateDoc } = window.firebaseModules;
            
             for (let job of jobsNeedingGeocode) {
                 const postcode = job['Postcode'] || job.Postcode;
@@ -706,13 +701,21 @@
                 
                 const coords = await geocodePostcode(postcode);
                 if (coords) {
-                    // Save to memory
-                    job.coordinates = coords;
-                    
-                    // Save to Firebase so we don't need to geocode again
-                    await saveCoordinatesToFirebase(job.id, coords);
-                    
-                    console.log(`✅ Geocoded and saved ${postcode}:`, coords);
+                    // Save coordinates to Firebase
+                    try {
+                        await updateDoc(doc(window.db, 'Solar-jobs', job.id), {
+                            geocoded_lat: coords.lat,
+                            geocoded_lng: coords.lng
+                        });
+                        
+                        // Update local copy
+                        job.geocoded_lat = coords.lat;
+                        job.geocoded_lng = coords.lng;
+                        
+                        console.log(`✅ Geocoded and saved ${postcode}:`, coords);
+                    } catch (error) {
+                        console.error(`❌ Failed to save coordinates for ${postcode}:`, error);
+                    }
                 } else {
                     console.warn(`❌ Failed to geocode ${postcode}`);
                 }
@@ -726,23 +729,7 @@
                 statusEl.style.display = 'none';
             }, 2000);
             
-            console.log(`✅ Geocoding complete. ${geocoded} postcodes processed and saved.`);
-        }
-
-        // Save coordinates to Firebase
-        async function saveCoordinatesToFirebase(jobId, coordinates) {
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-                
-                await updateDoc(jobRef, {
-                    coordinates: coordinates
-                });
-                
-                console.log(`💾 Saved coordinates for job ${jobId}`);
-            } catch (error) {
-                console.error(`❌ Failed to save coordinates for job ${jobId}:`, error);
-            }
+            console.log(`✅ Geocoding complete. ${geocoded} postcodes processed and saved to Firebase.`);
         }
        
         async function geocodePostcode(postcode) {
@@ -786,11 +773,13 @@
                 return d && d >= startDate && d <= endDate;
             });
            
-            // Only jobs with coordinates
-            const withCoords = filtered.filter(j => j.coordinates);
+            // Only jobs with coordinates (from Firebase)
+            const withCoords = filtered.filter(j => 
+                j.geocoded_lat !== undefined && j.geocoded_lng !== undefined
+            );
            
             // Stats
-            const uniqueLocs = new Set(withCoords.map(j => `${j.coordinates.lat.toFixed(4)},${j.coordinates.lng.toFixed(4)}`));
+            const uniqueLocs = new Set(withCoords.map(j => `${j.geocoded_lat.toFixed(4)},${j.geocoded_lng.toFixed(4)}`));
            
             document.getElementById('jobs-count').textContent = filtered.length;
             document.getElementById('locations-count').textContent = uniqueLocs.size;
@@ -839,7 +828,7 @@
             if (heatLayer) map.removeLayer(heatLayer);
            
             // Heatmap data: [lat, lng, intensity]
-            const heatPoints = withCoords.map(j => [j.coordinates.lat, j.coordinates.lng, 1]);
+            const heatPoints = withCoords.map(j => [j.geocoded_lat, j.geocoded_lng, 1]);
            
             if (heatPoints.length > 0) {
                 heatLayer = L.heatLayer(heatPoints, {
@@ -854,7 +843,7 @@
             withCoords.forEach(job => {
                 const colorData = getMarkerColor(job);
                 
-                const marker = L.circleMarker([job.coordinates.lat, job.coordinates.lng], {
+                const marker = L.circleMarker([job.geocoded_lat, job.geocoded_lng], {
                     radius: 8,
                     fillColor: colorData.color,
                     color: colorData.flashing ? '#FF0000' : '#000000',
@@ -886,7 +875,7 @@
            
             // Auto-fit bounds if jobs exist
             if (withCoords.length > 0) {
-                const bounds = L.latLngBounds(withCoords.map(j => [j.coordinates.lat, j.coordinates.lng]));
+                const bounds = L.latLngBounds(withCoords.map(j => [j.geocoded_lat, j.geocoded_lng]));
                 map.fitBounds(bounds, { padding: [60, 60] });
             } else {
                 // Reset to UK view if no jobs
