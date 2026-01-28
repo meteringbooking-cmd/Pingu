@@ -475,6 +475,20 @@
             background: rgba(102, 126, 234, 0.25);
             border-color: rgba(102, 126, 234, 0.5);
         }
+        .job-number-item.highlighted {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            }
+        }
         .job-numbers-grid::-webkit-scrollbar {
             width: 8px;
         }
@@ -1330,24 +1344,31 @@
                     performerData[name] = {
                         total: 0,
                         codes: {},
-                        jobNumbers: []
+                        jobNumbers: [],
+                        jobNumberCodes: {} // Track which codes are in each J Ref
                     };
                 }
 
                 // Check if this row has any selected fail codes
                 let hasFailCode = false;
+                const codesInThisRow = [];
                 for (let i = 1; i <= 12; i++) {
                     const code = row[`Fail Code ${i}`];
                     if (code && selectedCodes.has(code)) {
                         hasFailCode = true;
+                        codesInThisRow.push(code);
                         performerData[name].total++;
                         performerData[name].codes[code] = (performerData[name].codes[code] || 0) + 1;
                     }
                 }
 
-                // If this row had fail codes, add the J Ref
+                // If this row had fail codes, add the J Ref and track its codes
                 if (hasFailCode) {
                     performerData[name].jobNumbers.push(jRef);
+                    if (!performerData[name].jobNumberCodes[jRef]) {
+                        performerData[name].jobNumberCodes[jRef] = [];
+                    }
+                    performerData[name].jobNumberCodes[jRef].push(...codesInThisRow);
                 }
             });
 
@@ -1367,7 +1388,7 @@
                     .sort((a, b) => b[1] - a[1]);
 
                 const codesHTML = sortedCodes.map(([code, count]) => `
-                    <div class="fail-code-item" data-code="${code}">
+                    <div class="fail-code-item" data-code="${code}" data-performer-index="${index}">
                         <div class="fail-code-name">${getColorBadge(code)} ${code}</div>
                         <div class="fail-code-count">${count}</div>
                     </div>
@@ -1376,12 +1397,13 @@
                 // Sort job numbers and keep all instances (including duplicates)
                 const jobNumbersArray = data.jobNumbers.sort();
                 const uniqueCount = new Set(jobNumbersArray).size;
-                const jobNumbersHTML = jobNumbersArray.map(jobNum => `
-                    <div class="job-number-item">${jobNum}</div>
-                `).join('');
+                const jobNumbersHTML = jobNumbersArray.map((jobNum, jIndex) => {
+                    const codes = data.jobNumberCodes[jobNum] || [];
+                    return `<div class="job-number-item" data-jref="${jobNum}" data-codes="${codes.join(',')}">${jobNum}</div>`;
+                }).join('');
 
                 return `
-                    <div class="performer-card">
+                    <div class="performer-card" data-performer-index="${index}">
                         <div class="performer-header">
                             <div class="performer-name-section">
                                 <div class="performer-name">${name}</div>
@@ -1426,9 +1448,61 @@
 
         function showTooltip(e) {
             const code = e.currentTarget.dataset.code;
+            const performerIndex = e.currentTarget.dataset.performerIndex;
             const description = FAIL_CODE_DESCRIPTIONS[code];
             
+            // If this is from a performer card, highlight matching job numbers
+            if (performerIndex !== undefined) {
+                highlightJobNumbers(performerIndex, code);
+            }
+            
+            // If hovering on a fail code in a performer card, don't show team rankings
             if (!description && code) {
+                // Only show tooltip if NOT in performer card
+                if (performerIndex === undefined) {
+                    const startDate = document.getElementById('startDate').valueAsDate;
+                    const endDate = document.getElementById('endDate').valueAsDate;
+                    const selectedTeam = document.getElementById('teamFilter').value;
+
+                    const filtered = allData.filter(row => {
+                        const rowDate = parseDate(row['Date received']);
+                        const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                         (rowDate >= startDate && rowDate <= endDate);
+                        const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                        const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                        return dateMatch && teamMatch && teamNumberMatch;
+                    });
+
+                    const teamRankings = getTeamsByFailCode(filtered, code);
+                    
+                    if (teamRankings.length === 0) return;
+
+                    tooltip.querySelector('.tooltip-code').textContent = code;
+                    tooltip.querySelector('.tooltip-description').textContent = '';
+                    
+                    const teamsHTML = `
+                        <div class="tooltip-teams-title">Top Teams:</div>
+                        ${teamRankings.map(([team, count]) => `
+                            <div class="team-list-item">
+                                <span class="team-name">${team}</span>
+                                <span class="team-count">${count}</span>
+                            </div>
+                        `).join('')}
+                    `;
+                    tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
+                    tooltip.classList.add('show');
+                    moveTooltip(e);
+                }
+                return;
+            }
+
+            if (!description) return;
+
+            tooltip.querySelector('.tooltip-code').textContent = code;
+            tooltip.querySelector('.tooltip-description').textContent = description;
+            
+            // Only show team rankings if NOT in performer card
+            if (performerIndex === undefined) {
                 const startDate = document.getElementById('startDate').valueAsDate;
                 const endDate = document.getElementById('endDate').valueAsDate;
                 const selectedTeam = document.getElementById('teamFilter').value;
@@ -1443,13 +1517,8 @@
                 });
 
                 const teamRankings = getTeamsByFailCode(filtered, code);
-                
-                if (teamRankings.length === 0) return;
 
-                tooltip.querySelector('.tooltip-code').textContent = code;
-                tooltip.querySelector('.tooltip-description').textContent = '';
-                
-                const teamsHTML = `
+                const teamsHTML = teamRankings.length > 0 ? `
                     <div class="tooltip-teams-title">Top Teams:</div>
                     ${teamRankings.map(([team, count]) => `
                         <div class="team-list-item">
@@ -1457,46 +1526,35 @@
                             <span class="team-count">${count}</span>
                         </div>
                     `).join('')}
-                `;
+                ` : '';
                 tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
-                tooltip.classList.add('show');
-                moveTooltip(e);
-                return;
+            } else {
+                // Clear teams section for performer cards
+                tooltip.querySelector('.tooltip-teams').innerHTML = '';
             }
-
-            if (!description) return;
-
-            const startDate = document.getElementById('startDate').valueAsDate;
-            const endDate = document.getElementById('endDate').valueAsDate;
-            const selectedTeam = document.getElementById('teamFilter').value;
-
-            const filtered = allData.filter(row => {
-                const rowDate = parseDate(row['Date received']);
-                const dateMatch = (!startDate || !endDate || !rowDate) || 
-                                 (rowDate >= startDate && rowDate <= endDate);
-                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-                const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
-                return dateMatch && teamMatch && teamNumberMatch;
-            });
-
-            const teamRankings = getTeamsByFailCode(filtered, code);
-
-            tooltip.querySelector('.tooltip-code').textContent = code;
-            tooltip.querySelector('.tooltip-description').textContent = description;
-            
-            const teamsHTML = teamRankings.length > 0 ? `
-                <div class="tooltip-teams-title">Top Teams:</div>
-                ${teamRankings.map(([team, count]) => `
-                    <div class="team-list-item">
-                        <span class="team-name">${team}</span>
-                        <span class="team-count">${count}</span>
-                    </div>
-                `).join('')}
-            ` : '';
-            tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
             
             tooltip.classList.add('show');
             moveTooltip(e);
+        }
+
+        function highlightJobNumbers(performerIndex, code) {
+            // Clear all previous highlights
+            document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
+                item.classList.remove('highlighted');
+            });
+
+            // Find the performer card
+            const performerCard = document.querySelector(`.performer-card[data-performer-index="${performerIndex}"]`);
+            if (!performerCard) return;
+
+            // Highlight job numbers that have this code
+            const jobNumberItems = performerCard.querySelectorAll('.job-number-item');
+            jobNumberItems.forEach(item => {
+                const codes = item.dataset.codes.split(',');
+                if (codes.includes(code)) {
+                    item.classList.add('highlighted');
+                }
+            });
         }
 
         function moveTooltip(e) {
@@ -1517,6 +1575,10 @@
 
         function hideTooltip() {
             tooltip.classList.remove('show');
+            // Clear highlights when tooltip is hidden
+            document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
+                item.classList.remove('highlighted');
+            });
         }
 
         // Initialize with no data message
