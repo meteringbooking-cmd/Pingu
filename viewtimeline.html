@@ -1249,6 +1249,7 @@
             updateData.completedTimestamp = new Date().toISOString();
         }
        
+        console.log('Updating job with data:', updateData);
         await updateDoc(jobRef, updateData);
        
         const job = allJobs.find(j => j.id === jobId);
@@ -1444,7 +1445,7 @@ window.showInlineInvoiceSection = function() {
     }, 100);
 }
 
-// Submit invoice and mark job as complete
+// Submit invoice and mark job as complete - FIXED VERSION
 window.submitInlineInvoice = async function() {
     if (!currentJob) return;
 
@@ -1459,15 +1460,25 @@ window.submitInlineInvoice = async function() {
 
     const jobId = currentJob.id;
     const jobNumber = currentJob['Job Number'] || 'N/A';
+    const jobLength = currentJob.jobLength || 1;
 
     try {
         const { doc, updateDoc } = window.firebaseModules;
         const jobRef = doc(window.db, 'Solar-jobs', jobId);
         
         console.log(`Saving invoice and completing job ID: ${jobId}, Job Number: ${jobNumber}`);
+        console.log(`Job length: ${jobLength}, Selected days:`, selectedCompletionDays);
         
-        // Determine if this is a multi-day job with selected days
-        const completedDays = selectedCompletionDays.length > 0 ? selectedCompletionDays : null;
+        // For multi-day jobs, use selectedCompletionDays
+        // For single-day jobs, create array with day 1
+        let completedDays;
+        if (jobLength > 1) {
+            completedDays = selectedCompletionDays.length > 0 ? selectedCompletionDays : Array.from({length: jobLength}, (_, i) => i + 1);
+        } else {
+            completedDays = [1];
+        }
+        
+        console.log(`Storing completed days:`, completedDays);
         
         // Update with both invoice data and completion status
         await updateDoc(jobRef, {
@@ -1488,9 +1499,7 @@ window.submitInlineInvoice = async function() {
             job.invoiceOctopus = invoiceOctopus;
             job.invoiceLead = invoiceLead;
             job.invoiceSubmittedAt = new Date().toISOString();
-            if (completedDays) {
-                job.completedDays = completedDays;
-            }
+            job.completedDays = completedDays;
             
             // Send completion email
             await sendJobCompletionEmail(job);
@@ -1823,6 +1832,8 @@ window.submitInlineInvoice = async function() {
             currentJob = job;
             selectedCompletionDays = [...(job.completedDays || [])];
            
+            console.log(`Opening modal for job: ${job['Job Number']}, completedDays:`, job.completedDays, 'selectedCompletionDays:', selectedCompletionDays);
+            
             document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
             document.getElementById('status-address').textContent = job['Address'] || 'N/A';
             document.getElementById('status-postcode').textContent = job['Postcode'] || 'N/A';
@@ -1907,6 +1918,8 @@ window.submitInlineInvoice = async function() {
             }
             selectedCompletionDays.sort((a, b) => a - b);
 
+            console.log('Updated selectedCompletionDays:', selectedCompletionDays);
+
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const text = btn.textContent;
                 const num = parseInt(text.replace('Day ', ''));
@@ -1923,6 +1936,8 @@ window.submitInlineInvoice = async function() {
 
     const jobLength = currentJob.jobLength || 1;
     let newStatus = 'In-Progress';
+
+    console.log('Confirming partial completion. Selected days:', selectedCompletionDays, 'Job length:', jobLength);
 
     if (selectedCompletionDays.length === jobLength) {
         newStatus = 'Complete';
