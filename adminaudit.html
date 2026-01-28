@@ -1078,18 +1078,12 @@
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-// Try multiple possible field names for status with better logging
-let status = 'Scheduled';
+// Get status from Status Update field (ignore old 'status' field)
+let status = data['Status Update'] || data['StatusUpdate'] || 'Scheduled';
 
-// Check all possible variations of the status field
-if (data['Status Update']) {
-    status = data['Status Update'];
-} else if (data['StatusUpdate']) {
-    status = data['StatusUpdate'];
-} else if (data['status']) {
-    status = data['status'];
-} else if (data['Status']) {
-    status = data['Status'];
+// Debug log to verify we're getting the right field
+if (allJobs.length < 3) {
+    console.log(`Job #${data['Job Number']}: Using status = "${status}" from 'Status Update' field`);
 }
 
 // Log first few jobs to debug what field exists
