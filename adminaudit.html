@@ -697,6 +697,18 @@
             border-color: var(--primary);
         }
 
+        .auto-save-indicator {
+            font-size: 0.75rem;
+            color: var(--success);
+            margin-top: 0.3rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .auto-save-indicator.show {
+            opacity: 1;
+        }
+
         .confirm-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -928,6 +940,7 @@
                             class="notes-textarea" 
                             placeholder="Add notes about the audit..."
                         ></textarea>
+                        <div class="auto-save-indicator" id="auto-save-indicator">💾 Notes auto-saved</div>
                     </div>
                 </div>
 
@@ -980,6 +993,7 @@
         let filteredJobs = [];
         let currentJob = null;
         let pendingAuditStatus = null;
+        let autoSaveTimeout = null;
 
         function parseDate(dateStr) {
             if (!dateStr) return null;
@@ -1016,6 +1030,38 @@
             });
         }
 
+        // Auto-save notes to localStorage
+        function autoSaveNotes() {
+            if (!currentJob) return;
+            
+            const notes = document.getElementById('audit-notes').value;
+            const key = `audit_notes_${currentJob.id}`;
+            
+            localStorage.setItem(key, notes);
+            
+            // Show auto-save indicator
+            const indicator = document.getElementById('auto-save-indicator');
+            indicator.classList.add('show');
+            
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 2000);
+            
+            console.log('Auto-saved notes for job:', currentJob.jobNumber);
+        }
+
+        // Load saved notes from localStorage
+        function loadSavedNotes(jobId) {
+            const key = `audit_notes_${jobId}`;
+            return localStorage.getItem(key) || '';
+        }
+
+        // Clear saved notes from localStorage
+        function clearSavedNotes(jobId) {
+            const key = `audit_notes_${jobId}`;
+            localStorage.removeItem(key);
+        }
+
         window.loadAllJobs = async function() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
@@ -1031,6 +1077,8 @@
                 
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
+                    
+                    // FIXED: Properly get status from Status Update field
                     const status = data['Status Update'] || data['status'] || 'Scheduled';
                     
                     const dateFields = ['Booked Date', 'Projected Completion Date', 'Install Date'];
@@ -1081,7 +1129,7 @@
                         jobType: data['Job Type'] || 'Standard',
                         completionDate: displayDate,
                         completedTimestamp: completedTimestamp,
-                        status: status,
+                        status: status,  // This now properly gets Status Update
                         auditStatus: data['auditStatus'] || 'pending',
                         auditNotes: data['auditNotes'] || '',
                         auditDate: data['auditDate'] ? parseDate(data['auditDate']) : null,
@@ -1090,6 +1138,10 @@
                 });
                
                 console.log(`✅ Loaded ${allJobs.length} jobs from database`);
+                console.log('Sample job statuses:', allJobs.slice(0, 5).map(j => ({
+                    number: j.jobNumber,
+                    status: j.status
+                })));
                 
                 // Apply default filter based on audit status selector
                 applyFilters();
@@ -1299,7 +1351,22 @@
             else if (job.auditStatus === 'in-progress') statusText = 'Audit - In Progress';
             
             document.getElementById('modal-current-status').textContent = statusText;
-            document.getElementById('audit-notes').value = job.auditNotes || '';
+            
+            // Load saved notes from localStorage first, fallback to Firebase data
+            const savedNotes = loadSavedNotes(job.id);
+            document.getElementById('audit-notes').value = savedNotes || job.auditNotes || '';
+
+            // Set up auto-save on notes textarea
+            const notesTextarea = document.getElementById('audit-notes');
+            notesTextarea.oninput = function() {
+                // Clear existing timeout
+                if (autoSaveTimeout) {
+                    clearTimeout(autoSaveTimeout);
+                }
+                
+                // Set new timeout to save after 1 second of inactivity
+                autoSaveTimeout = setTimeout(autoSaveNotes, 1000);
+            };
 
             document.getElementById('confirm-actions').style.display = 'none';
             document.getElementById('audit-modal').classList.add('show');
@@ -1307,6 +1374,11 @@
 
         window.closeAuditModal = function() {
             document.getElementById('audit-modal').classList.remove('show');
+            
+            // Clear the input handler
+            const notesTextarea = document.getElementById('audit-notes');
+            notesTextarea.oninput = null;
+            
             currentJob = null;
             pendingAuditStatus = null;
         }
@@ -1359,6 +1431,9 @@
                 currentJob.auditStatus = pendingAuditStatus;
                 currentJob.auditNotes = notes;
                 currentJob.auditDate = new Date();
+
+                // Clear saved notes from localStorage after successful save
+                clearSavedNotes(currentJob.id);
 
                 let statusLabel = 'pending';
                 if (pendingAuditStatus === 'pass') statusLabel = 'No Issues';
