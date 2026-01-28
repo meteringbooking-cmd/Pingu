@@ -587,12 +587,15 @@
                     <option value="all">All Teams</option>
                 </select>
             </div>
-            <div class="control-group">
-    <label for="teamNumberFilter">Team Number</label>
-    <select id="teamNumberFilter">
-        <option value="all">All Team Numbers</option>
-    </select>
-</div>
+        </div>
+
+        <div class="fail-code-filter" id="teamNumberFilter" style="display: none;">
+            <h3>👥 Filter Team Numbers</h3>
+            <div class="filter-actions">
+                <button onclick="selectAllTeamNumbers()">Select All</button>
+                <button onclick="deselectAllTeamNumbers()">Deselect All</button>
+            </div>
+            <div class="checkbox-grid" id="teamNumberCheckboxGrid"></div>
         </div>
 
         <div class="fail-code-filter" id="failCodeFilter" style="display: none;">
@@ -816,12 +819,12 @@
         let chart = null;
         const tooltip = document.getElementById('tooltip');
         let selectedCodes = new Set(FAIL_CODES); // All codes selected by default
+        let selectedTeamNumbers = new Set(); // Will be populated when file is loaded
 
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
         document.getElementById('startDate').addEventListener('change', updateDashboard);
         document.getElementById('endDate').addEventListener('change', updateDashboard);
         document.getElementById('teamFilter').addEventListener('change', updateDashboard);
-        document.getElementById('teamNumberFilter').addEventListener('change', updateDashboard);
 
         function getColorBadge(code) {
             const color = FAIL_CODE_COLORS[code] || 'purple';
@@ -838,43 +841,74 @@
             `).join('');
         }
 
+        function initializeTeamNumberCheckboxes() {
+            const teamNumbers = [...new Set(allData.map(r => r['Team Number']).filter(Boolean))].sort();
+            selectedTeamNumbers = new Set(teamNumbers); // Select all by default
+            
+            const grid = document.getElementById('teamNumberCheckboxGrid');
+            grid.innerHTML = teamNumbers.map(teamNumber => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="teamnum-${teamNumber}" value="${teamNumber}" checked onchange="handleTeamNumberToggle()">
+                    <label for="teamnum-${teamNumber}">${teamNumber}</label>
+                </div>
+            `).join('');
+        }
+
         function handleCodeToggle() {
             selectedCodes.clear();
-            document.querySelectorAll('.checkbox-item input:checked').forEach(checkbox => {
+            document.querySelectorAll('#checkboxGrid input:checked').forEach(checkbox => {
                 selectedCodes.add(checkbox.value);
             });
             updateDashboard();
         }
 
+        function handleTeamNumberToggle() {
+            selectedTeamNumbers.clear();
+            document.querySelectorAll('#teamNumberCheckboxGrid input:checked').forEach(checkbox => {
+                selectedTeamNumbers.add(checkbox.value);
+            });
+            updateDashboard();
+        }
+
         function selectAllCodes() {
-            document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = true);
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => cb.checked = true);
             handleCodeToggle();
         }
 
         function deselectAllCodes() {
-            document.querySelectorAll('.checkbox-item input').forEach(cb => cb.checked = false);
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => cb.checked = false);
             handleCodeToggle();
         }
 
         function selectRedCodes() {
-            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
                 cb.checked = FAIL_CODE_COLORS[cb.value] === 'red';
             });
             handleCodeToggle();
         }
 
         function selectAmberCodes() {
-            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
                 cb.checked = FAIL_CODE_COLORS[cb.value] === 'amber';
             });
             handleCodeToggle();
         }
 
         function selectPurpleCodes() {
-            document.querySelectorAll('.checkbox-item input').forEach(cb => {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
                 cb.checked = FAIL_CODE_COLORS[cb.value] === 'purple';
             });
             handleCodeToggle();
+        }
+
+        function selectAllTeamNumbers() {
+            document.querySelectorAll('#teamNumberCheckboxGrid input').forEach(cb => cb.checked = true);
+            handleTeamNumberToggle();
+        }
+
+        function deselectAllTeamNumbers() {
+            document.querySelectorAll('#teamNumberCheckboxGrid input').forEach(cb => cb.checked = false);
+            handleTeamNumberToggle();
         }
 
         function handleFileUpload(e) {
@@ -903,9 +937,10 @@
                     console.log('Team values:', allData.map(r => r['Team']).slice(0, 10));
 
                     initializeCheckboxes();
+                    initializeTeamNumberCheckboxes();
                     populateTeamFilter();
-populateTeamNumberFilter();
-setDefaultDateRange();
+                    setDefaultDateRange();
+                    document.getElementById('teamNumberFilter').style.display = 'block';
                     document.getElementById('failCodeFilter').style.display = 'block';
                     updateDashboard();
                 },
@@ -924,18 +959,6 @@ setDefaultDateRange();
                 select.appendChild(option);
             });
         }
-
-        function populateTeamNumberFilter() {
-    const teamNumbers = [...new Set(allData.map(r => r['Team Number']).filter(Boolean))].sort();
-    const select = document.getElementById('teamNumberFilter');
-    select.innerHTML = '<option value="all">All Team Numbers</option>';
-    teamNumbers.forEach(teamNumber => {
-        const option = document.createElement('option');
-        option.value = teamNumber;
-        option.textContent = teamNumber;
-        select.appendChild(option);
-    });
-}
 
         function setDefaultDateRange() {
             const dates = allData
@@ -990,18 +1013,17 @@ setDefaultDateRange();
             document.getElementById('stats').style.display = 'grid';
 
             const startDate = document.getElementById('startDate').valueAsDate;
-const endDate = document.getElementById('endDate').valueAsDate;
-const selectedTeam = document.getElementById('teamFilter').value;
-const selectedTeamNumber = document.getElementById('teamNumberFilter').value;
+            const endDate = document.getElementById('endDate').valueAsDate;
+            const selectedTeam = document.getElementById('teamFilter').value;
 
-const filtered = allData.filter(row => {
-    const rowDate = parseDate(row['Date received']);
-    const dateMatch = (!startDate || !endDate || !rowDate) || 
-                     (rowDate >= startDate && rowDate <= endDate);
-    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-    const teamNumberMatch = selectedTeamNumber === 'all' || row['Team Number'] === selectedTeamNumber;
-    return dateMatch && teamMatch && teamNumberMatch;
-});
+            const filtered = allData.filter(row => {
+                const rowDate = parseDate(row['Date received']);
+                const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                 (rowDate >= startDate && rowDate <= endDate);
+                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                return dateMatch && teamMatch && teamNumberMatch;
+            });
 
             updateStats(filtered, startDate, endDate);
             updateChart(filtered);
@@ -1279,20 +1301,18 @@ const filtered = allData.filter(row => {
             const description = FAIL_CODE_DESCRIPTIONS[code];
             
             if (!description && code) {
-                // If no description but we have a code, still show team rankings
                 const startDate = document.getElementById('startDate').valueAsDate;
                 const endDate = document.getElementById('endDate').valueAsDate;
                 const selectedTeam = document.getElementById('teamFilter').value;
-const selectedTeamNumber = document.getElementById('teamNumberFilter').value;
 
-const filtered = allData.filter(row => {
-    const rowDate = parseDate(row['Date received']);
-    const dateMatch = (!startDate || !endDate || !rowDate) || 
-                     (rowDate >= startDate && rowDate <= endDate);
-    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-    const teamNumberMatch = selectedTeamNumber === 'all' || row['Team Number'] === selectedTeamNumber;
-    return dateMatch && teamMatch && teamNumberMatch;
-});
+                const filtered = allData.filter(row => {
+                    const rowDate = parseDate(row['Date received']);
+                    const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                     (rowDate >= startDate && rowDate <= endDate);
+                    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                    const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                    return dateMatch && teamMatch && teamNumberMatch;
+                });
 
                 const teamRankings = getTeamsByFailCode(filtered, code);
                 
@@ -1318,7 +1338,6 @@ const filtered = allData.filter(row => {
 
             if (!description) return;
 
-            // Get team rankings for this fail code
             const startDate = document.getElementById('startDate').valueAsDate;
             const endDate = document.getElementById('endDate').valueAsDate;
             const selectedTeam = document.getElementById('teamFilter').value;
@@ -1328,7 +1347,8 @@ const filtered = allData.filter(row => {
                 const dateMatch = (!startDate || !endDate || !rowDate) || 
                                  (rowDate >= startDate && rowDate <= endDate);
                 const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
-                return dateMatch && teamMatch;
+                const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                return dateMatch && teamMatch && teamNumberMatch;
             });
 
             const teamRankings = getTeamsByFailCode(filtered, code);
