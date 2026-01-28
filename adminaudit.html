@@ -1078,8 +1078,27 @@
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-                    // FIXED: Properly get status from Status Update field
-                    const status = data['Status Update'] || data['status'] || 'Scheduled';
+// Try multiple possible field names for status with better logging
+let status = 'Scheduled';
+
+// Check all possible variations of the status field
+if (data['Status Update']) {
+    status = data['Status Update'];
+} else if (data['StatusUpdate']) {
+    status = data['StatusUpdate'];
+} else if (data['status']) {
+    status = data['status'];
+} else if (data['Status']) {
+    status = data['Status'];
+}
+
+// Log first few jobs to debug what field exists
+if (allJobs.length < 5) {
+    console.log(`DEBUG Job #${data['Job Number']}:`, {
+        finalStatus: status,
+        availableFields: Object.keys(data).filter(k => k.toLowerCase().includes('status'))
+    });
+}
                     
                     const dateFields = ['Booked Date', 'Projected Completion Date', 'Install Date'];
                     let jobDate = null;
