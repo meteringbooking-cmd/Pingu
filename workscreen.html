@@ -178,6 +178,8 @@
         .status-progress .status-value { color: #00D9FF; }
         .status-overdue .status-value { color: #FF6B6B; }
         .status-week .status-value { color: #FFC857; }
+        .status-aborted .status-value { color: #6C757D; }
+        .status-cancelled .status-value { color: #DC6E3C; }
 
         /* Right Column - Teams & Today */
         .right-column {
@@ -335,12 +337,12 @@
 
                 <!-- Status Grid -->
                 <div class="status-grid">
-                    <div class="status-card status-complete">
+                    <div class="status-card status-week">
                         <div class="status-header">
-                            <div class="status-label">Completed</div>
-                            <div class="status-icon">✅</div>
+                            <div class="status-label">Jobs Starting Today</div>
+                            <div class="status-icon">📅</div>
                         </div>
-                        <div class="status-value" id="completed-jobs">0</div>
+                        <div class="status-value" id="today-jobs">0</div>
                     </div>
                     <div class="status-card status-progress">
                         <div class="status-header">
@@ -349,19 +351,33 @@
                         </div>
                         <div class="status-value" id="progress-jobs">0</div>
                     </div>
+                    <div class="status-card status-complete">
+                        <div class="status-header">
+                            <div class="status-label">Completed</div>
+                            <div class="status-icon">✅</div>
+                        </div>
+                        <div class="status-value" id="completed-jobs">0</div>
+                    </div>
+                    <div class="status-card status-aborted">
+                        <div class="status-header">
+                            <div class="status-label">Aborted</div>
+                            <div class="status-icon">🛑</div>
+                        </div>
+                        <div class="status-value" id="aborted-jobs">0</div>
+                    </div>
+                    <div class="status-card status-cancelled">
+                        <div class="status-header">
+                            <div class="status-label">Cancelled</div>
+                            <div class="status-icon">❌</div>
+                        </div>
+                        <div class="status-value" id="cancelled-jobs">0</div>
+                    </div>
                     <div class="status-card status-overdue">
                         <div class="status-header">
                             <div class="status-label">Outstanding</div>
                             <div class="status-icon">⚠️</div>
                         </div>
                         <div class="status-value" id="overdue-jobs">0</div>
-                    </div>
-                    <div class="status-card status-week">
-                        <div class="status-header">
-                            <div class="status-label">Jobs Starting Today</div>
-                            <div class="status-icon">📅</div>
-                        </div>
-                        <div class="status-value" id="today-jobs">0</div>
                     </div>
                 </div>
             </div>
@@ -585,22 +601,28 @@
             });
             document.getElementById('week-jobs').textContent = weekJobs.length;
 
-            // Status counts
-            const completedJobs = allJobs.filter(isComplete);
-            document.getElementById('completed-jobs').textContent = completedJobs.length;
-
-            const progressJobs = allJobs.filter(job => getStatusUpdate(job) === 'in-progress');
-            document.getElementById('progress-jobs').textContent = progressJobs.length;
-
-            const overdueJobs = allJobs.filter(isOutstanding);
-            document.getElementById('overdue-jobs').textContent = overdueJobs.length;
-
+            // Status counts - REORDERED
             const todayJobs = allJobs.filter(job => {
                 const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
                 const jobDate = parseDate(dateStr);
                 return jobDate && jobDate.getTime() === now.getTime();
             });
             document.getElementById('today-jobs').textContent = todayJobs.length;
+
+            const progressJobs = allJobs.filter(job => getStatusUpdate(job) === 'in-progress');
+            document.getElementById('progress-jobs').textContent = progressJobs.length;
+
+            const completedJobs = allJobs.filter(isComplete);
+            document.getElementById('completed-jobs').textContent = completedJobs.length;
+
+            const abortedJobs = allJobs.filter(job => getStatusUpdate(job) === 'aborted');
+            document.getElementById('aborted-jobs').textContent = abortedJobs.length;
+
+            const cancelledJobs = allJobs.filter(job => getStatusUpdate(job) === 'cancelled');
+            document.getElementById('cancelled-jobs').textContent = cancelledJobs.length;
+
+            const overdueJobs = allJobs.filter(isOutstanding);
+            document.getElementById('overdue-jobs').textContent = overdueJobs.length;
 
             // Footer stats
             const totalDays = allJobs.reduce((sum, job) => {
@@ -613,13 +635,13 @@
             document.getElementById('avg-days').textContent = avgDays;
 
             const teams = new Set();
-monthJobs.forEach(job => {
-    const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
-    if (team && team !== 'N/A' && team !== 'Unassigned' && team !== '') {
-        teams.add(team);
-    }
-});
-document.getElementById('active-teams').textContent = teams.size;
+            monthJobs.forEach(job => {
+                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+                if (team && team !== 'N/A' && team !== 'Unassigned' && team !== '') {
+                    teams.add(team);
+                }
+            });
+            document.getElementById('active-teams').textContent = teams.size;
 
             const completionRate = allJobs.length > 0 
                 ? Math.round((completedJobs.length / allJobs.length) * 100) 
@@ -634,35 +656,41 @@ document.getElementById('active-teams').textContent = teams.size;
         }
 
         function updateTopTeams(monthJobs) {
-    const teamStats = {};
-    
-    monthJobs.forEach(job => {
-        // Check multiple possible field names for team
-        const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
-        
-        if (team && team !== 'N/A' && team !== 'Unassigned') {
-            if (!teamStats[team]) {
-                teamStats[team] = 0;
-            }
-            teamStats[team]++;
+            const teamStats = {};
+            
+            monthJobs.forEach(job => {
+                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+                
+                if (team && team !== 'N/A' && team !== 'Unassigned') {
+                    if (!teamStats[team]) {
+                        teamStats[team] = { total: 0, completed: 0 };
+                    }
+                    teamStats[team].total++;
+                    if (isComplete(job)) {
+                        teamStats[team].completed++;
+                    }
+                }
+            });
+
+            const sortedTeams = Object.entries(teamStats)
+                .map(([team, stats]) => ({
+                    team,
+                    percentage: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+                }))
+                .sort((a, b) => b.percentage - a.percentage)
+                .slice(0, 5);
+
+            const html = sortedTeams.length > 0
+                ? sortedTeams.map(({ team, percentage }) => `
+                    <div class="team-item">
+                        <div class="team-name">Team ${escapeHtml(team)}</div>
+                        <div class="team-stat">${percentage}%</div>
+                    </div>
+                `).join('')
+                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
+
+            document.getElementById('top-teams').innerHTML = html;
         }
-    });
-
-    const sortedTeams = Object.entries(teamStats)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-
-    const html = sortedTeams.length > 0
-        ? sortedTeams.map(([team, count]) => `
-            <div class="team-item">
-                <div class="team-name">Team ${escapeHtml(team)}</div>
-                <div class="team-stat">${count}</div>
-            </div>
-        `).join('')
-        : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
-
-    document.getElementById('top-teams').innerHTML = html;
-}
 
         function updateTodaysList(todayJobs) {
             const html = todayJobs.length > 0
