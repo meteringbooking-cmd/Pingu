@@ -1454,83 +1454,106 @@
         }
 
         // Submit invoice and mark job as complete - FIXED VERSION
-        window.submitInlineInvoice = async function() {
-            if (!currentJob) return;
+       window.submitInlineInvoice = async function() {
+    if (!currentJob) {
+        console.error('No currentJob available');
+        showToast('Error: No job selected', 'error');
+        return;
+    }
 
-            const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus-inline').value) || 0;
-            const invoiceLead = parseFloat(document.getElementById('invoice-lead-inline').value) || 0;
+    const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus-inline').value) || 0;
+    const invoiceLead = parseFloat(document.getElementById('invoice-lead-inline').value) || 0;
 
-            // Validate that at least one field has a value
-            if (invoiceOctopus === 0 && invoiceLead === 0) {
-                showToast('Please enter at least one invoice amount', 'error');
-                return;
-            }
+    // Validate that at least one field has a value
+    if (invoiceOctopus === 0 && invoiceLead === 0) {
+        showToast('Please enter at least one invoice amount', 'error');
+        return;
+    }
 
-            const jobId = currentJob.id;
-            const jobNumber = currentJob['Job Number'] || 'N/A';
-            const jobLength = currentJob.jobLength || 1;
+    const jobId = currentJob.id;
+    const jobNumber = currentJob['Job Number'] || 'N/A';
+    const jobLength = currentJob.jobLength || 1;
 
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-                
-                console.log(`Saving invoice and completing job ID: ${jobId}, Job Number: ${jobNumber}`);
-                console.log(`Job length: ${jobLength}, Selected days:`, selectedCompletionDays);
-                console.log('Pending completed days:', currentJob._pendingCompletedDays);
-                
-                // Use _pendingCompletedDays if available (set during confirmation), otherwise use selectedCompletionDays
-                let completedDays;
-                if (currentJob._pendingCompletedDays && currentJob._pendingCompletedDays.length > 0) {
-                    completedDays = currentJob._pendingCompletedDays;
-                    console.log('Using pending completed days:', completedDays);
-                } else if (jobLength > 1) {
-                    completedDays = selectedCompletionDays.length > 0 
-                        ? selectedCompletionDays 
-                        : Array.from({length: jobLength}, (_, i) => i + 1);
-                    console.log('Using selected/all days:', completedDays);
-                } else {
-                    completedDays = [1];
-                    console.log('Single day job, using [1]');
-                }
-                
-                console.log(`Storing completed days:`, completedDays);
-                
-                // Update with both invoice data and completion status
-                await updateDoc(jobRef, {
-                    'Status Update': 'Complete',
-                    completedTimestamp: new Date().toISOString(),
-                    completedDays: completedDays,
-                    invoiceOctopus: invoiceOctopus,
-                    invoiceLead: invoiceLead,
-                    invoiceSubmittedAt: new Date().toISOString()
-                });
-                
-                // Update local job object
-                const job = allJobs.find(j => j.id === jobId);
-                if (job) {
-                    job.status = 'Complete';
-                    job['Status Update'] = 'Complete';
-                    job.completedTimestamp = new Date().toISOString();
-                    job.invoiceOctopus = invoiceOctopus;
-                    job.invoiceLead = invoiceLead;
-                    job.invoiceSubmittedAt = new Date().toISOString();
-                    job.completedDays = completedDays;
-                    
-                    // Send completion email
-                    await sendJobCompletionEmail(job);
-                }
-                
-                showToast(`Job completed! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
-                
-                // Close modal and rebuild timeline
-                closeStatusModal();
-                buildTimeline();
-                
-            } catch (error) {
-                console.error('Error saving invoice and completing job:', error);
-                showToast('Failed to save invoice details', 'error');
-            }
+    try {
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'Solar-jobs', jobId);
+        
+        console.log(`=== SUBMITTING INVOICE ===`);
+        console.log(`Job ID: ${jobId}, Job Number: ${jobNumber}, Job Length: ${jobLength}`);
+        console.log('Current selectedCompletionDays:', selectedCompletionDays);
+        console.log('currentJob._pendingCompletedDays:', currentJob._pendingCompletedDays);
+        
+        // Determine completed days with priority:
+        // 1. _pendingCompletedDays (set when user confirms selection)
+        // 2. selectedCompletionDays (current selection)
+        // 3. All days (if multi-day job)
+        // 4. [1] (single-day job)
+        let completedDays;
+        if (currentJob._pendingCompletedDays && currentJob._pendingCompletedDays.length > 0) {
+            completedDays = [...currentJob._pendingCompletedDays];
+            console.log('✓ Using _pendingCompletedDays:', completedDays);
+        } else if (selectedCompletionDays.length > 0) {
+            completedDays = [...selectedCompletionDays];
+            console.log('✓ Using selectedCompletionDays:', completedDays);
+        } else if (jobLength > 1) {
+            completedDays = Array.from({length: jobLength}, (_, i) => i + 1);
+            console.log('✓ Using all days (default):', completedDays);
+        } else {
+            completedDays = [1];
+            console.log('✓ Single day job');
         }
+        
+        // Create update data object
+        const updateData = {
+            'Status Update': 'Complete',
+            completedTimestamp: new Date().toISOString(),
+            completedDays: completedDays,
+            invoiceOctopus: invoiceOctopus,
+            invoiceLead: invoiceLead,
+            invoiceSubmittedAt: new Date().toISOString()
+        };
+        
+        console.log('Update data being sent to Firebase:', updateData);
+        
+        // Update Firebase
+        await updateDoc(jobRef, updateData);
+        console.log('✓ Firebase update successful');
+        
+        // Update local job object
+        const job = allJobs.find(j => j.id === jobId);
+        if (job) {
+            Object.assign(job, {
+                status: 'Complete',
+                'Status Update': 'Complete',
+                completedTimestamp: updateData.completedTimestamp,
+                invoiceOctopus: invoiceOctopus,
+                invoiceLead: invoiceLead,
+                invoiceSubmittedAt: updateData.invoiceSubmittedAt,
+                completedDays: completedDays
+            });
+            console.log('✓ Local job object updated');
+            
+            // Send completion email
+            await sendJobCompletionEmail(job);
+        }
+        
+        showToast(`✓ Job #${jobNumber} completed! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+        
+        // Close modal
+        closeStatusModal();
+        
+        // Rebuild timeline after a short delay to ensure state is updated
+        setTimeout(() => {
+            console.log('Rebuilding timeline...');
+            buildTimeline();
+        }, 300);
+        
+    } catch (error) {
+        console.error('❌ Error saving invoice and completing job:', error);
+        console.error('Error details:', error.message, error.stack);
+        showToast('Failed to save invoice: ' + error.message, 'error');
+    }
+}
        
         function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
