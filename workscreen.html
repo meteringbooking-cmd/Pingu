@@ -675,16 +675,17 @@
             const sortedTeams = Object.entries(teamStats)
                 .map(([team, stats]) => ({
                     team,
+                    stats,
                     percentage: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
                 }))
                 .sort((a, b) => b.percentage - a.percentage)
                 .slice(0, 5);
 
             const html = sortedTeams.length > 0
-                ? sortedTeams.map(({ team, percentage }) => `
+                ? sortedTeams.map(({ team, stats, percentage }) => `
                     <div class="team-item">
                         <div class="team-name">Team ${escapeHtml(team)}</div>
-                        <div class="team-stat">${percentage}%</div>
+                        <div class="team-stat">${percentage}% (${stats.completed}/${stats.total})</div>
                     </div>
                 `).join('')
                 : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
