@@ -25,6 +25,7 @@
             --complete: #4ECCA3;
             --aborted: #FF6B6B;
             --cancelled: #9A9AB0;
+            --short-notice: #C77DFF;
         }
        
         * {
@@ -364,6 +365,10 @@
             background: linear-gradient(135deg, var(--cancelled), #7A7A8F);
         }
 
+        .job-card.status-short-notice-cancellation {
+            background: linear-gradient(135deg, var(--short-notice), #B65EFF);
+        }
+
         .job-card .completion-overlay {
             position: absolute;
             top: 0;
@@ -638,6 +643,11 @@
             border: 2px solid #FF6B6B;
         }
 
+        .status-btn.short-notice {
+            background: linear-gradient(135deg, var(--short-notice), #B65EFF);
+            border: 2px solid #C77DFF;
+        }
+
         .completion-selector {
             margin-top: 1.5rem;
             padding: 1.5rem;
@@ -809,6 +819,15 @@
             border: 2px solid var(--success);
         }
 
+        .invoice-section.short-notice-style {
+            background: linear-gradient(135deg, rgba(199, 125, 255, 0.1), rgba(182, 94, 255, 0.1));
+            border: 2px solid var(--short-notice);
+        }
+
+        .invoice-section.short-notice-style .invoice-title {
+            color: var(--short-notice);
+        }
+
         .invoice-title {
             color: var(--success);
             margin: 0 0 1rem 0;
@@ -961,6 +980,9 @@
                     <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">
                         ❌ Cancelled
                     </button>
+                    <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')" style="grid-column: 1 / -1;">
+                        🔔 Short Notice Cancellation
+                    </button>
                 </div>
 
                 <div class="completion-selector" id="completion-selector" style="display: none;">
@@ -974,7 +996,7 @@
 
                 <!-- Invoice Section - Hidden by default -->
                 <div class="invoice-section" id="invoice-section" style="display: none;">
-                    <h3 class="invoice-title">💰 Invoice Details Required</h3>
+                    <h3 class="invoice-title" id="invoice-title">💰 Invoice Details Required</h3>
                     
                     <div style="margin-bottom: 1.5rem;">
                         <label class="notes-label" for="invoice-octopus-inline">Invoiceable Figure to Octopus (£)</label>
@@ -986,7 +1008,7 @@
                         <input type="number" id="invoice-lead-inline" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
                     </div>
 
-                    <button class="save-notes-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
+                    <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
                         💾 Submit Invoice & Mark Complete
                     </button>
                 </div>
@@ -1072,6 +1094,7 @@
         let currentJob = null;
         let timelineDates = [];
         let selectedCompletionDays = [];
+        let pendingStatusChange = null; // Track the status being set
        
         window.initializeTimeline = function() {
             const today = new Date();
@@ -1433,7 +1456,7 @@
         }
 
         // Show invoice section inline in the status modal
-        window.showInlineInvoiceSection = function() {
+        window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
 
             // Hide status buttons and completion selector
@@ -1444,16 +1467,34 @@
             document.getElementById('invoice-octopus-inline').value = currentJob.invoiceOctopus || '';
             document.getElementById('invoice-lead-inline').value = currentJob.invoiceLead || '';
             
+            // Get invoice section element
+            const invoiceSection = document.getElementById('invoice-section');
+            const invoiceTitle = document.getElementById('invoice-title');
+            const submitBtn = document.getElementById('submit-invoice-btn');
+            
+            // Apply styling based on status type
+            if (isShortNotice) {
+                invoiceSection.classList.add('short-notice-style');
+                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Invoice Details';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
+                submitBtn.textContent = '💾 Submit Invoice & Mark as Short Notice Cancellation';
+            } else {
+                invoiceSection.classList.remove('short-notice-style');
+                invoiceTitle.textContent = '💰 Invoice Details Required';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
+                submitBtn.textContent = '💾 Submit Invoice & Mark Complete';
+            }
+            
             // Show invoice section
-            document.getElementById('invoice-section').style.display = 'block';
+            invoiceSection.style.display = 'block';
             
             // Scroll to invoice section
             setTimeout(() => {
-                document.getElementById('invoice-section').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                invoiceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
         }
 
-        // Submit invoice and mark job as complete - IMPROVED VERSION
+        // Submit invoice and mark job with appropriate status
         window.submitInlineInvoice = async function() {
             if (!currentJob) {
                 console.error('No currentJob available');
@@ -1474,20 +1515,19 @@
             const jobNumber = currentJob['Job Number'] || 'N/A';
             const jobLength = currentJob.jobLength || 1;
 
+            // Determine final status based on pendingStatusChange
+            const finalStatus = pendingStatusChange || 'Complete';
+
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'Solar-jobs', jobId);
                 
                 console.log(`=== SUBMITTING INVOICE ===`);
-                console.log(`Job ID: ${jobId}, Job Number: ${jobNumber}, Job Length: ${jobLength}`);
+                console.log(`Job ID: ${jobId}, Job Number: ${jobNumber}, Final Status: ${finalStatus}`);
                 console.log('Current selectedCompletionDays:', selectedCompletionDays);
                 console.log('currentJob._pendingCompletedDays:', currentJob._pendingCompletedDays);
                 
                 // Determine completed days with priority:
-                // 1. _pendingCompletedDays (set when user confirms selection)
-                // 2. selectedCompletionDays (current selection)
-                // 3. All days (if multi-day job)
-                // 4. [1] (single-day job)
                 let completedDays;
                 if (currentJob._pendingCompletedDays && currentJob._pendingCompletedDays.length > 0) {
                     completedDays = [...currentJob._pendingCompletedDays];
@@ -1505,7 +1545,7 @@
                 
                 // Create update data object
                 const updateData = {
-                    'Status Update': 'Complete',
+                    'Status Update': finalStatus,
                     completedTimestamp: new Date().toISOString(),
                     completedDays: completedDays,
                     invoiceOctopus: invoiceOctopus,
@@ -1523,8 +1563,8 @@
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
                     Object.assign(job, {
-                        status: 'Complete',
-                        'Status Update': 'Complete',
+                        status: finalStatus,
+                        'Status Update': finalStatus,
                         completedTimestamp: updateData.completedTimestamp,
                         invoiceOctopus: invoiceOctopus,
                         invoiceLead: invoiceLead,
@@ -1533,11 +1573,17 @@
                     });
                     console.log('✓ Local job object updated');
                     
-                    // Send completion email
-                    await sendJobCompletionEmail(job);
+                    // Send completion email only for Complete status
+                    if (finalStatus === 'Complete') {
+                        await sendJobCompletionEmail(job);
+                    }
                 }
                 
-                showToast(`✓ Job #${jobNumber} completed! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+                const statusEmoji = finalStatus === 'Short Notice Cancellation' ? '🔔' : '✅';
+                showToast(`${statusEmoji} Job #${jobNumber} marked as ${finalStatus}! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+                
+                // Reset pending status
+                pendingStatusChange = null;
                 
                 // Close modal
                 closeStatusModal();
@@ -1549,7 +1595,7 @@
                 }, 300);
                 
             } catch (error) {
-                console.error('❌ Error saving invoice and completing job:', error);
+                console.error('❌ Error saving invoice and updating status:', error);
                 console.error('Error details:', error.message, error.stack);
                 showToast('Failed to save invoice: ' + error.message, 'error');
             }
@@ -1665,9 +1711,6 @@
             const jobPlacements = [];
             const arrows = [];
             
-            // Group jobs by ID to track segments of the same job
-            const jobSegments = new Map();
-            
             sortedJobs.forEach(job => {
                 const jobStart = new Date(job.parsedDate);
                 jobStart.setHours(0, 0, 0, 0);
@@ -1746,7 +1789,7 @@
                     });
                 }
                 
-                // KEY CHANGE: For split jobs, find a single row that can fit ALL segments
+                // For split jobs, find a single row that can fit ALL segments
                 let targetRow = null;
                 
                 if (segments.length > 1) {
@@ -1862,6 +1905,7 @@
                 else if (status === 'Complete') statusClass = 'status-complete';
                 else if (status === 'Aborted') statusClass = 'status-aborted';
                 else if (status === 'Cancelled') statusClass = 'status-cancelled';
+                else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
 
                 const completedDays = job.completedDays || [];
                 const jobLength = job.jobLength || 1;
@@ -1920,6 +1964,7 @@
            
             currentJob = job;
             selectedCompletionDays = [...(job.completedDays || [])];
+            pendingStatusChange = null; // Reset pending status
            
             console.log(`Opening modal for job: ${job['Job Number']}, completedDays:`, job.completedDays, 'selectedCompletionDays:', selectedCompletionDays);
             
@@ -1946,16 +1991,21 @@
             
             // Reset invoice section
             document.getElementById('invoice-section').style.display = 'none';
+            document.getElementById('invoice-section').classList.remove('short-notice-style');
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
             document.getElementById('invoice-octopus-inline').value = '';
             document.getElementById('invoice-lead-inline').value = '';
             
             currentJob = null;
             selectedCompletionDays = [];
+            pendingStatusChange = null;
         }
 
         window.updateJobStatus = async function(newStatus) {
             if (!currentJob) return;
+
+            // Store the pending status for later use
+            pendingStatusChange = newStatus;
 
             // For Complete status on multi-day jobs, show completion selector
             if (newStatus === 'Complete' && currentJob.jobLength > 1) {
@@ -1965,14 +2015,19 @@
 
             // For Complete status on single-day jobs, show invoice section
             if (newStatus === 'Complete' && currentJob.jobLength === 1) {
-                showInlineInvoiceSection();
+                showInlineInvoiceSection(false);
+                return;
+            }
+
+            // For Short Notice Cancellation, show invoice section with lilac theme
+            if (newStatus === 'Short Notice Cancellation') {
+                showInlineInvoiceSection(true);
                 return;
             }
 
             // For non-complete statuses (In-Progress, Aborted, Cancelled), update normally
             const jobId = currentJob.id;
             closeStatusModal();
-            // Don't pass completedDays for non-Complete statuses - pass null instead
             await updateJobStatusInDB(jobId, newStatus, null);
             buildTimeline();
         }
@@ -1984,7 +2039,7 @@
 
             if (jobLength === 1) {
                 // Show invoice section inline for single-day jobs
-                showInlineInvoiceSection();
+                showInlineInvoiceSection(false);
                 return;
             }
 
@@ -2024,7 +2079,6 @@
             });
         }
 
-        // IMPROVED VERSION - Better feedback for partial completions
         window.confirmPartialCompletion = async function() {
             if (!currentJob) {
                 console.error('No currentJob in confirmPartialCompletion');
@@ -2054,7 +2108,7 @@
                 console.log('✓ All days selected - showing invoice section');
                 // Hide completion selector, show invoice section
                 document.getElementById('completion-selector').style.display = 'none';
-                showInlineInvoiceSection();
+                showInlineInvoiceSection(false);
                 return;
             }
 
