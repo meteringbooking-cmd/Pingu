@@ -613,11 +613,13 @@
             document.getElementById('avg-days').textContent = avgDays;
 
             const teams = new Set();
-            monthJobs.forEach(job => {
-                const team = job['Team'] || job['Team Number'];
-                if (team && team !== 'N/A') teams.add(team);
-            });
-            document.getElementById('active-teams').textContent = teams.size;
+monthJobs.forEach(job => {
+    const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+    if (team && team !== 'N/A' && team !== 'Unassigned' && team !== '') {
+        teams.add(team);
+    }
+});
+document.getElementById('active-teams').textContent = teams.size;
 
             const completionRate = allJobs.length > 0 
                 ? Math.round((completedJobs.length / allJobs.length) * 100) 
@@ -632,31 +634,35 @@
         }
 
         function updateTopTeams(monthJobs) {
-            const teamStats = {};
-            
-            monthJobs.forEach(job => {
-                const team = job['Team'] || job['Team Number'] || 'Unassigned';
-                if (!teamStats[team]) {
-                    teamStats[team] = 0;
-                }
-                teamStats[team]++;
-            });
-
-            const sortedTeams = Object.entries(teamStats)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 5);
-
-            const html = sortedTeams.length > 0
-                ? sortedTeams.map(([team, count]) => `
-                    <div class="team-item">
-                        <div class="team-name">${escapeHtml(team)}</div>
-                        <div class="team-stat">${count}</div>
-                    </div>
-                `).join('')
-                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
-
-            document.getElementById('top-teams').innerHTML = html;
+    const teamStats = {};
+    
+    monthJobs.forEach(job => {
+        // Check multiple possible field names for team
+        const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+        
+        if (team && team !== 'N/A' && team !== 'Unassigned') {
+            if (!teamStats[team]) {
+                teamStats[team] = 0;
+            }
+            teamStats[team]++;
         }
+    });
+
+    const sortedTeams = Object.entries(teamStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    const html = sortedTeams.length > 0
+        ? sortedTeams.map(([team, count]) => `
+            <div class="team-item">
+                <div class="team-name">Team ${escapeHtml(team)}</div>
+                <div class="team-stat">${count}</div>
+            </div>
+        `).join('')
+        : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
+
+    document.getElementById('top-teams').innerHTML = html;
+}
 
         function updateTodaysList(todayJobs) {
             const html = todayJobs.length > 0
