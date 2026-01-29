@@ -819,6 +819,17 @@
                     >
                 </div>
                 <div class="filter-group">
+                    <label class="filter-label" for="job-status">Job Status</label>
+                    <select id="job-status" class="filter-select">
+                        <option value="all">All Statuses</option>
+                        <option value="Complete">Complete</option>
+                        <option value="In-Progress">In-Progress</option>
+                        <option value="Scheduled">Scheduled</option>
+                        <option value="Aborted">Aborted</option>
+                        <option value="Cancelled">Cancelled</option>
+                    </select>
+                </div>
+                <div class="filter-group">
                     <label class="filter-label" for="audit-status">Audit Status</label>
                     <select id="audit-status" class="filter-select">
                         <option value="all">All Jobs</option>
@@ -1078,21 +1089,8 @@
                 querySnapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-// Get status from Status Update field (ignore old 'status' field)
-let status = data['Status Update'] || data['StatusUpdate'] || 'Scheduled';
-
-// Debug log to verify we're getting the right field
-if (allJobs.length < 3) {
-    console.log(`Job #${data['Job Number']}: Using status = "${status}" from 'Status Update' field`);
-}
-
-// Log first few jobs to debug what field exists
-if (allJobs.length < 5) {
-    console.log(`DEBUG Job #${data['Job Number']}:`, {
-        finalStatus: status,
-        availableFields: Object.keys(data).filter(k => k.toLowerCase().includes('status'))
-    });
-}
+                    // Get status from Status Update field (primary source)
+                    let status = data['Status Update'] || data['StatusUpdate'] || 'Scheduled';
                     
                     const dateFields = ['Booked Date', 'Projected Completion Date', 'Install Date'];
                     let jobDate = null;
@@ -1126,8 +1124,7 @@ if (allJobs.length < 5) {
                             completedTimestamp = new Date(data['completedTimestamp']);
                         }
                     } else if (status === 'Complete') {
-                        // Log warning for completed jobs missing timestamp
-                        console.warn(`Job #${data['Job Number']} missing completedTimestamp - using fallback`);
+                        // Fallback to jobDate for completed jobs missing timestamp
                         completedTimestamp = jobDate || new Date();
                     }
 
@@ -1256,33 +1253,33 @@ if (allJobs.length < 5) {
                             <div class="audit-badge ${auditBadgeClass}">${auditLabel}</div>
                         </div>
                         <div class="job-details">
-    <div class="job-detail">
-        <span class="job-detail-label">Status:</span>
-        <span class="job-status-badge ${statusClass}">${escapeHtml(job.status)}</span>
-    </div>
-    <div class="job-detail">
-        <span class="job-detail-label">Booked Date:</span>
-        <span class="job-detail-value">${formatDate(parseDate(job['Booked Date'] || job['Projected Completion Date']))}</span>
-    </div>
-    <div class="job-detail">
-        <span class="job-detail-label">Postcode:</span>
-        <span class="job-detail-value">${escapeHtml(job.postcode)}</span>
-    </div>
-    <div class="job-detail">
-        <span class="job-detail-label">Engineer:</span>
-        <span class="job-detail-value">${escapeHtml(job.engineer)}</span>
-    </div>
-    <div class="job-detail">
-        <span class="job-detail-label">Job Type:</span>
-        <span class="job-detail-value">${escapeHtml(job.jobType)}</span>
-    </div>
-    ${job.status === 'Complete' ? `
-        <div class="job-detail">
-            <span class="job-detail-label">Completed:</span>
-            <span class="job-detail-value">${formatDate(job.completionDate)}</span>
-        </div>
-    ` : ''}
-</div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Status:</span>
+                                <span class="job-status-badge ${statusClass}">${escapeHtml(job.status)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Booked Date:</span>
+                                <span class="job-detail-value">${formatDate(parseDate(job['Booked Date'] || job['Projected Completion Date']))}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Postcode:</span>
+                                <span class="job-detail-value">${escapeHtml(job.postcode)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Engineer:</span>
+                                <span class="job-detail-value">${escapeHtml(job.engineer)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Job Type:</span>
+                                <span class="job-detail-value">${escapeHtml(job.jobType)}</span>
+                            </div>
+                            ${job.status === 'Complete' ? `
+                                <div class="job-detail">
+                                    <span class="job-detail-label">Completed:</span>
+                                    <span class="job-detail-value">${formatDate(job.completionDate)}</span>
+                                </div>
+                            ` : ''}
+                        </div>
                         ${pendingTimeHTML}
                         ${job.auditNotes ? `
                             <div class="job-notes-preview">
@@ -1300,6 +1297,7 @@ if (allJobs.length < 5) {
             const jobSearch = document.getElementById('job-search').value.toLowerCase().trim();
             const dateFrom = document.getElementById('date-from').value ? new Date(document.getElementById('date-from').value) : null;
             const dateTo = document.getElementById('date-to').value ? new Date(document.getElementById('date-to').value) : null;
+            const jobStatusFilter = document.getElementById('job-status').value;
             const auditStatus = document.getElementById('audit-status').value;
 
             if (dateFrom) dateFrom.setHours(0, 0, 0, 0);
@@ -1321,9 +1319,15 @@ if (allJobs.length < 5) {
                     }
                 }
 
+                // Job status filter (NEW)
+                if (jobStatusFilter !== 'all') {
+                    if (job.status !== jobStatusFilter) {
+                        return false;
+                    }
+                }
+
                 // Audit status filter
                 if (auditStatus !== 'all') {
-                    // Filter by audit status
                     if (job.auditStatus !== auditStatus) {
                         return false;
                     }
@@ -1340,6 +1344,7 @@ if (allJobs.length < 5) {
             document.getElementById('job-search').value = '';
             document.getElementById('date-from').value = '';
             document.getElementById('date-to').value = '';
+            document.getElementById('job-status').value = 'all';
             document.getElementById('audit-status').value = 'all';
             
             filteredJobs = [...allJobs];
@@ -1790,4 +1795,3 @@ if (allJobs.length < 5) {
     </script>
 </body>
 </html>
-
