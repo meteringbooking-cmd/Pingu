@@ -485,6 +485,10 @@
                     <div class="status-label">Today's Jobs</div>
                     <div class="status-value" id="todays-jobs-count">0</div>
                 </div>
+                <div class="status-item">
+                    <div class="status-label">Week's Jobs</div>
+                    <div class="status-value" id="weeks-jobs-count">0</div>
+                </div>
             </div>
         </div>
 
@@ -525,7 +529,7 @@
         </div>
 
         <div class="preview-card">
-            <h2>👁️ Email Preview (4 PM Format with Stats)</h2>
+            <h2>👁️ Email Preview (4 PM Format with Stats + Week So Far)</h2>
             <div class="email-preview" id="email-preview">
                 <p style="color: #999;">Loading preview...</p>
             </div>
@@ -556,7 +560,7 @@
            
             window.addEventListener('DOMContentLoaded', () => {
                 emailjs.init("ziLnha91scpGjFABh");
-                window.loadTodaysJobs();
+                window.loadJobs();
                 window.startClock();
             });
         } catch (error) {
@@ -569,8 +573,17 @@
         let schedulerInterval = null;
         let clockInterval = null;
         let todaysJobs = [];
+        let weekJobs = [];
         let lastSentTime = null;
         let jobStats = {
+            assigned: 0,
+            inProgress: 0,
+            completed: 0,
+            aborted: 0,
+            cancelled: 0,
+            delayed: 0
+        };
+        let weekStats = {
             assigned: 0,
             inProgress: 0,
             completed: 0,
@@ -627,6 +640,15 @@
             return '';
         }
 
+        function getMonday(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+            const monday = new Date(d.setDate(diff));
+            monday.setHours(0, 0, 0, 0);
+            return monday;
+        }
+
         function isJobDelayed(job, jobDate) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -642,7 +664,7 @@
             return false;
         }
 
-        window.loadTodaysJobs = async function() {
+        window.loadJobs = async function() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
                
@@ -655,12 +677,24 @@
                
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
-
                 const todayEnd = new Date(today);
                 todayEnd.setHours(23, 59, 59, 999);
+
+                const monday = getMonday(today);
+                const weekEnd = new Date(today);
+                weekEnd.setHours(23, 59, 59, 999);
                
                 todaysJobs = [];
+                weekJobs = [];
                 jobStats = {
+                    assigned: 0,
+                    inProgress: 0,
+                    completed: 0,
+                    aborted: 0,
+                    cancelled: 0,
+                    delayed: 0
+                };
+                weekStats = {
                     assigned: 0,
                     inProgress: 0,
                     completed: 0,
@@ -675,15 +709,13 @@
                     const dateStr = getFieldValue(data, 'Booked Date', 'Projected Completion Date', 'Install Date');
                     const jobDate = parseDate(dateStr);
 
-                    if (jobDate && jobDate >= today && jobDate <= todayEnd) {
+                    if (jobDate) {
                         const status = getFieldValue(data, 'Status Update', 'status', 'Status') || 'Scheduled';
                         const delayed = isJobDelayed(data, jobDate);
-                        
-                        // Get projected completion date for display
                         const projectedDateStr = getFieldValue(data, 'Projected Completion Date', 'Booked Date', 'Install Date');
                         const projectedDate = parseDate(projectedDateStr);
                         
-                        todaysJobs.push({
+                        const jobObj = {
                             jobNumber: data['Job Number'] || 'N/A',
                             postcode: data['Postcode'] || 'N/A',
                             lead: getFieldValue(data, 'Lead', 'Lead Engineer', 'Engineer') || 'Unassigned',
@@ -691,24 +723,46 @@
                             status: status,
                             bookedDate: formatDate(jobDate),
                             projectedDate: formatDate(projectedDate),
-                            delayed: delayed
-                        });
+                            delayed: delayed,
+                            dateObj: jobDate
+                        };
 
-                        // Update stats
-                        jobStats.assigned++;
-                        
-                        if (status === 'In-Progress') jobStats.inProgress++;
-                        else if (status === 'Complete') jobStats.completed++;
-                        else if (status === 'Aborted') jobStats.aborted++;
-                        else if (status === 'Cancelled') jobStats.cancelled++;
-                        
-                        if (delayed) jobStats.delayed++;
+                        // Today's jobs
+                        if (jobDate >= today && jobDate <= todayEnd) {
+                            todaysJobs.push(jobObj);
+                            
+                            jobStats.assigned++;
+                            if (status === 'In-Progress') jobStats.inProgress++;
+                            else if (status === 'Complete') jobStats.completed++;
+                            else if (status === 'Aborted') jobStats.aborted++;
+                            else if (status === 'Cancelled') jobStats.cancelled++;
+                            if (delayed) jobStats.delayed++;
+                        }
+
+                        // Week's jobs (Monday to today)
+                        if (jobDate >= monday && jobDate <= weekEnd) {
+                            weekJobs.push(jobObj);
+                            
+                            weekStats.assigned++;
+                            if (status === 'In-Progress') weekStats.inProgress++;
+                            else if (status === 'Complete') weekStats.completed++;
+                            else if (status === 'Aborted') weekStats.aborted++;
+                            else if (status === 'Cancelled') weekStats.cancelled++;
+                            if (delayed) weekStats.delayed++;
+                        }
                     }
                 });
+
+                // Sort week jobs by date
+                weekJobs.sort((a, b) => a.dateObj - b.dateObj);
                
                 console.log(`✅ Loaded ${todaysJobs.length} jobs for today`);
-                console.log('📊 Stats:', jobStats);
+                console.log(`✅ Loaded ${weekJobs.length} jobs for this week`);
+                console.log('📊 Today Stats:', jobStats);
+                console.log('📊 Week Stats:', weekStats);
+                
                 document.getElementById('todays-jobs-count').textContent = todaysJobs.length;
+                document.getElementById('weeks-jobs-count').textContent = weekJobs.length;
                 
                 refreshPreview();
                
@@ -720,8 +774,6 @@
 
         window.refreshPreview = function() {
             const preview = document.getElementById('email-preview');
-            
-            // Always show 4 PM format in preview
             preview.innerHTML = generateEmailHTML(true);
         }
 
@@ -738,8 +790,6 @@
                 second: '2-digit'
             });
             document.getElementById('current-time').textContent = timeStr;
-
-            // Update countdowns
             updateNextSchedule();
         }
 
@@ -747,7 +797,6 @@
             const now = new Date();
             const currentDay = now.getDay();
             
-            // Skip weekends (0 = Sunday, 6 = Saturday)
             if (currentDay === 0 || currentDay === 6) {
                 document.getElementById('next-10am').textContent = 'Weekend';
                 document.getElementById('next-4pm').textContent = 'Weekend';
@@ -760,11 +809,8 @@
                 const nextSend = new Date(now);
                 nextSend.setHours(time.hour, time.minute, 0, 0);
 
-                // If time has passed today, schedule for tomorrow
                 if (nextSend <= now) {
                     nextSend.setDate(nextSend.getDate() + 1);
-                    
-                    // Skip to Monday if tomorrow is weekend
                     while (nextSend.getDay() === 0 || nextSend.getDay() === 6) {
                         nextSend.setDate(nextSend.getDate() + 1);
                     }
@@ -782,12 +828,10 @@
 
                 if (time.hour === 10) {
                     document.getElementById('next-10am').textContent = dateStr;
-                    document.getElementById('next-10am-countdown').textContent = 
-                        `In ${hours}h ${minutes}m`;
+                    document.getElementById('next-10am-countdown').textContent = `In ${hours}h ${minutes}m`;
                 } else {
                     document.getElementById('next-4pm').textContent = dateStr;
-                    document.getElementById('next-4pm-countdown').textContent = 
-                        `In ${hours}h ${minutes}m`;
+                    document.getElementById('next-4pm-countdown').textContent = `In ${hours}h ${minutes}m`;
                 }
             });
         }
@@ -805,7 +849,7 @@
                 return;
             }
 
-            schedulerInterval = setInterval(checkSchedule, 30000); // Check every 30 seconds
+            schedulerInterval = setInterval(checkSchedule, 30000);
             
             document.getElementById('scheduler-status').textContent = 'Active';
             document.getElementById('scheduler-status').classList.add('active');
@@ -835,7 +879,6 @@
             const now = new Date();
             const currentDay = now.getDay();
             
-            // Skip weekends
             if (currentDay === 0 || currentDay === 6) {
                 return;
             }
@@ -843,10 +886,8 @@
             const currentHour = now.getHours();
             const currentMinute = now.getMinutes();
 
-            // Check if we're at a send time
             SEND_TIMES.forEach(time => {
                 if (currentHour === time.hour && currentMinute === time.minute) {
-                    // Check if we already sent in this minute
                     if (!lastSentTime || 
                         lastSentTime.getHours() !== currentHour || 
                         lastSentTime.getMinutes() !== currentMinute ||
@@ -873,7 +914,7 @@
             }
 
             document.getElementById('manual-btn').disabled = true;
-            addLog('Sending test email (4 PM format)...', 'success');
+            addLog('Sending test email (4 PM format with Week So Far)...', 'success');
             
             await sendEmail(false, 'Manual Test', true);
             
@@ -883,9 +924,7 @@
         async function sendEmail(isScheduled, timeLabel, is4PM) {
             try {
                 const recipientEmail = document.getElementById('recipient-email').value.trim();
-
-                // Reload today's jobs to get latest data
-                await window.loadTodaysJobs();
+                await window.loadJobs();
 
                 const emailContent = generateEmailHTML(is4PM);
 
@@ -926,14 +965,21 @@
                 day: 'numeric' 
             });
 
-            if (todaysJobs.length === 0) {
+            const monday = getMonday(new Date());
+            const mondayStr = monday.toLocaleDateString('en-GB', { 
+                weekday: 'long', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+
+            if (todaysJobs.length === 0 && weekJobs.length === 0) {
                 return `
                     <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;">
-                        <div style="background: white; padding: 30px; border-radius: 8px; max-width: 800px; margin: 0 auto;">
+                        <div style="background: white; padding: 30px; border-radius: 8px; max-width: 900px; margin: 0 auto;">
                             <h2 style="color: #FF6B35; margin-bottom: 20px;">
                                 Daily Job Summary - ${dateStr}
                             </h2>
-                            <p>No jobs scheduled for today.</p>
+                            <p>No jobs scheduled for today or this week.</p>
                             <p style="margin-top: 30px; color: #666; font-size: 0.9rem;">
                                 This is an automated message from Pingu Solar Management System.
                             </p>
@@ -945,6 +991,7 @@
             let statsHTML = '';
             if (is4PM) {
                 statsHTML = `
+                    <h3 style="color: #FF6B35; margin-top: 30px; margin-bottom: 15px;">📊 Today's Statistics</h3>
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
                         <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #4ECCA3;">
                             <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Assigned</div>
@@ -974,7 +1021,6 @@
                 `;
             }
 
-            // Build table headers - add Projected Date column for 4PM format
             const tableHeaders = is4PM 
                 ? `<th style="padding: 12px; text-align: left; font-weight: 600;">Job Number</th>
                    <th style="padding: 12px; text-align: left; font-weight: 600;">Postcode</th>
@@ -987,6 +1033,106 @@
                    <th style="padding: 12px; text-align: left; font-weight: 600;">Lead</th>
                    <th style="padding: 12px; text-align: left; font-weight: 600;">Job Type</th>
                    <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>`;
+
+            // Build today's jobs table
+            const todayTableRows = todaysJobs.map((job, index) => {
+                const rowBg = job.delayed 
+                    ? '#ffebee' 
+                    : (index % 2 === 0 ? '#f9f9f9' : 'white');
+                const borderStyle = job.delayed 
+                    ? 'border-left: 4px solid #FF6B35;' 
+                    : '';
+                
+                const projectedDateCell = is4PM 
+                    ? `<td style="padding: 12px;">${job.projectedDate}</td>`
+                    : '';
+                
+                return `
+                    <tr style="background: ${rowBg}; border-bottom: 1px solid #e0e0e0; ${borderStyle}">
+                        <td style="padding: 12px;"><strong>#${job.jobNumber}</strong></td>
+                        <td style="padding: 12px;">${job.postcode}</td>
+                        <td style="padding: 12px;">${job.lead}</td>
+                        <td style="padding: 12px;">${job.jobType}</td>
+                        ${projectedDateCell}
+                        <td style="padding: 12px;">${job.status}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            // Build week summary
+            let weekSummaryHTML = '';
+            if (is4PM && weekJobs.length > 0) {
+                const weekTableRows = weekJobs.map((job, index) => {
+                    const rowBg = job.delayed 
+                        ? '#ffebee' 
+                        : (index % 2 === 0 ? '#f9f9f9' : 'white');
+                    const borderStyle = job.delayed 
+                        ? 'border-left: 4px solid #FF6B35;' 
+                        : '';
+                    
+                    return `
+                        <tr style="background: ${rowBg}; border-bottom: 1px solid #e0e0e0; ${borderStyle}">
+                            <td style="padding: 12px;"><strong>#${job.jobNumber}</strong></td>
+                            <td style="padding: 12px;">${job.postcode}</td>
+                            <td style="padding: 12px;">${job.lead}</td>
+                            <td style="padding: 12px;">${job.jobType}</td>
+                            <td style="padding: 12px;">${job.bookedDate}</td>
+                            <td style="padding: 12px;">${job.projectedDate}</td>
+                            <td style="padding: 12px;">${job.status}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                weekSummaryHTML = `
+                    <div style="margin-top: 40px; padding-top: 40px; border-top: 3px solid #e0e0e0;">
+                        <h3 style="color: #00D9FF; margin-bottom: 15px;">📅 Week So Far (${mondayStr} - Today)</h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #4ECCA3;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Total Jobs</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #4ECCA3;">${weekStats.assigned}</div>
+                            </div>
+                            <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #00D9FF;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">In-Progress</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #00D9FF;">${weekStats.inProgress}</div>
+                            </div>
+                            <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #4ECCA3;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Completed</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #4ECCA3;">${weekStats.completed}</div>
+                            </div>
+                            <div style="background: #fce4ec; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #FF6B6B;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Aborted</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #FF6B6B;">${weekStats.aborted}</div>
+                            </div>
+                            <div style="background: #f3e5f5; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #9A9AB0;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Cancelled</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #9A9AB0;">${weekStats.cancelled}</div>
+                            </div>
+                            <div style="background: #ffebee; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #FF6B35;">
+                                <div style="font-size: 0.85rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Delayed</div>
+                                <div style="font-size: 2rem; font-weight: bold; color: #FF6B35;">${weekStats.delayed}</div>
+                            </div>
+                        </div>
+
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                            <thead>
+                                <tr style="background: #00D9FF; color: white;">
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Job Number</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Postcode</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Lead</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Job Type</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Booked Date</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Projected Date</th>
+                                    <th style="padding: 12px; text-align: left; font-weight: 600;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${weekTableRows}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            }
 
             return `
                 <div style="font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5;">
@@ -1007,29 +1153,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${todaysJobs.map((job, index) => {
-                                    const rowBg = job.delayed 
-                                        ? '#ffebee' 
-                                        : (index % 2 === 0 ? '#f9f9f9' : 'white');
-                                    const borderStyle = job.delayed 
-                                        ? 'border-left: 4px solid #FF6B35;' 
-                                        : '';
-                                    
-                                    const projectedDateCell = is4PM 
-                                        ? `<td style="padding: 12px;">${job.projectedDate}</td>`
-                                        : '';
-                                    
-                                    return `
-                                        <tr style="background: ${rowBg}; border-bottom: 1px solid #e0e0e0; ${borderStyle}">
-                                            <td style="padding: 12px;"><strong>#${job.jobNumber}</strong></td>
-                                            <td style="padding: 12px;">${job.postcode}</td>
-                                            <td style="padding: 12px;">${job.lead}</td>
-                                            <td style="padding: 12px;">${job.jobType}</td>
-                                            ${projectedDateCell}
-                                            <td style="padding: 12px;">${job.status}</td>
-                                        </tr>
-                                    `;
-                                }).join('')}
+                                ${todayTableRows}
                             </tbody>
                         </table>
                         
@@ -1041,6 +1165,8 @@
                                 </p>
                             </div>
                         ` : ''}
+
+                        ${weekSummaryHTML}
                         
                         <p style="margin-top: 30px; color: #666; font-size: 0.9rem;">
                             This is an automated message from Pingu Solar Management System.
@@ -1059,7 +1185,6 @@
             
             logContainer.insertBefore(logEntry, logContainer.firstChild);
 
-            // Keep only last 20 entries
             while (logContainer.children.length > 20) {
                 logContainer.removeChild(logContainer.lastChild);
             }
