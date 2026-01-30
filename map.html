@@ -451,6 +451,10 @@
                         <div class="legend-color" style="background: #AA0000;"></div>
                         <span>Aborted/Cancelled</span>
                     </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #90ee90;"></div>
+                        <span>Short Notice Cancellation</span>
+                    </div>
                 </div>
             </div>
         </main>
@@ -633,6 +637,11 @@
                 return { color: '#00FF00', flashing: false };
             }
 
+            // Light green for short notice cancellation
+            if (statusUpdate === 'short notice cancellation') {
+                return { color: '#90ee90', flashing: false };
+            }
+
             // Static dark red for aborted or cancelled
             if (statusUpdate === 'aborted' || statusUpdate === 'cancelled') {
                 return { color: '#AA0000', flashing: false };
@@ -643,7 +652,7 @@
                 return { color: '#0099FF', flashing: false };
             }
 
-            // FLASHING RED: Any job today or before that is NOT complete/cancelled/aborted
+            // FLASHING RED: Any job today or before that is NOT complete/cancelled/aborted/short notice cancellation
             if (jobDate && jobDate <= now) {
                 return { color: '#FF0000', flashing: true };
             }
@@ -802,13 +811,14 @@
                 const d = parseDate(dateStr);
                 const statusUpdate = getStatusUpdate(j);
                 
-                // Future dates that aren't complete, in-progress, aborted, or cancelled
+                // Future dates that aren't complete, in-progress, aborted, cancelled, or short notice cancellation
                 return d && d > now && statusUpdate !== 'complete' && statusUpdate !== 'in-progress' && 
-                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled';
+                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled' && 
+                       statusUpdate !== 'short notice cancellation';
             }).length;
             document.getElementById('upcoming-count').textContent = upcomingJobs;
 
-            // Overdue count (today or past, not complete/aborted/cancelled)
+            // Overdue count (today or past, not complete/aborted/cancelled/short notice cancellation)
             const now = new Date();
             now.setHours(0, 0, 0, 0);
             
@@ -817,9 +827,10 @@
                 const d = parseDate(dateStr);
                 const statusUpdate = getStatusUpdate(j);
                 
-                // Count as overdue if date is today or before AND not complete/aborted/cancelled
+                // Count as overdue if date is today or before AND not complete/aborted/cancelled/short notice cancellation
                 return d && d <= now && statusUpdate !== 'complete' && 
-                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled';
+                       statusUpdate !== 'aborted' && statusUpdate !== 'cancelled' &&
+                       statusUpdate !== 'short notice cancellation';
             }).length;
             document.getElementById('overdue-count').textContent = overdueJobs;
            
