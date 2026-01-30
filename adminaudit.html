@@ -951,7 +951,12 @@
                             class="notes-textarea" 
                             placeholder="Add notes about the audit..."
                         ></textarea>
-                        <div class="auto-save-indicator" id="auto-save-indicator">💾 Notes auto-saved</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                            <div class="auto-save-indicator" id="auto-save-indicator">💾 Notes auto-saved locally</div>
+                            <button class="btn btn-primary" onclick="saveNotesOnly()" style="padding: 0.6rem 1.2rem; font-size: 0.85rem;">
+                                💾 Save Notes to Database
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -1058,7 +1063,7 @@
                 indicator.classList.remove('show');
             }, 2000);
             
-            console.log('Auto-saved notes for job:', currentJob.jobNumber);
+            console.log('Auto-saved notes locally for job:', currentJob.jobNumber);
         }
 
         // Load saved notes from localStorage
@@ -1071,6 +1076,39 @@
         function clearSavedNotes(jobId) {
             const key = `audit_notes_${jobId}`;
             localStorage.removeItem(key);
+        }
+
+        // NEW FUNCTION: Save notes only to database without changing audit status
+        window.saveNotesOnly = async function() {
+            if (!currentJob) return;
+
+            const notes = document.getElementById('audit-notes').value.trim();
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+               
+                const updateData = {
+                    auditNotes: notes
+                };
+               
+                await updateDoc(jobRef, updateData);
+
+                // Update local job data
+                currentJob.auditNotes = notes;
+
+                // Clear saved notes from localStorage after successful save to database
+                clearSavedNotes(currentJob.id);
+
+                showToast('Notes saved to database successfully', 'success');
+                
+                // Update the jobs display to reflect the new notes
+                renderJobs();
+               
+            } catch (error) {
+                console.error('Error saving notes:', error);
+                showToast('Failed to save notes to database', 'error');
+            }
         }
 
         window.loadAllJobs = async function() {
