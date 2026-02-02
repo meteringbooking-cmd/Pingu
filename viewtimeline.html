@@ -1018,6 +1018,12 @@
                     <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
                     <button class="save-notes-btn" onclick="saveJobNotes()">💾 Save Notes</button>
                 </div>
+
+                <div class="additional-costs-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter);">
+                    <button class="save-notes-btn" onclick="showAdditionalCostsModal()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">
+                        💰 Add Additional Costs
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1048,6 +1054,37 @@
                 <div class="completion-actions" style="margin-top: 2rem;">
                     <button class="action-btn cancel" onclick="closeInvoiceModal()">Cancel</button>
                     <button class="action-btn confirm" onclick="submitInvoiceDetails()">💾 Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Costs Modal -->
+    <div class="modal" id="additional-costs-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">💰 Additional Costs</h2>
+                <button class="close-btn" onclick="closeAdditionalCostsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row" style="background: linear-gradient(135deg, rgba(255, 200, 87, 0.1), rgba(255, 107, 53, 0.1)); border: 2px solid var(--warning);">
+                    <div class="detail-label">Job Number</div>
+                    <div class="detail-value" id="additional-costs-job-number"></div>
+                </div>
+
+                <div style="margin-top: 1.5rem;">
+                    <label class="notes-label" for="materials-cost">Materials (£)</label>
+                    <input type="number" id="materials-cost" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                </div>
+
+                <div style="margin-top: 1rem;">
+                    <label class="notes-label" for="materials-notes">Materials Notes (Optional)</label>
+                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                </div>
+
+                <div class="completion-actions" style="margin-top: 2rem;">
+                    <button class="action-btn cancel" onclick="closeAdditionalCostsModal()">Cancel</button>
+                    <button class="action-btn confirm" onclick="submitAdditionalCosts()">💾 Save Costs</button>
                 </div>
             </div>
         </div>
@@ -2171,6 +2208,74 @@
                 showToast('Failed to save notes', 'error');
             }
         }
+
+        window.showAdditionalCostsModal = function() {
+            if (!currentJob) {
+                showToast('Error: No job selected', 'error');
+                return;
+            }
+
+            // Populate job number
+            document.getElementById('additional-costs-job-number').textContent = currentJob['Job Number'] || 'N/A';
+            
+            // Pre-fill existing values if they exist
+            document.getElementById('materials-cost').value = currentJob.materialsCost || '';
+            document.getElementById('materials-notes').value = currentJob.materialsNotes || '';
+            
+            // Show the additional costs modal
+            document.getElementById('additional-costs-modal').classList.add('show');
+        }
+
+        window.closeAdditionalCostsModal = function() {
+            document.getElementById('additional-costs-modal').classList.remove('show');
+            
+            // Clear inputs
+            document.getElementById('materials-cost').value = '';
+            document.getElementById('materials-notes').value = '';
+        }
+
+        window.submitAdditionalCosts = async function() {
+            if (!currentJob) {
+                showToast('Error: No job selected', 'error');
+                return;
+            }
+
+            const materialsCost = parseFloat(document.getElementById('materials-cost').value) || 0;
+            const materialsNotes = document.getElementById('materials-notes').value.trim();
+
+            const jobId = currentJob.id;
+            const jobNumber = currentJob['Job Number'] || 'N/A';
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', jobId);
+                
+                console.log(`Saving additional costs for job ID: ${jobId}, Job Number: ${jobNumber}`);
+               
+                const updateData = {
+                    materialsCost: materialsCost,
+                    materialsNotes: materialsNotes,
+                    additionalCostsUpdatedAt: new Date().toISOString()
+                };
+
+                await updateDoc(jobRef, updateData);
+               
+                // Update local job object
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) {
+                    job.materialsCost = materialsCost;
+                    job.materialsNotes = materialsNotes;
+                    job.additionalCostsUpdatedAt = updateData.additionalCostsUpdatedAt;
+                }
+               
+                showToast(`Additional costs saved: £${materialsCost.toFixed(2)} (Materials)`, 'success');
+                closeAdditionalCostsModal();
+               
+            } catch (error) {
+                console.error('Error saving additional costs:', error);
+                showToast('Failed to save additional costs', 'error');
+            }
+        }
        
         function updateTimeline() {
             buildTimeline();
@@ -2196,6 +2301,10 @@
 
         document.getElementById('invoice-modal').addEventListener('click', e => {
             if (e.target.id === 'invoice-modal') closeInvoiceModal();
+        });
+
+        document.getElementById('additional-costs-modal').addEventListener('click', e => {
+            if (e.target.id === 'additional-costs-modal') closeAdditionalCostsModal();
         });
        
         window.updateTimeline = updateTimeline;
