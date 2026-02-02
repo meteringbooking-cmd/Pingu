@@ -575,6 +575,12 @@
             box-shadow: 0 4px 12px rgba(78, 204, 163, 0.4);
         }
 
+        .additional-costs-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -744,9 +750,47 @@
                         <textarea id="edit-notes" class="form-textarea" placeholder="Add notes about this job..."></textarea>
                     </div>
                 </div>
+
+                <div class="additional-costs-section">
+                    <button class="btn btn-secondary" onclick="showAdditionalCostsModal()" style="width: 100%; background: linear-gradient(135deg, var(--warning), var(--secondary));">
+                        💰 Add Additional Costs
+                    </button>
+                </div>
+
                 <div class="modal-actions">
                     <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
                     <button class="btn-save" onclick="saveJob()">💾 Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Costs Modal -->
+    <div class="modal" id="additional-costs-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">💰 Additional Costs</h2>
+                <button class="close-btn" onclick="closeAdditionalCostsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: linear-gradient(135deg, rgba(255, 200, 87, 0.1), rgba(255, 107, 53, 0.1)); padding: 1rem; border-radius: 8px; border: 2px solid var(--warning); margin-bottom: 1.5rem;">
+                    <div style="color: var(--text-dim); font-size: 0.85rem;">Job Number</div>
+                    <div style="color: var(--text); font-weight: 600; font-size: 1.1rem;" id="additional-costs-job-number"></div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="materials-cost">Materials (£)</label>
+                    <input type="number" id="materials-cost" class="form-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <label class="form-label" for="materials-notes">Materials Notes (Optional)</label>
+                    <textarea id="materials-notes" class="form-textarea" placeholder="Describe materials purchased..." style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="closeAdditionalCostsModal()">Cancel</button>
+                    <button class="btn-save" onclick="submitAdditionalCosts()">💾 Save Costs</button>
                 </div>
             </div>
         </div>
@@ -1199,8 +1243,80 @@
             }
         }
 
+        window.showAdditionalCostsModal = function() {
+            if (!currentEditJob) {
+                showToast('Error: No job selected', 'error');
+                return;
+            }
+
+            // Populate job number
+            document.getElementById('additional-costs-job-number').textContent = currentEditJob.jobNumber || 'N/A';
+            
+            // Pre-fill existing values if they exist
+            document.getElementById('materials-cost').value = currentEditJob.materialsCost || '';
+            document.getElementById('materials-notes').value = currentEditJob.materialNotes || '';
+            
+            // Show the additional costs modal
+            document.getElementById('additional-costs-modal').classList.add('show');
+        }
+
+        window.closeAdditionalCostsModal = function() {
+            document.getElementById('additional-costs-modal').classList.remove('show');
+            
+            // Clear inputs
+            document.getElementById('materials-cost').value = '';
+            document.getElementById('materials-notes').value = '';
+        }
+
+        window.submitAdditionalCosts = async function() {
+            if (!currentEditJob) {
+                showToast('Error: No job selected', 'error');
+                return;
+            }
+
+            const materialsCost = parseFloat(document.getElementById('materials-cost').value) || 0;
+            const materialNotes = document.getElementById('materials-notes').value.trim();
+
+            const jobId = currentEditJob.id;
+            const jobNumber = currentEditJob.jobNumber || 'N/A';
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', jobId);
+                
+                console.log(`Saving additional costs for job ID: ${jobId}, Job Number: ${jobNumber}`);
+               
+                const updateData = {
+                    materialsCost: materialsCost,
+                    materialNotes: materialNotes,
+                    additionalCostsUpdatedAt: new Date().toISOString()
+                };
+
+                await updateDoc(jobRef, updateData);
+               
+                // Update local job object
+                const job = allJobs.find(j => j.id === currentEditJob.id);
+                if (job) {
+                    job.materialsCost = materialsCost;
+                    job.materialNotes = materialNotes;
+                    job.additionalCostsUpdatedAt = updateData.additionalCostsUpdatedAt;
+                }
+               
+                showToast(`Additional costs saved: £${materialsCost.toFixed(2)} (Materials)`, 'success');
+                closeAdditionalCostsModal();
+               
+            } catch (error) {
+                console.error('Error saving additional costs:', error);
+                showToast('Failed to save additional costs', 'error');
+            }
+        }
+
         document.getElementById('edit-modal').addEventListener('click', (e) => {
             if (e.target.id === 'edit-modal') closeEditModal();
+        });
+
+        document.getElementById('additional-costs-modal').addEventListener('click', e => {
+            if (e.target.id === 'additional-costs-modal') closeAdditionalCostsModal();
         });
 
         // Enable real-time filtering as user types
