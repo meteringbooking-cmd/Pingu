@@ -651,7 +651,7 @@
         let filteredJobs = [];
         let availableFields = [];
 
-        // Common fields that should be exported (including notes and invoice fields)
+        // Common fields that should be exported (including notes, invoice, and materials fields)
         const defaultFields = [
             'Job Type',
             'Job Number',
@@ -669,7 +669,9 @@
             'notes',
             'auditnotes',
             'invoiceOctopus',
-            'invoiceLead'
+            'invoiceLead',
+            'materialsCost',
+            'materialNotes'
         ];
 
         // Load jobs from Firebase
@@ -944,8 +946,8 @@
                                         return `<td><span class="status-badge status-${status}">${escapeHtml(value || 'Pending Review')}</span></td>`;
                                     }
 
-                                    // Format currency fields
-                                    if (field === 'invoiceOctopus' || field === 'invoiceLead') {
+                                    // Format currency fields (invoice and materials cost)
+                                    if (field === 'invoiceOctopus' || field === 'invoiceLead' || field === 'materialsCost') {
                                         if (value && !isNaN(value)) {
                                             return `<td>£${parseFloat(value).toFixed(2)}</td>`;
                                         }
@@ -999,8 +1001,8 @@
                         value = job['Lead Engineer'];
                     }
                     
-                    // Format currency fields for CSV
-                    if ((field === 'invoiceOctopus' || field === 'invoiceLead') && value && !isNaN(value)) {
+                    // Format currency fields for CSV (invoice and materials cost)
+                    if ((field === 'invoiceOctopus' || field === 'invoiceLead' || field === 'materialsCost') && value && !isNaN(value)) {
                         value = parseFloat(value).toFixed(2);
                     }
                     
