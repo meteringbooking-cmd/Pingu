@@ -261,6 +261,12 @@
             padding: 1rem;
             background: var(--dark-lighter);
             border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-item.filtered {
+            background: rgba(255, 107, 53, 0.1);
+            border: 2px solid var(--primary);
         }
 
         .stat-label {
@@ -308,6 +314,13 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        .filter-indicator {
+            font-size: 0.7rem;
+            color: var(--primary);
+            margin-top: 0.3rem;
+            font-weight: 600;
         }
 
         .jobs-grid {
@@ -851,34 +864,41 @@
                 </button>
             </div>
 
-            <div class="stats-row">
+            <div class="stats-row" id="stats-row">
                 <div class="stat-item">
                     <div class="stat-label">Total Jobs</div>
                     <div class="stat-value" id="total-jobs">0</div>
+                    <div class="filter-indicator" id="total-jobs-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Complete</div>
                     <div class="stat-value pass" id="total-complete">0</div>
+                    <div class="filter-indicator" id="total-complete-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Pending Audit</div>
                     <div class="stat-value pending" id="pending-audit">0</div>
+                    <div class="filter-indicator" id="pending-audit-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">In Progress</div>
                     <div class="stat-value in-progress" id="audit-in-progress">0</div>
+                    <div class="filter-indicator" id="audit-in-progress-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">No Issues</div>
                     <div class="stat-value pass" id="audit-pass">0</div>
+                    <div class="filter-indicator" id="audit-pass-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">With Issues</div>
                     <div class="stat-value issues" id="audit-issues">0</div>
+                    <div class="filter-indicator" id="audit-issues-indicator"></div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-label">Unable to Audit</div>
                     <div class="stat-value unable" id="audit-unable">0</div>
+                    <div class="filter-indicator" id="audit-unable-indicator"></div>
                 </div>
             </div>
         </div>
@@ -1010,6 +1030,7 @@
         let currentJob = null;
         let pendingAuditStatus = null;
         let autoSaveTimeout = null;
+        let isFiltered = false;
 
         function parseDate(dateStr) {
             if (!dateStr) return null;
@@ -1203,15 +1224,84 @@
             }
         }
 
-        function updateStats() {
-            document.getElementById('total-jobs').textContent = allJobs.length;
-            const completedJobs = allJobs.filter(j => j.status === 'Complete');
-            document.getElementById('total-complete').textContent = completedJobs.length;
-            document.getElementById('pending-audit').textContent = completedJobs.filter(j => j.auditStatus === 'pending').length;
-            document.getElementById('audit-in-progress').textContent = completedJobs.filter(j => j.auditStatus === 'in-progress').length;
-            document.getElementById('audit-pass').textContent = completedJobs.filter(j => j.auditStatus === 'pass').length;
-            document.getElementById('audit-issues').textContent = completedJobs.filter(j => j.auditStatus === 'complete-with-issues').length;
-            document.getElementById('audit-unable').textContent = completedJobs.filter(j => j.auditStatus === 'unable').length;
+        function updateStats(jobsToCount = allJobs) {
+            // Check if we're showing filtered results
+            const showingFiltered = jobsToCount !== allJobs;
+            
+            // Calculate stats from the provided jobs array
+            const totalCount = jobsToCount.length;
+            const completedJobs = jobsToCount.filter(j => j.status === 'Complete');
+            const completeCount = completedJobs.length;
+            const pendingCount = completedJobs.filter(j => j.auditStatus === 'pending').length;
+            const inProgressCount = completedJobs.filter(j => j.auditStatus === 'in-progress').length;
+            const passCount = completedJobs.filter(j => j.auditStatus === 'pass').length;
+            const issuesCount = completedJobs.filter(j => j.auditStatus === 'complete-with-issues').length;
+            const unableCount = completedJobs.filter(j => j.auditStatus === 'unable').length;
+
+            // Update the displayed values
+            document.getElementById('total-jobs').textContent = totalCount;
+            document.getElementById('total-complete').textContent = completeCount;
+            document.getElementById('pending-audit').textContent = pendingCount;
+            document.getElementById('audit-in-progress').textContent = inProgressCount;
+            document.getElementById('audit-pass').textContent = passCount;
+            document.getElementById('audit-issues').textContent = issuesCount;
+            document.getElementById('audit-unable').textContent = unableCount;
+
+            // Update filter indicators and stat item highlighting
+            const statItems = document.querySelectorAll('.stat-item');
+            const indicators = [
+                'total-jobs-indicator',
+                'total-complete-indicator',
+                'pending-audit-indicator',
+                'audit-in-progress-indicator',
+                'audit-pass-indicator',
+                'audit-issues-indicator',
+                'audit-unable-indicator'
+            ];
+
+            if (showingFiltered) {
+                // Calculate total stats for comparison
+                const allCompleted = allJobs.filter(j => j.status === 'Complete');
+                
+                indicators.forEach((id, index) => {
+                    const indicator = document.getElementById(id);
+                    const statItem = statItems[index];
+                    
+                    let totalValue;
+                    switch(id) {
+                        case 'total-jobs-indicator':
+                            totalValue = allJobs.length;
+                            break;
+                        case 'total-complete-indicator':
+                            totalValue = allCompleted.length;
+                            break;
+                        case 'pending-audit-indicator':
+                            totalValue = allCompleted.filter(j => j.auditStatus === 'pending').length;
+                            break;
+                        case 'audit-in-progress-indicator':
+                            totalValue = allCompleted.filter(j => j.auditStatus === 'in-progress').length;
+                            break;
+                        case 'audit-pass-indicator':
+                            totalValue = allCompleted.filter(j => j.auditStatus === 'pass').length;
+                            break;
+                        case 'audit-issues-indicator':
+                            totalValue = allCompleted.filter(j => j.auditStatus === 'complete-with-issues').length;
+                            break;
+                        case 'audit-unable-indicator':
+                            totalValue = allCompleted.filter(j => j.auditStatus === 'unable').length;
+                            break;
+                    }
+                    
+                    indicator.textContent = `of ${totalValue} total`;
+                    statItem.classList.add('filtered');
+                });
+            } else {
+                // Clear filter indicators
+                indicators.forEach((id, index) => {
+                    document.getElementById(id).textContent = '';
+                    statItems[index].classList.remove('filtered');
+                });
+            }
         }
 
         function renderJobs() {
@@ -1341,6 +1431,9 @@
             if (dateFrom) dateFrom.setHours(0, 0, 0, 0);
             if (dateTo) dateTo.setHours(23, 59, 59, 999);
 
+            // Check if any filters are active
+            isFiltered = jobSearch || dateFrom || dateTo || jobStatusFilter !== 'all' || auditStatus !== 'all';
+
             filteredJobs = allJobs.filter(job => {
                 // Job number filter
                 if (jobSearch && !job.jobNumber.toLowerCase().includes(jobSearch)) {
@@ -1357,7 +1450,7 @@
                     }
                 }
 
-                // Job status filter (NEW)
+                // Job status filter
                 if (jobStatusFilter !== 'all') {
                     if (job.status !== jobStatusFilter) {
                         return false;
@@ -1374,6 +1467,8 @@
                 return true;
             });
 
+            // Update stats with filtered jobs
+            updateStats(filteredJobs);
             renderJobs();
             showToast(`Showing ${filteredJobs.length} of ${allJobs.length} jobs`, 'success');
         }
@@ -1385,7 +1480,11 @@
             document.getElementById('job-status').value = 'all';
             document.getElementById('audit-status').value = 'all';
             
+            isFiltered = false;
             filteredJobs = [...allJobs];
+            
+            // Update stats with all jobs
+            updateStats(allJobs);
             renderJobs();
             showToast('Filters cleared', 'success');
         }
@@ -1508,7 +1607,9 @@
 
                 showToast(`Audit status updated to: ${statusLabel}`, 'success');
                 closeAuditModal();
-                updateStats();
+                
+                // Update stats based on current filter state
+                updateStats(isFiltered ? filteredJobs : allJobs);
                 renderJobs();
                
             } catch (error) {
