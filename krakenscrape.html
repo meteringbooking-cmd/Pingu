@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kraken Scrape</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐙 Kraken Scrape</h1>
+        
+        <div class="upload-section">
+            <h3>Upload CSV File</h3>
+            <p>Expected columns: Name, Monday, Tuesday, Wednesday, Thursday, Friday</p>
+            <input type="file" id="csvFile" accept=".csv">
+        </div>
+
+        <div id="status"></div>
+        
+        <div class="results" id="results"></div>
+    </div>
+
+    <script>
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                try {
+                    processCSV(event.target.result);
+                } catch (error) {
+                    showStatus('Error processing file: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function processCSV(csvText) {
+            const lines = csvText.split('\n').filter(line => line.trim());
+            if (lines.length < 2) {
+                showStatus('CSV file appears to be empty', 'error');
+                return;
+            }
+
+            const headers = lines[0].split(',').map(h => h.trim());
+            const results = [];
+
+            // Process each row (skip header)
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                if (values.length === 0) continue;
+
+                const row = {};
+                
+                // Extract name (everything before "SEngineer")
+                const nameCell = values[0] || '';
+                const sengineerIndex = nameCell.indexOf('SEngineer');
+                row.Name = sengineerIndex !== -1 ? nameCell.substring(0, sengineerIndex).trim() : nameCell.trim();
+
+                // Extract J-******** patterns from remaining columns
+                const jPatterns = [];
+                for (let j = 1; j < values.length; j++) {
+                    const cell = values[j] || '';
+                    const matches = cell.match(/J-[A-Za-z0-9]{8}/g);
+                    if (matches) {
+                        jPatterns.push(...matches);
+                    }
+                }
+
+                row.JPatterns = jPatterns.join(', ');
+                results.push(row);
+            }
+
+            displayResults(results);
+            showStatus(`Successfully processed ${results.length} rows`, 'success');
+        }
+
+        function parseCSVLine(line) {
+            const values = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    values.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            values.push(current.trim());
+            return values;
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            
+            let html = '<h3>Extracted Data</h3>';
+            html += '<button onclick="exportCSV()">Export as CSV</button>';
+            html += '<table>';
+            html += '<thead><tr><th>Name</th><th>J-Patterns</th></tr></thead>';
+            html += '<tbody>';
+            
+            results.forEach(row => {
+                html += `<tr><td>${escapeHtml(row.Name)}</td><td>${escapeHtml(row.JPatterns)}</td></tr>`;
+            });
+            
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+
+            // Store results globally for export
+            window.processedResults = results;
+        }
+
+        function exportCSV() {
+            if (!window.processedResults) return;
+
+            let csv = 'Name,J-Patterns\n';
+            window.processedResults.forEach(row => {
+                csv += `"${row.Name}","${row.JPatterns}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'kraken_scraped_' + new Date().toISOString().slice(0,10) + '.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + type;
+            statusDiv.textContent = message;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
