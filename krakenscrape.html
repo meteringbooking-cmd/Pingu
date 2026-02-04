@@ -145,8 +145,10 @@
                         jPatterns.push(...matches);
                     }
                 }
+                
+                // Remove duplicates
+                row.JPatterns = [...new Set(jPatterns)];
 
-                row.JPatterns = jPatterns.join(', ');
                 results.push(row);
             }
 
@@ -178,14 +180,32 @@
         function displayResults(results) {
             const resultsDiv = document.getElementById('results');
             
+            // Find max number of J-patterns
+            const maxPatterns = Math.max(...results.map(r => r.JPatterns.length), 0);
+            
             let html = '<h3>Extracted Data</h3>';
             html += '<button onclick="exportCSV()">Export as CSV</button>';
             html += '<table>';
-            html += '<thead><tr><th>Name</th><th>J-Patterns</th></tr></thead>';
+            html += '<thead><tr><th>Name</th>';
+            
+            // Create headers for J-pattern columns
+            for (let i = 0; i < maxPatterns; i++) {
+                html += `<th>J-Pattern ${i + 1}</th>`;
+            }
+            
+            html += '</tr></thead>';
             html += '<tbody>';
             
             results.forEach(row => {
-                html += `<tr><td>${escapeHtml(row.Name)}</td><td>${escapeHtml(row.JPatterns)}</td></tr>`;
+                html += `<tr><td>${escapeHtml(row.Name)}</td>`;
+                
+                // Add each J-pattern in its own column
+                for (let i = 0; i < maxPatterns; i++) {
+                    const pattern = row.JPatterns[i] || '';
+                    html += `<td>${escapeHtml(pattern)}</td>`;
+                }
+                
+                html += '</tr>';
             });
             
             html += '</tbody></table>';
@@ -193,14 +213,27 @@
 
             // Store results globally for export
             window.processedResults = results;
+            window.maxPatterns = maxPatterns;
         }
 
         function exportCSV() {
             if (!window.processedResults) return;
 
-            let csv = 'Name,J-Patterns\n';
+            // Create header row
+            let csv = 'Name';
+            for (let i = 0; i < window.maxPatterns; i++) {
+                csv += `,J-Pattern ${i + 1}`;
+            }
+            csv += '\n';
+            
+            // Add data rows
             window.processedResults.forEach(row => {
-                csv += `"${row.Name}","${row.JPatterns}"\n`;
+                csv += `"${row.Name}"`;
+                for (let i = 0; i < window.maxPatterns; i++) {
+                    const pattern = row.JPatterns[i] || '';
+                    csv += `,"${pattern}"`;
+                }
+                csv += '\n';
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
