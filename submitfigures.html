@@ -794,18 +794,21 @@
             const job = pendingJobs.find(j => j.id === jobId);
             if (!job) return;
 
-            const invoiceLead = parseFloat(document.getElementById(`lead-${jobId}`).value) || 0;
-            const invoiceOctopus = parseFloat(document.getElementById(`octopus-${jobId}`).value) || 0;
+            const leadInput = document.getElementById(`lead-${jobId}`).value;
+            const octopusInput = document.getElementById(`octopus-${jobId}`).value;
+            
+            const invoiceLead = leadInput !== '' ? parseFloat(leadInput) : null;
+            const invoiceOctopus = octopusInput !== '' ? parseFloat(octopusInput) : null;
             const costs = additionalCosts[jobId] || [];
 
-            // Validate that at least one figure is entered
-            if (invoiceLead === 0 && invoiceOctopus === 0) {
+            // Validate that at least one figure is entered (can be 0 or any positive number)
+            if (invoiceLead === null && invoiceOctopus === null) {
                 showToast('Please enter at least one invoice figure', 'error');
                 return;
             }
 
             // Validate additional costs have both type and value
-            const invalidCosts = costs.filter(cost => !cost.type.trim() || cost.value === 0);
+            const invalidCosts = costs.filter(cost => !cost.type.trim() || (cost.value === 0 && cost.value === ''));
             if (invalidCosts.length > 0) {
                 showToast('Please complete all additional cost entries or remove them', 'error');
                 return;
@@ -816,10 +819,16 @@
                 const jobRef = doc(window.db, 'Solar-jobs', jobId);
 
                 const updateData = {
-                    invoiceLead: invoiceLead,
-                    invoiceOctopus: invoiceOctopus,
                     invoiceSubmittedAt: new Date().toISOString()
                 };
+
+                // Only add fields that were actually filled in
+                if (invoiceLead !== null) {
+                    updateData.invoiceLead = invoiceLead;
+                }
+                if (invoiceOctopus !== null) {
+                    updateData.invoiceOctopus = invoiceOctopus;
+                }
 
                 // Add additional costs if any
                 if (costs.length > 0) {
