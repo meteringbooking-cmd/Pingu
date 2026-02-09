@@ -994,22 +994,24 @@
                     </div>
                 </div>
 
-                <!-- Invoice Section - Hidden by default -->
+                <!-- Slate Roof Section - Hidden by default -->
                 <div class="invoice-section" id="invoice-section" style="display: none;">
-                    <h3 class="invoice-title" id="invoice-title">💰 Invoice Details Required</h3>
+                    <h3 class="invoice-title" id="invoice-title">🏠 Job Completion Details</h3>
                     
                     <div style="margin-bottom: 1.5rem;">
-                        <label class="notes-label" for="invoice-octopus-inline">Invoiceable Figure to Octopus (£)</label>
-                        <input type="number" id="invoice-octopus-inline" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
-                    </div>
-
-                    <div style="margin-bottom: 1.5rem;">
-                        <label class="notes-label" for="invoice-lead-inline">Figure Owed to Lead Engineer (£)</label>
-                        <input type="number" id="invoice-lead-inline" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                        <label class="notes-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <button class="day-btn" id="slate-yes-btn" onclick="selectSlateOption(true)" style="padding: 1rem; font-size: 1rem;">
+                                ✅ Yes
+                            </button>
+                            <button class="day-btn" id="slate-no-btn" onclick="selectSlateOption(false)" style="padding: 1rem; font-size: 1rem;">
+                                ❌ No
+                            </button>
+                        </div>
                     </div>
 
                     <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
-                        💾 Submit Invoice & Mark Complete
+                        💾 Submit & Mark Complete
                     </button>
                 </div>
 
@@ -1027,37 +1029,6 @@
                     <button class="save-notes-btn" onclick="showAdditionalCostsModal()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">
                         💰 Add Additional Costs
                     </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Invoice Modal -->
-    <div class="modal" id="invoice-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">💰 Invoice Details</h2>
-                <button class="close-btn" onclick="closeInvoiceModal()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="detail-row" style="background: linear-gradient(135deg, rgba(78, 236, 163, 0.1), rgba(0, 217, 255, 0.1)); border: 2px solid var(--success);">
-                    <div class="detail-label">Job Number</div>
-                    <div class="detail-value" id="invoice-job-number"></div>
-                </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <label class="notes-label" for="invoice-octopus">Invoiceable Figure to Octopus (£)</label>
-                    <input type="number" id="invoice-octopus" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
-                </div>
-
-                <div style="margin-top: 1.5rem;">
-                    <label class="notes-label" for="invoice-lead">Figure Owed to Lead Engineer (£)</label>
-                    <input type="number" id="invoice-lead" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
-                </div>
-
-                <div class="completion-actions" style="margin-top: 2rem;">
-                    <button class="action-btn cancel" onclick="closeInvoiceModal()">Cancel</button>
-                    <button class="action-btn confirm" onclick="submitInvoiceDetails()">💾 Submit</button>
                 </div>
             </div>
         </div>
@@ -1136,6 +1107,7 @@
         let timelineDates = [];
         let selectedCompletionDays = [];
         let pendingStatusChange = null; // Track the status being set
+        let slateRoof = null; // Track slate roof selection
        
         window.initializeTimeline = function() {
             const today = new Date();
@@ -1338,75 +1310,17 @@
                         job.completedTimestamp = new Date().toISOString();
                     }
                     
-                    // Only send email when marking as complete (invoice modal handled separately)
+                    // Only send email when marking as complete
                     if (newStatus === 'Complete' && previousStatus !== 'Complete') {
                         await sendJobCompletionEmail(job);
                     }
                 }
                
                 showToast(`Job status updated to: ${newStatus}`, 'success');
-                // Timeline rebuild is now handled by calling functions
                
             } catch (error) {
                 console.error('Error updating job status:', error);
                 showToast('Failed to update job status', 'error');
-            }
-        }
-
-        function showInvoiceModal(job) {
-            currentJob = job;
-            document.getElementById('invoice-job-number').textContent = job['Job Number'] || 'N/A';
-            
-            document.getElementById('invoice-octopus').value = job.invoiceOctopus || '';
-            document.getElementById('invoice-lead').value = job.invoiceLead || '';
-            
-            document.getElementById('invoice-modal').classList.add('show');
-        }
-
-        window.closeInvoiceModal = function() {
-            document.getElementById('invoice-modal').classList.remove('show');
-            // Rebuild timeline after invoice modal closes
-            buildTimeline();
-        }
-
-        window.submitInvoiceDetails = async function() {
-            if (!currentJob) {
-                showToast('Error: No job selected', 'error');
-                return;
-            }
-
-            const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus').value) || 0;
-            const invoiceLead = parseFloat(document.getElementById('invoice-lead').value) || 0;
-
-            const jobId = currentJob.id;
-            const jobNumber = currentJob['Job Number'] || 'N/A';
-
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-                
-                console.log(`Saving invoice for job ID: ${jobId}, Job Number: ${jobNumber}`);
-               
-                await updateDoc(jobRef, {
-                    invoiceOctopus: invoiceOctopus,
-                    invoiceLead: invoiceLead,
-                    invoiceSubmittedAt: new Date().toISOString()
-                });
-               
-                const job = allJobs.find(j => j.id === currentJob.id);
-                if (job) {
-                    job.invoiceOctopus = invoiceOctopus;
-                    job.invoiceLead = invoiceLead;
-                    job.invoiceSubmittedAt = new Date().toISOString();
-                }
-               
-                showToast(`Invoice details saved: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
-                closeInvoiceModal();
-                // Timeline rebuilds automatically in closeInvoiceModal()
-               
-            } catch (error) {
-                console.error('Error saving invoice details:', error);
-                showToast('Failed to save invoice details', 'error');
             }
         }
         
@@ -1497,7 +1411,24 @@
             }
         }
 
-        // Show invoice section inline in the status modal
+        // Select slate roof option
+        window.selectSlateOption = function(isSlate) {
+            slateRoof = isSlate;
+            
+            // Update button styles
+            const yesBtn = document.getElementById('slate-yes-btn');
+            const noBtn = document.getElementById('slate-no-btn');
+            
+            if (isSlate) {
+                yesBtn.classList.add('selected');
+                noBtn.classList.remove('selected');
+            } else {
+                noBtn.classList.add('selected');
+                yesBtn.classList.remove('selected');
+            }
+        }
+
+        // Show slate roof section inline in the status modal
         window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
 
@@ -1505,9 +1436,8 @@
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
             
-            // Pre-fill invoice values if they exist
-            document.getElementById('invoice-octopus-inline').value = currentJob.invoiceOctopus || '';
-            document.getElementById('invoice-lead-inline').value = currentJob.invoiceLead || '';
+            // Reset slate selection
+            slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
             
             // Get invoice section element
             const invoiceSection = document.getElementById('invoice-section');
@@ -1517,15 +1447,32 @@
             // Apply styling based on status type
             if (isShortNotice) {
                 invoiceSection.classList.add('short-notice-style');
-                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Invoice Details';
+                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
                 submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
-                submitBtn.textContent = '💾 Submit Invoice & Mark as Short Notice Cancellation';
+                submitBtn.textContent = '💾 Submit & Mark as Short Notice Cancellation';
             } else {
                 invoiceSection.classList.remove('short-notice-style');
-                invoiceTitle.textContent = '💰 Invoice Details Required';
+                invoiceTitle.textContent = '🏠 Job Completion Details';
                 submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
-                submitBtn.textContent = '💾 Submit Invoice & Mark Complete';
+                submitBtn.textContent = '💾 Submit & Mark Complete';
             }
+            
+            // Update button selection based on existing value
+            setTimeout(() => {
+                const yesBtn = document.getElementById('slate-yes-btn');
+                const noBtn = document.getElementById('slate-no-btn');
+                
+                if (slateRoof === true) {
+                    yesBtn.classList.add('selected');
+                    noBtn.classList.remove('selected');
+                } else if (slateRoof === false) {
+                    noBtn.classList.add('selected');
+                    yesBtn.classList.remove('selected');
+                } else {
+                    yesBtn.classList.remove('selected');
+                    noBtn.classList.remove('selected');
+                }
+            }, 100);
             
             // Show invoice section
             invoiceSection.style.display = 'block';
@@ -1536,7 +1483,7 @@
             }, 100);
         }
 
-        // Submit invoice and mark job with appropriate status
+        // Submit slate roof info and mark job with appropriate status
         window.submitInlineInvoice = async function() {
             if (!currentJob) {
                 console.error('No currentJob available');
@@ -1544,8 +1491,11 @@
                 return;
             }
 
-            const invoiceOctopus = parseFloat(document.getElementById('invoice-octopus-inline').value) || 0;
-            const invoiceLead = parseFloat(document.getElementById('invoice-lead-inline').value) || 0;
+            // Validate slate roof selection
+            if (slateRoof === null) {
+                showToast('Please select whether the roof type was slate', 'error');
+                return;
+            }
 
             const jobId = currentJob.id;
             const jobNumber = currentJob['Job Number'] || 'N/A';
@@ -1558,8 +1508,9 @@
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'Solar-jobs', jobId);
                 
-                console.log(`=== SUBMITTING INVOICE ===`);
+                console.log(`=== SUBMITTING COMPLETION ===`);
                 console.log(`Job ID: ${jobId}, Job Number: ${jobNumber}, Final Status: ${finalStatus}`);
+                console.log('Slate Roof:', slateRoof);
                 console.log('Current selectedCompletionDays:', selectedCompletionDays);
                 console.log('currentJob._pendingCompletedDays:', currentJob._pendingCompletedDays);
                 
@@ -1584,9 +1535,7 @@
                     'Status Update': finalStatus,
                     completedTimestamp: new Date().toISOString(),
                     completedDays: completedDays,
-                    invoiceOctopus: invoiceOctopus,
-                    invoiceLead: invoiceLead,
-                    invoiceSubmittedAt: new Date().toISOString()
+                    slateRoof: slateRoof
                 };
                 
                 console.log('Update data being sent to Firebase:', updateData);
@@ -1602,9 +1551,7 @@
                         status: finalStatus,
                         'Status Update': finalStatus,
                         completedTimestamp: updateData.completedTimestamp,
-                        invoiceOctopus: invoiceOctopus,
-                        invoiceLead: invoiceLead,
-                        invoiceSubmittedAt: updateData.invoiceSubmittedAt,
+                        slateRoof: slateRoof,
                         completedDays: completedDays
                     });
                     console.log('✓ Local job object updated');
@@ -1616,10 +1563,12 @@
                 }
                 
                 const statusEmoji = finalStatus === 'Short Notice Cancellation' ? '🔔' : '✅';
-                showToast(`${statusEmoji} Job #${jobNumber} marked as ${finalStatus}! Invoice: £${invoiceOctopus.toFixed(2)} (Octopus), £${invoiceLead.toFixed(2)} (Lead)`, 'success');
+                const roofType = slateRoof ? 'Slate' : 'Non-slate';
+                showToast(`${statusEmoji} Job #${jobNumber} marked as ${finalStatus}! Roof: ${roofType}`, 'success');
                 
-                // Reset pending status
+                // Reset pending status and slate selection
                 pendingStatusChange = null;
+                slateRoof = null;
                 
                 // Close modal
                 closeStatusModal();
@@ -1631,9 +1580,9 @@
                 }, 300);
                 
             } catch (error) {
-                console.error('❌ Error saving invoice and updating status:', error);
+                console.error('❌ Error saving completion details:', error);
                 console.error('Error details:', error.message, error.stack);
-                showToast('Failed to save invoice: ' + error.message, 'error');
+                showToast('Failed to save completion details: ' + error.message, 'error');
             }
         }
        
@@ -2000,7 +1949,8 @@
            
             currentJob = job;
             selectedCompletionDays = [...(job.completedDays || [])];
-            pendingStatusChange = null; // Reset pending status
+            pendingStatusChange = null;
+            slateRoof = null;
            
             console.log(`Opening modal for job: ${job['Job Number']}, completedDays:`, job.completedDays, 'selectedCompletionDays:', selectedCompletionDays);
             
@@ -2026,16 +1976,15 @@
         function closeStatusModal() {
             document.getElementById('status-modal').classList.remove('show');
             
-            // Reset invoice section
+            // Reset sections
             document.getElementById('invoice-section').style.display = 'none';
             document.getElementById('invoice-section').classList.remove('short-notice-style');
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
-            document.getElementById('invoice-octopus-inline').value = '';
-            document.getElementById('invoice-lead-inline').value = '';
             
             currentJob = null;
             selectedCompletionDays = [];
             pendingStatusChange = null;
+            slateRoof = null;
         }
 
         window.updateJobStatus = async function(newStatus) {
@@ -2050,13 +1999,13 @@
                 return;
             }
 
-            // For Complete status on single-day jobs, show invoice section
+            // For Complete status on single-day jobs, show slate section
             if (newStatus === 'Complete' && currentJob.jobLength === 1) {
                 showInlineInvoiceSection(false);
                 return;
             }
 
-            // For Short Notice Cancellation, show invoice section with lilac theme
+            // For Short Notice Cancellation, show slate section with theme
             if (newStatus === 'Short Notice Cancellation') {
                 showInlineInvoiceSection(true);
                 return;
@@ -2075,7 +2024,7 @@
             const jobLength = currentJob.jobLength || 1;
 
             if (jobLength === 1) {
-                // Show invoice section inline for single-day jobs
+                // Show slate section inline for single-day jobs
                 showInlineInvoiceSection(false);
                 return;
             }
@@ -2140,10 +2089,10 @@
             currentJob._pendingCompletedDays = [...selectedCompletionDays];
             console.log('✓ Stored _pendingCompletedDays:', currentJob._pendingCompletedDays);
 
-            // If ALL days are selected, show invoice section
+            // If ALL days are selected, show slate section
             if (selectedCompletionDays.length === jobLength) {
-                console.log('✓ All days selected - showing invoice section');
-                // Hide completion selector, show invoice section
+                console.log('✓ All days selected - showing slate section');
+                // Hide completion selector, show slate section
                 document.getElementById('completion-selector').style.display = 'none';
                 showInlineInvoiceSection(false);
                 return;
@@ -2323,10 +2272,6 @@
        
         document.getElementById('status-modal').addEventListener('click', e => {
             if (e.target.id === 'status-modal') closeStatusModal();
-        });
-
-        document.getElementById('invoice-modal').addEventListener('click', e => {
-            if (e.target.id === 'invoice-modal') closeInvoiceModal();
         });
 
         document.getElementById('additional-costs-modal').addEventListener('click', e => {
