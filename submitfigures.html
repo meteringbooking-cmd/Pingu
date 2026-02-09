@@ -631,7 +631,19 @@
             const jobType = job['Job Type'] || 'Standard';
             const lead = job['Lead'] || job['Lead Engineer'] || job['engineer'] || 'Unassigned';
             const postcode = job['Postcode'] || 'N/A';
-            const slateRoof = job['slateRoof'] || 'N/A';
+            
+            // Handle slateRoof - it can be boolean or string "True"/"False"
+            let slateRoof = 'N/A';
+            if (job.slateRoof !== undefined && job.slateRoof !== null && job.slateRoof !== '') {
+                const roofValue = String(job.slateRoof).toLowerCase();
+                if (roofValue === 'true' || job.slateRoof === true) {
+                    slateRoof = '✓ Yes';
+                } else if (roofValue === 'false' || job.slateRoof === false) {
+                    slateRoof = '✗ No';
+                } else {
+                    slateRoof = String(job.slateRoof);
+                }
+            }
 
             return `
                 <div class="job-card ${isShortNotice ? 'short-notice' : ''}" data-job-id="${job.id}">
