@@ -1014,6 +1014,10 @@
                 </div>
 
                 <div class="notes-section">
+                    <label class="notes-label" for="po-numbers">PO Numbers</label>
+                    <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 60px;"></textarea>
+                    <button class="save-notes-btn" onclick="savePONumbers()" style="margin-bottom: 1.5rem;">💾 Save PO Numbers</button>
+                    
                     <label class="notes-label" for="job-notes">Job Notes</label>
                     <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
                     <button class="save-notes-btn" onclick="saveJobNotes()">💾 Save Notes</button>
@@ -1135,16 +1139,17 @@
        
         window.initializeTimeline = function() {
             const today = new Date();
+            
+            // Calculate the previous Monday
             const dayOfWeek = today.getDay();
             const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
             
-            const monday = new Date(today);
-            monday.setDate(today.getDate() - daysFromMonday);
-            monday.setHours(0, 0, 0, 0);
+            const previousMonday = new Date(today);
+            previousMonday.setDate(today.getDate() - daysFromMonday - 7);
+            previousMonday.setHours(0, 0, 0, 0);
             
             const startDateInput = document.getElementById('start-date');
-            startDateInput.valueAsDate = monday;
-            // Start date is now editable - no longer disabled
+            startDateInput.valueAsDate = previousMonday;
             
             loadJobs();
         }
@@ -2010,6 +2015,7 @@
             document.getElementById('status-panel').textContent = job['Panel No.'] || job['Panel Number'] || 'N/A';
             document.getElementById('status-current').textContent = job.status || 'Scheduled';
             document.getElementById('job-notes').value = job.notes || '';
+            document.getElementById('po-numbers').value = job.poNumbers || '';
            
             document.getElementById('completion-selector').style.display = 'none';
             document.getElementById('invoice-section').style.display = 'none';
@@ -2174,6 +2180,32 @@
             } catch (error) {
                 console.error('Error updating partial completion:', error);
                 showToast('Failed to update job completion', 'error');
+            }
+        }
+
+        window.savePONumbers = async function() {
+            if (!currentJob) return;
+
+            const poNumbers = document.getElementById('po-numbers').value;
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+               
+                await updateDoc(jobRef, {
+                    poNumbers: poNumbers
+                });
+               
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) {
+                    job.poNumbers = poNumbers;
+                }
+               
+                showToast('PO Numbers saved successfully', 'success');
+               
+            } catch (error) {
+                console.error('Error saving PO numbers:', error);
+                showToast('Failed to save PO numbers', 'error');
             }
         }
 
