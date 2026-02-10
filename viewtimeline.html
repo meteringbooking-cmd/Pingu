@@ -909,6 +909,11 @@
                 <strong>📧 Email Notifications Active</strong><br>
                 <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete. Arrows (→) connect split job segments on the same row.</span>
             </div>
+
+            <div class="debug-info" id="sharepoint-status" style="display: block; background: linear-gradient(135deg, rgba(0, 217, 255, 0.1), rgba(255, 200, 87, 0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
+                <strong>📊 SharePoint Integration</strong><br>
+                <span style="font-size: 0.8rem;">Delays tracking data automatically syncs to Excel in SharePoint.</span>
+            </div>
         </div>
        
         <div class="timeline-container">
@@ -1022,7 +1027,11 @@
                     
                     <label class="notes-label" for="job-notes">Job Notes</label>
                     <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
-                    <button class="save-notes-btn" onclick="saveJobNotes()">💾 Save Notes</button>
+                    <button class="save-notes-btn" onclick="saveJobNotes()" style="margin-bottom: 1.5rem;">💾 Save Notes</button>
+                    
+                    <label class="notes-label" for="job-delays">Were there any delays?</label>
+                    <textarea id="job-delays" class="notes-textarea" placeholder="Describe any delays experienced during this job..." style="min-height: 80px;"></textarea>
+                    <button class="save-notes-btn" onclick="saveJobDelays()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">⏰ Save Delays & Sync to SharePoint</button>
                 </div>
 
                 <div class="additional-costs-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter);">
@@ -1106,13 +1115,160 @@
         let currentJob = null;
         let timelineDates = [];
         let selectedCompletionDays = [];
-        let pendingStatusChange = null; // Track the status being set
-        let slateRoof = null; // Track slate roof selection
+        let pendingStatusChange = null;
+        let slateRoof = null;
+
+        // SharePoint Configuration - UPDATE THESE VALUES
+        const SHAREPOINT_CONFIG = {
+            siteId: 'YOUR_SHAREPOINT_SITE_ID',  // Get from SharePoint site
+            driveId: 'YOUR_DRIVE_ID',            // Get from SharePoint document library
+            fileId: 'YOUR_EXCEL_FILE_ID',        // Get from Excel file in SharePoint
+            worksheetName: 'Sheet1',              // Name of the worksheet in Excel
+            tableName: 'JobDelaysTable'           // Name of the table in Excel (create this in Excel)
+        };
+
+        // Microsoft Graph API Authentication
+        // For production, you'll need to implement proper OAuth2 flow
+        // This is a placeholder - see setup instructions below
+        async function getSharePointAccessToken() {
+            // IMPORTANT: Implement your authentication method here
+            // Options:
+            // 1. Use Microsoft Authentication Library (MSAL.js)
+            // 2. Use Azure Function as middleware
+            // 3. Use backend service to handle auth
+            
+            // Placeholder - this needs to be implemented
+            console.warn('SharePoint authentication not configured');
+            return null;
+        }
+
+        // Update SharePoint Excel with delay information
+        async function updateSharePointExcel(jobData) {
+            try {
+                const accessToken = await getSharePointAccessToken();
+                
+                if (!accessToken) {
+                    console.log('⚠️ SharePoint sync skipped - authentication not configured');
+                    return false;
+                }
+
+                const { siteId, driveId, fileId, worksheetName, tableName } = SHAREPOINT_CONFIG;
+                
+                // Prepare row data for Excel
+                const rowData = {
+                    values: [[
+                        jobData.jobNumber,
+                        jobData.postcode,
+                        jobData.engineer,
+                        jobData.jobType,
+                        jobData.bookedDate,
+                        jobData.delays || 'No delays',
+                        new Date().toLocaleDateString('en-GB'),
+                        jobData.status
+                    ]]
+                };
+
+                // Microsoft Graph API endpoint to add row to Excel table
+                const endpoint = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${worksheetName}/tables/${tableName}/rows`;
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(rowData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`SharePoint API error: ${response.status}`);
+                }
+
+                console.log('✅ SharePoint Excel updated successfully');
+                return true;
+
+            } catch (error) {
+                console.error('❌ SharePoint sync error:', error);
+                return false;
+            }
+        }
+
+        // Alternative: Update existing row in SharePoint Excel
+        async function updateExistingSharePointRow(jobNumber, delays) {
+            try {
+                const accessToken = await getSharePointAccessToken();
+                
+                if (!accessToken) {
+                    console.log('⚠️ SharePoint sync skipped - authentication not configured');
+                    return false;
+                }
+
+                const { siteId, driveId, fileId, worksheetName } = SHAREPOINT_CONFIG;
+                
+                // Find the row with matching job number
+                const searchEndpoint = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${worksheetName}/usedRange`;
+                
+                const searchResponse = await fetch(searchEndpoint, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                });
+
+                if (!searchResponse.ok) {
+                    throw new Error('Failed to search Excel data');
+                }
+
+                const data = await searchResponse.json();
+                const rows = data.values;
+                
+                // Find row index with matching job number
+                let targetRowIndex = -1;
+                for (let i = 0; i < rows.length; i++) {
+                    if (rows[i][0] === jobNumber) {
+                        targetRowIndex = i;
+                        break;
+                    }
+                }
+
+                if (targetRowIndex === -1) {
+                    // Row doesn't exist, add new one
+                    return await updateSharePointExcel({
+                        jobNumber: jobNumber,
+                        delays: delays,
+                        // ... other job data
+                    });
+                }
+
+                // Update the delays column (assuming column 5)
+                const updateEndpoint = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${worksheetName}/range(address='F${targetRowIndex + 1}')`;
+                
+                const updateResponse = await fetch(updateEndpoint, {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        values: [[delays]]
+                    })
+                });
+
+                if (!updateResponse.ok) {
+                    throw new Error('Failed to update Excel row');
+                }
+
+                console.log('✅ SharePoint row updated successfully');
+                return true;
+
+            } catch (error) {
+                console.error('❌ SharePoint update error:', error);
+                return false;
+            }
+        }
        
         window.initializeTimeline = function() {
             const today = new Date();
             
-            // Calculate the previous Monday
             const dayOfWeek = today.getDay();
             const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
             
@@ -1232,7 +1388,6 @@
                         const status = data['Status Update'] || data['status'] || 'Scheduled';
                         const completedDays = data['completedDays'] || [];
                         
-                        // Parse projected completion date if available
                         let projectedCompletionDate = null;
                         if (data['Projected Completion Date']) {
                             projectedCompletionDate = parseDate(data['Projected Completion Date']);
@@ -1310,7 +1465,6 @@
                         job.completedTimestamp = new Date().toISOString();
                     }
                     
-                    // Only send email when marking as complete
                     if (newStatus === 'Complete' && previousStatus !== 'Complete') {
                         await sendJobCompletionEmail(job);
                     }
@@ -1411,11 +1565,9 @@
             }
         }
 
-        // Select slate roof option
         window.selectSlateOption = function(isSlate) {
             slateRoof = isSlate;
             
-            // Update button styles
             const yesBtn = document.getElementById('slate-yes-btn');
             const noBtn = document.getElementById('slate-no-btn');
             
@@ -1428,23 +1580,18 @@
             }
         }
 
-        // Show slate roof section inline in the status modal
         window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
 
-            // Hide status buttons and completion selector
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
             
-            // Reset slate selection
             slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
             
-            // Get invoice section element
             const invoiceSection = document.getElementById('invoice-section');
             const invoiceTitle = document.getElementById('invoice-title');
             const submitBtn = document.getElementById('submit-invoice-btn');
             
-            // Apply styling based on status type
             if (isShortNotice) {
                 invoiceSection.classList.add('short-notice-style');
                 invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
@@ -1457,7 +1604,6 @@
                 submitBtn.textContent = '💾 Submit & Mark Complete';
             }
             
-            // Update button selection based on existing value
             setTimeout(() => {
                 const yesBtn = document.getElementById('slate-yes-btn');
                 const noBtn = document.getElementById('slate-no-btn');
@@ -1474,16 +1620,13 @@
                 }
             }, 100);
             
-            // Show invoice section
             invoiceSection.style.display = 'block';
             
-            // Scroll to invoice section
             setTimeout(() => {
                 invoiceSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }, 100);
         }
 
-        // Submit slate roof info and mark job with appropriate status
         window.submitInlineInvoice = async function() {
             if (!currentJob) {
                 console.error('No currentJob available');
@@ -1491,7 +1634,6 @@
                 return;
             }
 
-            // Validate slate roof selection
             if (slateRoof === null) {
                 showToast('Please select whether the roof type was slate', 'error');
                 return;
@@ -1501,7 +1643,6 @@
             const jobNumber = currentJob['Job Number'] || 'N/A';
             const jobLength = currentJob.jobLength || 1;
 
-            // Determine final status based on pendingStatusChange
             const finalStatus = pendingStatusChange || 'Complete';
 
             try {
@@ -1511,26 +1652,18 @@
                 console.log(`=== SUBMITTING COMPLETION ===`);
                 console.log(`Job ID: ${jobId}, Job Number: ${jobNumber}, Final Status: ${finalStatus}`);
                 console.log('Slate Roof:', slateRoof);
-                console.log('Current selectedCompletionDays:', selectedCompletionDays);
-                console.log('currentJob._pendingCompletedDays:', currentJob._pendingCompletedDays);
                 
-                // Determine completed days with priority:
                 let completedDays;
                 if (currentJob._pendingCompletedDays && currentJob._pendingCompletedDays.length > 0) {
                     completedDays = [...currentJob._pendingCompletedDays];
-                    console.log('✓ Using _pendingCompletedDays:', completedDays);
                 } else if (selectedCompletionDays.length > 0) {
                     completedDays = [...selectedCompletionDays];
-                    console.log('✓ Using selectedCompletionDays:', completedDays);
                 } else if (jobLength > 1) {
                     completedDays = Array.from({length: jobLength}, (_, i) => i + 1);
-                    console.log('✓ Using all days (default):', completedDays);
                 } else {
                     completedDays = [1];
-                    console.log('✓ Single day job');
                 }
                 
-                // Create update data object
                 const updateData = {
                     'Status Update': finalStatus,
                     completedTimestamp: new Date().toISOString(),
@@ -1538,13 +1671,9 @@
                     slateRoof: slateRoof
                 };
                 
-                console.log('Update data being sent to Firebase:', updateData);
-                
-                // Update Firebase
                 await updateDoc(jobRef, updateData);
                 console.log('✓ Firebase update successful');
                 
-                // Update local job object
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
                     Object.assign(job, {
@@ -1554,9 +1683,7 @@
                         slateRoof: slateRoof,
                         completedDays: completedDays
                     });
-                    console.log('✓ Local job object updated');
                     
-                    // Send completion email only for Complete status
                     if (finalStatus === 'Complete') {
                         await sendJobCompletionEmail(job);
                     }
@@ -1566,23 +1693,67 @@
                 const roofType = slateRoof ? 'Slate' : 'Non-slate';
                 showToast(`${statusEmoji} Job #${jobNumber} marked as ${finalStatus}! Roof: ${roofType}`, 'success');
                 
-                // Reset pending status and slate selection
                 pendingStatusChange = null;
                 slateRoof = null;
                 
-                // Close modal
                 closeStatusModal();
                 
-                // Rebuild timeline after a short delay to ensure state is updated
                 setTimeout(() => {
-                    console.log('Rebuilding timeline...');
                     buildTimeline();
                 }, 300);
                 
             } catch (error) {
                 console.error('❌ Error saving completion details:', error);
-                console.error('Error details:', error.message, error.stack);
                 showToast('Failed to save completion details: ' + error.message, 'error');
+            }
+        }
+
+        // Save job delays to Firebase AND sync to SharePoint
+        window.saveJobDelays = async function() {
+            if (!currentJob) return;
+
+            const delays = document.getElementById('job-delays').value;
+            const jobNumber = currentJob['Job Number'] || 'N/A';
+
+            try {
+                // Save to Firebase first
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
+               
+                await updateDoc(jobRef, {
+                    delays: delays,
+                    delaysUpdatedAt: new Date().toISOString()
+                });
+               
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) {
+                    job.delays = delays;
+                }
+               
+                showToast('Delays saved to Firebase', 'success');
+
+                // Sync to SharePoint Excel
+                const sharePointData = {
+                    jobNumber: jobNumber,
+                    postcode: currentJob['Postcode'] || 'N/A',
+                    engineer: currentJob.engineer || 'Unassigned',
+                    jobType: currentJob.jobType || 'Standard',
+                    bookedDate: formatDate(currentJob.parsedDate),
+                    delays: delays,
+                    status: currentJob.status || 'Scheduled'
+                };
+
+                const sharePointSuccess = await updateSharePointExcel(sharePointData);
+                
+                if (sharePointSuccess) {
+                    showToast('✅ Delays saved & synced to SharePoint!', 'success');
+                } else {
+                    showToast('⚠️ Saved to Firebase, but SharePoint sync failed', 'error');
+                }
+               
+            } catch (error) {
+                console.error('Error saving delays:', error);
+                showToast('Failed to save delays', 'error');
             }
         }
        
@@ -1712,31 +1883,25 @@
                 
                 const jobLength = job.jobLength || 1;
                 
-                // Check if job needs to be split based on projected completion date
                 let segments = [];
                 
                 if (job.projectedCompletionDate && jobLength > 1) {
                     const projectedEnd = new Date(job.projectedCompletionDate);
                     projectedEnd.setHours(0, 0, 0, 0);
                     
-                    // Calculate days between booked date and projected completion
                     const daysBetween = Math.floor((projectedEnd - jobStart) / (1000 * 60 * 60 * 24));
                     
-                    // If there's a gap (projected completion is later than consecutive days would allow)
                     if (daysBetween >= jobLength) {
-                        // Split the job - divide days between start and end dates
                         const daysPerSegment = Math.ceil(jobLength / 2);
                         const firstSegmentDays = daysPerSegment;
                         const secondSegmentDays = jobLength - daysPerSegment;
                         
-                        // First segment starts at booked date
                         segments.push({
                             startCol: startCol,
                             span: firstSegmentDays,
                             isFirst: true
                         });
                         
-                        // Find column for projected completion date
                         let projectedCol = -1;
                         for (let i = 0; i < dates.length; i++) {
                             if (dates[i].toDateString() === projectedEnd.toDateString()) {
@@ -1745,7 +1910,6 @@
                             }
                         }
                         
-                        // Second segment starts at projected completion date
                         if (projectedCol !== -1 && projectedCol < dates.length) {
                             segments.push({
                                 startCol: projectedCol,
@@ -1754,7 +1918,6 @@
                             });
                         }
                     } else {
-                        // No split needed - consecutive days
                         const daysRemaining = dates.length - startCol;
                         segments.push({
                             startCol: startCol,
@@ -1764,7 +1927,6 @@
                         });
                     }
                 } else {
-                    // Single segment
                     const daysRemaining = dates.length - startCol;
                     segments.push({
                         startCol: startCol,
@@ -1774,11 +1936,9 @@
                     });
                 }
                 
-                // For split jobs, find a single row that can fit ALL segments
                 let targetRow = null;
                 
                 if (segments.length > 1) {
-                    // Find a row where ALL segments can fit
                     let rowIndex = 0;
                     let foundValidRow = false;
                     
@@ -1787,7 +1947,6 @@
                             gridOccupancy[rowIndex] = new Array(numCols).fill(false);
                         }
                         
-                        // Check if ALL segments can fit in this row
                         let allSegmentsFit = true;
                         for (const segment of segments) {
                             for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
@@ -1803,7 +1962,6 @@
                             targetRow = rowIndex;
                             foundValidRow = true;
                             
-                            // Mark all cells for all segments as occupied
                             for (const segment of segments) {
                                 for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
                                     if (col < numCols) {
@@ -1816,7 +1974,6 @@
                         }
                     }
                 } else {
-                    // Single segment - use normal placement logic
                     const segment = segments[0];
                     let rowIndex = 0;
                     let foundRow = false;
@@ -1848,7 +2005,6 @@
                     }
                 }
                 
-                // Place all segments in the target row
                 segments.forEach((segment, segmentIndex) => {
                     jobPlacements.push({
                         job: job,
@@ -1860,7 +2016,6 @@
                         segmentIndex: segmentIndex
                     });
                     
-                    // Create arrow if this is not the last segment
                     if (!segment.isLast && segmentIndex < segments.length - 1) {
                         const nextSegment = segments[segmentIndex + 1];
                         arrows.push({
@@ -1880,7 +2035,6 @@
                 grid-template-rows: repeat(${totalRows}, 70px);
             ">`;
             
-            // Render job cards
             jobPlacements.forEach(placement => {
                 const { job, row, col, span, isFirst, isLast } = placement;
                 
@@ -1917,7 +2071,6 @@
                 `;
             });
             
-            // Render arrows - stretch across the full gap
             arrows.forEach(arrow => {
                 html += `
                     <div class="job-arrow" style="
@@ -1966,6 +2119,7 @@
             document.getElementById('status-current').textContent = job.status || 'Scheduled';
             document.getElementById('job-notes').value = job.notes || '';
             document.getElementById('po-numbers').value = job.poNumbers || '';
+            document.getElementById('job-delays').value = job.delays || '';
            
             document.getElementById('completion-selector').style.display = 'none';
             document.getElementById('invoice-section').style.display = 'none';
@@ -1976,7 +2130,6 @@
         function closeStatusModal() {
             document.getElementById('status-modal').classList.remove('show');
             
-            // Reset sections
             document.getElementById('invoice-section').style.display = 'none';
             document.getElementById('invoice-section').classList.remove('short-notice-style');
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
@@ -1990,28 +2143,23 @@
         window.updateJobStatus = async function(newStatus) {
             if (!currentJob) return;
 
-            // Store the pending status for later use
             pendingStatusChange = newStatus;
 
-            // For Complete status on multi-day jobs, show completion selector
             if (newStatus === 'Complete' && currentJob.jobLength > 1) {
                 showCompletionSelector();
                 return;
             }
 
-            // For Complete status on single-day jobs, show slate section
             if (newStatus === 'Complete' && currentJob.jobLength === 1) {
                 showInlineInvoiceSection(false);
                 return;
             }
 
-            // For Short Notice Cancellation, show slate section with theme
             if (newStatus === 'Short Notice Cancellation') {
                 showInlineInvoiceSection(true);
                 return;
             }
 
-            // For non-complete statuses (In-Progress, Aborted, Cancelled), update normally
             const jobId = currentJob.id;
             closeStatusModal();
             await updateJobStatusInDB(jobId, newStatus, null);
@@ -2024,7 +2172,6 @@
             const jobLength = currentJob.jobLength || 1;
 
             if (jobLength === 1) {
-                // Show slate section inline for single-day jobs
                 showInlineInvoiceSection(false);
                 return;
             }
@@ -2052,8 +2199,6 @@
             }
             selectedCompletionDays.sort((a, b) => a - b);
 
-            console.log('Updated selectedCompletionDays:', selectedCompletionDays);
-
             document.querySelectorAll('.day-btn').forEach(btn => {
                 const text = btn.textContent;
                 const num = parseInt(text.replace('Day ', ''));
@@ -2074,32 +2219,19 @@
             const jobLength = currentJob.jobLength || 1;
             const jobNumber = currentJob['Job Number'] || 'N/A';
 
-            console.log('=== CONFIRMING PARTIAL COMPLETION ===');
-            console.log('Selected days:', selectedCompletionDays);
-            console.log('Job length:', jobLength);
-            console.log('Current job:', currentJob.id, jobNumber);
-
-            // Validate that at least one day is selected
             if (selectedCompletionDays.length === 0) {
                 showToast('Please select at least one day to complete', 'error');
                 return;
             }
 
-            // Store selected days in currentJob for later use
             currentJob._pendingCompletedDays = [...selectedCompletionDays];
-            console.log('✓ Stored _pendingCompletedDays:', currentJob._pendingCompletedDays);
 
-            // If ALL days are selected, show slate section
             if (selectedCompletionDays.length === jobLength) {
-                console.log('✓ All days selected - showing slate section');
-                // Hide completion selector, show slate section
                 document.getElementById('completion-selector').style.display = 'none';
                 showInlineInvoiceSection(false);
                 return;
             }
 
-            // For PARTIAL completion (not all days), update to In-Progress
-            console.log('→ Partial completion - updating to In-Progress');
             const jobId = currentJob.id;
             
             try {
@@ -2111,7 +2243,6 @@
                     completedDays: selectedCompletionDays
                 });
                 
-                // Update local job object
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
                     job.status = 'In-Progress';
@@ -2119,7 +2250,6 @@
                     job.completedDays = selectedCompletionDays;
                 }
                 
-                // Show clear feedback about what was completed
                 const daysList = selectedCompletionDays.join(', ');
                 showToast(`✓ Job #${jobNumber}: Day${selectedCompletionDays.length > 1 ? 's' : ''} ${daysList} completed (${selectedCompletionDays.length}/${jobLength})`, 'success');
                 
@@ -2184,32 +2314,7 @@
             }
         }
 
-        window.showAdditionalCostsModal = function() {
-            if (!currentJob) {
-                showToast('Error: No job selected', 'error');
-                return;
-            }
-
-            // Populate job number
-            document.getElementById('additional-costs-job-number').textContent = currentJob['Job Number'] || 'N/A';
-            
-            // Pre-fill existing values if they exist
-            document.getElementById('materials-cost').value = currentJob.materialsCost || '';
-            document.getElementById('materials-notes').value = currentJob.materialsNotes || '';
-            
-            // Show the additional costs modal
-            document.getElementById('additional-costs-modal').classList.add('show');
-        }
-
-        window.closeAdditionalCostsModal = function() {
-            document.getElementById('additional-costs-modal').classList.remove('show');
-            
-            // Clear inputs
-            document.getElementById('materials-cost').value = '';
-            document.getElementById('materials-notes').value = '';
-        }
-
-        window.submitAdditionalCosts = async function() {
+       window.submitAdditionalCosts = async function() {
             if (!currentJob) {
                 showToast('Error: No job selected', 'error');
                 return;
