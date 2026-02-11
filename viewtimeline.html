@@ -475,22 +475,28 @@
                 const { siteId, driveId, fileId, worksheetName } = SHAREPOINT_CONFIG;
                 const encodedSheet = encodeURIComponent(worksheetName);
 
-                // Force DD/MM/YYYY for today's date
-                // For startDate/finishDate we use the string directly from Firebase (already DD/MM/YYYY)
-                function toUKDate(input) {
-                    if (!input) return '';
-                    // If already DD/MM/YYYY string, return as-is - do NOT parse through Date object
-                    if (typeof input === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(input)) return input;
-                    // Only for actual Date objects (like today)
-                    if (input instanceof Date) {
-                        return String(input.getDate()).padStart(2,'0') + '/' +
-                               String(input.getMonth()+1).padStart(2,'0') + '/' +
-                               input.getFullYear();
+                // Format dates consistently - preserve DD/MM/YYYY format from Firebase
+                function formatDateForExcel(dateInput) {
+                    if (!dateInput) return '';
+                    
+                    // If it's already a DD/MM/YYYY string, return as-is
+                    if (typeof dateInput === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput)) {
+                        return dateInput;
                     }
-                    return String(input);
+                    
+                    // If it's a Date object, convert to DD/MM/YYYY
+                    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+                        const day = String(dateInput.getDate()).padStart(2, '0');
+                        const month = String(dateInput.getMonth() + 1).padStart(2, '0');
+                        const year = dateInput.getFullYear();
+                        return `${day}/${month}/${year}`;
+                    }
+                    
+                    return '';
                 }
-                const _n = new Date();
-                const today = String(_n.getDate()).padStart(2,'0') + '/' + String(_n.getMonth()+1).padStart(2,'0') + '/' + _n.getFullYear();
+
+                // Get today's date in DD/MM/YYYY format
+                const today = formatDateForExcel(new Date());
 
                 // Step 1: Read column A to find the true last used row
                 // Scans all values so manual entries between rows are respected
@@ -516,15 +522,15 @@
 
                 // Step 2: Write row A through I
                 const rowValues = [[
-                    jobData.jobNumber,               // A - J Number
-                    jobData.postcode,                // B - Post code
-                    toUKDate(jobData.startDate),     // C - Start Date (DD/MM/YYYY)
-                    toUKDate(jobData.finishDate),     // D - Finish Date (DD/MM/YYYY)
-                    today,                           // E - Delay Date (DD/MM/YYYY)
-                    jobData.delays,                  // F - Reason For Delay
-                    '',                              // G - STS Notified (left blank)
-                    '',                              // H - Reattendance Date (left blank)
-                    ''                               // I - Resolved (left blank)
+                    jobData.jobNumber,                          // A - J Number
+                    jobData.postcode,                           // B - Post code
+                    formatDateForExcel(jobData.startDate),      // C - Start Date (DD/MM/YYYY)
+                    formatDateForExcel(jobData.finishDate),     // D - Finish Date (DD/MM/YYYY)
+                    today,                                      // E - Delay Date (DD/MM/YYYY)
+                    jobData.delays,                             // F - Reason For Delay
+                    '',                                         // G - STS Notified (left blank)
+                    '',                                         // H - Reattendance Date (left blank)
+                    ''                                          // I - Resolved (left blank)
                 ]];
 
                 const writeUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A${nextRow}:I${nextRow}')`;
@@ -579,17 +585,12 @@
                 showToast('Saving to SharePoint...', 'success');
 
                 // 2. Sync to SharePoint
-                // C = Start Date (booked date), D = Finish Date (projected completion)
-                const startDate = formatDate(currentJob.parsedDate);
-                const finishDate = currentJob.projectedCompletionDate
-                    ? formatDate(currentJob.projectedCompletionDate)
-                    : '';
-
+                // startDate and finishDate are already in DD/MM/YYYY format from Firebase
                 const sharePointData = {
                     jobNumber: jobNumber,
                     postcode: currentJob['Postcode'] || 'N/A',
-                    startDate: startDate,
-                    finishDate: finishDate,
+                    startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
+                    finishDate: currentJob['Projected Completion Date'] || '',
                     delays: delays
                 };
 
