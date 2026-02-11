@@ -474,39 +474,52 @@
 
                 const { siteId, driveId, fileId, worksheetName } = SHAREPOINT_CONFIG;
                 const encodedSheet = encodeURIComponent(worksheetName);
-                const today = formatDate(new Date()); // DD/MM/YYYY
 
-                // Step 1: Find next empty row
-                const rangeUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/usedRange`;
+                // Force DD/MM/YYYY - never rely on locale or JS date auto-formatting
+                function toUKDate(input) {
+                    if (!input) return '';
+                    if (typeof input === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(input)) return input;
+                    const d = (input instanceof Date) ? input : new Date(input);
+                    if (isNaN(d.getTime())) return '';
+                    return String(d.getDate()).padStart(2,'0') + '/' +
+                           String(d.getMonth()+1).padStart(2,'0') + '/' +
+                           d.getFullYear();
+                }
+                const today = toUKDate(new Date());
 
-                const rangeResp = await fetch(rangeUrl, {
+                // Step 1: Read column A to find the true last used row
+                // Scans all values so manual entries between rows are respected
+                const colAUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A1:A2000')`;
+
+                const colAResp = await fetch(colAUrl, {
                     headers: { 'Authorization': `Bearer ${accessToken}` }
                 });
 
-                let nextRow = 2; // Default: row 2 (after header row)
-                if (rangeResp.ok) {
-                    const rangeData = await rangeResp.json();
-                    // Address format: "Solar Tracker - Delays!A1:I10" — extract last row number
-                    const address = rangeData.address || '';
-                    const match = address.match(/:.*?(\d+)(?:[^0-9]|$)/);
-                    if (match) nextRow = parseInt(match[1]) + 1;
-                    console.log(`📊 Used range address: ${address}, writing to row ${nextRow}`);
+                let nextRow = 2;
+                if (colAResp.ok) {
+                    const colAData = await colAResp.json();
+                    const values = colAData.values || [];
+                    let lastRow = 1;
+                    for (let i = 0; i < values.length; i++) {
+                        if (values[i][0] !== null && values[i][0] !== '') {
+                            lastRow = i + 1;
+                        }
+                    }
+                    nextRow = lastRow + 1;
+                    console.log(`📊 Last used row in column A: ${lastRow}, writing to row ${nextRow}`);
                 }
 
                 // Step 2: Write row A through I
-                // A: J Number, B: Post code, C: Start Date, D: Finish Date,
-                // E: Delay Date (today), F: Reason For Delay, G: STS Notified (blank),
-                // H: Reattendance Date (blank), I: Resolved (blank)
                 const rowValues = [[
-                    jobData.jobNumber,            // A - J Number
-                    jobData.postcode,             // B - Post code
-                    jobData.startDate,            // C - Start Date
-                    jobData.finishDate || '',     // D - Finish Date
-                    today,                        // E - Delay Date (today's date)
-                    jobData.delays,               // F - Reason For Delay
-                    '',                           // G - STS Notified (left blank)
-                    '',                           // H - Reattendance Date (left blank)
-                    ''                            // I - Resolved (left blank)
+                    jobData.jobNumber,               // A - J Number
+                    jobData.postcode,                // B - Post code
+                    toUKDate(jobData.startDate),     // C - Start Date (DD/MM/YYYY)
+                    toUKDate(jobData.finishDate),     // D - Finish Date (DD/MM/YYYY)
+                    today,                           // E - Delay Date (DD/MM/YYYY)
+                    jobData.delays,                  // F - Reason For Delay
+                    '',                              // G - STS Notified (left blank)
+                    '',                              // H - Reattendance Date (left blank)
+                    ''                               // I - Resolved (left blank)
                 ]];
 
                 const writeUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A${nextRow}:I${nextRow}')`;
