@@ -558,6 +558,9 @@
         .color-badge.purple {
             background: linear-gradient(135deg, #a29bfe, #6c5ce7);
         }
+        .color-badge.green {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
         
         /* Tooltip styles */
         .tooltip {
@@ -708,6 +711,7 @@
                 <button onclick="selectRedCodes()">Select Red Only</button>
                 <button onclick="selectAmberCodes()">Select Amber Only</button>
                 <button onclick="selectPurpleCodes()">Select Purple Only</button>
+                <button onclick="selectGreenCodes()">Select Green Only</button>
             </div>
             <div class="checkbox-grid" id="checkboxGrid"></div>
         </div>
@@ -745,40 +749,43 @@
 
     <script>
         const FAIL_CODES = [
+            // E-codes
             'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10',
             'E11', 'E12', 'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20',
-            'E23', 'E24', 'E25', 'E26', 'E27', 'E28', 'E29', 'E30', 'E31', 'E32',
+            'EX1',
+            'E21', 'E22', 'E23', 'E24', 'E25', 'E26', 'E27', 'E28', 'E29', 'E30',
+            'E31', 'E32', 'EX2',
             'E33', 'E34', 'E35', 'E36', 'E37', 'E38', 'E39', 'E40', 'E41', 'E42',
-            'E43', 'E44', 'E45', 'E46', 'E47', 'E48', 'E49', 'E50', 'E51', 'EX2',
-            'E52', 'E53', 'E54', 'E55', 'E56', 'E57', 'E58', 'E59', 'E60', 'E61',
-            'E62', 'E63', 'E64', 'E65', 'E66', 'E67', 'E68', 'E69', 'E70', 'EX1',
-            'EX3', 'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'R17', 'R18',
-            'R19', 'R20', 'R21', 'R22', 'R23', 'R24', 'R25', 'R26', 'R27', 'R28',
-            'R29', 'R30', 'R31', 'R32', 'R33', 'R34', 'R35', 'R36', 'R37', 'R38',
-            'R39', 'R40', 'R41', 'R42', 'R43', 'R44', 'R45', 'R46', 'R47', 'R48',
-            'R49', 'R50', 'R51', 'R52', 'R53', 'R54', 'RX1', 'RX2', 'RX3'
+            'E43', 'E44', 'E45', 'E46', 'E47', 'E48', 'E49', 'EX3',
+            'E50', 'E51', 'E52', 'E53', 'E54', 'E55', 'E56', 'EX4',
+            // R-codes
+            'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'RX1',
+            'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23', 'R24', 'R25', 'R26',
+            'R27', 'R28', 'R29', 'R30', 'R31', 'R32', 'R33', 'R34', 'R35', 'R36',
+            'R37', 'R38', 'R39', 'R40', 'RX2',
+            'R41', 'R42', 'R43', 'R44', 'R45', 'R46', 'R47', 'R48', 'R49', 'R50',
+            'R51', 'R52', 'R53', 'R54', 'RX3'
         ];
 
         const FAIL_CODE_COLORS = {
-            // Red E-codes
+            // Red E-codes (E1–E20, EX1)
             'E1': 'red', 'E2': 'red', 'E3': 'red', 'E4': 'red', 'E5': 'red',
             'E6': 'red', 'E7': 'red', 'E8': 'red', 'E9': 'red', 'E10': 'red',
             'E11': 'red', 'E12': 'red', 'E13': 'red', 'E14': 'red', 'E15': 'red',
             'E16': 'red', 'E17': 'red', 'E18': 'red', 'E19': 'red', 'E20': 'red',
             'EX1': 'red',
-            // Amber E-codes
-            'E22': 'amber', 'E23': 'amber', 'E24': 'amber', 'E25': 'amber', 'E26': 'amber',
-            'E27': 'amber', 'E28': 'amber', 'E29': 'amber', 'E30': 'amber', 'E31': 'amber',
-            'E32': 'amber', 'E33': 'amber', 'E34': 'amber', 'E35': 'amber', 'E36': 'amber',
-            'E37': 'amber', 'E38': 'amber', 'E39': 'amber', 'E40': 'amber', 'E41': 'amber',
-            'E42': 'amber', 'E43': 'amber', 'E44': 'amber', 'E45': 'amber', 'E46': 'amber',
-            'E47': 'amber', 'E48': 'amber', 'E49': 'amber', 'E50': 'amber', 'E51': 'amber',
-            'EX2': 'amber',
-            // Purple E-codes
-            'E52': 'purple', 'E53': 'purple', 'E54': 'purple', 'E55': 'purple', 'E56': 'purple',
-            'E57': 'purple', 'E58': 'purple', 'E59': 'purple', 'E60': 'purple', 'E61': 'purple',
-            'E62': 'purple', 'E63': 'purple', 'E64': 'purple', 'E65': 'purple', 'E66': 'purple',
-            'E67': 'purple', 'E68': 'purple', 'E69': 'purple', 'E70': 'purple', 'EX3': 'purple',
+            // Amber E-codes (E21–E32, EX2)
+            'E21': 'amber', 'E22': 'amber', 'E23': 'amber', 'E24': 'amber', 'E25': 'amber',
+            'E26': 'amber', 'E27': 'amber', 'E28': 'amber', 'E29': 'amber', 'E30': 'amber',
+            'E31': 'amber', 'E32': 'amber', 'EX2': 'amber',
+            // Purple E-codes (E33–E49, EX3)
+            'E33': 'purple', 'E34': 'purple', 'E35': 'purple', 'E36': 'purple', 'E37': 'purple',
+            'E38': 'purple', 'E39': 'purple', 'E40': 'purple', 'E41': 'purple', 'E42': 'purple',
+            'E43': 'purple', 'E44': 'purple', 'E45': 'purple', 'E46': 'purple', 'E47': 'purple',
+            'E48': 'purple', 'E49': 'purple', 'EX3': 'purple',
+            // Green E-codes (E50–E56, EX4)
+            'E50': 'green', 'E51': 'green', 'E52': 'green', 'E53': 'green', 'E54': 'green',
+            'E55': 'green', 'E56': 'green', 'EX4': 'green',
             // Red R-codes
             'R10': 'red', 'R11': 'red', 'R12': 'red', 'R13': 'red', 'R14': 'red',
             'R15': 'red', 'R16': 'red', 'RX1': 'red',
@@ -795,78 +802,71 @@
         };
 
         const FAIL_CODE_DESCRIPTIONS = {
+            // Red E-codes
             'E1': 'Missed an A code on distribution equipment (DNO)',
-            'E2': 'Under sized cable installed for equipment / length of cable run',
-            'E3': 'Incorrect or no PPE worn',
-            'E4': 'Cable damaged when installed',
-            'E5': 'Incorrect type of cable installed',
-            'E6': 'Conductor only secured by one terminal screw',
-            'E7': 'Reverse Polarity (AC or DC) Provide notes',
-            'E8': 'Non IP rated consumer unit installed outside',
-            'E9': 'The enclosure does not protect to IP55',
-            'E10': 'Electrical certificate blank / not filled in',
-            'E11': '',
-            'E12': 'Terminals are over tightened, torque screwdriver not used',
-            'E13': 'Test results on the EIC are different to supplied photos',
-            'E14': 'Test result taken not suitable for install and/or are outside BS7671 limits',
-            'E15': 'Exposed Conductors (including un-plugged holes, both live and neutral and customer blocks)',
-            'E16': 'Loose terminations- greater than 360° rotation on any termination',
-            'E17': 'Engineer worked out of scope/Engineer not applying competence',
-            'E18': 'Signs of distress, over heating, burning, fire etc',
-            'E19': 'DC cable has no warning stickers',
-            'E20': 'Fire detection not fitted',
+            'E2': 'No PPE worn/incorrect when live testing PPE',
+            'E3': 'Tetra not used',
+            'E4': 'Cable damaged',
+            'E5': 'Reverse Polarity AC',
+            'E6': 'Reverse Polarity DC',
+            'E7': 'Equipment/ Accessories do not protect to suitable IP rating for location',
+            'E8': 'Testing/results not to industry standards COP/BS7671 (provide notes)',
+            'E9': 'Exposed Conductors (including un-plugged holes, both live and neutral and customer blocks)',
+            'E10': 'Loose terminations- greater than 360° rotation on any termination.',
+            'E11': 'Terminals are over tightened, top of terminal, screw rounded/broken',
+            'E12': 'Engineer worked out of scope/Engineer not applying competence (provide notes)',
+            'E13': 'Signs of distress, over heating, burning, etc',
+            'E14': 'Fire detection not fitted or incorrectly fitted',
+            'E15': 'Solar equipment installed using incorrect fixings',
+            'E16': 'Incorrect protective device installed (ka, rcd type, rcd ma, mcb over sized)',
+            'E17': 'Single insulation visible outside of enclosures',
+            'E18': 'System has not been comissioned correctly (import/export limits)',
+            'E19': 'Installation fitted outside BS 7671 requirements without calling Techline (provide notes)',
+            'E20': 'Fire rated clips not used or insufficiant for the cable run',
             'EX1': 'Miscellaneous - supporting notes required',
-            'E22': 'Missed a B code on distribution equipment (DNO)',
-            'E23': 'Incorrect MCB, RCBO or RCD type',
-            'E24': 'Incorrect mA rating on RCD',
-            'E25': 'Incorrect ferrules or crimps fitted',
-            'E26': 'Fuse pull has not been completed in KF',
-            'E27': 'Incorrect size of tails installed or not used',
-            'E28': 'Plastic consumer unit fitted inside',
-            'E29': 'The enclosure does not protect to IP2X sides and bottom/IP4X top',
-            'E30': 'CT clamp installed in the incorrect location / not fitted',
-            'E31': '',
-            'E32': 'Fitted outside BS 7671 requirements (provide notes)',
-            'E33': 'Smoke alarms not interlinked',
-            'E34': 'No socket polarity plug test / only one performed',
-            'E35': '',
-            'E36': 'Extraneous bonding not installed/inadequate - provide notes',
-            'E37': 'Electrical certificate / MCS forms not complete',
-            'E38': 'Solar equipment not installed in correct location',
-            'E39': 'Testing on MFT using incorrect setting',
-            'E40': 'Solar equipment installed using incorrect fixings',
-            'E41': 'No lock-off kit used',
-            'E42': 'Not connected to the internet and not left in smart mode',
-            'E43': 'Not connected to customers app',
-            'E44': 'Not a clear explanation how the app and the system works',
-            'E45': 'Testing results different to recorded details but within limits',
-            'E46': 'Fire rated clips not used',
-            'E47': 'No glands installed',
-            'E48': 'Fire detection only fitted at battery location',
-            'E49': 'No photos taken',
-            'E50': 'Single insulation visible outside of enclosures',
-            'E51': 'Terminations not adequately tightened- rotation on any terminal screw between 180° and 360° (half turn)',
-            'EX2': 'Miscellaneous - provide notes',
-            'E52': 'Cable installed in incorrect zones',
-            'E53': 'Cable inadequately supported',
-            'E54': 'No sealant used',
-            'E55': 'DC cable run not stickered enough for length of run',
-            'E56': 'Missed a C code on distribution equipment (DNO)',
-            'E57': 'EIC / MCS forms not filled in correctly',
-            'E58': 'No polarity identification on tails / Grey tails used',
-            'E59': 'Not all signatures recorded',
-            'E60': 'Same photo of test load twice',
-            'E61': 'RCD testing completed on wrong setting (Type AC instead of A)',
-            'E62': 'Identification only used on tails',
-            'E63': 'Periodic and RCD test label missing',
-            'E64': '230 Volt label missing',
-            'E65': 'Safety labelling missing from inverter, storage battery or metering position',
-            'E66': 'Drain wire incorrectly terminated',
-            'E67': 'No signatures taken',
-            'E68': 'Missing Photos / missing information',
-            'E69': 'Photo taken but inadequate',
-            'E70': 'Incorrect glands installed with selected cable',
-            'EX3': 'Miscellaneous - provide notes',
+            // Amber E-codes
+            'E21': 'DC cable has no warning stickers',
+            'E22': 'Under sized cable installed for equipment / length of cable run',
+            'E23': 'Incorrect cable type installed.',
+            'E24': 'Cable installed in incorrect zones.',
+            'E25': 'Conductor only secured by one terminal screw in the Henley blocks',
+            'E26': 'Solar equipment not installed in correct location',
+            'E27': 'Bonding not up to standards',
+            'E28': 'Fuse pull has been carried out but not filled in KF (SIP)',
+            'E29': 'PV array test sheet not complete or incorrectly completed',
+            'E30': 'EIC is not completed or incorrectly completed',
+            'E31': 'MCS forms are not completed or incorrectly completed',
+            'E32': 'Not Installed as per MI\'s/ OES standards',
+            'EX2': 'Micellaneous - provide notes',
+            // Purple E-codes
+            'E33': 'Missed a B/C code on distribution equipment (DNO)',
+            'E34': 'Incorrect ferrules or crimps fitted',
+            'E35': 'Missing safety critical photo(s)',
+            'E36': 'Job card is blank and the system is comissioned',
+            'E37': 'Not a clear explanation to the customer how the app and the system works',
+            'E38': 'System has not been set up correctly on the online portal Eg. No array map',
+            'E39': 'CT clamp installed in the incorrect location / not fitted',
+            'E40': 'No socket polarity plug test/ only one performed',
+            'E41': 'Testing results different to recorded details but within limits',
+            'E42': 'No/ incorrect glands/bushes installed (incorrect cable entry)',
+            'E43': 'MCB, RCBO under sized for equipment installed',
+            'E44': 'Safety labelling missing from inverter, storage battery or metering position',
+            'E45': 'Incorrect PPE worn',
+            'E46': 'Non issued OES tools/equipment used',
+            'E47': 'No waterproof sealant used on exterior wall or fire sealant on interior wall',
+            'E48': 'No polarity identification on tails / Grey tails used',
+            'E49': 'Terminations not adequately tightened- rotation on any terminal screw between 180° and 360°',
+            'EX3': 'Micellaneous - provide notes',
+            // Green E-codes
+            'E50': 'DC cable run not stickered enough for length of run',
+            'E51': 'Testing on MFT using incorrect setting',
+            'E52': 'No customer signatures taken in job card.',
+            'E53': 'Missing non-safety critical photo(s)',
+            'E54': '230 Volt label missing',
+            'E55': 'Periodic and RCD test label missing.',
+            'E56': 'No lock-off kit used',
+            'EX4': 'Micellaneous - provide notes',
+            // R-codes (unchanged)
             'R10': 'Working within 2m of an unprotected edge without correct PPE',
             'R11': 'Working outside of Scaffolded area',
             'R12': 'Working on an unsafe scaffold',
@@ -920,8 +920,8 @@
         let allData = [];
         let chart = null;
         const tooltip = document.getElementById('tooltip');
-        let selectedCodes = new Set(FAIL_CODES); // All codes selected by default
-        let selectedTeamNumbers = new Set(); // Will be populated when file is loaded
+        let selectedCodes = new Set(FAIL_CODES);
+        let selectedTeamNumbers = new Set();
 
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
         document.getElementById('startDate').addEventListener('change', updateDashboard);
@@ -945,7 +945,7 @@
 
         function initializeTeamNumberCheckboxes() {
             const teamNumbers = [...new Set(allData.map(r => r['Team Number']).filter(Boolean))].sort();
-            selectedTeamNumbers = new Set(teamNumbers); // Select all by default
+            selectedTeamNumbers = new Set(teamNumbers);
             
             const grid = document.getElementById('teamNumberCheckboxGrid');
             grid.innerHTML = teamNumbers.map(teamNumber => `
@@ -999,6 +999,13 @@
         function selectPurpleCodes() {
             document.querySelectorAll('#checkboxGrid input').forEach(cb => {
                 cb.checked = FAIL_CODE_COLORS[cb.value] === 'purple';
+            });
+            handleCodeToggle();
+        }
+
+        function selectGreenCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'green';
             });
             handleCodeToggle();
         }
@@ -1098,7 +1105,7 @@
 
             return Object.entries(teamCounts)
                 .sort((a, b) => b[1] - a[1])
-                .slice(0, 5); // Top 5 teams
+                .slice(0, 5);
         }
 
         function updateDashboard() {
@@ -1212,6 +1219,7 @@
                 const color = FAIL_CODE_COLORS[item.code];
                 if (color === 'red') return 'rgba(255, 71, 87, 0.8)';
                 if (color === 'amber') return 'rgba(255, 165, 2, 0.8)';
+                if (color === 'green') return 'rgba(46, 204, 113, 0.8)';
                 return 'rgba(162, 155, 254, 0.8)';
             });
             
@@ -1219,6 +1227,7 @@
                 const color = FAIL_CODE_COLORS[item.code];
                 if (color === 'red') return 'rgba(255, 71, 87, 1)';
                 if (color === 'amber') return 'rgba(255, 165, 2, 1)';
+                if (color === 'green') return 'rgba(46, 204, 113, 1)';
                 return 'rgba(162, 155, 254, 1)';
             });
 
@@ -1335,7 +1344,6 @@
         function updateTopPerformers(data) {
             const performerData = {};
 
-            // First pass - collect all data for each team
             data.forEach(row => {
                 const name = row['Team'] || 'Unknown';
                 const jRef = row['J Ref'] || 'N/A';
@@ -1345,11 +1353,10 @@
                         total: 0,
                         codes: {},
                         jobNumbers: [],
-                        jobNumberCodes: {} // Track which codes are in each J Ref
+                        jobNumberCodes: {}
                     };
                 }
 
-                // Check if this row has any selected fail codes
                 let hasFailCode = false;
                 const codesInThisRow = [];
                 for (let i = 1; i <= 12; i++) {
@@ -1362,7 +1369,6 @@
                     }
                 }
 
-                // If this row had fail codes, add the J Ref and track its codes
                 if (hasFailCode) {
                     performerData[name].jobNumbers.push(jRef);
                     if (!performerData[name].jobNumberCodes[jRef]) {
@@ -1394,10 +1400,9 @@
                     </div>
                 `).join('');
 
-                // Sort job numbers and keep all instances (including duplicates)
                 const jobNumbersArray = data.jobNumbers.sort();
                 const uniqueCount = new Set(jobNumbersArray).size;
-                const jobNumbersHTML = jobNumbersArray.map((jobNum, jIndex) => {
+                const jobNumbersHTML = jobNumbersArray.map((jobNum) => {
                     const codes = data.jobNumberCodes[jobNum] || [];
                     return `<div class="job-number-item" data-jref="${jobNum}" data-codes="${codes.join(',')}">${jobNum}</div>`;
                 }).join('');
@@ -1451,14 +1456,11 @@
             const performerIndex = e.currentTarget.dataset.performerIndex;
             const description = FAIL_CODE_DESCRIPTIONS[code];
             
-            // If this is from a performer card, highlight matching job numbers
             if (performerIndex !== undefined) {
                 highlightJobNumbers(performerIndex, code);
             }
             
-            // If hovering on a fail code in a performer card, don't show team rankings
             if (!description && code) {
-                // Only show tooltip if NOT in performer card
                 if (performerIndex === undefined) {
                     const startDate = document.getElementById('startDate').valueAsDate;
                     const endDate = document.getElementById('endDate').valueAsDate;
@@ -1501,7 +1503,6 @@
             tooltip.querySelector('.tooltip-code').textContent = code;
             tooltip.querySelector('.tooltip-description').textContent = description;
             
-            // Only show team rankings if NOT in performer card
             if (performerIndex === undefined) {
                 const startDate = document.getElementById('startDate').valueAsDate;
                 const endDate = document.getElementById('endDate').valueAsDate;
@@ -1529,7 +1530,6 @@
                 ` : '';
                 tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
             } else {
-                // Clear teams section for performer cards
                 tooltip.querySelector('.tooltip-teams').innerHTML = '';
             }
             
@@ -1538,16 +1538,13 @@
         }
 
         function highlightJobNumbers(performerIndex, code) {
-            // Clear all previous highlights
             document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
                 item.classList.remove('highlighted');
             });
 
-            // Find the performer card
             const performerCard = document.querySelector(`.performer-card[data-performer-index="${performerIndex}"]`);
             if (!performerCard) return;
 
-            // Highlight job numbers that have this code
             const jobNumberItems = performerCard.querySelectorAll('.job-number-item');
             jobNumberItems.forEach(item => {
                 const codes = item.dataset.codes.split(',');
@@ -1575,7 +1572,6 @@
 
         function hideTooltip() {
             tooltip.classList.remove('show');
-            // Clear highlights when tooltip is hidden
             document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
                 item.classList.remove('highlighted');
             });
