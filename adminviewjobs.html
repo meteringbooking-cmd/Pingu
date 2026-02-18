@@ -533,6 +533,15 @@
             resize: vertical;
         }
 
+        /* PO timestamp */
+        .po-timestamp {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-style: italic;
+            min-height: 1.1em;
+            letter-spacing: 0.02em;
+        }
+
         .modal-actions {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -745,10 +754,12 @@
                         <label class="form-label" for="edit-days">Days</label>
                         <input type="number" id="edit-days" class="form-input" min="1">
                     </div>
-                    <!-- PO Numbers field - shares same Firebase field as timeline page -->
+                    <!-- PO Numbers field with timestamp -->
                     <div class="form-group full-width">
                         <label class="form-label" for="edit-po-numbers">PO Numbers</label>
                         <textarea id="edit-po-numbers" class="form-textarea" placeholder="Enter PO numbers..."></textarea>
+                        <!-- ── PO TIMESTAMP ── -->
+                        <div class="po-timestamp" id="edit-po-timestamp"></div>
                     </div>
                     <div class="form-group full-width">
                         <label class="form-label" for="edit-notes">Notes</label>
@@ -870,6 +881,17 @@
             return `${day}/${month}/${year}`;
         }
 
+        // Format an ISO timestamp to a friendly UK date/time string
+        function formatTimestamp(isoString) {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+
         // Get status ONLY from Status Update field (ignore "status" field)
         function getStatusUpdate(job) {
             const statusUpdate = job['Status Update'];
@@ -980,6 +1002,7 @@
                         days: jobLength,
                         notes: data['notes'] || '',
                         poNumbers: data['poNumbers'] || '',
+                        poNumbersUpdatedAt: data['poNumbersUpdatedAt'] || '',
                         statusUpdate: getStatusUpdate({ 'Status Update': data['Status Update'] }),
                         ...data
                     });
@@ -1034,17 +1057,9 @@
             const status = document.getElementById('filter-status').value;
 
             filteredJobs = allJobs.filter(job => {
-                // Job number search (partial match)
-                if (jobNumber && !job.jobNumber.toLowerCase().includes(jobNumber)) {
-                    return false;
-                }
+                if (jobNumber && !job.jobNumber.toLowerCase().includes(jobNumber)) return false;
+                if (postcode && !job.postcode.toLowerCase().includes(postcode)) return false;
 
-                // Postcode search (partial match)
-                if (postcode && !job.postcode.toLowerCase().includes(postcode)) {
-                    return false;
-                }
-
-                // Date range filters
                 if (startDate && job.bookedDate) {
                     const filterStart = new Date(startDate);
                     filterStart.setHours(0, 0, 0, 0);
@@ -1057,11 +1072,9 @@
                     if (job.bookedDate > filterEnd) return false;
                 }
 
-                // Lead and Team filters
                 if (lead && job.lead !== lead) return false;
                 if (team && job.team !== team) return false;
 
-                // Status filter
                 if (status) {
                     if (status === 'none' && job.statusUpdate !== '') return false;
                     if (status !== 'none' && job.statusUpdate !== status) return false;
@@ -1154,10 +1167,7 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
-           
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
         }
 
         function escapeHtml(text) {
@@ -1192,6 +1202,12 @@
             document.getElementById('edit-po-numbers').value = job.poNumbers || '';
             document.getElementById('edit-notes').value = job.notes;
 
+            // ── Show existing PO timestamp if present ──
+            const poTs = document.getElementById('edit-po-timestamp');
+            poTs.textContent = job.poNumbersUpdatedAt
+                ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}`
+                : '';
+
             document.getElementById('edit-modal').classList.add('show');
         }
 
@@ -1210,9 +1226,14 @@
                 const bookedDateInput = document.getElementById('edit-booked-date').value;
                 const projectedDateInput = document.getElementById('edit-projected-date').value;
                 const statusValue = document.getElementById('edit-status').value;
+                const newPoNumbers = document.getElementById('edit-po-numbers').value;
 
                 const bookedDate = bookedDateInput ? formatDate(new Date(bookedDateInput)) : null;
                 const projectedDate = projectedDateInput ? formatDate(new Date(projectedDateInput)) : null;
+
+                // ── Determine if PO numbers have changed; if so, stamp a new timestamp ──
+                const poChanged = newPoNumbers !== (currentEditJob.poNumbers || '');
+                const now = new Date().toISOString();
 
                 const updateData = {
                     'Job Type': document.getElementById('edit-job-type').value,
@@ -1221,10 +1242,20 @@
                     'Team': document.getElementById('edit-team').value,
                     'Days': parseInt(document.getElementById('edit-days').value) || 1,
                     'notes': document.getElementById('edit-notes').value,
-                    'poNumbers': document.getElementById('edit-po-numbers').value
+                    'poNumbers': newPoNumbers
                 };
 
-                // Only add Status Update if a value was selected
+                // Always write a timestamp when saving — either update it (PO changed) or preserve existing
+                if (poChanged || !currentEditJob.poNumbersUpdatedAt) {
+                    // Only stamp if PO content actually changed or there was no timestamp yet
+                    if (newPoNumbers.trim() !== '') {
+                        updateData['poNumbersUpdatedAt'] = now;
+                    }
+                } else {
+                    // PO unchanged — preserve the existing timestamp (don't overwrite)
+                    // (just don't include it in updateData)
+                }
+
                 if (statusValue) {
                     updateData['Status Update'] = statusValue;
                 }
@@ -1242,7 +1273,17 @@
                 // Update local job object
                 const job = allJobs.find(j => j.id === currentEditJob.id);
                 if (job) {
-                    job.poNumbers = updateData['poNumbers'];
+                    job.poNumbers = newPoNumbers;
+                    if (updateData['poNumbersUpdatedAt']) {
+                        job.poNumbersUpdatedAt = updateData['poNumbersUpdatedAt'];
+                    }
+                }
+
+                // Update timestamp display in modal immediately (in case user saves again without reopening)
+                if (updateData['poNumbersUpdatedAt']) {
+                    document.getElementById('edit-po-timestamp').textContent =
+                        `Last saved: ${formatTimestamp(updateData['poNumbersUpdatedAt'])}`;
+                    if (currentEditJob) currentEditJob.poNumbersUpdatedAt = updateData['poNumbersUpdatedAt'];
                 }
 
                 showToast('Job updated successfully!', 'success');
@@ -1263,21 +1304,14 @@
                 return;
             }
 
-            // Populate job number
             document.getElementById('additional-costs-job-number').textContent = currentEditJob.jobNumber || 'N/A';
-            
-            // Pre-fill existing values if they exist
             document.getElementById('materials-cost').value = currentEditJob.materialsCost || '';
             document.getElementById('materials-notes').value = currentEditJob.materialNotes || '';
-            
-            // Show the additional costs modal
             document.getElementById('additional-costs-modal').classList.add('show');
         }
 
         window.closeAdditionalCostsModal = function() {
             document.getElementById('additional-costs-modal').classList.remove('show');
-            
-            // Clear inputs
             document.getElementById('materials-cost').value = '';
             document.getElementById('materials-notes').value = '';
         }
@@ -1290,15 +1324,12 @@
 
             const materialsCost = parseFloat(document.getElementById('materials-cost').value) || 0;
             const materialNotes = document.getElementById('materials-notes').value.trim();
-
             const jobId = currentEditJob.id;
             const jobNumber = currentEditJob.jobNumber || 'N/A';
 
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'Solar-jobs', jobId);
-                
-                console.log(`Saving additional costs for job ID: ${jobId}, Job Number: ${jobNumber}`);
                
                 const updateData = {
                     materialsCost: materialsCost,
@@ -1308,7 +1339,6 @@
 
                 await updateDoc(jobRef, updateData);
                
-                // Update local job object
                 const job = allJobs.find(j => j.id === currentEditJob.id);
                 if (job) {
                     job.materialsCost = materialsCost;
@@ -1333,7 +1363,6 @@
             if (e.target.id === 'additional-costs-modal') closeAdditionalCostsModal();
         });
 
-        // Enable real-time filtering as user types
         document.getElementById('filter-job-number').addEventListener('input', applyFilters);
         document.getElementById('filter-postcode').addEventListener('input', applyFilters);
     </script>
