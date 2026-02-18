@@ -84,7 +84,7 @@
         .subtitle { color: var(--text-dim); font-size: 0.95rem; }
         .controls-card {
             background: var(--dark-light); border-radius: 16px; padding: 2rem;
-            border: 2px solid transparent; margin-bottom: 2rem; animation: fadeInUp 0.6s ease-out;
+            border: 2px solid transparent; animation: fadeInUp 0.6s ease-out;
             max-width: 1600px; margin-left: auto; margin-right: auto; margin-bottom: 2rem;
         }
         @keyframes fadeInUp {
@@ -158,10 +158,34 @@
         @keyframes arrowPulse { 0%, 100% { transform: translateX(0) scale(1); opacity: 1; } 50% { transform: translateX(8px) scale(1.1); opacity: 0.8; } }
         .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
         .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--dark-lighter); }
-        .stat-item { text-align: center; }
-        .stat-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
-        .stat-value { font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        /* ── STATS ROW – expanded with all status counts ── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--dark-lighter);
+        }
+        .stat-item {
+            text-align: center;
+            background: var(--dark-lighter);
+            border-radius: 10px;
+            padding: 0.75rem 0.5rem;
+            border: 2px solid transparent;
+            transition: border-color 0.2s ease;
+        }
+        .stat-item:hover { border-color: var(--primary); }
+        .stat-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+        .stat-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-value.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E);  -webkit-background-clip: text; background-clip: text; }
+        .stat-value.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); -webkit-background-clip: text; background-clip: text; }
+        .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);   -webkit-background-clip: text; background-clip: text; }
+        .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); -webkit-background-clip: text; background-clip: text; }
+        .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);          -webkit-background-clip: text; background-clip: text; }
+        /* ── end stats ── */
+
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
         .modal-content { background: var(--dark-light); border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; border: 2px solid var(--primary); max-height: 80vh; overflow-y: auto; }
@@ -197,6 +221,8 @@
         .notes-textarea:focus { outline: none; border-color: var(--primary); }
         .save-notes-btn { margin-top: 0.5rem; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
         .save-notes-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
+        /* PO timestamp */
+        .po-timestamp { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.3rem; font-style: italic; min-height: 1.1em; letter-spacing: 0.02em; }
         .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light); color: var(--text); padding: 1rem 1.5rem; border-radius: 8px; border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; animation: slideIn 0.3s ease-out; display: none; }
         .toast.show { display: block; }
         .toast.error { border-color: var(--error); }
@@ -242,11 +268,43 @@
                     </button>
                 </div>
             </div>
+
+            <!-- ── EXPANDED STATS ROW ── -->
             <div class="stats-row">
-                <div class="stat-item"><div class="stat-label">Total Jobs</div><div class="stat-value" id="total-jobs">0</div></div>
-                <div class="stat-item"><div class="stat-label">Engineers</div><div class="stat-value" id="total-engineers">0</div></div>
-                <div class="stat-item"><div class="stat-label">Date Range</div><div class="stat-value" id="date-range">14</div></div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Jobs</div>
+                    <div class="stat-value" id="total-jobs">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Engineers</div>
+                    <div class="stat-value" id="total-engineers">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Days Shown</div>
+                    <div class="stat-value" id="date-range">14</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">✅ Complete</div>
+                    <div class="stat-value complete" id="total-complete">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">🔄 In-Progress</div>
+                    <div class="stat-value in-progress" id="total-in-progress">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">⚠️ Aborted</div>
+                    <div class="stat-value aborted" id="total-aborted">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">❌ Cancelled</div>
+                    <div class="stat-value cancelled" id="total-cancelled">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">🔔 SNC</div>
+                    <div class="stat-value snc" id="total-snc">0</div>
+                </div>
             </div>
+
             <div class="debug-info" id="debug-info" style="display: none;"></div>
             <div class="debug-info" id="email-notifications" style="display: block; background: linear-gradient(135deg, rgba(78,236,163,0.1), rgba(0,217,255,0.1)); border: 2px solid var(--success);">
                 <strong>📧 Email Notifications Active</strong><br>
@@ -318,6 +376,8 @@
                 <div class="notes-section">
                     <label class="notes-label" for="po-numbers">PO Numbers</label>
                     <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 60px;"></textarea>
+                    <!-- ── PO TIMESTAMP ── -->
+                    <div class="po-timestamp" id="po-timestamp"></div>
                     <button class="save-notes-btn" onclick="savePONumbers()" style="margin-bottom: 1.5rem;">💾 Save PO Numbers</button>
 
                     <label class="notes-label" for="job-notes">Job Notes</label>
@@ -404,9 +464,6 @@
         let pendingStatusChange = null;
         let slateRoof = null;
 
-        // ============================================================
-        // SHAREPOINT CONFIG - All real IDs for Next Generation Utilities
-        // ============================================================
         const SHAREPOINT_CONFIG = {
             tenantId:      'e8166c8d-8eb6-4a45-8857-9b378ad38b57',
             clientId:      '33148879-3147-4d9b-bd1e-46e7fd4c56b0',
@@ -414,12 +471,8 @@
             driveId:       'b!Z55RsDvi-UytvqkkT3INPeoxfFpfRBpHuTT086h8FHEX7NqF9AdNQYmy-vTPLlxy',
             fileId:        '01XRLW7CLLYB6ZNB7UBZFZKB7KCYNMEBBA',
             worksheetName: 'Solar Tracker - Delays'
-            // Columns: A=J Number, B=Post code, C=Start Date, D=Finish Date,
-            //          E=Delay Date, F=Reason For Delay, G=STS Notified,
-            //          H=Reattendance Date, I=Resolved
         };
 
-        // MSAL instance (Microsoft Authentication)
         let msalInstance = null;
 
         function getMsalInstance() {
@@ -440,8 +493,6 @@
             try {
                 const msalApp = getMsalInstance();
                 const scopes = ['https://graph.microsoft.com/Files.ReadWrite.All'];
-
-                // Try silent first (reuse existing session)
                 const accounts = msalApp.getAllAccounts();
                 if (accounts.length > 0) {
                     try {
@@ -451,11 +502,8 @@
                         console.log('Silent auth failed, falling back to popup...');
                     }
                 }
-
-                // Popup login
                 const result = await msalApp.acquireTokenPopup({ scopes });
                 return result.accessToken;
-
             } catch (error) {
                 console.error('Auth error:', error);
                 showToast('Microsoft sign-in required — check popup blocker is disabled', 'error');
@@ -463,10 +511,6 @@
             }
         }
 
-        // Write delay data to SharePoint Excel - appends to next empty row
-        // Columns: A=J Number, B=Post code, C=Start Date, D=Finish Date,
-        //          E=Delay Date, F=Reason For Delay, G=STS Notified (blank),
-        //          H=Reattendance Date (blank), I=Resolved (blank)
         async function updateSharePointExcel(jobData) {
             try {
                 const accessToken = await getSharePointAccessToken();
@@ -475,36 +519,21 @@
                 const { siteId, driveId, fileId, worksheetName } = SHAREPOINT_CONFIG;
                 const encodedSheet = encodeURIComponent(worksheetName);
 
-                // Format dates consistently - preserve DD/MM/YYYY format from Firebase
                 function formatDateForExcel(dateInput) {
                     if (!dateInput) return '';
-                    
-                    // If it's already a DD/MM/YYYY string, return as-is
-                    if (typeof dateInput === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput)) {
-                        return dateInput;
-                    }
-                    
-                    // If it's a Date object, convert to DD/MM/YYYY
+                    if (typeof dateInput === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput)) return dateInput;
                     if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
                         const day = String(dateInput.getDate()).padStart(2, '0');
                         const month = String(dateInput.getMonth() + 1).padStart(2, '0');
                         const year = dateInput.getFullYear();
                         return `${day}/${month}/${year}`;
                     }
-                    
                     return '';
                 }
 
-                // Get today's date in DD/MM/YYYY format
                 const today = formatDateForExcel(new Date());
-
-                // Step 1: Read column A to find the true last used row
-                // Scans all values so manual entries between rows are respected
                 const colAUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A1:A2000')`;
-
-                const colAResp = await fetch(colAUrl, {
-                    headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
+                const colAResp = await fetch(colAUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
 
                 let nextRow = 2;
                 if (colAResp.ok) {
@@ -512,39 +541,28 @@
                     const values = colAData.values || [];
                     let lastRow = 1;
                     for (let i = 0; i < values.length; i++) {
-                        if (values[i][0] !== null && values[i][0] !== '') {
-                            lastRow = i + 1;
-                        }
+                        if (values[i][0] !== null && values[i][0] !== '') lastRow = i + 1;
                     }
                     nextRow = lastRow + 1;
                     console.log(`📊 Last used row in column A: ${lastRow}, writing to row ${nextRow}`);
                 }
 
-                // Step 2: Write row A through I
-                // Prepend single quote to force Excel to treat dates as text (preserves DD/MM/YYYY format)
                 const startDateText = formatDateForExcel(jobData.startDate);
                 const finishDateText = formatDateForExcel(jobData.finishDate);
-                
                 const rowValues = [[
-                    jobData.jobNumber,                          // A - J Number
-                    jobData.postcode,                           // B - Post code
-                    "'" + startDateText,                        // C - Start Date (DD/MM/YYYY as text)
-                    "'" + finishDateText,                       // D - Finish Date (DD/MM/YYYY as text)
-                    "'" + today,                                // E - Delay Date (DD/MM/YYYY as text)
-                    jobData.delays,                             // F - Reason For Delay
-                    '',                                         // G - STS Notified (left blank)
-                    '',                                         // H - Reattendance Date (left blank)
-                    ''                                          // I - Resolved (left blank)
+                    jobData.jobNumber,
+                    jobData.postcode,
+                    "'" + startDateText,
+                    "'" + finishDateText,
+                    "'" + today,
+                    jobData.delays,
+                    '', '', ''
                 ]];
 
                 const writeUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A${nextRow}:I${nextRow}')`;
-
                 const writeResp = await fetch(writeUrl, {
                     method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
                     body: JSON.stringify({ values: rowValues })
                 });
 
@@ -552,60 +570,36 @@
                     const errText = await writeResp.text();
                     throw new Error(`Graph API ${writeResp.status}: ${errText}`);
                 }
-
                 console.log(`✅ Row written to SharePoint row ${nextRow}`);
                 return true;
-
             } catch (error) {
                 console.error('❌ SharePoint error:', error);
                 return false;
             }
         }
 
-        // Save delays to Firebase AND sync to SharePoint
         window.saveJobDelays = async function() {
             if (!currentJob) return;
-
             const delays = document.getElementById('job-delays').value.trim();
-            if (!delays) {
-                showToast('Please enter a delay reason before saving', 'error');
-                return;
-            }
-
+            if (!delays) { showToast('Please enter a delay reason before saving', 'error'); return; }
             const jobNumber = currentJob['Job Number'] || 'N/A';
-
             try {
-                // 1. Save to Firebase
                 const { doc, updateDoc } = window.firebaseModules;
                 const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
-                await updateDoc(jobRef, {
-                    delays: delays,
-                    delaysUpdatedAt: new Date().toISOString()
-                });
-
+                await updateDoc(jobRef, { delays, delaysUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) job.delays = delays;
-
                 showToast('Saving to SharePoint...', 'success');
-
-                // 2. Sync to SharePoint
-                // startDate and finishDate are already in DD/MM/YYYY format from Firebase
                 const sharePointData = {
-                    jobNumber: jobNumber,
+                    jobNumber,
                     postcode: currentJob['Postcode'] || 'N/A',
                     startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
                     finishDate: currentJob['Projected Completion Date'] || '',
-                    delays: delays
+                    delays
                 };
-
                 const success = await updateSharePointExcel(sharePointData);
-
-                if (success) {
-                    showToast('✅ Delays saved & synced to SharePoint!', 'success');
-                } else {
-                    showToast('⚠️ Saved to Firebase — SharePoint sync failed (check popup blocker)', 'error');
-                }
-
+                if (success) showToast('✅ Delays saved & synced to SharePoint!', 'success');
+                else showToast('⚠️ Saved to Firebase — SharePoint sync failed (check popup blocker)', 'error');
             } catch (error) {
                 console.error('Error saving delays:', error);
                 showToast('Failed to save delays: ' + error.message, 'error');
@@ -619,8 +613,7 @@
             const previousMonday = new Date(today);
             previousMonday.setDate(today.getDate() - daysFromMonday - 7);
             previousMonday.setHours(0, 0, 0, 0);
-            const startDateInput = document.getElementById('start-date');
-            startDateInput.valueAsDate = previousMonday;
+            document.getElementById('start-date').valueAsDate = previousMonday;
             loadJobs();
         }
 
@@ -646,6 +639,17 @@
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
             return `${day}/${month}/${year}`;
+        }
+
+        // Format ISO timestamp to friendly "DD Mon YYYY, HH:MM" in UK locale
+        function formatTimestamp(isoString) {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleString('en-GB', {
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
         }
 
         async function loadJobs() {
@@ -709,7 +713,6 @@
                     setTimeout(() => { debugEl.style.display = 'none'; }, 10000);
                 }
                 buildTimeline();
-
             } catch (error) {
                 console.error('Error loading jobs:', error);
                 document.getElementById('timeline-content').innerHTML =
@@ -749,9 +752,7 @@
                 const engineer = job.engineer || 'Unassigned';
                 const jobType = job.jobType || 'Standard';
                 const completionDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><div style="text-align:center;margin-bottom:30px;"><h1 style="color:#4ECCA3;margin:0;font-size:2rem;">✅ Job Completed</h1></div><div style="background:#f9f9f9;padding:20px;border-radius:8px;margin-bottom:20px;"><h2 style="color:#FF6B35;margin-top:0;margin-bottom:20px;font-size:1.3rem;">Job Details</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Number:</td><td style="padding:10px 0;color:#333;font-weight:bold;">${jobNumber}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Postcode:</td><td style="padding:10px 0;color:#333;">${postcode}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Lead Engineer:</td><td style="padding:10px 0;color:#333;">${engineer}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Type:</td><td style="padding:10px 0;color:#333;">${jobType}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Completion Date:</td><td style="padding:10px 0;color:#333;">${completionDate}</td></tr></table></div><div style="background:#e8f8f3;padding:15px;border-radius:8px;border-left:4px solid #4ECCA3;"><p style="margin:0;color:#333;font-size:0.95rem;"><strong>Status:</strong> All days for this job have been marked as complete.</p></div><p style="margin-top:30px;color:#666;font-size:0.85rem;text-align:center;border-top:1px solid #e0e0e0;padding-top:20px;">This is an automated notification from Pingu Solar Management System.</p></div></div>`;
-
+                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><div style="text-align:center;margin-bottom:30px;"><h1 style="color:#4ECCA3;margin:0;font-size:2rem;">✅ Job Completed</h1></div><div style="background:#f9f9f9;padding:20px;border-radius:8px;margin-bottom:20px;"><h2 style="color:#FF6B35;margin-top:0;margin-bottom:20px;font-size:1.3rem;">Job Details</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Number:</td><td style="padding:10px 0;color:#333;font-weight:bold;">${jobNumber}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Postcode:</td><td style="padding:10px 0;color:#333;">${postcode}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Lead Engineer:</td><td style="padding:10px 0;color:#333;">${engineer}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Type:</td><td style="padding:10px 0;color:#333;">${jobType}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Completion Date:</td><td style="padding:10px 0;color:#333;">${completionDate}</td></tr></table></div></div></div>`;
                 await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
                     to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
                     job_number: jobNumber, postcode, engineer, job_type: jobType,
@@ -848,24 +849,45 @@
             }
             const endDate = new Date(timelineDates[timelineDates.length - 1]);
             endDate.setHours(23, 59, 59, 999);
+
             const filteredJobs = allJobs.filter(job => {
                 const jobStart = new Date(job.parsedDate); jobStart.setHours(0,0,0,0);
                 const jobEnd = new Date(jobStart); jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1)); jobEnd.setHours(23,59,59,999);
                 return jobStart <= endDate && jobEnd >= startDate;
             });
+
             const engineerJobs = {};
             filteredJobs.forEach(job => {
                 const engineer = job.engineer || 'Unassigned';
                 if (!engineerJobs[engineer]) engineerJobs[engineer] = [];
                 engineerJobs[engineer].push(job);
             });
+
+            // ── Count all statuses for the visible date range ──
+            let countComplete = 0, countInProgress = 0, countAborted = 0, countCancelled = 0, countSNC = 0;
+            filteredJobs.forEach(job => {
+                const s = job.status || 'Scheduled';
+                if (s === 'Complete') countComplete++;
+                else if (s === 'In-Progress') countInProgress++;
+                else if (s === 'Aborted') countAborted++;
+                else if (s === 'Cancelled') countCancelled++;
+                else if (s === 'Short Notice Cancellation') countSNC++;
+            });
+
             document.getElementById('total-jobs').textContent = filteredJobs.length;
             document.getElementById('total-engineers').textContent = Object.keys(engineerJobs).length;
             document.getElementById('date-range').textContent = daysCount;
+            document.getElementById('total-complete').textContent = countComplete;
+            document.getElementById('total-in-progress').textContent = countInProgress;
+            document.getElementById('total-aborted').textContent = countAborted;
+            document.getElementById('total-cancelled').textContent = countCancelled;
+            document.getElementById('total-snc').textContent = countSNC;
+
             if (Object.keys(engineerJobs).length === 0) {
                 document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><div style="font-size:3rem;margin-bottom:1rem;">📅</div><h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:0.5rem;">No Jobs Scheduled</h3><p>No jobs found in this date range</p></div>`;
                 return;
             }
+
             const html = `<div class="timeline-wrapper"><div class="timeline-header"><div class="engineer-header">👷 Engineer</div><div class="dates-header">${timelineDates.map(date => { const isToday = date.toDateString() === new Date().toDateString(); return `<div class="date-cell ${isToday ? 'today' : ''}"><div class="date-day">${formatDay(date)}</div><div class="date-number">${date.getDate()}</div><div class="date-month">${formatMonth(date)}</div></div>`; }).join('')}</div></div><div class="timeline-body">${Object.keys(engineerJobs).sort().map(engineer => `<div class="engineer-row"><div class="engineer-name"><span class="engineer-icon">👤</span><span>${escapeHtml(engineer)}</span></div><div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div></div>`).join('')}</div></div>`;
             document.getElementById('timeline-content').innerHTML = html;
             setTimeout(initializeJobCards, 100);
@@ -984,6 +1006,13 @@
             document.getElementById('job-notes').value = job.notes || '';
             document.getElementById('po-numbers').value = job.poNumbers || '';
             document.getElementById('job-delays').value = job.delays || '';
+
+            // ── Show PO timestamp if present ──
+            const poTimestampEl = document.getElementById('po-timestamp');
+            poTimestampEl.textContent = job.poNumbersUpdatedAt
+                ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}`
+                : '';
+
             document.getElementById('completion-selector').style.display = 'none';
             document.getElementById('invoice-section').style.display = 'none';
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
@@ -1058,13 +1087,23 @@
             }
         }
 
+        // ── SAVE PO NUMBERS with timestamp ──
         window.savePONumbers = async function() {
             if (!currentJob) return;
+            const poNumbers = document.getElementById('po-numbers').value;
+            const now = new Date().toISOString();
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), { poNumbers: document.getElementById('po-numbers').value });
+                await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), {
+                    poNumbers,
+                    poNumbersUpdatedAt: now
+                });
+                // Update local cache
                 const job = allJobs.find(j => j.id === currentJob.id);
-                if (job) job.poNumbers = document.getElementById('po-numbers').value;
+                if (job) { job.poNumbers = poNumbers; job.poNumbersUpdatedAt = now; }
+                if (currentJob) { currentJob.poNumbers = poNumbers; currentJob.poNumbersUpdatedAt = now; }
+                // Show timestamp immediately in UI
+                document.getElementById('po-timestamp').textContent = `Last saved: ${formatTimestamp(now)}`;
                 showToast('PO Numbers saved successfully', 'success');
             } catch (error) { showToast('Failed to save PO numbers', 'error'); }
         }
