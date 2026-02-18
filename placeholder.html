@@ -745,10 +745,11 @@
                         <label class="form-label" for="edit-days">Days</label>
                         <input type="number" id="edit-days" class="form-input" min="1">
                     </div>
+                    <!-- PO Numbers field - shares same Firebase field as timeline page -->
                     <div class="form-group full-width">
-    <label class="form-label" for="edit-po-numbers">PO Numbers</label>
-    <textarea id="edit-po-numbers" class="form-textarea" placeholder="Enter PO numbers..."></textarea>
-</div>
+                        <label class="form-label" for="edit-po-numbers">PO Numbers</label>
+                        <textarea id="edit-po-numbers" class="form-textarea" placeholder="Enter PO numbers..."></textarea>
+                    </div>
                     <div class="form-group full-width">
                         <label class="form-label" for="edit-notes">Notes</label>
                         <textarea id="edit-notes" class="form-textarea" placeholder="Add notes about this job..."></textarea>
@@ -978,6 +979,7 @@
                         projectedCompletionDate: projectedCompletionDate,
                         days: jobLength,
                         notes: data['notes'] || '',
+                        poNumbers: data['poNumbers'] || '',
                         statusUpdate: getStatusUpdate({ 'Status Update': data['Status Update'] }),
                         ...data
                     });
@@ -1187,8 +1189,8 @@
             document.getElementById('edit-booked-date').value = formatDateForInput(job.bookedDate);
             document.getElementById('edit-projected-date').value = formatDateForInput(job.projectedCompletionDate);
             document.getElementById('edit-days').value = job.days;
-            document.getElementById('edit-notes').value = job.notes;
             document.getElementById('edit-po-numbers').value = job.poNumbers || '';
+            document.getElementById('edit-notes').value = job.notes;
 
             document.getElementById('edit-modal').classList.add('show');
         }
@@ -1218,8 +1220,8 @@
                     'Lead': document.getElementById('edit-lead').value,
                     'Team': document.getElementById('edit-team').value,
                     'Days': parseInt(document.getElementById('edit-days').value) || 1,
-                    'notes': document.getElementById('edit-notes').value
-                    'poNumbers': document.getElementById('edit-po-numbers').value,
+                    'notes': document.getElementById('edit-notes').value,
+                    'poNumbers': document.getElementById('edit-po-numbers').value
                 };
 
                 // Only add Status Update if a value was selected
@@ -1236,6 +1238,12 @@
                 }
 
                 await updateDoc(jobRef, updateData);
+
+                // Update local job object
+                const job = allJobs.find(j => j.id === currentEditJob.id);
+                if (job) {
+                    job.poNumbers = updateData['poNumbers'];
+                }
 
                 showToast('Job updated successfully!', 'success');
                 closeEditModal();
