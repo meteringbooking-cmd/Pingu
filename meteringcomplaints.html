@@ -138,7 +138,7 @@
         .btn:disabled { opacity:0.5; cursor:not-allowed; }
         .btn-group { display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap; }
 
-        /* Modal */
+        /* Detail Modal */
         .modal-overlay {
             display:none; position:fixed; inset:0;
             background:rgba(0,0,0,0.75); z-index:100;
@@ -159,13 +159,20 @@
         .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
         .detail-item label { font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; }
         .detail-item .value { font-size:0.95rem; font-family:'DM Mono',monospace; }
+
+        /* File link buttons in modal */
         .upload-links { display:flex; flex-direction:column; gap:0.5rem; }
-        .upload-link {
+        .upload-link-btn {
             display:flex; align-items:center; gap:0.75rem;
             padding:0.75rem 1rem; background:var(--bg-dark); border:1px solid var(--border);
-            border-radius:8px; text-decoration:none; color:var(--text-light); font-size:0.9rem; transition:all 0.2s;
+            border-radius:8px; color:var(--text-light); font-size:0.9rem; transition:all 0.2s;
+            cursor:pointer; font-family:'Work Sans',sans-serif; text-align:left; width:100%;
         }
-        .upload-link:hover { border-color:var(--accent); color:var(--accent); }
+        .upload-link-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .upload-link-btn .file-link-icon { font-size:1.2rem; flex-shrink:0; }
+        .upload-link-btn .file-link-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .upload-link-btn .file-link-hint { font-size:0.75rem; color:var(--text-muted); white-space:nowrap; }
+
         .checkbox-row { display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--bg-dark); border-radius:10px; border:1px solid var(--border); margin-bottom:1rem; }
         .checkbox-row input[type="checkbox"] { width:20px; height:20px; cursor:pointer; accent-color:var(--accent); }
         .checkbox-label { font-weight:600; cursor:pointer; }
@@ -174,7 +181,60 @@
 
         .spinner { width:40px; height:40px; border:4px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin:1rem auto; }
 
-        .toast { position:fixed; bottom:2rem; right:2rem; padding:1rem 1.5rem; border-radius:12px; font-weight:600; z-index:200; display:none; }
+        /* ── File Preview Modal ────────────────────────────────────────────── */
+        .preview-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.9); z-index:200;
+            align-items:center; justify-content:center;
+            padding:1rem; backdrop-filter:blur(8px);
+        }
+        .preview-overlay.show { display:flex; animation:fadeInUp 0.3s ease-out; }
+        .preview-modal {
+            background:var(--bg-card); border:1px solid var(--border); border-radius:20px;
+            display:flex; flex-direction:column;
+            max-width:90vw; max-height:92vh; width:960px; overflow:hidden;
+        }
+        .preview-header {
+            display:flex; align-items:center; gap:1rem; padding:1.25rem 1.5rem;
+            border-bottom:1px solid var(--border); flex-shrink:0;
+        }
+        .preview-header-icon { font-size:1.5rem; }
+        .preview-header-name {
+            flex:1; font-weight:600; font-size:1rem;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+        }
+        .preview-download-btn {
+            display:flex; align-items:center; gap:0.5rem;
+            padding:0.55rem 1.1rem; background:linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color:white; border:none; border-radius:8px; cursor:pointer;
+            font-weight:600; font-size:0.85rem; font-family:'Work Sans',sans-serif;
+            text-decoration:none; white-space:nowrap; transition:all 0.2s; flex-shrink:0;
+        }
+        .preview-download-btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,163,224,0.35); }
+        .preview-close-btn {
+            width:36px; height:36px; background:var(--bg-dark); border:1px solid var(--border);
+            border-radius:8px; display:flex; align-items:center; justify-content:center;
+            cursor:pointer; color:var(--text-muted); font-size:1.2rem; transition:all 0.2s;
+            flex-shrink:0;
+        }
+        .preview-close-btn:hover { color:var(--text-light); border-color:var(--error); background:rgba(239,68,68,0.1); }
+        .preview-body { flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center; position:relative; }
+        .preview-body img {
+            max-width:100%; max-height:calc(92vh - 80px); object-fit:contain;
+            display:block; border-radius:0 0 20px 20px;
+        }
+        .preview-body iframe {
+            width:100%; height:calc(92vh - 80px); border:none;
+            background:white;
+        }
+        .preview-unsupported {
+            text-align:center; padding:4rem 2rem;
+        }
+        .preview-unsupported .unsupported-icon { font-size:4rem; margin-bottom:1rem; }
+        .preview-unsupported p { color:var(--text-muted); font-size:1rem; margin-bottom:1.5rem; }
+        .preview-unsupported .unsupported-name { font-family:'DM Mono',monospace; color:var(--text-light); font-size:0.9rem; margin-bottom:2rem; }
+
+        .toast { position:fixed; bottom:2rem; right:2rem; padding:1rem 1.5rem; border-radius:12px; font-weight:600; z-index:300; display:none; }
         .toast.show { display:block; animation:fadeInUp 0.4s ease-out; }
         .toast-success { background:rgba(16,185,129,0.92); color:white; border:1px solid var(--success); }
         .toast-error   { background:rgba(239,68,68,0.92);   color:white; border:1px solid var(--error); }
@@ -187,6 +247,7 @@
             .form-grid { grid-template-columns:1fr; }
             .detail-grid { grid-template-columns:1fr; }
             .btn-group { flex-direction:column; }
+            .preview-modal { max-width:100vw; border-radius:16px; }
         }
     </style>
 </head>
@@ -431,6 +492,23 @@
     </div>
 </div>
 
+<!-- ── File Preview Modal ──────────────────────────────────────────────────── -->
+<div class="preview-overlay" id="previewOverlay">
+    <div class="preview-modal">
+        <div class="preview-header">
+            <span class="preview-header-icon" id="previewIcon">📄</span>
+            <span class="preview-header-name" id="previewName">filename.pdf</span>
+            <a class="preview-download-btn" id="previewDownloadBtn" href="#" download target="_blank">
+                ⬇ Download
+            </a>
+            <button class="preview-close-btn" id="previewClose">✕</button>
+        </div>
+        <div class="preview-body" id="previewBody">
+            <!-- content injected by JS -->
+        </div>
+    </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script type="module">
@@ -441,7 +519,7 @@
     import { getStorage, ref, uploadBytesResumable, getDownloadURL }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
-    // ── Firebase config (pingu-solar) ─────────────────────────────────────────
+    // ── Firebase config ───────────────────────────────────────────────────────
     const app = initializeApp({
         apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
         authDomain: "pingu-solar.firebaseapp.com",
@@ -488,7 +566,69 @@
         return type === 'photo' ? '🖼️' : type === 'pdf' ? '📄' : '📝';
     }
 
-    // ── File preview helpers ──────────────────────────────────────────────────
+    // ── File Preview Modal ────────────────────────────────────────────────────
+    function openFilePreview(file) {
+        const overlay   = document.getElementById('previewOverlay');
+        const body      = document.getElementById('previewBody');
+        const nameEl    = document.getElementById('previewName');
+        const iconEl    = document.getElementById('previewIcon');
+        const dlBtn     = document.getElementById('previewDownloadBtn');
+
+        nameEl.textContent = file.name;
+        iconEl.textContent = fileTypeIcon(file.type);
+        dlBtn.href         = file.url;
+        dlBtn.download     = file.name;
+
+        // Clear previous content
+        body.innerHTML = '';
+
+        if (file.type === 'photo') {
+            // Image preview
+            const img = document.createElement('img');
+            img.src = file.url;
+            img.alt = file.name;
+            body.appendChild(img);
+
+        } else if (file.type === 'pdf') {
+            // PDF in iframe
+            const iframe = document.createElement('iframe');
+            iframe.src   = file.url + '#toolbar=1&navpanes=0';
+            iframe.title = file.name;
+            body.appendChild(iframe);
+
+        } else {
+            // Word doc – cannot preview inline
+            body.innerHTML = `
+                <div class="preview-unsupported">
+                    <div class="unsupported-icon">📝</div>
+                    <p>Word documents can't be previewed in the browser.</p>
+                    <div class="unsupported-name">${file.name}</div>
+                    <a class="preview-download-btn" href="${file.url}" download="${file.name}" target="_blank" style="display:inline-flex;text-decoration:none;">
+                        ⬇ Download to open
+                    </a>
+                </div>`;
+        }
+
+        overlay.classList.add('show');
+    }
+
+    function closeFilePreview() {
+        const overlay = document.getElementById('previewOverlay');
+        overlay.classList.remove('show');
+        // Clear iframe to stop PDF rendering in background
+        const iframe = overlay.querySelector('iframe');
+        if (iframe) iframe.src = '';
+    }
+
+    document.getElementById('previewClose').addEventListener('click', closeFilePreview);
+    document.getElementById('previewOverlay').addEventListener('click', e => {
+        if (e.target.id === 'previewOverlay') closeFilePreview();
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeFilePreview();
+    });
+
+    // ── File preview helpers (form upload) ───────────────────────────────────
     function addFilePreview(file, storeKey, containerId, fileType) {
         const container = document.getElementById(containerId);
         const div = document.createElement('div');
@@ -632,7 +772,6 @@
         });
     }
 
-
     function renderHistoric() {
         const tbody   = document.getElementById('historicTableBody');
         const resolved = allComplaints.filter(c => c.status === 'resolved');
@@ -690,11 +829,21 @@
             linksDiv.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No files uploaded.</p>';
         } else {
             files.forEach(f => {
-                const a = document.createElement('a');
-                a.className = 'upload-link';
-                a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
-                a.innerHTML = `<span style="font-size:1.2rem">${fileTypeIcon(f.type)}</span> ${f.name}`;
-                linksDiv.appendChild(a);
+                const btn = document.createElement('button');
+                btn.className = 'upload-link-btn';
+
+                // Determine hint text by type
+                const hintText = f.type === 'word'
+                    ? 'Click to view / download'
+                    : 'Click to preview';
+
+                btn.innerHTML = `
+                    <span class="file-link-icon">${fileTypeIcon(f.type)}</span>
+                    <span class="file-link-name">${f.name}</span>
+                    <span class="file-link-hint">${hintText}</span>`;
+
+                btn.addEventListener('click', () => openFilePreview(f));
+                linksDiv.appendChild(btn);
             });
         }
         document.getElementById('detailModal').classList.add('show');
