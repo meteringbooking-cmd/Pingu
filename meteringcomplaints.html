@@ -203,7 +203,10 @@
     <main>
         <!-- Active Complaints Table -->
         <div class="card">
-            <div class="card-title">Active Complaints</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin-bottom:0;">Active Complaints</div>
+                <button id="historicBtn" class="btn btn-secondary" style="padding:0.6rem 1.4rem;font-size:0.9rem;">🗂 Historic</button>
+            </div>
             <div id="loadingSpinner" style="text-align:center;padding:2rem;display:none;"><div class="spinner"></div></div>
             <div class="table-wrapper">
                 <table>
@@ -214,12 +217,35 @@
                             <th>Engineer</th>
                             <th>FTL</th>
                             <th>Target Date</th>
+                            <th>Informed</th>
                             <th>Status</th>
                             <th>Urgency</th>
                         </tr>
                     </thead>
                     <tbody id="complaintsTableBody">
-                        <tr><td colspan="7" class="empty-state">Loading...</td></tr>
+                        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Historic Complaints Table -->
+        <div class="card" id="historicCard" style="display:none;">
+            <div class="card-title">Historic Complaints (Resolved)</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date Received</th>
+                            <th>Job Ref</th>
+                            <th>Engineer</th>
+                            <th>FTL</th>
+                            <th>Target Date</th>
+                            <th>Informed</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historicTableBody">
+                        <tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -582,7 +608,7 @@
         const active = allComplaints.filter(c => c.status !== 'resolved');
         tbody.innerHTML = '';
         if (active.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No active complaints ✓</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No active complaints ✓</td></tr>';
             return;
         }
         active.forEach(c => {
@@ -596,6 +622,7 @@
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
                 <td>${formatDate(c.targetDate)}</td>
+                <td>${c.engineerInformed ? '<span class="badge badge-green">✓ Yes</span>' : '<span class="badge badge-red">✗ No</span>'}</td>
                 <td>${c.status === 'resolved'
                     ? '<span class="badge badge-green">Resolved</span>'
                     : '<span class="badge badge-blue">In Progress</span>'}</td>
@@ -604,6 +631,39 @@
             tbody.appendChild(tr);
         });
     }
+
+
+    function renderHistoric() {
+        const tbody   = document.getElementById('historicTableBody');
+        const resolved = allComplaints.filter(c => c.status === 'resolved');
+        tbody.innerHTML = '';
+        if (resolved.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>';
+            return;
+        }
+        resolved.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.innerHTML = `
+                <td>${formatDate(c.dateReceived)}</td>
+                <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
+                <td>${c.engineer||'—'}</td>
+                <td>${c.ftl||'—'}</td>
+                <td>${formatDate(c.targetDate)}</td>
+                <td>${c.engineerInformed ? '<span class="badge badge-green">✓ Yes</span>' : '<span class="badge badge-red">✗ No</span>'}</td>`;
+            tr.addEventListener('click', () => openModal(c.id));
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('historicBtn').addEventListener('click', () => {
+        const card = document.getElementById('historicCard');
+        const btn  = document.getElementById('historicBtn');
+        const isVisible = card.style.display !== 'none';
+        card.style.display = isVisible ? 'none' : 'block';
+        btn.textContent = isVisible ? '🗂 Historic' : '✕ Hide Historic';
+        if (!isVisible) renderHistoric();
+    });
 
     // ── Detail modal ──────────────────────────────────────────────────────────
     function openModal(id) {
