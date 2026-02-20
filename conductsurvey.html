@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -926,11 +925,16 @@
                     <!-- Property External -->
                     <div class="section-header">🏚️ Property (External)</div>
                      
+                    <!-- CHANGE 1: proposed-design now shows "why" if No -->
                     <div class="form-group">
                         <label class="form-label required">Does the Proposed Design Fit?</label>
                         <div class="radio-group">
                             <div class="radio-option"><input type="radio" id="proposed-design-yes" name="proposed-design" value="Yes" required><label for="proposed-design-yes">Yes</label></div>
                             <div class="radio-option"><input type="radio" id="proposed-design-no" name="proposed-design" value="No"><label for="proposed-design-no">No</label></div>
+                        </div>
+                        <div class="conditional-field" id="proposed-design-reason">
+                            <label for="proposed-design-reason-text" class="form-label">Why Doesn't the Proposed Design Fit?</label>
+                            <textarea id="proposed-design-reason-text" class="form-textarea" placeholder="Please explain why the proposed design doesn't fit..."></textarea>
                         </div>
                     </div>
                  
@@ -982,6 +986,7 @@
                         <input type="number" id="roof-work-age" class="form-input" placeholder="0" step="1" min="0" required />
                     </div>
 
+                    <!-- CHANGE 2: obstructions now also asks "what obstructions" -->
                     <div class="form-group">
                         <label class="form-label required">Are there any Obstructions on the Roof?</label>
                         <div class="radio-group">
@@ -990,6 +995,10 @@
                             <div class="radio-option"><input type="radio" id="obstructions-na" name="roof-obstructions" value="N/A"><label for="obstructions-na">N/A</label></div>
                         </div>
                         <div class="conditional-field" id="obstructions-upload">
+                            <div class="form-group" style="margin: 0 0 1rem 0;">
+                                <label for="obstructions-description" class="form-label">What Obstructions Are There?</label>
+                                <input type="text" id="obstructions-description" class="form-input" placeholder="Describe the obstructions on the roof..." />
+                            </div>
                             <label class="form-label required">Upload Photo(s) of Roof Obstructions</label>
                             <div class="file-upload-area" onclick="document.getElementById('obstructions-files').click()">
                                 <div class="file-upload-icon">📸</div>
@@ -1096,6 +1105,7 @@
                         <textarea id="access-issues" class="form-textarea" placeholder="Describe any access issues..." required></textarea>
                     </div>
 
+                    <!-- CHANGE 3: gutter obstacles now also asks "what obstacles" -->
                     <div class="form-group">
                         <label class="form-label required">Any Obstacles Below the Gutter Line?</label>
                         <div class="radio-group">
@@ -1103,6 +1113,10 @@
                             <div class="radio-option"><input type="radio" id="gutter-obstacles-no" name="gutter-obstacles" value="No"><label for="gutter-obstacles-no">No</label></div>
                         </div>
                         <div class="conditional-field" id="gutter-obstacles-upload">
+                            <div class="form-group" style="margin: 0 0 1rem 0;">
+                                <label for="gutter-obstacles-description" class="form-label">What Obstacles Are There?</label>
+                                <input type="text" id="gutter-obstacles-description" class="form-input" placeholder="Describe the obstacles below the gutter line..." />
+                            </div>
                             <label class="form-label required">Upload Photo(s) of Obstacles</label>
                             <div class="file-upload-area" onclick="document.getElementById('gutter-obstacles-files').click()">
                                 <div class="file-upload-icon">📸</div>
@@ -1141,13 +1155,11 @@
                         <input type="text" id="signoff-name" class="form-input" placeholder="Enter customer name..." required />
                     </div>
 
-                    <!-- SUBMIT BUTTON - NOW PROPERLY INSIDE THE FORM -->
                     <button type="submit" class="submit-btn" id="submit-btn">Submit Survey</button>
                 </div>
             </form>
         </div>
     </div>
-
 
     <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -1209,10 +1221,10 @@
         const data = JSON.parse(saved);
         const form = document.getElementById('survey-form');
         Object.keys(data).forEach(k => {
-            const el = form.querySelector(`#${k}`) || form.querySelector(`input[name="${k}"]`);
+            const el = form.querySelector('#' + k) || form.querySelector('input[name="' + k + '"]');
             if (el) {
                 if (el.type === 'radio') {
-                    const radio = form.querySelector(`input[name="${k}"][value="${data[k]}"]`);
+                    const radio = form.querySelector('input[name="' + k + '"][value="' + data[k] + '"]');
                     if (radio) radio.checked = true;
                 } else {
                     el.value = data[k];
@@ -1232,7 +1244,7 @@
     function showAlert(message, type = 'error') {
         const alert = document.getElementById('alert-message');
         alert.textContent = message;
-        alert.className = `alert ${type} show`;
+        alert.className = 'alert ' + type + ' show';
         setTimeout(() => alert.classList.remove('show'), 5000);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1241,14 +1253,13 @@
         reader.onload = function(e) {
             const fileDiv = document.createElement('div');
             fileDiv.className = 'uploaded-file';
-            fileDiv.innerHTML = `
-                <img src="${e.target.result}" class="file-preview" alt="Photo preview">
-                <div class="file-details">
-                    <div class="file-name">${escapeHtml(file.name)}</div>
-                    <div class="file-size">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
-                </div>
-                <button type="button" class="remove-file-btn">Remove</button>
-            `;
+            fileDiv.innerHTML =
+                '<img src="' + e.target.result + '" class="file-preview" alt="Photo preview">' +
+                '<div class="file-details">' +
+                '<div class="file-name">' + escapeHtml(file.name) + '</div>' +
+                '<div class="file-size">' + (file.size / 1024 / 1024).toFixed(2) + ' MB</div>' +
+                '</div>' +
+                '<button type="button" class="remove-file-btn">Remove</button>';
             fileDiv.querySelector('.remove-file-btn').addEventListener('click', () => {
                 uploadedFiles[fieldId] = uploadedFiles[fieldId].filter(f =>
                     f.name !== file.name || f.size !== file.size || f.lastModified !== file.lastModified
@@ -1286,30 +1297,19 @@
         });
     }
     async function sendMeterWorkEmail() {
-        const meterWorkDetails = document.getElementById('meter-work-details')?.value || '';
-        const meterWorkNeeded = document.getElementById('meter-work-needed')?.value || '';
-       
-        if (meterWorkNeeded.trim().toLowerCase() !== 'yes' || !meterWorkDetails.trim()) {
-            return;
-        }
-       
-        if (!verifiedJob) {
-            showAlert('Please verify job number first', 'error');
-            return;
-        }
-       
+        const meterWorkDetails = document.getElementById('meter-work-details') ? document.getElementById('meter-work-details').value : '';
+        const meterWorkNeeded = document.getElementById('meter-work-needed') ? document.getElementById('meter-work-needed').value : '';
+        if (meterWorkNeeded.trim().toLowerCase() !== 'yes' || !meterWorkDetails.trim()) return;
+        if (!verifiedJob) { showAlert('Please verify job number first', 'error'); return; }
         const meterFiles = uploadedFiles['meter-installation-files'] || [];
-       
         let photoLinks = 'No photos uploaded yet';
-       
         if (meterFiles.length > 0) {
             try {
                 const uploadPromises = meterFiles.map(async (file, i) => {
-                    const path = `meter-work/${verifiedJob['Job Number']}/${Date.now()}_${i}_${file.name}`;
+                    const path = 'meter-work/' + verifiedJob['Job Number'] + '/' + Date.now() + '_' + i + '_' + file.name;
                     const url = await uploadFileToStorage(file, path);
-                    return `Photo ${i+1}: ${url}`;
+                    return 'Photo ' + (i+1) + ': ' + url;
                 });
-               
                 const urls = await Promise.all(uploadPromises);
                 photoLinks = urls.join('\n');
             } catch (error) {
@@ -1317,7 +1317,6 @@
                 photoLinks = 'Error uploading photos';
             }
         }
-       
         const emailData = {
             job_number: verifiedJob['Job Number'] || 'N/A',
             customer_name: verifiedJob['Name'] || 'N/A',
@@ -1327,7 +1326,6 @@
             meter_work_details: meterWorkDetails,
             photo_links: photoLinks
         };
-       
         try {
             await emailjs.send('service_o75fskf', 'template_ijhp8qj', emailData);
             showAlert('Meter work notification sent successfully!', 'success');
@@ -1351,11 +1349,12 @@
             { name: 'water-bonded', value: 'No', upload: 'water-bonding-required' },
             { name: 'overhead-powerlines', value: 'Yes', upload: 'powerlines-upload' },
             { name: 'property-location', value: 'Yes', upload: 'pavement-upload' },
-            { name: 'gutter-obstacles', value: 'Yes', upload: 'gutter-obstacles-upload' }
+            { name: 'gutter-obstacles', value: 'Yes', upload: 'gutter-obstacles-upload' },
+            { name: 'proposed-design', value: 'No', upload: 'proposed-design-reason' }
         ];
        
         radioFieldsWithPhotos.forEach(field => {
-            const radios = document.querySelectorAll(`input[name="${field.name}"]`);
+            const radios = document.querySelectorAll('input[name="' + field.name + '"]');
             const upload = document.getElementById(field.upload);
             if (upload) {
                 radios.forEach(radio => {
@@ -1374,14 +1373,12 @@
         if (meterWorkInput && meterSection) {
             meterWorkInput.addEventListener('input', function(e) {
                 const answer = e.target.value.trim().toLowerCase();
-               
                 if (answer === 'yes') {
                     meterSection.style.display = 'block';
                 } else if (answer === 'no') {
                     meterSection.style.display = 'none';
                 }
             });
-           
             if (meterWorkDetails) {
                 meterWorkDetails.addEventListener('blur', async function() {
                     if (meterWorkInput.value.trim().toLowerCase() === 'yes' && this.value.trim()) {
@@ -1392,66 +1389,47 @@
         }
     }
     function showSurveySection(surveyType) {
-    selectedSurveyType = surveyType;
-   
-    const batterySection = document.getElementById('battery-survey');
-    const batterySolarSection = document.getElementById('battery-and-solar-survey');
-   
-    // Hide both sections
-    batterySection.classList.remove('active');
-    batterySolarSection.classList.remove('active');
-   
-    // Disable ALL required fields in both sections
-    batterySection.querySelectorAll('[required]').forEach(field => {
-        field.removeAttribute('required');
-        field.dataset.wasRequired = 'true';
-    });
-    batterySolarSection.querySelectorAll('[required]').forEach(field => {
-        field.removeAttribute('required');
-        field.dataset.wasRequired = 'true';
-    });
-   
-    // Show and enable only the selected section
-    if (surveyType === 'battery') {
-        batterySection.classList.add('active');
-        batterySection.querySelectorAll('[data-was-required="true"]').forEach(field => {
-            field.setAttribute('required', 'required');
+        selectedSurveyType = surveyType;
+        const batterySection = document.getElementById('battery-survey');
+        const batterySolarSection = document.getElementById('battery-and-solar-survey');
+        batterySection.classList.remove('active');
+        batterySolarSection.classList.remove('active');
+        batterySection.querySelectorAll('[required]').forEach(field => {
+            field.removeAttribute('required');
+            field.dataset.wasRequired = 'true';
         });
-    } else if (surveyType === 'battery-and-solar') {
-        batterySolarSection.classList.add('active');
-        batterySolarSection.querySelectorAll('[data-was-required="true"]').forEach(field => {
-            // Skip meter-work-details as it should not be required
-            if (field.id !== 'meter-work-details') {
+        batterySolarSection.querySelectorAll('[required]').forEach(field => {
+            field.removeAttribute('required');
+            field.dataset.wasRequired = 'true';
+        });
+        if (surveyType === 'battery') {
+            batterySection.classList.add('active');
+            batterySection.querySelectorAll('[data-was-required="true"]').forEach(field => {
                 field.setAttribute('required', 'required');
-            }
-        });
+            });
+        } else if (surveyType === 'battery-and-solar') {
+            batterySolarSection.classList.add('active');
+            batterySolarSection.querySelectorAll('[data-was-required="true"]').forEach(field => {
+                if (field.id !== 'meter-work-details') {
+                    field.setAttribute('required', 'required');
+                }
+            });
+        }
     }
-}
     async function verifyJobNumber() {
         const jobNumber = document.getElementById('job-number').value.trim();
         const surveyType = document.getElementById('survey-type').value;
-       
-        if (!jobNumber) {
-            showAlert('Please enter a job number', 'error');
-            return;
-        }
-       
-        if (!surveyType) {
-            showAlert('Please select a survey type', 'error');
-            return;
-        }
-       
+        if (!jobNumber) { showAlert('Please enter a job number', 'error'); return; }
+        if (!surveyType) { showAlert('Please select a survey type', 'error'); return; }
         const verifyBtn = document.getElementById('verify-btn');
         const loadingSpinner = document.getElementById('loading-spinner');
         verifyBtn.disabled = true;
         verifyBtn.textContent = 'Verifying...';
         loadingSpinner.classList.add('active');
-       
         try {
             const { collection, getDocs, query, where } = window.firebaseModules;
             const jobsQuery = query(collection(window.db, 'jobs'), where('Job Number', '==', jobNumber));
             const snapshot = await getDocs(jobsQuery);
-           
             if (snapshot.empty) {
                 showAlert('Job number not found in database.', 'error');
                 verifyBtn.disabled = false;
@@ -1459,23 +1437,19 @@
                 loadingSpinner.classList.remove('active');
                 return;
             }
-           
             snapshot.forEach(doc => {
                 verifiedJob = { id: doc.id, ...doc.data() };
             });
-           
             const grid = document.getElementById('job-info-grid');
             const surveyTypeDisplay = surveyType === 'battery-and-solar' ? 'Battery and Solar' : surveyType.charAt(0).toUpperCase() + surveyType.slice(1);
-            grid.innerHTML = `
-                <div class="job-info-item"><div class="job-info-label">Job Number</div><div class="job-info-value">${escapeHtml(verifiedJob['Job Number'])}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Customer</div><div class="job-info-value">${escapeHtml(verifiedJob['Name'])}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Address</div><div class="job-info-value">${escapeHtml(verifiedJob['1st line of address'])}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Postcode</div><div class="job-info-value">${escapeHtml(verifiedJob['Postcode'])}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Install Date</div><div class="job-info-value">${escapeHtml(verifiedJob['Install Date'] || 'TBD')}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Lead Engineer</div><div class="job-info-value">${escapeHtml(verifiedJob['Lead Engineer'] || 'Unassigned')}</div></div>
-                <div class="job-info-item"><div class="job-info-label">Survey Type</div><div class="job-info-value">${escapeHtml(surveyTypeDisplay)}</div></div>
-            `;
-           
+            grid.innerHTML =
+                '<div class="job-info-item"><div class="job-info-label">Job Number</div><div class="job-info-value">' + escapeHtml(verifiedJob['Job Number']) + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Customer</div><div class="job-info-value">' + escapeHtml(verifiedJob['Name']) + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Address</div><div class="job-info-value">' + escapeHtml(verifiedJob['1st line of address']) + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Postcode</div><div class="job-info-value">' + escapeHtml(verifiedJob['Postcode']) + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Install Date</div><div class="job-info-value">' + escapeHtml(verifiedJob['Install Date'] || 'TBD') + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Lead Engineer</div><div class="job-info-value">' + escapeHtml(verifiedJob['Lead Engineer'] || 'Unassigned') + '</div></div>' +
+                '<div class="job-info-item"><div class="job-info-label">Survey Type</div><div class="job-info-value">' + escapeHtml(surveyTypeDisplay) + '</div></div>';
             document.getElementById('job-info-card').classList.add('show');
             document.getElementById('survey-form').style.display = 'block';
             showSurveySection(surveyType);
@@ -1505,20 +1479,16 @@
         });
     }
     async function submitSurvey(event) {
-    event.preventDefault();
-   
-    // Validate form
-    const form = document.getElementById('survey-form');
-    if (!form.checkValidity()) {
-        showAlert('Please fill in all required fields', 'error');
-        form.reportValidity();
-        return;
-    }
-       
+        event.preventDefault();
+        const form = document.getElementById('survey-form');
+        if (!form.checkValidity()) {
+            showAlert('Please fill in all required fields', 'error');
+            form.reportValidity();
+            return;
+        }
         const submitBtn = document.getElementById('submit-btn');
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
-       
         try {
             let surveyData = {
                 jobNumber: verifiedJob['Job Number'],
@@ -1530,9 +1500,9 @@
             if (selectedSurveyType === 'battery') {
                 surveyData.sections = {
                     batteryDetails: {
-                        date: document.getElementById('battery-survey-date')?.value || '',
-                        time: document.getElementById('battery-survey-time')?.value || '',
-                        name: document.getElementById('battery-surveyor-name')?.value || ''
+                        date: document.getElementById('battery-survey-date') ? document.getElementById('battery-survey-date').value : '',
+                        time: document.getElementById('battery-survey-time') ? document.getElementById('battery-survey-time').value : '',
+                        name: document.getElementById('battery-surveyor-name') ? document.getElementById('battery-surveyor-name').value : ''
                     }
                 };
             } else if (selectedSurveyType === 'battery-and-solar') {
@@ -1540,7 +1510,7 @@
                 for (const [fieldId, files] of Object.entries(uploadedFiles)) {
                     if (files.length > 0) {
                         const promises = files.map(async (file, i) => {
-                            const path = `surveys/${verifiedJob['Job Number']}/${fieldId}/${Date.now()}_${i}_${file.name}`;
+                            const path = 'surveys/' + verifiedJob['Job Number'] + '/' + fieldId + '/' + Date.now() + '_' + i + '_' + file.name;
                             return await uploadFileToStorage(file, path);
                         });
                         photoUrls[fieldId] = await Promise.all(promises);
@@ -1548,108 +1518,113 @@
                         photoUrls[fieldId] = [];
                     }
                 }
+                const getVal = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+                const getRadio = name => { const el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; };
                 surveyData.sections = {
                     surveyDetails: {
-                        conductedOn: document.getElementById('conducted-on')?.value || '',
-                        surveyor: document.getElementById('surveyor')?.value || '',
-                        customerPresent: document.querySelector('input[name="customer-present"]:checked')?.value || '',
-                        additionalNotesCustomerPresent: document.getElementById('additional-notes-customer-present')?.value || ''
+                        conductedOn: getVal('conducted-on'),
+                        surveyor: getVal('surveyor'),
+                        customerPresent: getRadio('customer-present'),
+                        additionalNotesCustomerPresent: getVal('additional-notes-customer-present')
                     },
                     riskAssessment: {
-                        riskAssessmentDone: document.querySelector('input[name="risk-assessment"]:checked')?.value || ''
+                        riskAssessmentDone: getRadio('risk-assessment')
                     },
                     electricalSystem: {
-                        meterPosition: document.getElementById('meter-position')?.value || '',
+                        meterPosition: getVal('meter-position'),
                         meterPositionPhotos: photoUrls['meter-position-files'] || [],
-                        meterWorkNeeded: document.getElementById('meter-work-needed')?.value || '',
-                        meterWorkDetails: document.getElementById('meter-work-details')?.value || '',
+                        meterWorkNeeded: getVal('meter-work-needed'),
+                        meterWorkDetails: getVal('meter-work-details'),
                         meterWorkPhotos: photoUrls['meter-installation-files'] || [],
-                        fuseRating: document.getElementById('fuse-rating')?.value || '',
-                        earthingSystem: document.getElementById('earthing-system')?.value || '',
+                        fuseRating: getVal('fuse-rating'),
+                        earthingSystem: getVal('earthing-system'),
                         earthingSystemPhotos: photoUrls['earthing-system-files'] || [],
-                        gasBonded: document.querySelector('input[name="gas-bonded"]:checked')?.value || '',
-                        gasBondingEquipment: document.getElementById('gas-bonding-equipment')?.value || '',
+                        gasBonded: getRadio('gas-bonded'),
+                        gasBondingEquipment: getVal('gas-bonding-equipment'),
                         gasBondedPhotos: photoUrls['gas-bonded-files'] || [],
-                        waterBonded: document.querySelector('input[name="water-bonded"]:checked')?.value || '',
-                        waterBondingEquipment: document.getElementById('water-bonding-equipment')?.value || '',
+                        waterBonded: getRadio('water-bonded'),
+                        waterBondingEquipment: getVal('water-bonding-equipment'),
                         waterBondedPhotos: photoUrls['water-bonded-files'] || [],
-                        cableRun: document.getElementById('cable-run')?.value || '',
+                        cableRun: getVal('cable-run'),
                         cableRunPhotos: photoUrls['cable-files'] || [],
-                        batteryLocation: document.getElementById('battery-location')?.value || '',
+                        batteryLocation: getVal('battery-location'),
                         batteryLocationPhotos: photoUrls['battery-location-files'] || [],
-                        surfaceType: document.getElementById('surface-type')?.value || '',
+                        surfaceType: getVal('surface-type'),
                         surfacePhotos: photoUrls['surface-files'] || [],
-                        batteryWidth: parseInt(document.getElementById('battery-width')?.value) || 0,
-                        batteryDepth: parseInt(document.getElementById('battery-depth')?.value) || 0,
-                        batteryLength: parseInt(document.getElementById('battery-length')?.value) || 0,
-                        additionalNotesBattery: document.getElementById('additional-notes-battery')?.value || '',
-                        renderCladding: document.getElementById('render-cladding')?.value || '',
-                        wifiSignal: document.getElementById('wifi-signal')?.value || ''
+                        batteryWidth: parseInt(getVal('battery-width')) || 0,
+                        batteryDepth: parseInt(getVal('battery-depth')) || 0,
+                        batteryLength: parseInt(getVal('battery-length')) || 0,
+                        additionalNotesBattery: getVal('additional-notes-battery'),
+                        renderCladding: getVal('render-cladding'),
+                        wifiSignal: getVal('wifi-signal')
                     },
                     propertyInternal: {
-                        loftAccessible: document.querySelector('input[name="loft-accessible"]:checked')?.value || '',
+                        loftAccessible: getRadio('loft-accessible'),
                         loftAccessiblePhotos: photoUrls['loft-accessible-files'] || [],
-                        loftLadder: document.querySelector('input[name="loft-ladder"]:checked')?.value || '',
-                        loftBoarded: document.querySelector('input[name="loft-boarded"]:checked')?.value || '',
-                        asbestos: document.querySelector('input[name="asbestos"]:checked')?.value || '',
+                        loftLadder: getRadio('loft-ladder'),
+                        loftBoarded: getRadio('loft-boarded'),
+                        asbestos: getRadio('asbestos'),
                         asbestosPhotos: photoUrls['asbestos-files'] || [],
                         loftSpacePhotos: photoUrls['loft-space-files'] || [],
-                        rafterWidth: parseInt(document.getElementById('rafter-width')?.value) || 0,
-                        rafterDepth: parseInt(document.getElementById('rafter-depth')?.value) || 0,
-                        webWidth: parseInt(document.getElementById('web-width')?.value) || 0,
-                        webDepth: parseInt(document.getElementById('web-depth')?.value) || 0,
-                        webLength: parseInt(document.getElementById('web-length')?.value) || 0,
-                        trussSpacing: parseInt(document.getElementById('truss-spacing')?.value) || 0,
-                        deflection: document.querySelector('input[name="roof-deflection"]:checked')?.value || '',
+                        rafterWidth: parseInt(getVal('rafter-width')) || 0,
+                        rafterDepth: parseInt(getVal('rafter-depth')) || 0,
+                        webWidth: parseInt(getVal('web-width')) || 0,
+                        webDepth: parseInt(getVal('web-depth')) || 0,
+                        webLength: parseInt(getVal('web-length')) || 0,
+                        trussSpacing: parseInt(getVal('truss-spacing')) || 0,
+                        deflection: getRadio('roof-deflection'),
                         deflectionPhotos: photoUrls['deflection-files'] || [],
-                        rotDamage: document.querySelector('input[name="rot-damage"]:checked')?.value || '',
+                        rotDamage: getRadio('rot-damage'),
                         rotDamagePhotos: photoUrls['rot-damage-files'] || [],
-                        roofConcern: document.querySelector('input[name="roof-concern"]:checked')?.value || '',
+                        roofConcern: getRadio('roof-concern'),
                         roofConcernPhotos: photoUrls['roof-concern-files'] || [],
-                        dwarfWalls: document.querySelector('input[name="dwarf-walls"]:checked')?.value || '',
+                        dwarfWalls: getRadio('dwarf-walls'),
                         dwarfWallsPhotos: photoUrls['dwarf-walls-files'] || [],
-                        structuralWork: document.querySelector('input[name="structural-work"]:checked')?.value || '',
+                        structuralWork: getRadio('structural-work'),
                         structuralWorkPhotos: photoUrls['structural-work-files'] || []
                     },
                     propertyExternal: {
-                        proposedDesignFit: document.querySelector('input[name="proposed-design"]:checked')?.value || '',
+                        proposedDesignFit: getRadio('proposed-design'),
+                        proposedDesignReasonWhyNot: getVal('proposed-design-reason-text'),
                         propertyPhotos: photoUrls['property-photos-files'] || [],
-                        roofCovering: document.getElementById('roof-covering')?.value || '',
+                        roofCovering: getVal('roof-covering'),
                         roofCoveringPhotos: photoUrls['roof-covering-files'] || [],
-                        numberStories: parseInt(document.getElementById('number-stories')?.value) || 0,
-                        roofCondition: document.getElementById('roof-condition')?.value || '',
+                        numberStories: parseInt(getVal('number-stories')) || 0,
+                        roofCondition: getVal('roof-condition'),
                         roofConditionPhotos: photoUrls['roof-condition-files'] || [],
-                        roofWorkAge: parseInt(document.getElementById('roof-work-age')?.value) || 0,
-                        roofObstructions: document.querySelector('input[name="roof-obstructions"]:checked')?.value || '',
+                        roofWorkAge: parseInt(getVal('roof-work-age')) || 0,
+                        roofObstructions: getRadio('roof-obstructions'),
+                        obstructionsDescription: getVal('obstructions-description'),
                         obstructionsPhotos: photoUrls['obstructions-files'] || [],
-                        roofShading: document.querySelector('input[name="roof-shading"]:checked')?.value || '',
+                        roofShading: getRadio('roof-shading'),
                         shadingPhotos: photoUrls['shading-files'] || [],
-                        additionalNotesProperty: document.getElementById('additional-notes-property')?.value || ''
+                        additionalNotesProperty: getVal('additional-notes-property')
                     },
                     scaffolding: {
-                        accessType: document.getElementById('access-type')?.value || '',
-                        parkingAvailable: document.querySelector('input[name="parking-available"]:checked')?.value || '',
-                        overheadPowerlines: document.querySelector('input[name="overhead-powerlines"]:checked')?.value || '',
+                        accessType: getVal('access-type'),
+                        parkingAvailable: getRadio('parking-available'),
+                        overheadPowerlines: getRadio('overhead-powerlines'),
                         powerlinesPhotos: photoUrls['powerlines-files'] || [],
-                        propertyOnPavement: document.querySelector('input[name="property-location"]:checked')?.value || '',
+                        propertyOnPavement: getRadio('property-location'),
                         pavementPhotos: photoUrls['pavement-files'] || [],
-                        groundType: document.getElementById('ground-type')?.value || '',
+                        groundType: getVal('ground-type'),
                         groundTypePhotos: photoUrls['ground-type-files'] || [],
-                        accessIssues: document.getElementById('access-issues')?.value || '',
-                        gutterObstacles: document.querySelector('input[name="gutter-obstacles"]:checked')?.value || '',
+                        accessIssues: getVal('access-issues'),
+                        gutterObstacles: getRadio('gutter-obstacles'),
+                        gutterObstaclesDescription: getVal('gutter-obstacles-description'),
                         gutterObstaclesPhotos: photoUrls['gutter-obstacles-files'] || [],
-                        lowerRoofs: document.getElementById('lower-roofs')?.value || '',
+                        lowerRoofs: getVal('lower-roofs'),
                         lowerRoofsPhotos: photoUrls['lower-roofs-files'] || [],
-                        additionalNotes: document.getElementById('scaffolding-additional-notes')?.value || ''
+                        additionalNotes: getVal('scaffolding-additional-notes')
                     },
                     customerSignOff: {
-                        date: document.getElementById('signoff-date')?.value || '',
-                        name: document.getElementById('signoff-name')?.value || '',
+                        date: getVal('signoff-date'),
+                        name: getVal('signoff-name')
                     }
                 };
             }
             const { doc, setDoc } = window.firebaseModules;
-            const surveyRef = doc(window.db, 'site-surveys', `${verifiedJob['Job Number']}_${selectedSurveyType}_${Date.now()}`);
+            const surveyRef = doc(window.db, 'site-surveys', verifiedJob['Job Number'] + '_' + selectedSurveyType + '_' + Date.now());
             await setDoc(surveyRef, surveyData);
             clearProgress();
             showAlert('Survey submitted successfully!', 'success');
