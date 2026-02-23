@@ -20,6 +20,7 @@
             --error: #FF6B6B;
             --warning: #FFA500;
             --shadow: rgba(255, 107, 53, 0.3);
+            --kf: #B57BFF;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -251,6 +252,53 @@
         .pl-roof-stats { display:flex; gap:1.2rem; margin-top:0.8rem; flex-wrap:wrap; }
         .pl-roof-stat { font-size:0.78rem; color:var(--text-dim); }
         .pl-roof-stat strong { color:var(--text); }
+
+        /* ── KF Picklist inside survey ─────────────────── */
+        .pl-kf-wrap {
+            margin-top: 1.4rem; padding: 1.2rem;
+            background: var(--dark); border-radius: 12px;
+            border: 2px solid rgba(181,123,255,0.25);
+        }
+        .pl-kf-hdr {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 0.9rem; flex-wrap: wrap; gap: 0.5rem;
+        }
+        .pl-kf-hdr h4 {
+            font-family: 'Syne', sans-serif; font-size: 0.95rem;
+            color: var(--kf); display: flex; align-items: center; gap: 0.4rem;
+        }
+        .pl-kf-count {
+            font-size: 0.73rem; color: var(--text-dim);
+            background: rgba(181,123,255,0.1); border: 1px solid rgba(181,123,255,0.25);
+            padding: 0.15rem 0.55rem; border-radius: 20px;
+        }
+        .pl-kf-table-wrap { overflow-x: auto; }
+        .pl-kf-table {
+            width: 100%; border-collapse: collapse; font-size: 0.82rem;
+        }
+        .pl-kf-table th {
+            text-align: left; padding: 0.4rem 0.75rem;
+            font-size: 0.68rem; color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: 0.06em;
+            border-bottom: 1px solid rgba(181,123,255,0.2);
+        }
+        .pl-kf-table td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .pl-kf-table tr:last-child td { border-bottom: none; }
+        .pl-kf-table tr:hover td { background: rgba(181,123,255,0.05); }
+        .pl-kf-part { font-family: 'JetBrains Mono', monospace; color: var(--kf); font-size: 0.8rem; }
+        .pl-kf-qty {
+            display: inline-block; background: rgba(181,123,255,0.12);
+            color: var(--kf); border: 1px solid rgba(181,123,255,0.3);
+            padding: 0.1rem 0.45rem; border-radius: 4px;
+            font-weight: 700; font-size: 0.8rem;
+        }
+        .pl-kf-total td {
+            border-top: 2px solid rgba(181,123,255,0.25);
+            color: var(--text-dim); font-size: 0.75rem; padding-top: 0.6rem;
+        }
 
         .pl-no-picklist {
             padding: 1rem 1.2rem; background: var(--dark); border-radius: 9px;
@@ -943,7 +991,6 @@
         let selectedSurveyType = null;
         const PROGRESS_KEY_PREFIX = 'survey_progress_';
 
-        // ── Spec definitions (mirrors picklist generator) ──────────────────
         const SPECS = {
             system: [
                 {label:'Type of System',     col:'AO', row:2},
@@ -983,7 +1030,6 @@
             {label:'New Picklist Cost Saving', col:'R', row:28, highlight:true},
         ];
 
-        // ── Picklist panel renderer ────────────────────────────────────────
         function esc(t){ const d=document.createElement('div'); d.textContent=String(t||''); return d.innerHTML; }
 
         function plSpecCard(label, value, ref, note, unit, highlight) {
@@ -1005,13 +1051,12 @@
 
             let html = '';
 
-            // System config
+            // System / mounting / electrical specs
             if (d.specs) {
                 const grp = (defs) => defs.map(def => {
                     const v = d.specs[def.label] || '';
                     return plSpecCard(def.label, v, `${def.col}${def.row}`, def.note, def.unit, def.highlight);
                 }).join('');
-
                 html += `<div class="pl-section-title">⚡ System Configuration</div>
                          <div class="pl-specs-grid">${grp(SPECS.system)}</div>`;
                 html += `<div class="pl-section-title">🔩 Mounting &amp; Hardware</div>
@@ -1020,7 +1065,7 @@
                          <div class="pl-specs-grid">${grp(SPECS.electrical)}</div>`;
             }
 
-            // Mount check
+            // Mount sense check
             if (d.mountCheck) {
                 const mcCards = MOUNT_CHECK_CELLS.map(def => {
                     const v = d.mountCheck[def.label] || '';
@@ -1030,7 +1075,7 @@
                          <div class="pl-specs-grid">${mcCards}</div>`;
             }
 
-            // Panel map
+            // Roof panel map
             const flatArr = d.panelFlat || (d.panelGrid ? d.panelGrid.flat() : null);
             const cols = d.panelCols || (d.panelGrid?.[0]?.length) || 0;
             if (flatArr && cols) {
@@ -1062,6 +1107,37 @@
                 }
             }
 
+            // ── KF Picklist ──────────────────────────────────────────────
+            if (d.kfPicklist && d.kfPicklist.length) {
+                let totalQty = 0;
+                d.kfPicklist.forEach(it => { const q = parseFloat(it.qty); if(!isNaN(q)) totalQty += q; });
+
+                const rows = d.kfPicklist.map((it, i) => `
+                    <tr>
+                        <td style="color:var(--text-dim);font-size:0.72rem">${i + 1}</td>
+                        <td><span class="pl-kf-part">${esc(it.partCode)}</span></td>
+                        <td><span class="pl-kf-qty">${esc(it.qty || '—')}</span></td>
+                    </tr>`).join('') +
+                    `<tr class="pl-kf-total">
+                        <td></td>
+                        <td style="color:var(--text-dim)">Total qty</td>
+                        <td><span class="pl-kf-qty">${totalQty}</span></td>
+                    </tr>`;
+
+                html += `<div class="pl-kf-wrap">
+                    <div class="pl-kf-hdr">
+                        <h4>🧩 KF Picklist</h4>
+                        <span class="pl-kf-count">${d.kfPicklist.length} item${d.kfPicklist.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    <div class="pl-kf-table-wrap">
+                        <table class="pl-kf-table">
+                            <thead><tr><th>#</th><th>Part Code</th><th>Qty</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+            }
+
             body.innerHTML = html || '<div class="pl-no-picklist">Picklist found but contains no data.</div>';
         }
 
@@ -1070,10 +1146,8 @@
             const body  = document.getElementById('picklist-panel-body');
             panel.classList.add('show');
             body.innerHTML = '<div class="pl-loading">Loading picklist data…</div>';
-
             try {
                 const { collection, query, where, getDocs, orderBy, limit } = window.firebaseModules;
-                // Get the most recent picklist for this job number
                 const q = query(
                     collection(window.db, 'picklists'),
                     where('jobNumber', '==', jobNumber),
@@ -1081,21 +1155,17 @@
                     limit(1)
                 );
                 const snap = await getDocs(q);
-
                 if (snap.empty) {
                     body.innerHTML = '<div class="pl-no-picklist">📭 No picklist found for this job. Upload one via the Picklist Generator.</div>';
                     return;
                 }
-
                 renderPicklistPanel(snap.docs[0].data());
-
             } catch (err) {
                 console.error('Picklist load error:', err);
                 body.innerHTML = `<div class="pl-no-picklist" style="border-color:var(--error);color:var(--error)">Failed to load picklist: ${esc(err.message)}</div>`;
             }
         }
 
-        // ── Progress helpers ───────────────────────────────────────────────
         function getProgressKey() { return verifiedJob ? PROGRESS_KEY_PREFIX + verifiedJob['Job Number'] : null; }
         function saveProgress() {
             const key = getProgressKey(); if (!key) return;
@@ -1223,10 +1293,7 @@
                     '<div class="job-info-item"><div class="job-info-label">Lead Engineer</div><div class="job-info-value">'+escapeHtml(verifiedJob['Lead Engineer']||'Unassigned')+'</div></div>'+
                     '<div class="job-info-item"><div class="job-info-label">Survey Type</div><div class="job-info-value">'+escapeHtml(surveyTypeDisplay)+'</div></div>';
                 document.getElementById('job-info-card').classList.add('show');
-
-                // ── Load picklist for this job ──────────────────────────────
                 await loadPicklistForJob(jobNumber);
-
                 document.getElementById('survey-form').style.display='block';
                 showSurveySection(surveyType);
                 verifyBtn.style.display='none';
