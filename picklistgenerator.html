@@ -363,8 +363,6 @@
 
         .table-wrapper {
             overflow-x: auto;
-            max-height: 300px;
-            overflow-y: auto;
             border-radius: 8px;
         }
 
@@ -468,6 +466,157 @@
             border: 1px solid rgba(0, 217, 255, 0.3);
         }
 
+        /* Roof Map Visualiser */
+        .roof-map-section {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: var(--dark);
+            border-radius: 16px;
+            border: 2px solid rgba(0, 217, 255, 0.25);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .roof-map-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.2rem;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+        }
+
+        .roof-map-header h4 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .roof-legend {
+            display: flex;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+        }
+
+        .legend-swatch {
+            width: 28px;
+            height: 18px;
+            border-radius: 3px;
+        }
+
+        .legend-swatch.portrait {
+            background: linear-gradient(135deg, #FF6B35, #FF9559);
+            border: 1px solid rgba(255, 107, 53, 0.6);
+        }
+
+        .legend-swatch.landscape {
+            background: linear-gradient(135deg, #00D9FF, #00A8CC);
+            border: 1px solid rgba(0, 217, 255, 0.6);
+            width: 36px;
+            height: 16px;
+        }
+
+        .legend-swatch.empty {
+            background: var(--dark-lighter);
+            border: 1px dashed rgba(255,255,255,0.1);
+        }
+
+        .roof-grid-wrapper {
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+        }
+
+        .roof-grid {
+            display: inline-grid;
+            gap: 3px;
+            padding: 1rem;
+            background: rgba(255,255,255,0.02);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.05);
+            min-width: 100%;
+        }
+
+        .roof-cell {
+            width: 28px;
+            height: 28px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: 700;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            cursor: default;
+            position: relative;
+        }
+
+        .roof-cell:hover {
+            transform: scale(1.3);
+            z-index: 10;
+        }
+
+        .roof-cell.empty {
+            background: rgba(255,255,255,0.03);
+            border: 1px dashed rgba(255,255,255,0.07);
+        }
+
+        .roof-cell.portrait {
+            background: linear-gradient(135deg, #FF6B35 0%, #FF9559 100%);
+            border: 1px solid rgba(255, 149, 89, 0.8);
+            color: rgba(255,255,255,0.9);
+            box-shadow: 0 2px 6px rgba(255, 107, 53, 0.4);
+        }
+
+        .roof-cell.landscape {
+            background: linear-gradient(135deg, #00D9FF 0%, #00A8CC 100%);
+            border: 1px solid rgba(0, 217, 255, 0.8);
+            color: rgba(0, 30, 50, 0.9);
+            box-shadow: 0 2px 6px rgba(0, 217, 255, 0.35);
+        }
+
+        .roof-cell.portrait::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 1px;
+        }
+
+        .roof-cell.landscape::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 1px;
+        }
+
+        .roof-stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .roof-stat {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            color: var(--text-dim);
+        }
+
+        .roof-stat strong { color: var(--text); }
+
         /* View Modal */
         .modal {
             display: none;
@@ -486,9 +635,9 @@
             background: var(--dark-light);
             border-radius: 16px;
             padding: 2.5rem;
-            max-width: 900px;
+            max-width: 1100px;
             width: 95%;
-            max-height: 85vh;
+            max-height: 90vh;
             overflow-y: auto;
             border: 2px solid var(--accent);
             animation: slideUp 0.4s ease;
@@ -807,8 +956,11 @@
     }
 
     function parseTabularData(raw) {
-        const lines = raw.split(/\r?\n/).filter(l => l.trim());
-        if (lines.length === 0) return { headers: [], rows: [] };
+        // Split into lines, preserve empty lines to keep row positions accurate
+        const lines = raw.split(/\r?\n/);
+        // Remove only trailing empty lines
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        if (lines.length === 0) return { headers: [], rows: [], allLines: [] };
 
         // Detect delimiter: tab-first (Excel default), then comma
         const firstLine = lines[0];
@@ -816,7 +968,6 @@
 
         const splitLine = (line) => {
             if (delimiter === '\t') return line.split('\t').map(c => c.trim());
-            // CSV parse
             const result = [];
             let cur = '', inQ = false;
             for (let i = 0; i < line.length; i++) {
@@ -828,35 +979,124 @@
             return result;
         };
 
-        const headers = splitLine(lines[0]);
-        const rows = lines.slice(1).map(splitLine);
-        return { headers, rows };
+        const allLines = lines.map(splitLine);
+        const headers = allLines[0];
+        const rows = allLines.slice(1);
+        return { headers, rows, allLines };
     }
 
-    function renderPreview({ headers, rows }) {
+    // Excel column index helpers
+    // B=1, C=2, ... AI=34 (A=0 offset from col index 0)
+    // When pasted, row 1 of paste = Excel row 1, col 0 = col A
+    // Panel map: B3:AI18 => col indices 1..34, row indices 2..17 (0-based in allLines)
+    const PANEL_MAP = {
+        colStart: 1,   // col B (0-indexed from A)
+        colEnd: 34,    // col AI
+        rowStart: 2,   // row 3 (0-indexed)
+        rowEnd: 17     // row 18
+    };
+
+    function extractPanelMap(allLines) {
+        const grid = [];
+        for (let r = PANEL_MAP.rowStart; r <= PANEL_MAP.rowEnd; r++) {
+            const line = allLines[r] || [];
+            const row = [];
+            for (let c = PANEL_MAP.colStart; c <= PANEL_MAP.colEnd; c++) {
+                const val = (line[c] || '').trim().toUpperCase();
+                row.push(val); // 'P', 'L', or ''
+            }
+            grid.push(row);
+        }
+        return grid;
+    }
+
+    function hasPanelData(grid) {
+        return grid.some(row => row.some(cell => cell === 'P' || cell === 'L'));
+    }
+
+    function renderPanelMap(grid) {
+        const cols = PANEL_MAP.colEnd - PANEL_MAP.colStart + 1;
+        const rows = grid.length;
+
+        let portraitCount = 0, landscapeCount = 0;
+        grid.forEach(row => row.forEach(cell => {
+            if (cell === 'P') portraitCount++;
+            if (cell === 'L') landscapeCount++;
+        }));
+
+        let cells = '';
+        grid.forEach(row => {
+            row.forEach(cell => {
+                const cls = cell === 'P' ? 'portrait' : cell === 'L' ? 'landscape' : 'empty';
+                const label = cell === 'P' ? 'P' : cell === 'L' ? 'L' : '';
+                cells += `<div class="roof-cell ${cls}" title="${cell === 'P' ? 'Portrait' : cell === 'L' ? 'Landscape' : 'Empty'}">${label}</div>`;
+            });
+        });
+
+        return `
+        <div class="roof-map-section">
+            <div class="roof-map-header">
+                <h4>🏠 Roof Panel Layout <span style="color:var(--text-dim); font-size:0.8rem; font-family:'JetBrains Mono'">(B3:AI18)</span></h4>
+                <div class="roof-legend">
+                    <div class="legend-item"><div class="legend-swatch portrait"></div> Portrait (P)</div>
+                    <div class="legend-item"><div class="legend-swatch landscape"></div> Landscape (L)</div>
+                    <div class="legend-item"><div class="legend-swatch empty"></div> Empty</div>
+                </div>
+            </div>
+            <div class="roof-grid-wrapper">
+                <div class="roof-grid" style="grid-template-columns: repeat(${cols}, 28px);">
+                    ${cells}
+                </div>
+            </div>
+            <div class="roof-stats">
+                <div class="roof-stat">🟧 Portrait panels: <strong>${portraitCount}</strong></div>
+                <div class="roof-stat">🟦 Landscape panels: <strong>${landscapeCount}</strong></div>
+                <div class="roof-stat">📐 Total panels: <strong>${portraitCount + landscapeCount}</strong></div>
+                <div class="roof-stat">📏 Grid: <strong>${cols} × ${rows}</strong></div>
+            </div>
+        </div>`;
+    }
+
+    function renderPreview({ headers, rows, allLines }) {
         if (headers.length === 0) { clearTablePreview(); return; }
 
         const preview = document.getElementById('table-preview');
         const table = document.getElementById('preview-table-el');
         const rowCount = document.getElementById('row-count');
 
+        // Full table — all rows, no truncation
         let html = '<thead><tr>' + headers.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
-        const previewRows = rows.slice(0, 10);
-        previewRows.forEach(row => {
+        rows.forEach(row => {
             html += '<tr>' + headers.map((_, i) => `<td>${escapeHtml(row[i] || '')}</td>`).join('') + '</tr>';
         });
         html += '</tbody>';
         table.innerHTML = html;
 
-        rowCount.innerHTML = `Showing <span>${previewRows.length}</span> of <span>${rows.length}</span> data rows · <span>${headers.length}</span> columns`;
+        rowCount.innerHTML = `<span>${rows.length}</span> data rows · <span>${headers.length}</span> columns`;
         document.getElementById('preview-badge').textContent = `${rows.length} rows`;
 
         preview.classList.add('show');
+
+        // Panel map — check if B3:AI18 has P/L data
+        const existingMap = document.getElementById('roof-map-container');
+        if (existingMap) existingMap.remove();
+
+        if (allLines && allLines.length > PANEL_MAP.rowEnd) {
+            const grid = extractPanelMap(allLines);
+            if (hasPanelData(grid)) {
+                const mapContainer = document.createElement('div');
+                mapContainer.id = 'roof-map-container';
+                mapContainer.innerHTML = renderPanelMap(grid);
+                preview.after(mapContainer);
+            }
+        }
     }
 
     function clearTablePreview() {
         document.getElementById('table-preview').classList.remove('show');
-        parsedTableData = { headers: [], rows: [] };
+        const existingMap = document.getElementById('roof-map-container');
+        if (existingMap) existingMap.remove();
+        parsedTableData = { headers: [], rows: [], allLines: [] };
         updateSaveBtn();
     }
 
@@ -974,6 +1214,23 @@
         document.getElementById('modal-table').innerHTML = html;
         const date = d.savedAt ? new Date(d.savedAt).toLocaleString('en-GB') : '';
         document.getElementById('modal-meta').innerHTML = `${rows.length} rows · ${headers.length} columns · Saved ${date}`;
+
+        // Render roof map in modal if data exists
+        const existingModalMap = document.getElementById('modal-roof-map');
+        if (existingModalMap) existingModalMap.remove();
+
+        // Reconstruct allLines from headers + rows for panel map extraction
+        const allLines = [headers, ...rows];
+        if (allLines.length > PANEL_MAP.rowEnd) {
+            const grid = extractPanelMap(allLines);
+            if (hasPanelData(grid)) {
+                const mapDiv = document.createElement('div');
+                mapDiv.id = 'modal-roof-map';
+                mapDiv.style.marginTop = '1.5rem';
+                mapDiv.innerHTML = renderPanelMap(grid);
+                document.getElementById('modal-meta').after(mapDiv);
+            }
+        }
 
         document.getElementById('view-modal').classList.add('show');
     }
