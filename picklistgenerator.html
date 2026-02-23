@@ -365,7 +365,7 @@
             <div class="specs-section-title">✅ Mount System Sense Check
                 <span style="color:var(--text-dim);font-size:0.72rem;font-family:'JetBrains Mono'">&nbsp;B22:U28</span>
             </div>
-            <div class="mount-check-wrap"><div class="mount-grid" id="mount-grid"></div></div>
+            <div class="specs-grid" id="sg-mount-check"></div>
 
             <!-- Roof map appended dynamically -->
         </div>
@@ -551,7 +551,9 @@ function specCard(d,allLines){
     const hasVal=!!val;
     const noteH=d.note?`<span class="spec-note"> (${d.note})</span>`:'';
     const unitH=(val&&d.unit)?`<span class="spec-unit">${d.unit}</span>`:'';
-    return `<div class="spec-item ${hasVal?'has-value':'no-value'}">
+    const extraStyle=d.highlight?` style="border-left-color:var(--success)"`:
+                     d.highlight===false?'':'';
+    return `<div class="spec-item ${hasVal?'has-value':'no-value'}"${extraStyle}>
         <div class="spec-ref">${ref}</div>
         <div class="spec-label">${d.label}${noteH}</div>
         <div class="spec-value ${hasVal?'':'empty-val'}">${hasVal?esc(val)+''+unitH:'—'}</div>
@@ -566,22 +568,21 @@ function renderSpecs(al){
 }
 
 // ── Mount check ────────────────────────────────────────────────────
+const MOUNT_CHECK_CELLS = [
+    {label:'# Portrait Panels',     col:'I', row:23},
+    {label:'# Landscape Panels',    col:'I', row:24},
+    {label:'Total Panels',          col:'I', row:25},
+    {label:'Total Perimeter',       col:'I', row:26},
+    {label:'End Clamps',            col:'S', row:23},
+    {label:'Mid Clamps',            col:'S', row:24},
+    {label:'Rail Length',           col:'S', row:25},
+    {label:'# Roof Anchors',        col:'S', row:26},
+    {label:'New Picklist Cost Saving', col:'R', row:28, highlight:true},
+];
+
 function renderMountCheck(al){
-    const g=document.getElementById('mount-grid');
-    const cols=MC.ce-MC.cs+1;
-    g.style.gridTemplateColumns=`repeat(${cols},minmax(38px,1fr))`;
-    let html='',hasData=false;
-    for(let r=MC.rs;r<=MC.re;r++){
-        const line=al[r]||[];
-        for(let c=MC.cs;c<=MC.ce;c++){
-            const v=(line[c]||'').trim();
-            if(v)hasData=true;
-            const disp=v.length>9?v.slice(0,8)+'…':v;
-            html+=v?`<div class="mc filled" title="${esc(v)}">${esc(disp)}</div>`
-                   :`<div class="mc empty"></div>`;
-        }
-    }
-    g.innerHTML=hasData?html:`<div style="color:var(--text-dim);font-size:0.82rem;padding:0.5rem">No data in B22:U28</div>`;
+    document.getElementById('sg-mount-check').innerHTML =
+        MOUNT_CHECK_CELLS.map(d => specCard(d, al)).join('');
 }
 
 // ── Roof map ───────────────────────────────────────────────────────
@@ -665,19 +666,15 @@ async function savePicklist(){
             for(let c=PM.cs;c<=PM.ce;c++) row.push((line[c]||'').trim().toUpperCase());
             panelGrid.push(row);
         }
-        const mountGrid=[];
-        for(let r=MC.rs;r<=MC.re;r++){
-            const line=al[r]||[], row=[];
-            for(let c=MC.cs;c<=MC.ce;c++) row.push((line[c]||'').trim());
-            mountGrid.push(row);
-        }
+        const mountCheck={};
+        MOUNT_CHECK_CELLS.forEach(d=>mountCheck[d.label]=cv(al,d.col,d.row));
 
         await window.fb.addDoc(window.fb.collection(window.db,'picklists'),{
             jobNumber:    currentJob['Job Number'],
             jobId:        currentJob.id,
             customerName: currentJob['Name']||'',
             installDate:  currentJob['Install Date']||'',
-            specs, panelGrid, mountGrid,
+            specs, panelGrid, mountCheck,
             rawLines:     al,
             savedAt:      new Date().toISOString()
         });
@@ -765,19 +762,18 @@ function viewPicklist(id){
         </div>`;
     }
 
-    if(d.mountGrid){
-        const cols=d.mountGrid[0]?.length||0;
-        let has=false,mc='';
-        d.mountGrid.forEach(row=>row.forEach(v=>{
-            if(v)has=true;
-            const disp=v.length>9?v.slice(0,8)+'…':v;
-            mc+=v?`<div class="mc filled" title="${esc(v)}">${esc(disp)}</div>`:`<div class="mc empty"></div>`;
-        }));
-        if(has) html+=`
-        <div class="specs-section-title" style="margin-top:1.5rem">✅ Mount System Sense Check</div>
-        <div class="mount-check-wrap">
-            <div class="mount-grid" style="grid-template-columns:repeat(${cols},minmax(38px,1fr))">${mc}</div>
-        </div>`;
+    if(d.mountCheck){
+        const mcCards=MOUNT_CHECK_CELLS.map(def=>{
+            const v=d.mountCheck[def.label]||'';
+            const noteH=def.note?`<span class="spec-note"> (${def.note})</span>`:'';
+            return `<div class="spec-item ${v?'has-value':'no-value'}${def.highlight?' style="border-left-color:var(--success)"':''}">
+                <div class="spec-ref">${def.col}${def.row}</div>
+                <div class="spec-label">${def.label}${noteH}</div>
+                <div class="spec-value ${v?'':'empty-val'}">${v?esc(v):'—'}</div>
+            </div>`;
+        }).join('');
+        html+=`<div class="specs-section-title" style="margin-top:1.5rem">✅ Mount System Sense Check</div>
+        <div class="specs-grid">${mcCards}</div>`;
     }
 
     document.getElementById('modal-body').innerHTML=html;
