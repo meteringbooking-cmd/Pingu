@@ -660,12 +660,15 @@ async function savePicklist(){
         const specs={};
         [...SPECS.system,...SPECS.mounting,...SPECS.electrical].forEach(d=>specs[d.label]=cv(al,d.col,d.row));
 
-        const panelGrid=[];
-        for(let r=PM.rs;r<=PM.re;r++){
-            const line=al[r]||[], row=[];
-            for(let c=PM.cs;c<=PM.ce;c++) row.push((line[c]||'').trim().toUpperCase());
-            panelGrid.push(row);
+        // Flatten panel grid to 1D (Firestore doesn't support nested arrays)
+        const panelCols = PM.ce - PM.cs + 1;
+        const panelRows = PM.re - PM.rs + 1;
+        const panelFlat = [];
+        for(let r=PM.rs; r<=PM.re; r++){
+            const line=al[r]||[];
+            for(let c=PM.cs; c<=PM.ce; c++) panelFlat.push((line[c]||'').trim().toUpperCase());
         }
+
         const mountCheck={};
         MOUNT_CHECK_CELLS.forEach(d=>mountCheck[d.label]=cv(al,d.col,d.row));
 
@@ -674,8 +677,11 @@ async function savePicklist(){
             jobId:        currentJob.id,
             customerName: currentJob['Name']||'',
             installDate:  currentJob['Install Date']||'',
-            specs, panelGrid, mountCheck,
-            rawLines:     al,
+            specs,
+            panelFlat,    // 1D flat array
+            panelCols,    // number of columns to reconstruct grid
+            panelRows,    // number of rows
+            mountCheck,
             savedAt:      new Date().toISOString()
         });
         showStatus(`✅ Picklist saved for Job #${currentJob['Job Number']}!`,'success');
@@ -734,14 +740,16 @@ function viewPicklist(id){
         html+=`<div class="specs-section-title">🔌 Electrical &amp; Supply</div><div class="specs-grid">${grp(SPECS.electrical)}</div>`;
     }
 
-    if(d.panelGrid){
-        const cols=d.panelGrid[0]?.length||0;
+    // Support both old panelGrid (nested) and new panelFlat format
+    const flatArr = d.panelFlat || (d.panelGrid ? d.panelGrid.flat() : null);
+    const cols = d.panelCols || (d.panelGrid?.[0]?.length) || 0;
+    if(flatArr && cols){
         let pC=0,lC=0,cells='';
-        d.panelGrid.forEach(row=>row.forEach(v=>{
+        flatArr.forEach(v=>{
             if(v==='P')pC++; if(v==='L')lC++;
             const cls=v==='P'?'p':v==='L'?'l':'e';
             cells+=`<div class="cell ${cls}">${v==='P'?'P':v==='L'?'L':''}</div>`;
-        }));
+        });
         if(pC||lC) html+=`
         <div class="roof-map-wrap" style="margin-top:1.5rem">
             <div class="roof-map-hdr">
