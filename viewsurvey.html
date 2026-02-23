@@ -827,39 +827,77 @@ async function downloadScaffoldPack() {
                 const fullZipBlob = await cfRes.blob();
                 const fullZip     = await JSZip.loadAsync(fullZipBlob);
 
-                // Build a lookup: URL fragment → caption label, for ordering
-                // The ZIP filenames won't match URLs directly, so we extract ALL
-                // images then match by order against photoUrls (same count).
-                const allEntries = Object.values(fullZip.files)
-                    .filter(f => !f.dir && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name))
-                    .sort((a,b) => a.name.localeCompare(b.name));
-
-                // Try to match only scaffold-section files by filename keyword,
-                // fall back to all images if none match.
-                const scaffoldKeywords = ['scaffold','powerline','pavement','ground','gutter','lowerroof','lower_roof'];
-                let filtered = allEntries.filter(f =>
-                    scaffoldKeywords.some(kw => f.name.toLowerCase().includes(kw))
+                // Extract the bare filename from each scaffold photo URL so we
+                // can match it against entries in the ZIP.
+                // Firebase Storage URLs look like:
+                //   https://firebasestorage.googleapis.com/v0/b/.../o/path%2Ffilename.jpg?alt=media&token=...
+                // The ZIP entries from the cloud function are keyed by that same filename.
+                const scaffoldFilenames = new Set(
+                    photoUrls.map(item => {
+                        try {
+                            // Decode the path segment after /o/
+                            const match = item.url.match(/\/o\/([^?]+)/);
+                            if (match) {
+                                const decoded = decodeURIComponent(match[1]);
+                                // Take just the last path component (the actual filename)
+                                return decoded.split('/').pop();
+                            }
+                        } catch(e) {}
+                        return null;
+                    }).filter(Boolean)
                 );
-                if (filtered.length === 0) filtered = allEntries; // fallback: use all
 
-                // Convert each to base64 for jsPDF
+                // Also build a map from filename → caption key for labelling
+                const filenameToCaptionKey = {};
+                photoUrls.forEach(item => {
+                    try {
+                        const match = item.url.match(/\/o\/([^?]+)/);
+                        if (match) {
+                            const filename = decodeURIComponent(match[1]).split('/').pop();
+                            filenameToCaptionKey[filename] = item.key;
+                        }
+                    } catch(e) {}
+                });
+
+                const allEntries = Object.values(fullZip.files)
+                    .filter(f => !f.dir && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name));
+
+                // Match ZIP entries whose filename appears in our scaffold URL set
+                let filtered = allEntries.filter(f => {
+                    const zipFilename = f.name.split('/').pop();
+                    return scaffoldFilenames.has(zipFilename);
+                });
+
+                // If URL-based matching found nothing (e.g. cloud function renames files),
+                // fall back to positional matching — the ZIP is ordered the same as Firestore
+                // stores photos, so take the last N entries where N = scaffold photo count.
+                // This is better than taking ALL photos.
+                if (filtered.length === 0 && allEntries.length >= photoUrls.length) {
+                    // Sort and take the entries that correspond to scaffold photo count
+                    // We don't know position, so use the section field names as a guide:
+                    // Just take exactly photoUrls.length entries from the end of the sorted list
+                    const sorted = allEntries.sort((a,b) => a.name.localeCompare(b.name));
+                    filtered = sorted.slice(-photoUrls.length);
+                }
+
+                // Convert matched entries to base64 for jsPDF
                 for (let idx=0; idx<filtered.length; idx++) {
-                    const entry = filtered[idx];
-                    const blob  = await entry.async('blob');
-                    const b64   = await new Promise(res => {
+                    const entry    = filtered[idx];
+                    const zipFilename = entry.name.split('/').pop();
+                    const blob     = await entry.async('blob');
+                    const b64      = await new Promise(res => {
                         const reader = new FileReader();
                         reader.onload = () => res(reader.result);
                         reader.readAsDataURL(blob);
                     });
-                    // get dimensions
                     const { w, h } = await new Promise(res => {
                         const img = new Image();
                         img.onload = () => res({ w: img.naturalWidth||800, h: img.naturalHeight||600 });
                         img.onerror= () => res({ w:800, h:600 });
                         img.src = b64;
                     });
-                    // Caption: use matching photoUrls entry if available, else derive from filename
-                    const caption = (photoUrls[idx]?.key || entry.name)
+                    const captionKey = filenameToCaptionKey[zipFilename] || entry.name;
+                    const caption    = captionKey
                         .replace(/Photos$/,'').replace(/\.[^.]+$/,'')
                         .replace(/([A-Z])/g,' $1').replace(/_/g,' ').trim();
                     scaffoldImageEntries.push({ name: entry.name, blob, b64, w, h, caption });
