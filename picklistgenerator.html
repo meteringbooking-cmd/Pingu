@@ -19,6 +19,7 @@
             --error: #FF6B6B;
             --shadow: rgba(255, 107, 53, 0.3);
             --warning: #FFC857;
+            --kf: #B57BFF;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -71,10 +72,12 @@
         }
         .card:hover { border-color:rgba(255,107,53,0.2); }
         .card.active { border-color:rgba(0,217,255,0.4); }
+        .card.kf-active { border-color:rgba(181,123,255,0.4); }
         .card h2 { font-family:'Syne',sans-serif; font-size:1.5rem; margin-bottom:1.5rem; }
         .card h2.accent   { color:var(--accent); }
         .card h2.secondary{ color:var(--secondary); }
         .card h2.primary  { color:var(--primary); }
+        .card h2.kf       { color:var(--kf); }
 
         .search-row { display:flex; gap:1rem; align-items:flex-end; }
         .input-group { flex:1; display:flex; flex-direction:column; gap:0.5rem; }
@@ -132,6 +135,7 @@
         }
         .paste-area:focus { outline:none; border-color:var(--accent); background:rgba(0,217,255,0.03); }
         .paste-area.has-data { border-color:var(--secondary); border-style:solid; }
+        .paste-area.kf-has-data { border-color:var(--kf); border-style:solid; }
 
         .action-row { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center; }
         .lock-notice {
@@ -238,6 +242,52 @@
         .roof-stat  { display:flex; align-items:center; gap:0.4rem; font-size:0.82rem; color:var(--text-dim); }
         .roof-stat strong { color:var(--text); }
 
+        /* ── KF PICKLIST ──────────────────────────────── */
+        .kf-preview {
+            display:none; margin-top:1.5rem; animation:fadeInUp 0.4s ease-out;
+        }
+        .kf-preview.show { display:block; }
+        .kf-preview-header {
+            font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:700;
+            color:var(--kf); text-transform:uppercase; letter-spacing:0.08em;
+            margin-bottom:0.8rem; padding-bottom:0.4rem;
+            border-bottom:1px solid rgba(181,123,255,0.25);
+            display:flex; align-items:center; justify-content:space-between;
+        }
+        .kf-count {
+            font-size:0.75rem; color:var(--text-dim); font-weight:400;
+            background:var(--dark); padding:0.2rem 0.6rem; border-radius:20px;
+            border:1px solid rgba(181,123,255,0.3);
+        }
+        .kf-table-wrap { overflow-x:auto; }
+        .kf-table {
+            width:100%; border-collapse:collapse; font-size:0.85rem;
+        }
+        .kf-table th {
+            text-align:left; padding:0.5rem 0.8rem;
+            font-size:0.72rem; color:var(--text-dim); text-transform:uppercase;
+            letter-spacing:0.06em; border-bottom:1px solid rgba(181,123,255,0.2);
+        }
+        .kf-table td {
+            padding:0.5rem 0.8rem; border-bottom:1px solid rgba(255,255,255,0.04);
+            vertical-align:middle;
+        }
+        .kf-table tr:last-child td { border-bottom:none; }
+        .kf-table tr:hover td { background:rgba(181,123,255,0.05); }
+        .kf-part-code {
+            font-family:'JetBrains Mono',monospace; color:var(--kf); font-size:0.82rem;
+        }
+        .kf-qty {
+            background:rgba(181,123,255,0.12); color:var(--kf);
+            padding:0.15rem 0.5rem; border-radius:4px; font-weight:700;
+            font-size:0.82rem; display:inline-block;
+            border:1px solid rgba(181,123,255,0.3);
+        }
+        .kf-total-row td {
+            border-top:2px solid rgba(181,123,255,0.3);
+            color:var(--text-dim); font-size:0.78rem; padding-top:0.7rem;
+        }
+
         /* ── SAVED LIST ───────────────────────────────── */
         .picklist-item {
             background:var(--dark-lighter); border-radius:12px; padding:1.2rem 1.5rem;
@@ -253,10 +303,14 @@
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
         }
         .picklist-meta { font-size:0.8rem; color:var(--text-dim); }
+        .picklist-badges { display:flex; gap:0.5rem; flex-wrap:wrap; }
         .picklist-badge {
             background:var(--dark); color:var(--accent);
             padding:0.3rem 0.8rem; border-radius:20px; font-size:0.75rem;
             font-weight:600; border:1px solid rgba(0,217,255,0.3);
+        }
+        .picklist-badge.kf {
+            color:var(--kf); border-color:rgba(181,123,255,0.3);
         }
 
         /* ── MODAL ────────────────────────────────────── */
@@ -275,6 +329,19 @@
         .modal-hdr h2 { font-family:'Syne',sans-serif; font-size:1.6rem; }
         .close-btn { background:none; border:none; color:var(--text-dim); font-size:2rem; cursor:pointer; line-height:1; transition:color 0.3s; }
         .close-btn:hover { color:var(--error); }
+
+        /* Modal tab nav */
+        .modal-tabs { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+        .modal-tab {
+            padding:0.5rem 1.2rem; border-radius:8px; font-family:'Syne',sans-serif;
+            font-size:0.85rem; font-weight:700; cursor:pointer; border:2px solid transparent;
+            background:var(--dark-lighter); color:var(--text-dim); transition:all 0.2s;
+        }
+        .modal-tab:hover { border-color:var(--primary); color:var(--text); }
+        .modal-tab.active { background:var(--dark); color:var(--accent); border-color:var(--accent); }
+        .modal-tab.kf-tab.active { color:var(--kf); border-color:var(--kf); }
+        .modal-pane { display:none; }
+        .modal-pane.active { display:block; }
 
         /* ── STATUS ───────────────────────────────────── */
         .status-msg {
@@ -336,7 +403,7 @@
         </div>
     </div>
 
-    <!-- Paste -->
+    <!-- Excel Paste -->
     <div class="card" id="paste-card">
         <h2 class="secondary">📋 Paste Picklist Data</h2>
         <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:1.2rem;">
@@ -377,6 +444,50 @@
         </div>
     </div>
 
+    <!-- KF Picklist -->
+    <div class="card" id="kf-card">
+        <h2 class="kf">🧩 KF Picklist</h2>
+        <p style="color:var(--text-dim);font-size:0.9rem;margin-bottom:1.2rem;">
+            Paste your KF Picklist below — two columns: <span style="color:var(--text)">Part Code</span> and <span style="color:var(--text)">Quantity</span>.
+            This is stored separately alongside the main picklist.
+        </p>
+
+        <div class="paste-hint">
+            Copy from your KF spreadsheet: <span class="key">Ctrl+A</span> → <span class="key">Ctrl+C</span> → paste here
+        </div>
+
+        <textarea class="paste-area" id="kf-paste-area"
+            placeholder="Part Code&#9;Quantity&#10;ABCD-1234&#9;4&#10;WXYZ-5678&#9;2&#10;..."
+            oninput="onKfPasteData()" onpaste="setTimeout(onKfPasteData,50)"></textarea>
+
+        <!-- KF preview table -->
+        <div class="kf-preview" id="kf-preview">
+            <div class="kf-preview-header">
+                <span>📦 Parsed Items</span>
+                <span class="kf-count" id="kf-count">0 lines</span>
+            </div>
+            <div class="kf-table-wrap">
+                <table class="kf-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Part Code</th>
+                            <th>Quantity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="kf-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="action-row">
+            <button class="btn btn-secondary" onclick="clearKf()">Clear KF</button>
+            <div id="kf-status-note" style="font-size:0.82rem;color:var(--text-dim);display:none;">
+                💡 KF Picklist will be saved together with the main picklist above.
+            </div>
+        </div>
+    </div>
+
     <!-- Saved Picklists -->
     <div class="card" style="animation-delay:0.2s">
         <h2 class="primary">📁 Saved Picklists</h2>
@@ -393,7 +504,12 @@
             <h2 id="modal-title">Picklist</h2>
             <button class="close-btn" onclick="closeModal()">×</button>
         </div>
-        <div id="modal-body"></div>
+        <div class="modal-tabs" id="modal-tabs">
+            <div class="modal-tab active" onclick="switchTab('specs')">📋 Specs &amp; Layout</div>
+            <div class="modal-tab kf-tab" id="kf-tab-btn" onclick="switchTab('kf')" style="display:none">🧩 KF Picklist</div>
+        </div>
+        <div id="modal-pane-specs" class="modal-pane active"></div>
+        <div id="modal-pane-kf" class="modal-pane"></div>
     </div>
 </div>
 
@@ -426,14 +542,15 @@
 // ── State ──────────────────────────────────────────────────────────
 let currentJob = null;
 let parsedData  = { allLines:[] };
+let kfItems     = []; // [{partCode, qty}]
 
 // ── Cell helpers ───────────────────────────────────────────────────
 function colIdx(s) {
     s = s.toUpperCase(); let n=0;
     for(let i=0;i<s.length;i++) n=n*26+(s.charCodeAt(i)-64);
-    return n-1; // 0-based
+    return n-1;
 }
-function cv(allLines, col, row) { // row = 1-based Excel row
+function cv(allLines, col, row) {
     const r = allLines[row-1]||[];
     return (r[colIdx(col)]||'').trim();
 }
@@ -467,9 +584,7 @@ const SPECS = {
     ]
 };
 
-// Panel map B3:AI18  → allLines rows 2..17, cols 1..34
 const PM = {cs:1,ce:34,rs:2,re:17};
-// Mount check B22:U28 → allLines rows 21..27, cols 1..20
 const MC = {cs:1,ce:20,rs:21,re:27};
 
 // ── Job search ─────────────────────────────────────────────────────
@@ -514,7 +629,7 @@ async function searchJob(){
 }
 document.getElementById('job-number-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchJob();});
 
-// ── Paste ──────────────────────────────────────────────────────────
+// ── Excel Paste ────────────────────────────────────────────────────
 function onPasteData(){
     const raw=document.getElementById('paste-area').value;
     if(!raw.trim()){clearPasteOutput();return;}
@@ -544,6 +659,78 @@ function parseSheet(raw){
     return{allLines:lines.map(split)};
 }
 
+// ── KF Paste ───────────────────────────────────────────────────────
+function onKfPasteData(){
+    const raw=document.getElementById('kf-paste-area').value;
+    if(!raw.trim()){
+        kfItems=[]; renderKfPreview(); updateSaveBtn(); return;
+    }
+    document.getElementById('kf-paste-area').classList.add('kf-has-data');
+    kfItems = parseKfPicklist(raw);
+    renderKfPreview();
+    updateSaveBtn();
+}
+
+function parseKfPicklist(raw){
+    const lines = raw.split(/\r?\n/);
+    const items = [];
+    for(const line of lines){
+        if(!line.trim()) continue;
+        // Support tab or comma delimited
+        const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+        const partCode = (parts[0]||'').trim();
+        const qty      = (parts[1]||'').trim();
+        if(!partCode) continue;
+        // Skip header rows (non-numeric qty or obvious headers)
+        if(qty && isNaN(qty) && items.length === 0) continue; // likely header
+        items.push({ partCode, qty: qty || '' });
+    }
+    return items;
+}
+
+function renderKfPreview(){
+    const preview = document.getElementById('kf-preview');
+    const tbody   = document.getElementById('kf-tbody');
+    const count   = document.getElementById('kf-count');
+    const note    = document.getElementById('kf-status-note');
+
+    if(!kfItems.length){
+        preview.classList.remove('show');
+        document.getElementById('kf-paste-area').classList.remove('kf-has-data');
+        note.style.display='none';
+        document.getElementById('kf-card').classList.remove('kf-active');
+        return;
+    }
+
+    let totalQty = 0;
+    kfItems.forEach(it => { const q=parseFloat(it.qty); if(!isNaN(q)) totalQty+=q; });
+
+    tbody.innerHTML = kfItems.map((it,i)=>`
+        <tr>
+            <td style="color:var(--text-dim);font-size:0.75rem">${i+1}</td>
+            <td><span class="kf-part-code">${esc(it.partCode)}</span></td>
+            <td><span class="kf-qty">${esc(it.qty||'—')}</span></td>
+        </tr>
+    `).join('') + `
+        <tr class="kf-total-row">
+            <td></td>
+            <td style="color:var(--text-dim)">Total qty</td>
+            <td><span class="kf-qty">${totalQty}</span></td>
+        </tr>`;
+
+    count.textContent = `${kfItems.length} item${kfItems.length!==1?'s':''}`;
+    preview.classList.add('show');
+    note.style.display='inline-flex';
+    document.getElementById('kf-card').classList.add('kf-active');
+}
+
+function clearKf(){
+    document.getElementById('kf-paste-area').value='';
+    kfItems=[];
+    renderKfPreview();
+    updateSaveBtn();
+}
+
 // ── Render specs ───────────────────────────────────────────────────
 function specCard(d,allLines){
     const val=cv(allLines,d.col,d.row);
@@ -551,9 +738,7 @@ function specCard(d,allLines){
     const hasVal=!!val;
     const noteH=d.note?`<span class="spec-note"> (${d.note})</span>`:'';
     const unitH=(val&&d.unit)?`<span class="spec-unit">${d.unit}</span>`:'';
-    const extraStyle=d.highlight?` style="border-left-color:var(--success)"`:
-                     d.highlight===false?'':'';
-    return `<div class="spec-item ${hasVal?'has-value':'no-value'}"${extraStyle}>
+    return `<div class="spec-item ${hasVal?'has-value':'no-value'}">
         <div class="spec-ref">${ref}</div>
         <div class="spec-label">${d.label}${noteH}</div>
         <div class="spec-value ${hasVal?'':'empty-val'}">${hasVal?esc(val)+''+unitH:'—'}</div>
@@ -644,9 +829,10 @@ function clearPaste(){
 
 // ── Save btn ───────────────────────────────────────────────────────
 function updateSaveBtn(){
-    const ok=!!currentJob&&parsedData.allLines.length>0;
+    const hasExcel = parsedData.allLines.length > 0;
+    const ok = !!currentJob && hasExcel;
     document.getElementById('save-btn').disabled=!ok;
-    document.getElementById('lock-notice').style.display=(!currentJob&&parsedData.allLines.length)?'inline-flex':'none';
+    document.getElementById('lock-notice').style.display=(!currentJob&&hasExcel)?'inline-flex':'none';
     document.getElementById('paste-card').classList.toggle('active',!!currentJob);
 }
 
@@ -660,7 +846,6 @@ async function savePicklist(){
         const specs={};
         [...SPECS.system,...SPECS.mounting,...SPECS.electrical].forEach(d=>specs[d.label]=cv(al,d.col,d.row));
 
-        // Flatten panel grid to 1D (Firestore doesn't support nested arrays)
         const panelCols = PM.ce - PM.cs + 1;
         const panelRows = PM.re - PM.rs + 1;
         const panelFlat = [];
@@ -672,20 +857,26 @@ async function savePicklist(){
         const mountCheck={};
         MOUNT_CHECK_CELLS.forEach(d=>mountCheck[d.label]=cv(al,d.col,d.row));
 
+        // KF picklist — stored as array of {partCode, qty} objects
+        const kfPicklist = kfItems.length ? kfItems.map(it=>({partCode:it.partCode, qty:it.qty})) : [];
+
         await window.fb.addDoc(window.fb.collection(window.db,'picklists'),{
             jobNumber:    currentJob['Job Number'],
             jobId:        currentJob.id,
             customerName: currentJob['Name']||'',
             installDate:  currentJob['Install Date']||'',
             specs,
-            panelFlat,    // 1D flat array
-            panelCols,    // number of columns to reconstruct grid
-            panelRows,    // number of rows
+            panelFlat,
+            panelCols,
+            panelRows,
             mountCheck,
+            kfPicklist,
             savedAt:      new Date().toISOString()
         });
         showStatus(`✅ Picklist saved for Job #${currentJob['Job Number']}!`,'success');
-        clearPaste(); loadSavedPicklists();
+        clearPaste();
+        clearKf();
+        loadSavedPicklists();
     } catch(e){ showStatus('Save failed: '+e.message,'error'); }
     finally{ btn.disabled=false; btn.innerHTML='💾 Save Picklist to Job'; updateSaveBtn(); }
 }
@@ -705,23 +896,41 @@ async function loadSavedPicklists(){
             const dt=d.savedAt?new Date(d.savedAt).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
             const sys=d.specs?.['Type of System']||'';
             const mnt=d.specs?.['Mounting System']||'';
+            const hasKf=d.kfPicklist&&d.kfPicklist.length>0;
             return `<div class="picklist-item" onclick="viewPicklist('${doc.id}')">
                 <div class="picklist-left">
                     <div class="picklist-job">Job #${esc(d.jobNumber||'—')}</div>
                     <div class="picklist-meta">${esc(d.customerName||'')} · ${esc(d.installDate||'')} · Saved ${dt}</div>
                     ${sys||mnt?`<div class="picklist-meta" style="margin-top:0.15rem;color:var(--accent)">${esc(sys)}${mnt?' · '+esc(mnt):''}</div>`:''}
                 </div>
-                <div class="picklist-badge">View →</div>
+                <div class="picklist-badges">
+                    <div class="picklist-badge">View →</div>
+                    ${hasKf?`<div class="picklist-badge kf">🧩 KF (${d.kfPicklist.length})</div>`:''}
+                </div>
             </div>`;
         }).join('');
     } catch(e){ el.innerHTML=`<div class="empty-state"><p style="color:var(--error)">Failed: ${e.message}</p></div>`; }
 }
 
 // ── Modal ──────────────────────────────────────────────────────────
+function switchTab(tab){
+    document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.modal-pane').forEach(p=>p.classList.remove('active'));
+    if(tab==='specs'){
+        document.querySelectorAll('.modal-tab')[0].classList.add('active');
+        document.getElementById('modal-pane-specs').classList.add('active');
+    } else {
+        document.getElementById('kf-tab-btn').classList.add('active');
+        document.getElementById('modal-pane-kf').classList.add('active');
+    }
+}
+
 function viewPicklist(id){
     const d=window._docs?.[id]; if(!d)return;
     document.getElementById('modal-title').textContent=`Picklist — Job #${d.jobNumber}`;
     const dt=d.savedAt?new Date(d.savedAt).toLocaleString('en-GB'):'';
+
+    // ── Specs pane ──
     let html=`<p style="color:var(--text-dim);font-size:0.82rem;margin-bottom:1.5rem">${esc(d.customerName||'')} · Install: ${esc(d.installDate||'')} · Saved ${dt}</p>`;
 
     if(d.specs){
@@ -740,7 +949,6 @@ function viewPicklist(id){
         html+=`<div class="specs-section-title">🔌 Electrical &amp; Supply</div><div class="specs-grid">${grp(SPECS.electrical)}</div>`;
     }
 
-    // Support both old panelGrid (nested) and new panelFlat format
     const flatArr = d.panelFlat || (d.panelGrid ? d.panelGrid.flat() : null);
     const cols = d.panelCols || (d.panelGrid?.[0]?.length) || 0;
     if(flatArr && cols){
@@ -784,7 +992,45 @@ function viewPicklist(id){
         <div class="specs-grid">${mcCards}</div>`;
     }
 
-    document.getElementById('modal-body').innerHTML=html;
+    document.getElementById('modal-pane-specs').innerHTML=html;
+
+    // ── KF pane ──
+    const kfTab = document.getElementById('kf-tab-btn');
+    if(d.kfPicklist && d.kfPicklist.length){
+        kfTab.style.display='';
+        let totalQty=0;
+        d.kfPicklist.forEach(it=>{const q=parseFloat(it.qty);if(!isNaN(q))totalQty+=q;});
+        const rows = d.kfPicklist.map((it,i)=>`
+            <tr>
+                <td style="color:var(--text-dim);font-size:0.75rem">${i+1}</td>
+                <td><span class="kf-part-code">${esc(it.partCode)}</span></td>
+                <td><span class="kf-qty">${esc(it.qty||'—')}</span></td>
+            </tr>`).join('') +
+            `<tr class="kf-total-row">
+                <td></td>
+                <td style="color:var(--text-dim)">Total qty</td>
+                <td><span class="kf-qty">${totalQty}</span></td>
+            </tr>`;
+        document.getElementById('modal-pane-kf').innerHTML=`
+            <div style="margin-bottom:1rem">
+                <span style="font-family:'Syne',sans-serif;font-size:0.85rem;color:var(--kf);text-transform:uppercase;letter-spacing:0.08em">
+                    🧩 KF Picklist
+                </span>
+                <span class="kf-count" style="margin-left:0.8rem">${d.kfPicklist.length} items</span>
+            </div>
+            <div class="kf-table-wrap">
+                <table class="kf-table">
+                    <thead><tr><th>#</th><th>Part Code</th><th>Quantity</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    } else {
+        kfTab.style.display='none';
+        document.getElementById('modal-pane-kf').innerHTML='';
+    }
+
+    // Reset to specs tab
+    switchTab('specs');
     document.getElementById('view-modal').classList.add('show');
 }
 
@@ -804,9 +1050,10 @@ function showStatus(msg,type){
 
 window.searchJob=searchJob; window.onJobInputChange=onJobInputChange;
 window.onPasteData=onPasteData; window.clearPaste=clearPaste;
+window.onKfPasteData=onKfPasteData; window.clearKf=clearKf;
 window.savePicklist=savePicklist; window.loadSavedPicklists=loadSavedPicklists;
 window.viewPicklist=viewPicklist; window.closeModal=closeModal;
-window.showStatus=showStatus;
+window.switchTab=switchTab; window.showStatus=showStatus;
 </script>
 </body>
 </html>
