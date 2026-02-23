@@ -305,24 +305,44 @@ function fmtVal(v) {
     return String(v);
 }
 
-// Load image → base64 using canvas (handles cross-origin Firebase Storage URLs)
-function imgToBase64(url) {
-    return new Promise(resolve => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-            try {
-                const c = document.createElement('canvas');
-                c.width = img.naturalWidth || img.width;
-                c.height = img.naturalHeight || img.height;
-                c.getContext('2d').drawImage(img, 0, 0);
-                resolve({ b64: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height });
-            } catch(e) { resolve(null); }
-        };
-        img.onerror = () => resolve(null);
-        // Force re-fetch with no cache to avoid CORS preflight caching issues
-        img.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    });
+// Strip emoji/unicode so jsPDF (Helvetica) doesn't render garbage glyphs
+function stripEmoji(str) {
+    return str
+        .replace(/[\u{1F000}-\u{1FFFF}]/gu, '')  // emoji blocks
+        .replace(/[\u2600-\u27BF]/g, '')           // misc symbols
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}
+
+// Fetch image blob → object URL → canvas → base64.
+// Object URLs are same-origin so canvas.toDataURL() never throws a security error,
+// regardless of where the original image was hosted (Firebase Storage, etc.)
+async function imgToBase64(url) {
+    try {
+        const res  = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const objURL = URL.createObjectURL(blob);
+        return await new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                try {
+                    const c = document.createElement('canvas');
+                    c.width  = img.naturalWidth  || img.width  || 800;
+                    c.height = img.naturalHeight || img.height || 600;
+                    c.getContext('2d').drawImage(img, 0, 0);
+                    const b64 = c.toDataURL('image/jpeg', 0.85);
+                    URL.revokeObjectURL(objURL);
+                    resolve({ b64, w: c.width, h: c.height });
+                } catch(e) { URL.revokeObjectURL(objURL); resolve(null); }
+            };
+            img.onerror = () => { URL.revokeObjectURL(objURL); resolve(null); };
+            img.src = objURL;
+        });
+    } catch(e) {
+        console.warn('imgToBase64 fetch failed:', url, e.message);
+        return null;
+    }
 }
 
 // ══════════════════════════════════════════════════════
@@ -656,11 +676,12 @@ async function downloadScaffoldPack() {
             checkY(11);
             doc.setFillColor(...colour); doc.roundedRect(M,y,CW,8,1,1,'F');
             doc.setTextColor(...WHITE); doc.setFontSize(9); doc.setFont('helvetica','bold');
-            doc.text(label.toUpperCase(), M+4, y+5.5);
+            doc.text(stripEmoji(label).toUpperCase(), M+4, y+5.5);
             y += 11;
         }
 
         function specRow(label, value, idx, highlightColour=null) {
+            const safeLabel = stripEmoji(label);
             const lines = doc.splitTextToSize(String(value||'—'), CW-76);
             const rowH  = Math.max(10, 5 + lines.length*4.5);
             checkY(rowH+1);
@@ -668,7 +689,7 @@ async function downloadScaffoldPack() {
             doc.setFillColor(...bg); doc.rect(M,y,CW,rowH,'F');
             doc.setFillColor(...(highlightColour||CYAN)); doc.rect(M,y,2,rowH,'F');
             doc.setTextColor(...GREY); doc.setFontSize(6.8); doc.setFont('helvetica','normal');
-            const truncLabel = doc.splitTextToSize(label.toUpperCase(), 68);
+            const truncLabel = doc.splitTextToSize(safeLabel.toUpperCase(), 68);
             doc.text(truncLabel[0], M+4, y+4);
             doc.setTextColor(...(highlightColour||BLACK)); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
             lines.forEach((ln,li) => doc.text(ln, M+4, y+8.5+li*4.5));
@@ -681,12 +702,12 @@ async function downloadScaffoldPack() {
             const bg=idx%2===0?[247,247,252]:[255,255,255];
             doc.setFillColor(...bg); doc.rect(M,y,CW,rowH,'F');
             doc.setTextColor(...GREY); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
-            doc.text(l1.toUpperCase(), M+3, y+3.8);
+            doc.text(stripEmoji(l1).toUpperCase(), M+3, y+3.8);
             doc.setTextColor(...BLACK); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
             doc.text(doc.splitTextToSize(v1||'—',hw-6)[0]||'—', M+3, y+8);
             if (l2) {
                 doc.setTextColor(...GREY); doc.setFontSize(6.5); doc.setFont('helvetica','normal');
-                doc.text(l2.toUpperCase(), M+hw+7, y+3.8);
+                doc.text(stripEmoji(l2).toUpperCase(), M+hw+7, y+3.8);
                 doc.setTextColor(...BLACK); doc.setFontSize(8.5); doc.setFont('helvetica','bold');
                 doc.text(doc.splitTextToSize(v2||'—',hw-6)[0]||'—', M+hw+7, y+8);
             }
@@ -723,7 +744,7 @@ async function downloadScaffoldPack() {
             });
             y += 3;
 
-            sectionBar('🔩 Mounting & Hardware', DARKISH);
+            sectionBar('Mounting & Hardware', DARKISH);
             SPECS.mounting.forEach((d,i) => {
                 const v   = pl.specs?.[d.label]||'';
                 const lbl = d.label + (d.unit?` (${d.unit})`:'');
@@ -766,7 +787,7 @@ async function downloadScaffoldPack() {
                     }
                     y += gridH+3;
                     doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(...GREY);
-                    doc.text(`🟧 Portrait: ${pC}   🟦 Landscape: ${lC}   📐 Total: ${pC+lC}   Grid: ${panelCols}×${rows}`, M, y);
+                    doc.text(`Portrait: ${pC}   Landscape: ${lC}   Total: ${pC+lC}   Grid: ${panelCols}x${rows}`, M, y);
                     y += 8;
                 }
             }
