@@ -808,36 +808,93 @@ async function downloadScaffoldPack() {
         }
 
         // ══════════════════════════════════════════════
-        //  SCAFFOLD PHOTOS
+        //  FETCH ALL PHOTOS VIA CLOUD FUNCTION (same
+        //  method as the working "Download Photo Pack")
+        //  then filter to scaffold entries only.
         // ══════════════════════════════════════════════
-        if (photoUrls.length > 0) {
-            sectionBar(`📸 Scaffolding Photos (${photoUrls.length})`, ORANGE);
+        let scaffoldImageEntries = []; // { name, blob, b64, w, h, caption }
 
+        if (photoUrls.length > 0) {
+            showAlert('Fetching photos via server… please wait.', 'success');
+            try {
+                const cfRes = await fetch(
+                    'https://us-central1-pingu-solar.cloudfunctions.net/downloadPhotosPack',
+                    { method:'POST', headers:{'Content-Type':'application/json'},
+                      body: JSON.stringify({ collection: currentDocument.source, documentId: currentDocument.id }) }
+                );
+                if (!cfRes.ok) throw new Error('Photo fetch failed: ' + await cfRes.text());
+
+                const fullZipBlob = await cfRes.blob();
+                const fullZip     = await JSZip.loadAsync(fullZipBlob);
+
+                // Build a lookup: URL fragment → caption label, for ordering
+                // The ZIP filenames won't match URLs directly, so we extract ALL
+                // images then match by order against photoUrls (same count).
+                const allEntries = Object.values(fullZip.files)
+                    .filter(f => !f.dir && /\.(jpg|jpeg|png|gif|webp)$/i.test(f.name))
+                    .sort((a,b) => a.name.localeCompare(b.name));
+
+                // Try to match only scaffold-section files by filename keyword,
+                // fall back to all images if none match.
+                const scaffoldKeywords = ['scaffold','powerline','pavement','ground','gutter','lowerroof','lower_roof'];
+                let filtered = allEntries.filter(f =>
+                    scaffoldKeywords.some(kw => f.name.toLowerCase().includes(kw))
+                );
+                if (filtered.length === 0) filtered = allEntries; // fallback: use all
+
+                // Convert each to base64 for jsPDF
+                for (let idx=0; idx<filtered.length; idx++) {
+                    const entry = filtered[idx];
+                    const blob  = await entry.async('blob');
+                    const b64   = await new Promise(res => {
+                        const reader = new FileReader();
+                        reader.onload = () => res(reader.result);
+                        reader.readAsDataURL(blob);
+                    });
+                    // get dimensions
+                    const { w, h } = await new Promise(res => {
+                        const img = new Image();
+                        img.onload = () => res({ w: img.naturalWidth||800, h: img.naturalHeight||600 });
+                        img.onerror= () => res({ w:800, h:600 });
+                        img.src = b64;
+                    });
+                    // Caption: use matching photoUrls entry if available, else derive from filename
+                    const caption = (photoUrls[idx]?.key || entry.name)
+                        .replace(/Photos$/,'').replace(/\.[^.]+$/,'')
+                        .replace(/([A-Z])/g,' $1').replace(/_/g,' ').trim();
+                    scaffoldImageEntries.push({ name: entry.name, blob, b64, w, h, caption });
+                }
+            } catch(fetchErr) {
+                console.warn('Cloud function photo fetch failed:', fetchErr.message);
+                showAlert('Warning: could not load photos — ' + fetchErr.message);
+            }
+        }
+
+        // ── Embed photos in PDF ─────────────────────────
+        if (scaffoldImageEntries.length > 0) {
+            sectionBar(`Scaffolding Photos (${scaffoldImageEntries.length})`, ORANGE);
             const IW = (CW-5)/2, MAX_H = 74;
 
-            for (let i=0; i<photoUrls.length; i+=2) {
-                const [imgL, imgR] = await Promise.all([
-                    imgToBase64(photoUrls[i].url),
-                    photoUrls[i+1] ? imgToBase64(photoUrls[i+1].url) : Promise.resolve(null)
-                ]);
+            for (let i=0; i<scaffoldImageEntries.length; i+=2) {
+                const imgL = scaffoldImageEntries[i];
+                const imgR = scaffoldImageEntries[i+1] || null;
 
-                const placeImg = (imgData, photoIndex, xOff) => {
-                    if (!imgData) return 0;
-                    const aspect = imgData.w/imgData.h;
+                const placeImg = (entry, xOff) => {
+                    if (!entry) return 0;
+                    const aspect = entry.w / entry.h;
                     let iw=IW, ih=iw/aspect;
                     if (ih>MAX_H) { ih=MAX_H; iw=ih*aspect; }
-                    const xPos = M+xOff+(IW-iw)/2;
-                    const fmt  = imgData.b64.includes('image/png')?'PNG':'JPEG';
-                    doc.addImage(imgData.b64, fmt, xPos, y, iw, ih);
-                    const cap = photoUrls[photoIndex].key.replace(/Photos$/,'').replace(/([A-Z])/g,' $1').trim();
+                    const xPos = M + xOff + (IW-iw)/2;
+                    const fmt  = entry.b64.includes('image/png') ? 'PNG' : 'JPEG';
+                    doc.addImage(entry.b64, fmt, xPos, y, iw, ih);
                     doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(...GREY);
-                    doc.text(`Photo ${photoIndex+1}: ${cap}`, M+xOff, y+ih+4);
+                    doc.text(`Photo ${i+(xOff===0?1:2)}: ${stripEmoji(entry.caption)}`, M+xOff, y+ih+4);
                     return ih+6;
                 };
 
                 checkY(MAX_H+14);
-                const hL = placeImg(imgL, i, 0);
-                const hR = imgR ? placeImg(imgR, i+1, IW+5) : 0;
+                const hL = placeImg(imgL, 0);
+                const hR = placeImg(imgR, IW+5);
                 const rowH = Math.max(hL, hR);
                 if (rowH>0) y += rowH+3;
             }
@@ -858,21 +915,17 @@ async function downloadScaffoldPack() {
         doc.save(`${jobNumber}_scaffold_pack.pdf`);
 
         // ══════════════════════════════════════════════
-        //  ZIP PHOTOS
+        //  ZIP — re-zip just the scaffold photos
         // ══════════════════════════════════════════════
-        if (photoUrls.length > 0) {
+        if (scaffoldImageEntries.length > 0) {
             showAlert('PDF saved! Zipping scaffold photos…', 'success');
-            const zip = new JSZip();
+            const zip    = new JSZip();
             const folder = zip.folder('scaffold_photos');
-            await Promise.all(photoUrls.map(async (item, idx) => {
-                try {
-                    const res  = await fetch(item.url);
-                    const blob = await res.blob();
-                    const ext  = blob.type.includes('png')?'png':'jpg';
-                    const cap  = item.key.replace(/Photos$/,'').replace(/([A-Z])/g,'_$1').toLowerCase().replace(/^_/,'');
-                    folder.file(`scaffold_${String(idx+1).padStart(2,'0')}_${cap}.${ext}`, blob);
-                } catch(err) { console.warn('Zip skip:', item.url); }
-            }));
+            scaffoldImageEntries.forEach((entry, idx) => {
+                const ext = entry.blob.type.includes('png') ? 'png' : 'jpg';
+                const cap = entry.caption.replace(/\s+/g,'_').toLowerCase().replace(/[^a-z0-9_]/g,'');
+                folder.file(`scaffold_${String(idx+1).padStart(2,'0')}_${cap}.${ext}`, entry.blob);
+            });
             const zipBlob = await zip.generateAsync({type:'blob'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(zipBlob);
