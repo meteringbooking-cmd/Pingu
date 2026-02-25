@@ -196,7 +196,16 @@
         .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; padding: 2rem; }
         .modal.show { display: flex; }
-        .modal-content { background: var(--dark-light); border-radius: 16px; padding: 2rem; max-width: 600px; width: 100%; border: 2px solid var(--primary); max-height: 90vh; overflow-y: auto; }
+        .modal-content { 
+            background: var(--dark-light); 
+            border-radius: 16px; 
+            padding: 2rem; 
+            max-width: 760px; 
+            width: 100%; 
+            border: 2px solid var(--primary); 
+            max-height: 92vh; 
+            overflow-y: auto; 
+        }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--dark-lighter); }
         .modal-title { font-family: 'Syne', sans-serif; font-size: 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .close-btn { background: none; border: none; color: var(--text-dim); font-size: 2rem; cursor: pointer; transition: color 0.3s ease; line-height: 1; padding: 0; }
@@ -217,7 +226,19 @@
         .audit-btn.in-progress { background: linear-gradient(135deg, var(--audit-in-progress), #00B8D9); }
         .notes-section { margin-top: 1rem; }
         .notes-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; display: block; }
-        .notes-textarea { width: 100%; background: var(--dark); border: 2px solid var(--dark); color: var(--text); padding: 1rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; min-height: 120px; resize: vertical; transition: all 0.3s ease; }
+        .notes-textarea { 
+            width: 100%; 
+            background: var(--dark); 
+            border: 2px solid var(--dark); 
+            color: var(--text); 
+            padding: 1rem; 
+            border-radius: 8px; 
+            font-family: 'JetBrains Mono', monospace; 
+            font-size: 0.9rem; 
+            min-height: 320px; 
+            resize: vertical; 
+            transition: all 0.3s ease; 
+        }
         .notes-textarea:focus { outline: none; border-color: var(--primary); }
         .auto-save-indicator { font-size: 0.75rem; color: var(--success); margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; }
         .auto-save-indicator.show { opacity: 1; }
@@ -251,14 +272,12 @@
             <h1>🔍 Job Audit Dashboard</h1>
             <p class="subtitle">Review and audit all jobs — Solar Surveys excluded from stats by default</p>
         </header>
-
         <div class="survey-mode-banner" id="survey-mode-banner">
             🔭 Solar Survey view active — showing surveys only. Stats always reflect non-survey jobs.
         </div>
-
         <div class="filters-card">
             <h2>🔎 Search & Filter</h2>
-            
+           
             <div style="background: var(--dark-lighter); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <div style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 0.3rem;">📧 Email Scheduler Status</div>
@@ -269,7 +288,7 @@
                     <button class="btn btn-secondary" onclick="stopEmailScheduler()" id="stop-scheduler-btn" disabled style="padding: 0.6rem 1rem; font-size: 0.85rem;">⏸️ Stop</button>
                 </div>
             </div>
-            
+           
             <div class="filters-grid">
                 <div class="filter-group">
                     <label class="filter-label" for="job-search">Job Number</label>
@@ -306,12 +325,10 @@
                     </select>
                 </div>
             </div>
-
             <div class="filter-actions">
                 <button class="btn btn-primary" onclick="applyFilters()">🔍 Apply Filters</button>
                 <button class="btn btn-secondary" onclick="clearFilters()">✖️ Clear Filters</button>
             </div>
-
             <div class="stats-row" id="stats-row">
                 <div class="stat-item">
                     <div class="stat-label">Total Jobs</div>
@@ -350,12 +367,10 @@
                 </div>
             </div>
         </div>
-
         <div class="jobs-grid" id="jobs-grid">
             <div class="loading">Loading jobs from Firebase...</div>
         </div>
     </div>
-
     <div class="modal" id="audit-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -397,9 +412,7 @@
             </div>
         </div>
     </div>
-
     <div class="toast" id="toast"></div>
-
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -423,7 +436,6 @@
             document.getElementById('jobs-grid').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Firebase Connection Failed</h3></div>';
         }
     </script>
-
     <script>
         let allJobs = [];
         let filteredJobs = [];
@@ -432,7 +444,6 @@
         let autoSaveTimeout = null;
         let isFiltered = false;
         let showSurveyOnly = false;
-
         // ── Survey helpers ──────────────────────────────────────────────
         function isSolarSurvey(job) {
             const t = (job.jobType || '').toLowerCase();
@@ -444,7 +455,6 @@
                 ? allJobs.filter(j => isSolarSurvey(j))
                 : allJobs.filter(j => !isSolarSurvey(j));
         }
-
         window.toggleSurveyMode = function() {
             showSurveyOnly = !showSurveyOnly;
             const btn = document.getElementById('survey-toggle-btn');
@@ -454,7 +464,6 @@
             applyFilters();
         }
         // ───────────────────────────────────────────────────────────────
-
         function parseDate(dateStr) {
             if (!dateStr) return null;
             if (dateStr.includes('/')) {
@@ -468,12 +477,10 @@
             if (!isNaN(d.getTime())) { d.setHours(0,0,0,0); return d; }
             return null;
         }
-
         function formatDate(date) {
             if (!date) return 'N/A';
             return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
         }
-
         function autoSaveNotes() {
             if (!currentJob) return;
             localStorage.setItem(`audit_notes_${currentJob.id}`, document.getElementById('audit-notes').value);
@@ -483,7 +490,6 @@
         }
         function loadSavedNotes(jobId) { return localStorage.getItem(`audit_notes_${jobId}`) || ''; }
         function clearSavedNotes(jobId) { localStorage.removeItem(`audit_notes_${jobId}`); }
-
         window.saveNotesOnly = async function() {
             if (!currentJob) return;
             const notes = document.getElementById('audit-notes').value.trim();
@@ -498,7 +504,6 @@
                 showToast('Failed to save notes to database', 'error');
             }
         }
-
         window.loadAllJobs = async function() {
             try {
                 const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
@@ -545,7 +550,6 @@
                 document.getElementById('jobs-grid').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Error loading jobs</h3></div>';
             }
         }
-
         function updateStats(jobsToCount) {
             const nonSurveyAll = getNonSurveyJobs();
             const showingFiltered = jobsToCount.length !== nonSurveyAll.length;
@@ -573,7 +577,6 @@
                 });
             }
         }
-
         function renderJobs() {
             const grid = document.getElementById('jobs-grid');
             if (filteredJobs.length === 0) {
@@ -625,7 +628,6 @@
                     </div>`;
             }).join('');
         }
-
         window.applyFilters = function() {
             const jobSearch = document.getElementById('job-search').value.toLowerCase().trim();
             const dfVal = document.getElementById('date-from').value;
@@ -637,7 +639,6 @@
             const jobStatusFilter = document.getElementById('job-status').value;
             const auditStatus = document.getElementById('audit-status').value;
             isFiltered = !!(jobSearch || dateFrom || dateTo || jobStatusFilter !== 'all' || auditStatus !== 'all');
-
             const filterFn = job => {
               if (jobSearch && !job.jobNumber.toLowerCase().includes(jobSearch) && !job.postcode.toLowerCase().includes(jobSearch)) return false;
                 if (job.completionDate) {
@@ -648,16 +649,13 @@
                 if (auditStatus !== 'all' && job.auditStatus !== auditStatus) return false;
                 return true;
             };
-
             filteredJobs = getBaseJobsForGrid().filter(filterFn);
-
             // Stats always use non-survey pool
             const statsJobs = isFiltered ? getNonSurveyJobs().filter(filterFn) : getNonSurveyJobs();
             updateStats(statsJobs);
             renderJobs();
             showToast(`Showing ${filteredJobs.length} jobs${showSurveyOnly ? ' (Solar Surveys)' : ''}`, 'success');
         }
-
         window.clearFilters = function() {
             document.getElementById('job-search').value = '';
             document.getElementById('date-from').value = '';
@@ -670,7 +668,6 @@
             renderJobs();
             showToast('Filters cleared', 'success');
         }
-
         window.openAuditModal = function(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
@@ -695,13 +692,11 @@
             document.getElementById('confirm-actions').style.display = 'none';
             document.getElementById('audit-modal').classList.add('show');
         }
-
         window.closeAuditModal = function() {
             document.getElementById('audit-modal').classList.remove('show');
             document.getElementById('audit-notes').oninput = null;
             currentJob = null; pendingAuditStatus = null;
         }
-
         window.setAuditStatus = function(status) {
             pendingAuditStatus = status;
             if (status === 'complete-with-issues' && !document.getElementById('audit-notes').value.trim()) {
@@ -710,9 +705,7 @@
             }
             document.getElementById('confirm-actions').style.display = 'grid';
         }
-
         window.cancelAuditUpdate = function() { pendingAuditStatus = null; document.getElementById('confirm-actions').style.display = 'none'; }
-
         window.confirmAuditUpdate = async function() {
             if (!currentJob || !pendingAuditStatus) return;
             const notes = document.getElementById('audit-notes').value.trim();
@@ -730,7 +723,6 @@
                 renderJobs();
             } catch(e) { showToast('Failed to update audit status', 'error'); }
         }
-
         async function sendAuditNotificationEmail(job, auditStatus, notes) {
             try {
                 const jobNumber = job.jobNumber || 'N/A';
@@ -751,22 +743,17 @@
                 showToast('Audit notification email sent to all recipients', 'success');
             } catch(e) { console.error('Email failed:', e); }
         }
-
         function showToast(message, type = 'success') {
             const t = document.getElementById('toast');
             t.textContent = message;
             t.className = `toast show ${type === 'error' ? 'error' : ''}`;
             setTimeout(() => t.classList.remove('show'), 3000);
         }
-
         function escapeHtml(text) {
             const d = document.createElement('div'); d.textContent = text; return d.innerHTML;
         }
-
         document.getElementById('audit-modal').addEventListener('click', e => { if (e.target.id === 'audit-modal') closeAuditModal(); });
-
         let emailSchedulerInterval = null, lastEmailSentDate = null;
-
         window.startEmailScheduler = function() {
             if (emailSchedulerInterval) { showToast('Already running', 'error'); return; }
             emailSchedulerInterval = setInterval(checkEmailSchedule, 30000);
@@ -776,7 +763,6 @@
             document.getElementById('stop-scheduler-btn').disabled = false;
             showToast('Email scheduler started - will send daily at 7 AM', 'success');
         }
-
         window.stopEmailScheduler = function() {
             if (emailSchedulerInterval) { clearInterval(emailSchedulerInterval); emailSchedulerInterval = null; }
             document.getElementById('email-scheduler-status').textContent = 'Inactive';
@@ -785,7 +771,6 @@
             document.getElementById('stop-scheduler-btn').disabled = true;
             showToast('Email scheduler stopped', 'success');
         }
-
         function checkEmailSchedule() {
             const now = new Date();
             if (now.getDay() === 0 || now.getDay() === 6) return;
@@ -794,7 +779,6 @@
                 if (lastEmailSentDate !== today) { sendPendingAuditSummary(); lastEmailSentDate = today; }
             }
         }
-
         async function sendPendingAuditSummary() {
             try {
                 // Summary only covers non-survey jobs
