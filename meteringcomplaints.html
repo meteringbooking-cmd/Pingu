@@ -87,20 +87,19 @@
         .form-group { margin-bottom:0; }
         .form-group.full-width { grid-column:1/-1; }
         label { display:block; margin-bottom:0.6rem; font-weight:600; color:var(--text-light); font-size:0.9rem; }
-        input[type="text"], input[type="date"], select {
+        input[type="text"], input[type="date"], select, textarea {
             width:100%; padding:0.85rem 1rem;
             background:var(--bg-dark); border:2px solid var(--border); border-radius:10px;
             color:var(--text-light); font-family:'Work Sans',sans-serif; font-size:0.95rem;
             transition:all 0.3s; appearance:auto;
         }
-        input:focus, select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,163,224,0.1); }
+        textarea { resize:vertical; min-height:100px; appearance:none; }
+        input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,163,224,0.1); }
         select option { background:var(--bg-card); }
 
-        /* Type select highlight */
         select#type option[value="Complaint"]     { color: var(--error); }
         select#type option[value="Investigation"] { color: var(--purple); }
 
-        /* File upload */
         .file-upload-area {
             border:2px dashed var(--border); border-radius:10px; padding:1.5rem;
             text-align:center; cursor:pointer; transition:all 0.3s;
@@ -129,7 +128,6 @@
         }
         .remove-file-btn:hover { background:rgba(239,68,68,0.3); }
 
-        /* Progress */
         .progress-wrap { margin-top:1rem; display:none; }
         .progress-wrap.show { display:block; }
         .progress-bar-bg { background:var(--bg-dark); border-radius:999px; height:8px; overflow:hidden; border:1px solid var(--border); }
@@ -141,6 +139,8 @@
         .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 12px 24px rgba(0,163,224,0.3); }
         .btn-secondary { background:var(--bg-dark); color:var(--text-light); border:2px solid var(--border); }
         .btn-secondary:hover { border-color:var(--accent); }
+        .btn-success { background:linear-gradient(135deg, #059669 0%, var(--success) 100%); color:white; }
+        .btn-success:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 12px 24px rgba(16,185,129,0.3); }
         .btn:disabled { opacity:0.5; cursor:not-allowed; }
         .btn-group { display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap; }
 
@@ -166,7 +166,6 @@
         .detail-item label { font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; }
         .detail-item .value { font-size:0.95rem; font-family:'DM Mono',monospace; }
 
-        /* File link buttons in modal */
         .upload-links { display:flex; flex-direction:column; gap:0.5rem; }
         .upload-link-btn {
             display:flex; align-items:center; gap:0.75rem;
@@ -179,6 +178,20 @@
         .upload-link-btn .file-link-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .upload-link-btn .file-link-hint { font-size:0.75rem; color:var(--text-muted); white-space:nowrap; }
 
+        /* Resolution notes display in modal */
+        .resolution-summary {
+            background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25);
+            border-radius:12px; padding:1.25rem; margin-top:1rem;
+        }
+        .resolution-summary-title {
+            font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+            color:var(--success); margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;
+        }
+        .resolution-notes-text {
+            font-size:0.9rem; color:var(--text-light); line-height:1.6;
+            font-style:italic; white-space:pre-wrap; word-break:break-word;
+        }
+
         .checkbox-row { display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--bg-dark); border-radius:10px; border:1px solid var(--border); margin-bottom:1rem; }
         .checkbox-row input[type="checkbox"] { width:20px; height:20px; cursor:pointer; accent-color:var(--accent); }
         .checkbox-label { font-weight:600; cursor:pointer; }
@@ -186,6 +199,75 @@
         .status-select-row select { flex:1; }
 
         .spinner { width:40px; height:40px; border:4px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin:1rem auto; }
+
+        /* ── Resolution Modal ─────────────────────────────────────────────────── */
+        .resolution-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,0.85); z-index:150;
+            align-items:center; justify-content:center;
+            padding:1rem; backdrop-filter:blur(6px);
+        }
+        .resolution-overlay.show { display:flex; animation:fadeInUp 0.3s ease-out; }
+        .resolution-modal {
+            background:var(--bg-card); border:1px solid rgba(16,185,129,0.35);
+            border-radius:20px; padding:2.5rem; max-width:600px; width:100%;
+            max-height:90vh; overflow-y:auto;
+            box-shadow: 0 0 60px rgba(16,185,129,0.12);
+        }
+        .resolution-modal-header {
+            display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.75rem;
+        }
+        .resolution-modal-title-wrap .resolution-modal-title {
+            font-size:1.4rem; font-weight:700;
+            background:linear-gradient(135deg, var(--success) 0%, #34d399 100%);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        }
+        .resolution-modal-title-wrap .resolution-modal-sub {
+            font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;
+        }
+        .resolution-modal-icon {
+            width:48px; height:48px; background:rgba(16,185,129,0.15);
+            border:1px solid rgba(16,185,129,0.3); border-radius:12px;
+            display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0;
+        }
+        .resolution-section-label {
+            font-size:0.8rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase;
+            color:var(--text-muted); margin-bottom:0.75rem; margin-top:1.5rem;
+        }
+        .resolution-section-label:first-of-type { margin-top:0; }
+        .resolution-file-row {
+            display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;
+        }
+        .resolution-file-zone {
+            border:2px dashed var(--border); border-radius:10px; padding:1.25rem;
+            text-align:center; cursor:pointer; transition:all 0.3s;
+            background:var(--bg-dark); position:relative;
+        }
+        .resolution-file-zone:hover { border-color:var(--success); background:rgba(16,185,129,0.05); }
+        .resolution-file-zone .file-upload-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+        .resolution-file-zone-icon { font-size:1.75rem; margin-bottom:0.4rem; }
+        .resolution-file-zone-label { font-size:0.8rem; color:var(--text-muted); }
+        .resolution-file-zone-label strong { color:var(--accent); display:block; margin-bottom:0.15rem; }
+        .resolution-uploaded { margin-top:0.5rem; display:flex; flex-direction:column; gap:0.4rem; }
+        .resolution-uploaded-item {
+            background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2);
+            border-radius:6px; padding:0.5rem 0.75rem;
+            display:flex; align-items:center; gap:0.5rem; font-size:0.8rem;
+        }
+        .resolution-uploaded-item .r-file-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .resolution-uploaded-item .r-remove {
+            background:none; border:none; color:var(--error); cursor:pointer; font-size:1rem;
+            padding:0; line-height:1; flex-shrink:0; opacity:0.7;
+        }
+        .resolution-uploaded-item .r-remove:hover { opacity:1; }
+        .resolution-progress-wrap { margin-top:0.75rem; display:none; }
+        .resolution-progress-wrap.show { display:block; }
+        .resolution-btn-row { display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap; }
+        .resolution-btn-row .btn { flex:1; }
+        .optional-tag {
+            font-size:0.75rem; font-weight:400; color:var(--text-muted);
+            margin-left:0.4rem; font-style:italic;
+        }
 
         /* ── File Preview Modal ────────────────────────────────────────────── */
         .preview-overlay {
@@ -237,7 +319,7 @@
             text-align:center; padding:4rem 2rem;
         }
         .preview-unsupported .unsupported-icon { font-size:4rem; margin-bottom:1rem; }
-        .preview-unsupported p { color:var(--text-muted); font-size:1rem; margin-bottom:1.5rem; }
+        .preview-unsupported p { color:var(--text-muted); font-size:1rem; margin-bottom:1rem; }
         .preview-unsupported .unsupported-name { font-family:'DM Mono',monospace; color:var(--text-light); font-size:0.9rem; margin-bottom:2rem; }
 
         .toast { position:fixed; bottom:2rem; right:2rem; padding:1rem 1.5rem; border-radius:12px; font-weight:600; z-index:300; display:none; }
@@ -254,6 +336,7 @@
             .detail-grid { grid-template-columns:1fr; }
             .btn-group { flex-direction:column; }
             .preview-modal { max-width:100vw; border-radius:16px; }
+            .resolution-file-row { grid-template-columns:1fr; }
         }
     </style>
 </head>
@@ -417,7 +500,6 @@
                     <input type="date" id="targetDate" required>
                 </div>
 
-                <!-- Photos -->
                 <div class="form-group full-width">
                     <label>Photos</label>
                     <div class="file-upload-area">
@@ -428,7 +510,6 @@
                     <div class="uploaded-files" id="photosUploaded"></div>
                 </div>
 
-                <!-- Complaints Card -->
                 <div class="form-group">
                     <label>Complaints Card (Word Doc)</label>
                     <div class="file-upload-area">
@@ -439,7 +520,6 @@
                     <div class="uploaded-files" id="complaintCardUploaded"></div>
                 </div>
 
-                <!-- Job Card -->
                 <div class="form-group">
                     <label>Job Card (PDF)</label>
                     <div class="file-upload-area">
@@ -451,7 +531,6 @@
                 </div>
             </div>
 
-            <!-- Upload progress -->
             <div class="progress-wrap" id="progressWrap">
                 <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
                 <div class="progress-label" id="progressLabel"></div>
@@ -465,7 +544,7 @@
     </main>
 </div>
 
-<!-- Detail Modal -->
+<!-- ── Detail Modal ──────────────────────────────────────────────────────── -->
 <div class="modal-overlay" id="detailModal">
     <div class="modal">
         <div class="modal-header">
@@ -491,6 +570,15 @@
             <div class="modal-section-title">Uploaded Files</div>
             <div class="upload-links" id="uploadLinks"><p style="color:var(--text-muted);font-size:0.9rem;">No files uploaded.</p></div>
         </div>
+        <!-- Resolution summary (shown when already resolved) -->
+        <div class="modal-section" id="resolutionSummarySection" style="display:none;">
+            <div class="modal-section-title">Resolution Details</div>
+            <div class="resolution-summary">
+                <div class="resolution-summary-title">✅ Resolution Notes</div>
+                <div class="resolution-notes-text" id="mdResolutionNotes"></div>
+            </div>
+            <div class="upload-links" id="resolutionUploadLinks" style="margin-top:0.75rem;"></div>
+        </div>
         <div class="modal-section">
             <div class="modal-section-title">Actions</div>
             <div class="checkbox-row">
@@ -509,6 +597,57 @@
     </div>
 </div>
 
+<!-- ── Resolution Modal ──────────────────────────────────────────────────── -->
+<div class="resolution-overlay" id="resolutionOverlay">
+    <div class="resolution-modal">
+        <div class="resolution-modal-header">
+            <div class="resolution-modal-title-wrap">
+                <div class="resolution-modal-title">Mark as Resolved</div>
+                <div class="resolution-modal-sub" id="resModalSubtitle">Add any supporting documents or notes before closing.</div>
+            </div>
+            <div class="resolution-modal-icon">✅</div>
+        </div>
+
+        <!-- Notes -->
+        <div class="resolution-section-label">Resolution Notes <span class="optional-tag">optional</span></div>
+        <textarea id="resolutionNotes" placeholder="Describe how the complaint was resolved, any actions taken, outcomes, etc."></textarea>
+
+        <!-- Supporting Docs -->
+        <div class="resolution-section-label">Supporting Documents <span class="optional-tag">optional — any file type</span></div>
+        <div class="resolution-file-row">
+            <!-- Photos -->
+            <div>
+                <div class="resolution-file-zone">
+                    <input type="file" id="resPhotosInput" class="file-upload-input" accept="image/*" multiple>
+                    <div class="resolution-file-zone-icon">📷</div>
+                    <div class="resolution-file-zone-label"><strong>Photos</strong>Click to upload</div>
+                </div>
+                <div class="resolution-uploaded" id="resPhotosUploaded"></div>
+            </div>
+            <!-- Documents -->
+            <div>
+                <div class="resolution-file-zone">
+                    <input type="file" id="resDocsInput" class="file-upload-input" accept=".pdf,.doc,.docx" multiple>
+                    <div class="resolution-file-zone-icon">📄</div>
+                    <div class="resolution-file-zone-label"><strong>PDFs / Docs</strong>Click to upload</div>
+                </div>
+                <div class="resolution-uploaded" id="resDocsUploaded"></div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="resolution-progress-wrap" id="resProgressWrap">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="resProgressFill"></div></div>
+            <div class="progress-label" id="resProgressLabel"></div>
+        </div>
+
+        <div class="resolution-btn-row">
+            <button class="btn btn-secondary" id="resCancelBtn">Cancel</button>
+            <button class="btn btn-success" id="resConfirmBtn">✅ Confirm Resolution</button>
+        </div>
+    </div>
+</div>
+
 <!-- ── File Preview Modal ──────────────────────────────────────────────────── -->
 <div class="preview-overlay" id="previewOverlay">
     <div class="preview-modal">
@@ -520,9 +659,7 @@
             </a>
             <button class="preview-close-btn" id="previewClose">✕</button>
         </div>
-        <div class="preview-body" id="previewBody">
-            <!-- content injected by JS -->
-        </div>
+        <div class="preview-body" id="previewBody"></div>
     </div>
 </div>
 
@@ -536,7 +673,6 @@
     import { getStorage, ref, uploadBytesResumable, getDownloadURL }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
-    // ── Firebase config ───────────────────────────────────────────────────────
     const app = initializeApp({
         apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
         authDomain: "pingu-solar.firebaseapp.com",
@@ -548,11 +684,15 @@
     const db      = getFirestore(app);
     const storage = getStorage(app);
 
-    // ── In-memory file store ──────────────────────────────────────────────────
+    // ── In-memory file stores ─────────────────────────────────────────────────
     const fileStore = {
         photosInput:        [],
         complaintCardInput: [],
         jobCardInput:       []
+    };
+    const resFileStore = {
+        resPhotosInput: [],
+        resDocsInput:   []
     };
 
     // ── Toast ─────────────────────────────────────────────────────────────────
@@ -589,28 +729,20 @@
 
     // ── File Preview Modal ────────────────────────────────────────────────────
     function openFilePreview(file) {
-        const overlay   = document.getElementById('previewOverlay');
-        const body      = document.getElementById('previewBody');
-        const nameEl    = document.getElementById('previewName');
-        const iconEl    = document.getElementById('previewIcon');
-        const dlBtn     = document.getElementById('previewDownloadBtn');
-
-        nameEl.textContent = file.name;
-        iconEl.textContent = fileTypeIcon(file.type);
-        dlBtn.href         = file.url;
-        dlBtn.download     = file.name;
-
+        const overlay = document.getElementById('previewOverlay');
+        const body    = document.getElementById('previewBody');
+        document.getElementById('previewName').textContent = file.name;
+        document.getElementById('previewIcon').textContent = fileTypeIcon(file.type);
+        const dlBtn = document.getElementById('previewDownloadBtn');
+        dlBtn.href = file.url; dlBtn.download = file.name;
         body.innerHTML = '';
-
         if (file.type === 'photo') {
             const img = document.createElement('img');
-            img.src = file.url;
-            img.alt = file.name;
+            img.src = file.url; img.alt = file.name;
             body.appendChild(img);
         } else if (file.type === 'pdf') {
             const iframe = document.createElement('iframe');
-            iframe.src   = file.url + '#toolbar=1&navpanes=0';
-            iframe.title = file.name;
+            iframe.src = file.url + '#toolbar=1&navpanes=0'; iframe.title = file.name;
             body.appendChild(iframe);
         } else {
             body.innerHTML = `
@@ -623,7 +755,6 @@
                     </a>
                 </div>`;
         }
-
         overlay.classList.add('show');
     }
 
@@ -639,41 +770,36 @@
         if (e.target.id === 'previewOverlay') closeFilePreview();
     });
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeFilePreview();
+        if (e.key === 'Escape') { closeFilePreview(); closeResolutionModal(); }
     });
 
-    // ── File preview helpers (form upload) ───────────────────────────────────
+    // ── Form file previews (submission form) ─────────────────────────────────
     function addFilePreview(file, storeKey, containerId, fileType) {
         const container = document.getElementById(containerId);
         const div = document.createElement('div');
         div.className = 'uploaded-file';
-
         const sizeStr = (file.size / 1048576).toFixed(2) + ' MB';
         const detailsHtml = `
-            <div class="file-details">
-                <div class="file-name">${file.name}</div>
-                <div class="file-size">${sizeStr}</div>
-            </div>
+            <div class="file-details"><div class="file-name">${file.name}</div><div class="file-size">${sizeStr}</div></div>
             <button type="button" class="remove-file-btn">Remove</button>`;
-
         if (file.type.startsWith('image/')) {
             const reader = new FileReader();
             reader.onload = e => {
                 div.innerHTML = `<img src="${e.target.result}" alt="preview">${detailsHtml}`;
-                bindRemove(div, file, storeKey);
+                bindRemove(div, file, storeKey, fileStore);
                 container.appendChild(div);
             };
             reader.readAsDataURL(file);
         } else {
             div.innerHTML = `<div class="file-icon-big">${fileTypeIcon(fileType)}</div>${detailsHtml}`;
-            bindRemove(div, file, storeKey);
+            bindRemove(div, file, storeKey, fileStore);
             container.appendChild(div);
         }
     }
 
-    function bindRemove(div, file, storeKey) {
+    function bindRemove(div, file, storeKey, store) {
         div.querySelector('.remove-file-btn').addEventListener('click', () => {
-            fileStore[storeKey] = fileStore[storeKey].filter(f => f !== file);
+            store[storeKey] = store[storeKey].filter(f => f !== file);
             div.remove();
         });
     }
@@ -692,7 +818,39 @@
     setupFileInput('complaintCardInput', 'complaintCardUploaded', 'word');
     setupFileInput('jobCardInput',       'jobCardUploaded',       'pdf');
 
-    // ── Upload a single file to Storage ──────────────────────────────────────
+    // ── Resolution modal file previews ────────────────────────────────────────
+    function addResFilePreview(file, storeKey, containerId, fileType) {
+        const container = document.getElementById(containerId);
+        const item = document.createElement('div');
+        item.className = 'resolution-uploaded-item';
+        item.innerHTML = `
+            <span>${fileTypeIcon(fileType)}</span>
+            <span class="r-file-name">${file.name}</span>
+            <button class="r-remove" title="Remove">✕</button>`;
+        item.querySelector('.r-remove').addEventListener('click', () => {
+            resFileStore[storeKey] = resFileStore[storeKey].filter(f => f !== file);
+            item.remove();
+        });
+        container.appendChild(item);
+    }
+
+    document.getElementById('resPhotosInput').addEventListener('change', function(e) {
+        Array.from(e.target.files).forEach(file => {
+            resFileStore.resPhotosInput.push(file);
+            addResFilePreview(file, 'resPhotosInput', 'resPhotosUploaded', 'photo');
+        });
+        e.target.value = '';
+    });
+    document.getElementById('resDocsInput').addEventListener('change', function(e) {
+        Array.from(e.target.files).forEach(file => {
+            const ft = file.name.endsWith('.pdf') ? 'pdf' : 'word';
+            resFileStore.resDocsInput.push({ file, type: ft });
+            addResFilePreview(file, 'resDocsInput', 'resDocsUploaded', ft);
+        });
+        e.target.value = '';
+    });
+
+    // ── Generic upload helper ─────────────────────────────────────────────────
     function uploadFile(file, path, fileType, onProgress) {
         return new Promise((resolve, reject) => {
             const storageRef = ref(storage, path);
@@ -708,7 +866,6 @@
         });
     }
 
-    // ── Upload all queued files with total progress ───────────────────────────
     async function uploadAllFiles(jobRef) {
         const queue = [
             ...fileStore.photosInput.map(f        => ({ file: f, type: 'photo' })),
@@ -716,12 +873,10 @@
             ...fileStore.jobCardInput.map(f       => ({ file: f, type: 'pdf'   }))
         ];
         if (queue.length === 0) return [];
-
-        const wrap  = document.getElementById('progressWrap');
-        const fill  = document.getElementById('progressFill');
+        const wrap = document.getElementById('progressWrap');
+        const fill = document.getElementById('progressFill');
         const label = document.getElementById('progressLabel');
         wrap.classList.add('show');
-
         const results = [];
         for (let i = 0; i < queue.length; i++) {
             const { file, type } = queue[i];
@@ -732,14 +887,40 @@
             });
             results.push(result);
         }
-
-        fill.style.width  = '100%';
+        fill.style.width = '100%';
         label.textContent = 'Upload complete ✓';
         setTimeout(() => { wrap.classList.remove('show'); label.textContent = ''; fill.style.width = '0%'; }, 1800);
         return results;
     }
 
-    // ── Load & render complaints table ────────────────────────────────────────
+    // ── Upload resolution files ───────────────────────────────────────────────
+    async function uploadResolutionFiles(jobRef) {
+        const queue = [
+            ...resFileStore.resPhotosInput.map(f => ({ file: f, type: 'photo' })),
+            ...resFileStore.resDocsInput.map(({ file, type }) => ({ file, type }))
+        ];
+        if (queue.length === 0) return [];
+        const wrap  = document.getElementById('resProgressWrap');
+        const fill  = document.getElementById('resProgressFill');
+        const label = document.getElementById('resProgressLabel');
+        wrap.classList.add('show');
+        const results = [];
+        for (let i = 0; i < queue.length; i++) {
+            const { file, type } = queue[i];
+            label.textContent = `Uploading ${i + 1} of ${queue.length}: ${file.name}`;
+            const path = `complaints/${jobRef}/resolution/${Date.now()}_${file.name}`;
+            const result = await uploadFile(file, path, type, pct => {
+                fill.style.width = (((i + pct) / queue.length) * 100).toFixed(0) + '%';
+            });
+            results.push(result);
+        }
+        fill.style.width = '100%';
+        label.textContent = 'Upload complete ✓';
+        setTimeout(() => { wrap.classList.remove('show'); label.textContent = ''; fill.style.width = '0%'; }, 1800);
+        return results;
+    }
+
+    // ── Load & render ─────────────────────────────────────────────────────────
     let allComplaints      = [];
     let currentComplaintId = null;
 
@@ -788,7 +969,7 @@
     }
 
     function renderHistoric() {
-        const tbody   = document.getElementById('historicTableBody');
+        const tbody    = document.getElementById('historicTableBody');
         const resolved = allComplaints.filter(c => c.status === 'resolved');
         tbody.innerHTML = '';
         if (resolved.length === 0) {
@@ -839,6 +1020,7 @@
         document.getElementById('engineerInformed').checked    = c.engineerInformed||false;
         document.getElementById('statusSelect').value          = c.status||'in-progress';
 
+        // Uploaded files
         const linksDiv = document.getElementById('uploadLinks');
         linksDiv.innerHTML = '';
         const files = c.uploadedFiles||[];
@@ -848,15 +1030,40 @@
             files.forEach(f => {
                 const btn = document.createElement('button');
                 btn.className = 'upload-link-btn';
-                const hintText = f.type === 'word' ? 'Click to view / download' : 'Click to preview';
                 btn.innerHTML = `
                     <span class="file-link-icon">${fileTypeIcon(f.type)}</span>
                     <span class="file-link-name">${f.name}</span>
-                    <span class="file-link-hint">${hintText}</span>`;
+                    <span class="file-link-hint">${f.type === 'word' ? 'Click to view / download' : 'Click to preview'}</span>`;
                 btn.addEventListener('click', () => openFilePreview(f));
                 linksDiv.appendChild(btn);
             });
         }
+
+        // Resolution section
+        const resSummarySection = document.getElementById('resolutionSummarySection');
+        if (c.status === 'resolved' && (c.resolutionNotes || (c.resolutionFiles && c.resolutionFiles.length))) {
+            resSummarySection.style.display = 'block';
+            document.getElementById('mdResolutionNotes').textContent = c.resolutionNotes || '(No notes added)';
+            const resLinks = document.getElementById('resolutionUploadLinks');
+            resLinks.innerHTML = '';
+            const resFiles = c.resolutionFiles || [];
+            if (resFiles.length) {
+                resFiles.forEach(f => {
+                    const btn = document.createElement('button');
+                    btn.className = 'upload-link-btn';
+                    btn.style.borderColor = 'rgba(16,185,129,0.3)';
+                    btn.innerHTML = `
+                        <span class="file-link-icon">${fileTypeIcon(f.type)}</span>
+                        <span class="file-link-name">${f.name}</span>
+                        <span class="file-link-hint" style="color:var(--success);">Resolution doc</span>`;
+                    btn.addEventListener('click', () => openFilePreview(f));
+                    resLinks.appendChild(btn);
+                });
+            }
+        } else {
+            resSummarySection.style.display = 'none';
+        }
+
         document.getElementById('detailModal').classList.add('show');
     }
 
@@ -871,21 +1078,102 @@
         }
     });
 
+    // ── Save status — intercept "resolved" → open resolution modal ────────────
     document.getElementById('saveStatusBtn').addEventListener('click', async () => {
         if (!currentComplaintId) return;
+        const status           = document.getElementById('statusSelect').value;
+        const engineerInformed = document.getElementById('engineerInformed').checked;
+
+        if (status === 'resolved') {
+            // Check if already resolved — if so, just save informed flag change
+            const c = allComplaints.find(x => x.id === currentComplaintId);
+            if (c && c.status === 'resolved') {
+                // Just update engineerInformed
+                await saveStatusDirectly(status, engineerInformed);
+                return;
+            }
+            // Open resolution modal
+            openResolutionModal();
+        } else {
+            await saveStatusDirectly(status, engineerInformed);
+        }
+    });
+
+    async function saveStatusDirectly(status, engineerInformed) {
         const btn = document.getElementById('saveStatusBtn');
         btn.disabled = true; btn.textContent = 'Saving...';
         try {
-            const status           = document.getElementById('statusSelect').value;
-            const engineerInformed = document.getElementById('engineerInformed').checked;
             await updateDoc(doc(db, 'Complaints', currentComplaintId), { status, engineerInformed });
             const idx = allComplaints.findIndex(x => x.id === currentComplaintId);
             if (idx !== -1) { allComplaints[idx].status = status; allComplaints[idx].engineerInformed = engineerInformed; }
             renderTable();
             document.getElementById('detailModal').classList.remove('show');
-            showToast(status === 'resolved' ? '✓ Complaint resolved and removed.' : '✓ Changes saved.');
+            showToast('✓ Changes saved.');
         } catch(e) { showToast('Error: ' + e.message, 'error'); }
         btn.disabled = false; btn.textContent = 'Save Changes';
+    }
+
+    // ── Resolution Modal ──────────────────────────────────────────────────────
+    function openResolutionModal() {
+        const c = allComplaints.find(x => x.id === currentComplaintId);
+        document.getElementById('resolutionNotes').value = '';
+        resFileStore.resPhotosInput = [];
+        resFileStore.resDocsInput   = [];
+        document.getElementById('resPhotosUploaded').innerHTML = '';
+        document.getElementById('resDocsUploaded').innerHTML   = '';
+        if (c) {
+            document.getElementById('resModalSubtitle').textContent =
+                `Resolving: ${c.jobRef||'—'} · ${c.engineer||'—'}`;
+        }
+        document.getElementById('resolutionOverlay').classList.add('show');
+    }
+
+    function closeResolutionModal() {
+        document.getElementById('resolutionOverlay').classList.remove('show');
+    }
+
+    document.getElementById('resCancelBtn').addEventListener('click', closeResolutionModal);
+    document.getElementById('resolutionOverlay').addEventListener('click', e => {
+        if (e.target.id === 'resolutionOverlay') closeResolutionModal();
+    });
+
+    document.getElementById('resConfirmBtn').addEventListener('click', async () => {
+        if (!currentComplaintId) return;
+        const btn = document.getElementById('resConfirmBtn');
+        btn.disabled = true; btn.textContent = 'Saving...';
+
+        try {
+            const engineerInformed = document.getElementById('engineerInformed').checked;
+            const resolutionNotes  = document.getElementById('resolutionNotes').value.trim();
+            const c = allComplaints.find(x => x.id === currentComplaintId);
+
+            // Upload any resolution files
+            const resolutionFiles = await uploadResolutionFiles(c ? c.jobRef : currentComplaintId);
+
+            await updateDoc(doc(db, 'Complaints', currentComplaintId), {
+                status: 'resolved',
+                engineerInformed,
+                resolutionNotes,
+                resolutionFiles,
+                resolvedAt: serverTimestamp()
+            });
+
+            const idx = allComplaints.findIndex(x => x.id === currentComplaintId);
+            if (idx !== -1) {
+                allComplaints[idx].status          = 'resolved';
+                allComplaints[idx].engineerInformed = engineerInformed;
+                allComplaints[idx].resolutionNotes  = resolutionNotes;
+                allComplaints[idx].resolutionFiles  = resolutionFiles;
+            }
+
+            renderTable();
+            closeResolutionModal();
+            document.getElementById('detailModal').classList.remove('show');
+            showToast('✅ Complaint resolved and saved.');
+        } catch(e) {
+            showToast('Error: ' + e.message, 'error');
+        }
+        btn.disabled = false; btn.textContent = '✅ Confirm Resolution';
     });
 
     // ── Submit new complaint ──────────────────────────────────────────────────
@@ -907,20 +1195,11 @@
 
         try {
             const uploadedFiles = await uploadAllFiles(jobRef);
-
             await addDoc(collection(db, 'Complaints'), {
-                dateReceived,
-                type,
-                engineer,
-                ftl,
-                jobRef,
-                targetDate,
-                status: 'in-progress',
-                engineerInformed: false,
-                uploadedFiles,
-                submittedAt: serverTimestamp()
+                dateReceived, type, engineer, ftl, jobRef, targetDate,
+                status: 'in-progress', engineerInformed: false,
+                uploadedFiles, submittedAt: serverTimestamp()
             });
-
             showToast('✓ Complaint submitted successfully.');
             resetForm();
             await loadComplaints();
