@@ -20,6 +20,7 @@
             --success: #10B981;
             --amber: #F59E0B;
             --error: #EF4444;
+            --purple: #8B5CF6;
         }
         * { margin:0; padding:0; box-sizing:border-box; }
         body {
@@ -76,10 +77,11 @@
             padding:0.35rem 0.85rem; border-radius:999px;
             font-size:0.8rem; font-weight:600; font-family:'DM Mono',monospace; white-space:nowrap;
         }
-        .badge-green { background:rgba(16,185,129,0.15); color:var(--success); border:1px solid rgba(16,185,129,0.3); }
-        .badge-amber { background:rgba(245,158,11,0.15);  color:var(--amber);   border:1px solid rgba(245,158,11,0.3); }
-        .badge-red   { background:rgba(239,68,68,0.15);   color:var(--error);   border:1px solid rgba(239,68,68,0.3); }
-        .badge-blue  { background:rgba(0,163,224,0.15);   color:var(--accent);  border:1px solid rgba(0,163,224,0.3); }
+        .badge-green  { background:rgba(16,185,129,0.15);  color:var(--success); border:1px solid rgba(16,185,129,0.3); }
+        .badge-amber  { background:rgba(245,158,11,0.15);  color:var(--amber);   border:1px solid rgba(245,158,11,0.3); }
+        .badge-red    { background:rgba(239,68,68,0.15);   color:var(--error);   border:1px solid rgba(239,68,68,0.3); }
+        .badge-blue   { background:rgba(0,163,224,0.15);   color:var(--accent);  border:1px solid rgba(0,163,224,0.3); }
+        .badge-purple { background:rgba(139,92,246,0.15);  color:var(--purple);  border:1px solid rgba(139,92,246,0.3); }
 
         .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.5rem; }
         .form-group { margin-bottom:0; }
@@ -93,6 +95,10 @@
         }
         input:focus, select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,163,224,0.1); }
         select option { background:var(--bg-card); }
+
+        /* Type select highlight */
+        select#type option[value="Complaint"]     { color: var(--error); }
+        select#type option[value="Investigation"] { color: var(--purple); }
 
         /* File upload */
         .file-upload-area {
@@ -274,6 +280,7 @@
                     <thead>
                         <tr>
                             <th>Date Received</th>
+                            <th>Type</th>
                             <th>Job Ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
@@ -284,7 +291,7 @@
                         </tr>
                     </thead>
                     <tbody id="complaintsTableBody">
-                        <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+                        <tr><td colspan="9" class="empty-state">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -298,6 +305,7 @@
                     <thead>
                         <tr>
                             <th>Date Received</th>
+                            <th>Type</th>
                             <th>Job Ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
@@ -306,7 +314,7 @@
                         </tr>
                     </thead>
                     <tbody id="historicTableBody">
-                        <tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>
+                        <tr><td colspan="7" class="empty-state">No resolved complaints yet.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -319,6 +327,14 @@
                 <div class="form-group">
                     <label for="dateReceived">Date Received *</label>
                     <input type="date" id="dateReceived" required>
+                </div>
+                <div class="form-group">
+                    <label for="type">Type *</label>
+                    <select id="type" required>
+                        <option value="">Select Type</option>
+                        <option value="Complaint">⚠️ Complaint</option>
+                        <option value="Investigation">🔍 Investigation</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="ftl">FTL *</label>
@@ -455,7 +471,7 @@
         <div class="modal-header">
             <div>
                 <div class="modal-title" id="modalTitle">Complaint Details</div>
-                <div id="modalUrgencyBadge" style="margin-top:0.5rem;"></div>
+                <div id="modalBadges" style="margin-top:0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap;"></div>
             </div>
             <button class="modal-close" id="modalClose">✕</button>
         </div>
@@ -463,6 +479,7 @@
             <div class="modal-section-title">Details</div>
             <div class="detail-grid">
                 <div class="detail-item"><label>Date Received</label><div class="value" id="mdDateReceived">—</div></div>
+                <div class="detail-item"><label>Type</label><div class="value" id="mdType">—</div></div>
                 <div class="detail-item"><label>Job Reference</label><div class="value" id="mdJobRef">—</div></div>
                 <div class="detail-item"><label>Engineer</label><div class="value" id="mdEngineer">—</div></div>
                 <div class="detail-item"><label>FTL</label><div class="value" id="mdFtl">—</div></div>
@@ -557,6 +574,10 @@
         if (days <= 21) return `<span class="badge badge-amber">🟠 ${days}d remaining</span>`;
         return `<span class="badge badge-green">🟢 ${days}d remaining</span>`;
     }
+    function typeBadge(type) {
+        if (type === 'Investigation') return `<span class="badge badge-purple">🔍 Investigation</span>`;
+        return `<span class="badge badge-red">⚠️ Complaint</span>`;
+    }
     function formatDate(s) {
         if (!s) return '—';
         const [y,m,d] = s.split('-');
@@ -579,25 +600,19 @@
         dlBtn.href         = file.url;
         dlBtn.download     = file.name;
 
-        // Clear previous content
         body.innerHTML = '';
 
         if (file.type === 'photo') {
-            // Image preview
             const img = document.createElement('img');
             img.src = file.url;
             img.alt = file.name;
             body.appendChild(img);
-
         } else if (file.type === 'pdf') {
-            // PDF in iframe
             const iframe = document.createElement('iframe');
             iframe.src   = file.url + '#toolbar=1&navpanes=0';
             iframe.title = file.name;
             body.appendChild(iframe);
-
         } else {
-            // Word doc – cannot preview inline
             body.innerHTML = `
                 <div class="preview-unsupported">
                     <div class="unsupported-icon">📝</div>
@@ -615,7 +630,6 @@
     function closeFilePreview() {
         const overlay = document.getElementById('previewOverlay');
         overlay.classList.remove('show');
-        // Clear iframe to stop PDF rendering in background
         const iframe = overlay.querySelector('iframe');
         if (iframe) iframe.src = '';
     }
@@ -748,7 +762,7 @@
         const active = allComplaints.filter(c => c.status !== 'resolved');
         tbody.innerHTML = '';
         if (active.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No active complaints ✓</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No active complaints ✓</td></tr>';
             return;
         }
         active.forEach(c => {
@@ -758,6 +772,7 @@
             else if (days <= 21) tr.classList.add('row-amber');
             tr.innerHTML = `
                 <td>${formatDate(c.dateReceived)}</td>
+                <td>${typeBadge(c.type||'Complaint')}</td>
                 <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
@@ -777,7 +792,7 @@
         const resolved = allComplaints.filter(c => c.status === 'resolved');
         tbody.innerHTML = '';
         if (resolved.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No resolved complaints yet.</td></tr>';
             return;
         }
         resolved.forEach(c => {
@@ -785,6 +800,7 @@
             tr.style.cursor = 'pointer';
             tr.innerHTML = `
                 <td>${formatDate(c.dateReceived)}</td>
+                <td>${typeBadge(c.type||'Complaint')}</td>
                 <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
@@ -812,8 +828,9 @@
         const days = daysUntil(c.targetDate);
 
         document.getElementById('modalTitle').textContent     = `Job Ref: ${c.jobRef||'—'}`;
-        document.getElementById('modalUrgencyBadge').innerHTML = urgencyBadge(days);
+        document.getElementById('modalBadges').innerHTML      = typeBadge(c.type||'Complaint') + urgencyBadge(days);
         document.getElementById('mdDateReceived').textContent  = formatDate(c.dateReceived);
+        document.getElementById('mdType').innerHTML            = typeBadge(c.type||'Complaint');
         document.getElementById('mdJobRef').textContent        = c.jobRef||'—';
         document.getElementById('mdEngineer').textContent      = c.engineer||'—';
         document.getElementById('mdFtl').textContent           = c.ftl||'—';
@@ -831,17 +848,11 @@
             files.forEach(f => {
                 const btn = document.createElement('button');
                 btn.className = 'upload-link-btn';
-
-                // Determine hint text by type
-                const hintText = f.type === 'word'
-                    ? 'Click to view / download'
-                    : 'Click to preview';
-
+                const hintText = f.type === 'word' ? 'Click to view / download' : 'Click to preview';
                 btn.innerHTML = `
                     <span class="file-link-icon">${fileTypeIcon(f.type)}</span>
                     <span class="file-link-name">${f.name}</span>
                     <span class="file-link-hint">${hintText}</span>`;
-
                 btn.addEventListener('click', () => openFilePreview(f));
                 linksDiv.appendChild(btn);
             });
@@ -880,12 +891,13 @@
     // ── Submit new complaint ──────────────────────────────────────────────────
     document.getElementById('submitBtn').addEventListener('click', async () => {
         const dateReceived = document.getElementById('dateReceived').value;
+        const type         = document.getElementById('type').value;
         const engineer     = document.getElementById('engineer').value;
         const ftl          = document.getElementById('ftl').value;
         const jobRef       = document.getElementById('jobRef').value.trim();
         const targetDate   = document.getElementById('targetDate').value;
 
-        if (!dateReceived || !engineer || !ftl || !jobRef || !targetDate) {
+        if (!dateReceived || !type || !engineer || !ftl || !jobRef || !targetDate) {
             showToast('Please fill in all required fields.', 'error');
             return;
         }
@@ -898,6 +910,7 @@
 
             await addDoc(collection(db, 'Complaints'), {
                 dateReceived,
+                type,
                 engineer,
                 ftl,
                 jobRef,
@@ -920,6 +933,7 @@
 
     function resetForm() {
         document.getElementById('dateReceived').valueAsDate = new Date();
+        document.getElementById('type').value     = '';
         document.getElementById('ftl').value      = '';
         document.getElementById('engineer').value = '';
         document.getElementById('jobRef').value   = '';
