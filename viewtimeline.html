@@ -6,7 +6,8 @@
     <title>Job Timeline | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script src="https://alcdn.msauth.net/browser/2.38.2/js/msal-browser.min.js"></script>
+    <!-- Google Identity Services (replaces MSAL) -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -159,7 +160,6 @@
         .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
         .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
 
-        /* ── STATS ROW – expanded with all status counts ── */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -184,7 +184,6 @@
         .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);   -webkit-background-clip: text; background-clip: text; }
         .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); -webkit-background-clip: text; background-clip: text; }
         .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);          -webkit-background-clip: text; background-clip: text; }
-        /* ── end stats ── */
 
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
@@ -221,7 +220,6 @@
         .notes-textarea:focus { outline: none; border-color: var(--primary); }
         .save-notes-btn { margin-top: 0.5rem; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
         .save-notes-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
-        /* PO timestamp */
         .po-timestamp { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.3rem; font-style: italic; min-height: 1.1em; letter-spacing: 0.02em; }
         .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light); color: var(--text); padding: 1rem 1.5rem; border-radius: 8px; border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; animation: slideIn 0.3s ease-out; display: none; }
         .toast.show { display: block; }
@@ -269,7 +267,6 @@
                 </div>
             </div>
 
-            <!-- ── EXPANDED STATS ROW ── -->
             <div class="stats-row">
                 <div class="stat-item">
                     <div class="stat-label">Total Jobs</div>
@@ -310,9 +307,9 @@
                 <strong>📧 Email Notifications Active</strong><br>
                 <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete.</span>
             </div>
-            <div class="debug-info" id="sharepoint-status" style="display: block; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(255,200,87,0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
-                <strong>📊 SharePoint Integration Active</strong><br>
-                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Solar Delay tracker.xlsx</strong> → <em>Solar Tracker - Delays</em> sheet. You'll be asked to sign in with your Microsoft account on first use.</span>
+            <div class="debug-info" id="sheets-status" style="display: block; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(255,200,87,0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
+                <strong>📊 Google Sheets Integration Active</strong><br>
+                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet. You'll be asked to sign in with your Google account on first use.</span>
             </div>
         </div>
 
@@ -376,7 +373,6 @@
                 <div class="notes-section">
                     <label class="notes-label" for="po-numbers">PO Numbers</label>
                     <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 60px;"></textarea>
-                    <!-- ── PO TIMESTAMP ── -->
                     <div class="po-timestamp" id="po-timestamp"></div>
                     <button class="save-notes-btn" onclick="savePONumbers()" style="margin-bottom: 1.5rem;">💾 Save PO Numbers</button>
 
@@ -386,7 +382,7 @@
 
                     <label class="notes-label" for="job-delays">Were there any delays?</label>
                     <textarea id="job-delays" class="notes-textarea" placeholder="Describe any delays experienced during this job..." style="min-height: 80px;"></textarea>
-                    <button class="save-notes-btn" onclick="saveJobDelays()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">⏰ Save Delays & Sync to SharePoint</button>
+                    <button class="save-notes-btn" onclick="saveJobDelays()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">⏰ Save Delays & Sync to Google Sheets</button>
                 </div>
 
                 <div class="additional-costs-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter);">
@@ -464,120 +460,114 @@
         let pendingStatusChange = null;
         let slateRoof = null;
 
-        const SHAREPOINT_CONFIG = {
-            tenantId:      'e8166c8d-8eb6-4a45-8857-9b378ad38b57',
-            clientId:      '33148879-3147-4d9b-bd1e-46e7fd4c56b0',
-            siteId:        'nextgenerationutilities.sharepoint.com,b0519e67-e23b-4cf9-adbe-a9244f720d3d,5a7c31ea-445f-471a-b934-f4f3a87c1471',
-            driveId:       'b!Z55RsDvi-UytvqkkT3INPeoxfFpfRBpHuTT086h8FHEX7NqF9AdNQYmy-vTPLlxy',
-            fileId:        '01XRLW7CLLYB6ZNB7UBZFZKB7KCYNMEBBA',
-            worksheetName: 'Solar Tracker - Delays'
+        // ── GOOGLE SHEETS CONFIG (replaces SharePoint) ──
+        const GOOGLE_SHEETS_CONFIG = {
+            clientId: '232764952866-opud0c9acmmptr6mih33m95ds1lpjd57.apps.googleusercontent.com',
+            spreadsheetId: '1JuPikuR5vFNo_BPRZKAxTcFjUNHWVldeji7qaJp3Ng0',
+            sheetName: 'Delays and Postponements',
+            scope: 'https://www.googleapis.com/auth/spreadsheets'
         };
 
-        let msalInstance = null;
+        let googleAccessToken = null;
+        let tokenExpiryTime = null;
 
-        function getMsalInstance() {
-            if (!msalInstance) {
-                msalInstance = new msal.PublicClientApplication({
-                    auth: {
-                        clientId: SHAREPOINT_CONFIG.clientId,
-                        authority: `https://login.microsoftonline.com/${SHAREPOINT_CONFIG.tenantId}`,
-                        redirectUri: window.location.origin + window.location.pathname
-                    },
-                    cache: { cacheLocation: 'sessionStorage' }
-                });
+        // ── Get Google OAuth token via popup ──
+        async function getGoogleAccessToken() {
+            // Return cached token if still valid (with 60s buffer)
+            if (googleAccessToken && tokenExpiryTime && Date.now() < tokenExpiryTime - 60000) {
+                return googleAccessToken;
             }
-            return msalInstance;
-        }
-
-        async function getSharePointAccessToken() {
-            try {
-                const msalApp = getMsalInstance();
-                const scopes = ['https://graph.microsoft.com/Files.ReadWrite.All'];
-                const accounts = msalApp.getAllAccounts();
-                if (accounts.length > 0) {
-                    try {
-                        const result = await msalApp.acquireTokenSilent({ scopes, account: accounts[0] });
-                        return result.accessToken;
-                    } catch (silentError) {
-                        console.log('Silent auth failed, falling back to popup...');
-                    }
+            return new Promise((resolve, reject) => {
+                // Wait for GSI library to be ready
+                if (typeof google === 'undefined' || !google.accounts) {
+                    reject(new Error('Google Identity Services not loaded yet. Please try again in a moment.'));
+                    return;
                 }
-                const result = await msalApp.acquireTokenPopup({ scopes });
-                return result.accessToken;
-            } catch (error) {
-                console.error('Auth error:', error);
-                showToast('Microsoft sign-in required — check popup blocker is disabled', 'error');
-                return null;
-            }
+                const client = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_SHEETS_CONFIG.clientId,
+                    scope: GOOGLE_SHEETS_CONFIG.scope,
+                    callback: (response) => {
+                        if (response.error) {
+                            console.error('Google auth error:', response);
+                            reject(new Error(response.error));
+                            return;
+                        }
+                        googleAccessToken = response.access_token;
+                        // expires_in is in seconds
+                        tokenExpiryTime = Date.now() + (response.expires_in * 1000);
+                        console.log('✅ Google access token obtained');
+                        resolve(googleAccessToken);
+                    }
+                });
+                client.requestAccessToken();
+            });
         }
 
-        async function updateSharePointExcel(jobData) {
+        // ── Write a row to Google Sheets ──
+        async function updateGoogleSheet(jobData) {
             try {
-                const accessToken = await getSharePointAccessToken();
+                const accessToken = await getGoogleAccessToken();
                 if (!accessToken) return false;
 
-                const { siteId, driveId, fileId, worksheetName } = SHAREPOINT_CONFIG;
-                const encodedSheet = encodeURIComponent(worksheetName);
+                const { spreadsheetId, sheetName } = GOOGLE_SHEETS_CONFIG;
+                const encodedSheet = encodeURIComponent(sheetName);
 
-                function formatDateForExcel(dateInput) {
-                    if (!dateInput) return '';
-                    if (typeof dateInput === 'string' && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput)) return dateInput;
-                    if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
-                        const day = String(dateInput.getDate()).padStart(2, '0');
-                        const month = String(dateInput.getMonth() + 1).padStart(2, '0');
-                        const year = dateInput.getFullYear();
-                        return `${day}/${month}/${year}`;
-                    }
-                    return '';
+                // Find next empty row by reading column A
+                const readRes = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:A`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
+
+                if (!readRes.ok) {
+                    const errText = await readRes.text();
+                    throw new Error(`Read failed ${readRes.status}: ${errText}`);
                 }
 
-                const today = formatDateForExcel(new Date());
-                const colAUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A1:A2000')`;
-                const colAResp = await fetch(colAUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+                const readData = await readRes.json();
+                const existingRows = readData.values ? readData.values.length : 0;
+                const nextRow = existingRows + 1;
+                console.log(`📊 Next empty row: ${nextRow}`);
 
-                let nextRow = 2;
-                if (colAResp.ok) {
-                    const colAData = await colAResp.json();
-                    const values = colAData.values || [];
-                    let lastRow = 1;
-                    for (let i = 0; i < values.length; i++) {
-                        if (values[i][0] !== null && values[i][0] !== '') lastRow = i + 1;
-                    }
-                    nextRow = lastRow + 1;
-                    console.log(`📊 Last used row in column A: ${lastRow}, writing to row ${nextRow}`);
-                }
+                const today = new Date().toLocaleDateString('en-GB');
 
-                const startDateText = formatDateForExcel(jobData.startDate);
-                const finishDateText = formatDateForExcel(jobData.finishDate);
-                const rowValues = [[
+                const values = [[
                     jobData.jobNumber,
                     jobData.postcode,
-                    "'" + startDateText,
-                    "'" + finishDateText,
-                    "'" + today,
+                    jobData.startDate || '',
+                    jobData.finishDate || '',
+                    today,
                     jobData.delays,
                     '', '', ''
                 ]];
 
-                const writeUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/items/${fileId}/workbook/worksheets/${encodedSheet}/range(address='A${nextRow}:I${nextRow}')`;
-                const writeResp = await fetch(writeUrl, {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ values: rowValues })
-                });
+                const writeRes = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A${nextRow}:I${nextRow}?valueInputOption=USER_ENTERED`,
+                    {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ values })
+                    }
+                );
 
-                if (!writeResp.ok) {
-                    const errText = await writeResp.text();
-                    throw new Error(`Graph API ${writeResp.status}: ${errText}`);
+                if (!writeRes.ok) {
+                    const errText = await writeRes.text();
+                    throw new Error(`Write failed ${writeRes.status}: ${errText}`);
                 }
-                console.log(`✅ Row written to SharePoint row ${nextRow}`);
+
+                console.log(`✅ Row written to Google Sheets row ${nextRow}`);
                 return true;
+
             } catch (error) {
-                console.error('❌ SharePoint error:', error);
+                console.error('❌ Google Sheets error:', error);
+                showToast('Google Sheets sync failed: ' + error.message, 'error');
                 return false;
             }
         }
 
+        // ── Save delays to Firebase + sync to Google Sheets ──
         window.saveJobDelays = async function() {
             if (!currentJob) return;
             const delays = document.getElementById('job-delays').value.trim();
@@ -589,17 +579,19 @@
                 await updateDoc(jobRef, { delays, delaysUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) job.delays = delays;
-                showToast('Saving to SharePoint...', 'success');
-                const sharePointData = {
+                showToast('Saving to Google Sheets...', 'success');
+
+                const shareData = {
                     jobNumber,
                     postcode: currentJob['Postcode'] || 'N/A',
                     startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
                     finishDate: currentJob['Projected Completion Date'] || '',
                     delays
                 };
-                const success = await updateSharePointExcel(sharePointData);
-                if (success) showToast('✅ Delays saved & synced to SharePoint!', 'success');
-                else showToast('⚠️ Saved to Firebase — SharePoint sync failed (check popup blocker)', 'error');
+
+                const success = await updateGoogleSheet(shareData);
+                if (success) showToast('✅ Delays saved & synced to Google Sheets!', 'success');
+                else showToast('⚠️ Saved to Firebase — Google Sheets sync failed (check popup blocker)', 'error');
             } catch (error) {
                 console.error('Error saving delays:', error);
                 showToast('Failed to save delays: ' + error.message, 'error');
@@ -641,7 +633,6 @@
             return `${day}/${month}/${year}`;
         }
 
-        // Format ISO timestamp to friendly "DD Mon YYYY, HH:MM" in UK locale
         function formatTimestamp(isoString) {
             if (!isoString) return '';
             const d = new Date(isoString);
@@ -863,7 +854,6 @@
                 engineerJobs[engineer].push(job);
             });
 
-            // ── Count all statuses for the visible date range ──
             let countComplete = 0, countInProgress = 0, countAborted = 0, countCancelled = 0, countSNC = 0;
             filteredJobs.forEach(job => {
                 const s = job.status || 'Scheduled';
@@ -1007,7 +997,6 @@
             document.getElementById('po-numbers').value = job.poNumbers || '';
             document.getElementById('job-delays').value = job.delays || '';
 
-            // ── Show PO timestamp if present ──
             const poTimestampEl = document.getElementById('po-timestamp');
             poTimestampEl.textContent = job.poNumbersUpdatedAt
                 ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}`
@@ -1087,7 +1076,6 @@
             }
         }
 
-        // ── SAVE PO NUMBERS with timestamp ──
         window.savePONumbers = async function() {
             if (!currentJob) return;
             const poNumbers = document.getElementById('po-numbers').value;
@@ -1098,11 +1086,9 @@
                     poNumbers,
                     poNumbersUpdatedAt: now
                 });
-                // Update local cache
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) { job.poNumbers = poNumbers; job.poNumbersUpdatedAt = now; }
                 if (currentJob) { currentJob.poNumbers = poNumbers; currentJob.poNumbersUpdatedAt = now; }
-                // Show timestamp immediately in UI
                 document.getElementById('po-timestamp').textContent = `Last saved: ${formatTimestamp(now)}`;
                 showToast('PO Numbers saved successfully', 'success');
             } catch (error) { showToast('Failed to save PO numbers', 'error'); }
