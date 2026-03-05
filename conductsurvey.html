@@ -1566,57 +1566,47 @@
             return flags;
         }
 
-        // ── Send survey completion email (both survey types) ──
-        async function sendSurveyCompletionEmail(surveyTypeLabel, summaryLines) {
+        // ── Single email: survey summary + flagged issues combined ──
+        async function sendSurveyEmail(surveyTypeLabel, summaryLines, getVal, getRadio) {
             if (!verifiedJob) return;
-            const emailData = {
-                job_number: verifiedJob['Job Number'] || 'N/A',
-                customer_name: verifiedJob['Name'] || 'N/A',
-                address: verifiedJob['1st line of address'] || 'N/A',
-                postcode: verifiedJob['Postcode'] || 'N/A',
-                install_date: verifiedJob['Install Date'] || 'TBD',
-                survey_type: surveyTypeLabel,
-                survey_summary: summaryLines.join('\n'),
-                submitted_at: new Date().toLocaleString('en-GB')
-            };
-            try {
-                await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE_COMPLETION, emailData);
-            } catch(error) {
-                console.warn('Could not send survey completion email', error);
-            }
-        }
 
-        // ── Send flagged issues email ──
-        async function sendFlaggedIssuesEmail(flags, getVal, getRadio) {
-            if (!verifiedJob || !flags.length) return;
+            // Build flagged issues section (BAS only; pass null for Battery Only)
+            const flags = (getVal && getRadio) ? buildFlaggedIssues(getVal, getRadio) : [];
+
+            // Build extra detail lines for flagged items
             const details = [];
-            // Add extra detail for flagged items
-            const roofCondVal = getVal('roof-condition');
-            if (roofCondVal && roofCondVal.toLowerCase().includes('poor')) details.push('Roof Condition Detail: ' + roofCondVal);
-            const designReason = getVal('proposed-design-reason-text');
-            if (getRadio('proposed-design') === 'No' && designReason) details.push('Design Does Not Fit - Reason: ' + designReason);
-            const obstrDesc = getVal('obstructions-description');
-            if (getRadio('roof-obstructions') === 'Yes' && obstrDesc) details.push('Roof Obstruction Detail: ' + obstrDesc);
-            const gasBondEquip = getVal('gas-bonding-equipment');
-            if (getRadio('gas-bonded') === 'No' && gasBondEquip) details.push('Gas Bonding Required: ' + gasBondEquip);
-            const waterBondEquip = getVal('water-bonding-equipment');
-            if (getRadio('water-bonded') === 'No' && waterBondEquip) details.push('Water Bonding Required: ' + waterBondEquip);
+            if (getVal && getRadio) {
+                const roofCondVal = getVal('roof-condition');
+                if (roofCondVal && roofCondVal.toLowerCase().includes('poor')) details.push('Roof Condition Detail: ' + roofCondVal);
+                const designReason = getVal('proposed-design-reason-text');
+                if (getRadio('proposed-design') === 'No' && designReason) details.push('Design Does Not Fit - Reason: ' + designReason);
+                const obstrDesc = getVal('obstructions-description');
+                if (getRadio('roof-obstructions') === 'Yes' && obstrDesc) details.push('Roof Obstruction Detail: ' + obstrDesc);
+                const gasBondEquip = getVal('gas-bonding-equipment');
+                if (getRadio('gas-bonded') === 'No' && gasBondEquip) details.push('Gas Bonding Required: ' + gasBondEquip);
+                const waterBondEquip = getVal('water-bonding-equipment');
+                if (getRadio('water-bonded') === 'No' && waterBondEquip) details.push('Water Bonding Required: ' + waterBondEquip);
+            }
+
+            const flaggedSection = flags.length
+                ? flags.join('\n') + (details.length ? '\n\nAdditional Detail:\n' + details.join('\n') : '')
+                : 'None';
 
             const emailData = {
-                job_number: verifiedJob['Job Number'] || 'N/A',
-                customer_name: verifiedJob['Name'] || 'N/A',
-                address: verifiedJob['1st line of address'] || 'N/A',
-                postcode: verifiedJob['Postcode'] || 'N/A',
-                install_date: verifiedJob['Install Date'] || 'TBD',
-                survey_type: 'Battery and Solar',
-                flagged_issues: flags.join('\n'),
-                issue_details: details.length ? details.join('\n') : 'No additional details',
-                submitted_at: new Date().toLocaleString('en-GB')
+                job_number:     verifiedJob['Job Number'] || 'N/A',
+                customer_name:  verifiedJob['Name'] || 'N/A',
+                address:        verifiedJob['1st line of address'] || 'N/A',
+                postcode:       verifiedJob['Postcode'] || 'N/A',
+                install_date:   verifiedJob['Install Date'] || 'TBD',
+                survey_type:    surveyTypeLabel,
+                survey_summary: summaryLines.join('\n'),
+                flagged_issues: flaggedSection,
+                submitted_at:   new Date().toLocaleString('en-GB')
             };
             try {
                 await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE_COMPLETION, emailData);
             } catch(error) {
-                console.warn('Could not send flagged issues email', error);
+                console.warn('Could not send survey email', error);
             }
         }
 
@@ -1900,7 +1890,7 @@
                         'Customer Sign-off Name: ' + boGetVal('bo-signoff-name'),
                         'Customer Sign-off Date: ' + boGetVal('bo-signoff-date')
                     ];
-                    await sendSurveyCompletionEmail('Battery Only', summaryLines);
+                    await sendSurveyEmail('Battery Only', summaryLines, null, null);
 
                 // ────────────────────────────────────────────────
                 // BATTERY AND SOLAR SUBMISSION
@@ -2077,13 +2067,7 @@
                         'Customer Sign-off Name: ' + getVal('signoff-name'),
                         'Customer Sign-off Date: ' + getVal('signoff-date')
                     ];
-                    await sendSurveyCompletionEmail('Battery and Solar', summaryLines);
-
-                    // Check and send flagged issues email
-                    const flags = buildFlaggedIssues(getVal, getRadio);
-                    if (flags.length) {
-                        await sendFlaggedIssuesEmail(flags, getVal, getRadio);
-                    }
+                    await sendSurveyEmail('Battery and Solar', summaryLines, getVal, getRadio);
                 }
 
                 const { doc, setDoc } = window.firebaseModules;
