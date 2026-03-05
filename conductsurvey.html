@@ -356,6 +356,7 @@
                 <label for="survey-type" class="form-label required">Survey Type</label>
                 <select id="survey-type" class="form-select" required>
                     <option value="">Select survey type...</option>
+                    <option value="battery-only">Battery Only</option>
                     <option value="battery-and-solar">Battery and Solar</option>
                 </select>
             </div>
@@ -383,24 +384,202 @@
             <!-- Survey Form (hidden until job verified) -->
             <form id="survey-form" style="display: none;">
 
-                <!-- Battery Survey Section -->
-                <div id="battery-survey" class="survey-section">
-                    <div class="section-header">🔋 Battery Survey Details</div>
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- BATTERY ONLY SURVEY SECTION                    -->
+                <!-- ══════════════════════════════════════════════ -->
+                <div id="battery-only-survey" class="survey-section">
+
+                    <div class="section-header">📅 Survey Details</div>
                     <div class="form-group">
-                        <label for="battery-survey-date" class="form-label required">Date</label>
-                        <input type="date" id="battery-survey-date" class="form-input" required />
+                        <label for="bo-conducted-on" class="form-label required">Conducted On (Date and Time)</label>
+                        <input type="datetime-local" id="bo-conducted-on" class="form-input" required />
                     </div>
                     <div class="form-group">
-                        <label for="battery-survey-time" class="form-label required">Time</label>
-                        <input type="time" id="battery-survey-time" class="form-input" required />
+                        <label for="bo-surveyor" class="form-label required">Surveyor</label>
+                        <input type="text" id="bo-surveyor" class="form-input" placeholder="Enter surveyor name..." required />
                     </div>
                     <div class="form-group">
-                        <label for="battery-surveyor-name" class="form-label required">Name</label>
-                        <input type="text" id="battery-surveyor-name" class="form-input" placeholder="Enter your name..." required />
+                        <label class="form-label required">Customer Present During Survey?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="bo-customer-yes" name="bo-customer-present" value="Yes" required><label for="bo-customer-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-customer-no" name="bo-customer-present" value="No"><label for="bo-customer-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-customer-na" name="bo-customer-present" value="N/A"><label for="bo-customer-na">N/A</label></div>
+                        </div>
                     </div>
+
+                    <div class="section-header">⚠️ Personal Risk Assessment</div>
+                    <div class="form-group">
+                        <label class="form-label required">Has a Risk Assessment Been Carried Out in Accordance with the Octopus Energy Site Survey Assessment Document?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="bo-risk-assessment-yes" name="bo-risk-assessment" value="Yes" required><label for="bo-risk-assessment-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-risk-assessment-no" name="bo-risk-assessment" value="No"><label for="bo-risk-assessment-no">No</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-risk-assessment-na" name="bo-risk-assessment" value="N/A"><label for="bo-risk-assessment-na">N/A</label></div>
+                        </div>
+                    </div>
+
+                    <div class="section-header">⚡ Electrical System</div>
+                    <div class="form-group">
+                        <label for="bo-meter-position" class="form-label required">Position of Meter Cupboard or Incoming Supply</label>
+                        <input type="text" id="bo-meter-position" class="form-input" placeholder="Describe location..." required />
+                        <div class="conditional-field show">
+                            <label class="form-label required">Upload Photo(s) of Meter Position</label>
+                            <div class="file-upload-area" onclick="document.getElementById('bo-meter-position-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="bo-meter-position-files" class="file-upload-input" multiple accept="image/*">
+                            <div class="uploaded-files" id="bo-meter-position-uploaded"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-meter-work-needed" class="form-label required">Does work need to be carried out on the meter?</label>
+                        <input type="text" id="bo-meter-work-needed" class="form-input" placeholder="Yes / No" required />
+                    </div>
+                    <div class="conditional-field" id="bo-meter-installation" style="display: none;">
+                        <div class="form-group">
+                            <label class="form-label">What work is required on the meter?</label>
+                            <textarea id="bo-meter-work-details" class="form-input" rows="3" placeholder="Please describe the work required..."></textarea>
+                        </div>
+                        <label class="form-label required">Upload Photo(s) of Meter</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bo-meter-installation-files').click()">
+                            <div class="file-upload-icon">📸</div>
+                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        </div>
+                        <input type="file" id="bo-meter-installation-files" class="file-upload-input" multiple accept="image/*">
+                        <div class="uploaded-files" id="bo-meter-installation-uploaded"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-fuse-rating" class="form-label required">What is the Fuse Rating?</label>
+                        <input type="text" id="bo-fuse-rating" class="form-input" placeholder="e.g., 100A..." required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-earthing-system" class="form-label required">Type of Earthing System</label>
+                        <input type="text" id="bo-earthing-system" class="form-input" placeholder="Describe earthing system..." required />
+                        <div class="conditional-field show">
+                            <label class="form-label required">Upload Photo(s) of Earthing System</label>
+                            <div class="file-upload-area" onclick="document.getElementById('bo-earthing-system-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="bo-earthing-system-files" class="file-upload-input" multiple accept="image/*">
+                            <div class="uploaded-files" id="bo-earthing-system-uploaded"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">Is Gas Bonded?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="bo-gas-bonded-yes" name="bo-gas-bonded" value="Yes" required><label for="bo-gas-bonded-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-gas-bonded-no" name="bo-gas-bonded" value="No"><label for="bo-gas-bonded-no">No</label></div>
+                        </div>
+                        <div class="conditional-field" id="bo-gas-bonding-required">
+                            <label for="bo-gas-bonding-equipment" class="form-label">Equipment and Location of Bonding Required</label>
+                            <input type="text" id="bo-gas-bonding-equipment" class="form-input" placeholder="Describe equipment and location needed..." />
+                        </div>
+                        <label class="form-label required" style="margin-top: 1rem;">Upload Photo(s) of Gas Bonded</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bo-gas-bonded-files').click()">
+                            <div class="file-upload-icon">📸</div>
+                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        </div>
+                        <input type="file" id="bo-gas-bonded-files" class="file-upload-input" multiple accept="image/*">
+                        <div class="uploaded-files" id="bo-gas-bonded-uploaded"></div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label required">Is Water Bonded?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="bo-water-bonded-yes" name="bo-water-bonded" value="Yes" required><label for="bo-water-bonded-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="bo-water-bonded-no" name="bo-water-bonded" value="No"><label for="bo-water-bonded-no">No</label></div>
+                        </div>
+                        <div class="conditional-field" id="bo-water-bonding-required">
+                            <label for="bo-water-bonding-equipment" class="form-label">Equipment and Location of Bonding Required</label>
+                            <input type="text" id="bo-water-bonding-equipment" class="form-input" placeholder="Describe equipment and location needed..." />
+                        </div>
+                        <label class="form-label required" style="margin-top: 1rem;">Upload Photo(s) of Water Bonded</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bo-water-bonded-files').click()">
+                            <div class="file-upload-icon">📸</div>
+                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        </div>
+                        <input type="file" id="bo-water-bonded-files" class="file-upload-input" multiple accept="image/*">
+                        <div class="uploaded-files" id="bo-water-bonded-uploaded"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-cable-run" class="form-label required">Describe the Cable Run(s)</label>
+                        <textarea id="bo-cable-run" class="form-textarea" placeholder="Describe the cable run(s)..." required></textarea>
+                        <div class="conditional-field show">
+                            <label class="form-label required">Upload Photo(s) of Cable Run</label>
+                            <div class="file-upload-area" onclick="document.getElementById('bo-cable-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="bo-cable-files" class="file-upload-input" multiple accept="image/*">
+                            <div class="uploaded-files" id="bo-cable-uploaded"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-battery-location" class="form-label required">Battery and Inverter Location</label>
+                        <input type="text" id="bo-battery-location" class="form-input" placeholder="Describe the location..." required />
+                        <div class="conditional-field show">
+                            <label class="form-label required">Upload Photo(s) of Battery Location</label>
+                            <div class="file-upload-area" onclick="document.getElementById('bo-battery-location-files').click()">
+                                <div class="file-upload-icon">📸</div>
+                                <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                            </div>
+                            <input type="file" id="bo-battery-location-files" class="file-upload-input" multiple accept="image/*">
+                            <div class="uploaded-files" id="bo-battery-location-uploaded"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-surface-type" class="form-label required">Type of Surface at Battery Location</label>
+                        <input type="text" id="bo-surface-type" class="form-input" placeholder="e.g., Concrete, Wood, Brick..." required />
+                        <label class="form-label required">Upload Photo(s) of Battery Surface Location</label>
+                        <div class="file-upload-area" onclick="document.getElementById('bo-surface-files').click()">
+                            <div class="file-upload-icon">📸</div>
+                            <div class="file-upload-text">Click to upload or drag and drop photos</div>
+                        </div>
+                        <input type="file" id="bo-surface-files" class="file-upload-input" multiple accept="image/*">
+                        <div class="uploaded-files" id="bo-surface-uploaded"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-battery-width" class="form-label required">Width (mm)</label>
+                        <input type="number" id="bo-battery-width" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-battery-depth" class="form-label required">Depth (mm)</label>
+                        <input type="number" id="bo-battery-depth" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-battery-length" class="form-label required">Length (mm)</label>
+                        <input type="number" id="bo-battery-length" class="form-input" placeholder="0" step="1" min="0" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-additional-notes-battery" class="form-label">Additional Notes</label>
+                        <textarea id="bo-additional-notes-battery" class="form-textarea" placeholder="Any additional information about the battery location..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-render-cladding" class="form-label required">Any Signs of Render or Cladding?</label>
+                        <input type="text" id="bo-render-cladding" class="form-input" placeholder="Describe any render or cladding..." required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-wifi-signal" class="form-label required">Is there WiFi Signal at the Proposed Inverter Location?</label>
+                        <input type="text" id="bo-wifi-signal" class="form-input" placeholder="e.g., Yes - strong signal, No - weak signal..." required />
+                    </div>
+
+                    <div class="section-header">✍️ Customer Sign-off</div>
+                    <div class="form-group">
+                        <label for="bo-signoff-date" class="form-label required">Date</label>
+                        <input type="date" id="bo-signoff-date" class="form-input" required />
+                    </div>
+                    <div class="form-group">
+                        <label for="bo-signoff-name" class="form-label required">Customer Name</label>
+                        <input type="text" id="bo-signoff-name" class="form-input" placeholder="Enter customer name..." required />
+                    </div>
+
+                    <div class="upload-progress" id="bo-upload-progress">⏳ Uploading photos…</div>
+                    <button type="submit" class="submit-btn" id="bo-submit-btn">Submit Survey</button>
                 </div>
 
-                <!-- Battery and Solar Survey Section -->
+                <!-- ══════════════════════════════════════════════ -->
+                <!-- BATTERY AND SOLAR SURVEY SECTION               -->
+                <!-- ══════════════════════════════════════════════ -->
                 <div id="battery-and-solar-survey" class="survey-section">
                     <div class="section-header">📅 Survey Details</div>
                     <div class="form-group">
@@ -449,7 +628,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="meter-installation" class="form-label required">Does work need to be carried out on the meter?</label>
+                        <label for="meter-work-needed" class="form-label required">Does work need to be carried out on the meter?</label>
                         <input type="text" id="meter-work-needed" class="form-input" placeholder="Yes / No" required />
                     </div>
                     <div class="conditional-field" id="meter-installation" style="display: none;">
@@ -1003,6 +1182,12 @@
         let selectedSurveyType = null;
         const PROGRESS_KEY_PREFIX = 'survey_progress_';
 
+        // ── EmailJS IDs ──────────────────────────────────────────
+        const EMAIL_SERVICE    = 'service_t6c3ke8';   // survey completion + flagged issues
+        const EMAIL_TEMPLATE_COMPLETION = 'template_g2vl1eb'; // completion email (same as flagged)
+        const EMAIL_SERVICE_METER = 'service_o75fskf';
+        const EMAIL_TEMPLATE_METER = 'template_ijhp8qj';
+
         const SPECS = {
             system: [
                 {label:'Type of System',     col:'AO', row:2},
@@ -1218,8 +1403,13 @@
         }
 
         function setupFileUploads() {
-            const uploadFields = ['meter-position-files','meter-installation-files','earthing-system-files','gas-bonded-files','water-bonded-files','cable-files','battery-location-files','surface-files','loft-accessible-files','asbestos-files','deflection-files','rot-damage-files','roof-concern-files','dwarf-walls-files','structural-work-files','loft-space-files','property-photos-files','roof-covering-files','roof-condition-files','obstructions-files','shading-files','powerlines-files','pavement-files','ground-type-files','gutter-obstacles-files','lower-roofs-files'];
-            uploadFields.forEach(fieldId => {
+            // Battery and Solar fields
+            const basFields = ['meter-position-files','meter-installation-files','earthing-system-files','gas-bonded-files','water-bonded-files','cable-files','battery-location-files','surface-files','loft-accessible-files','asbestos-files','deflection-files','rot-damage-files','roof-concern-files','dwarf-walls-files','structural-work-files','loft-space-files','property-photos-files','roof-covering-files','roof-condition-files','obstructions-files','shading-files','powerlines-files','pavement-files','ground-type-files','gutter-obstacles-files','lower-roofs-files'];
+            // Battery Only fields
+            const boFields = ['bo-meter-position-files','bo-meter-installation-files','bo-earthing-system-files','bo-gas-bonded-files','bo-water-bonded-files','bo-cable-files','bo-battery-location-files','bo-surface-files'];
+            const allFields = [...basFields, ...boFields];
+
+            allFields.forEach(fieldId => {
                 const input = document.getElementById(fieldId);
                 const uploadedDiv = document.getElementById(fieldId.replace('-files','-uploaded'));
                 if (!input || !uploadedDiv) return;
@@ -1236,7 +1426,7 @@
             });
         }
 
-        // ── Image compression (fixes iOS Safari memory crash on large camera photos) ──
+        // ── Image compression ──
         async function compressImage(file, maxWidthPx = 1600, qualityJpeg = 0.75) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -1246,24 +1436,21 @@
                         const canvas = document.createElement('canvas');
                         let w = img.width, h = img.height;
                         if (w > maxWidthPx) { h = Math.round(h * maxWidthPx / w); w = maxWidthPx; }
-                        canvas.width = w;
-                        canvas.height = h;
+                        canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
                         canvas.toBlob(
                             (blob) => resolve(new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' })),
-                            'image/jpeg',
-                            qualityJpeg
+                            'image/jpeg', qualityJpeg
                         );
                     };
-                    img.onerror = () => resolve(file); // fall back to original if decode fails
+                    img.onerror = () => resolve(file);
                     img.src = e.target.result;
                 };
-                reader.onerror = () => resolve(file); // fall back to original if read fails
+                reader.onerror = () => resolve(file);
                 reader.readAsDataURL(file);
             });
         }
 
-        // ── Upload single file — compress first, surface real error codes ──
         async function uploadFileToStorage(file, path) {
             const { ref, uploadBytesResumable, getDownloadURL } = window.firebaseModules;
             const fileToUpload = file.type.startsWith('image/') ? await compressImage(file) : file;
@@ -1271,10 +1458,8 @@
             const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
             return new Promise((resolve, reject) => {
                 uploadTask.on(
-                    'state_changed',
-                    null,
+                    'state_changed', null,
                     (error) => {
-                        // Log full error detail so we can diagnose future issues
                         console.error('Storage upload error:', error.code, error.message, error.serverResponse);
                         reject(new Error(`Upload failed (${error.code}): ${error.serverResponse || error.message}`));
                     },
@@ -1286,24 +1471,26 @@
             });
         }
 
-        async function sendMeterWorkEmail() {
-            const meterWorkDetails = document.getElementById('meter-work-details') ? document.getElementById('meter-work-details').value : '';
-            const meterWorkNeeded  = document.getElementById('meter-work-needed')  ? document.getElementById('meter-work-needed').value  : '';
-            if (meterWorkNeeded.trim().toLowerCase() !== 'yes' || !meterWorkDetails.trim()) return;
-            if (!verifiedJob) { showAlert('Please verify job number first','error'); return; }
-            const meterFiles = uploadedFiles['meter-installation-files'] || [];
-            let photoLinks = 'No photos uploaded yet';
-            if (meterFiles.length > 0) {
-                try {
-                    const urls = [];
-                    for (let i = 0; i < meterFiles.length; i++) {
-                        const path = 'meter-work/' + verifiedJob['Job Number'] + '/' + Date.now() + '_' + i + '_' + meterFiles[i].name;
-                        const url = await uploadFileToStorage(meterFiles[i], path);
-                        urls.push('Photo ' + (i+1) + ': ' + url);
-                    }
-                    photoLinks = urls.join('\n');
-                } catch(error) { photoLinks = 'Error uploading photos: ' + error.message; }
+        // ── Upload photos for meter work and return URLs ──
+        async function uploadMeterPhotos(fieldId, jobNumber) {
+            const files = uploadedFiles[fieldId] || [];
+            if (!files.length) return 'No photos uploaded';
+            const urls = [];
+            for (let i = 0; i < files.length; i++) {
+                const path = 'meter-work/' + jobNumber + '/' + Date.now() + '_' + i + '_' + files[i].name;
+                const url = await uploadFileToStorage(files[i], path);
+                urls.push('Photo ' + (i+1) + ': ' + url);
             }
+            return urls.join('\n');
+        }
+
+        // ── Send meter work email (both survey types) ──
+        async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
+            if (!verifiedJob) return;
+            let photoLinks = 'No photos uploaded yet';
+            try {
+                photoLinks = await uploadMeterPhotos(meterFilesFieldId, verifiedJob['Job Number']);
+            } catch(e) { photoLinks = 'Error uploading photos: ' + e.message; }
             const emailData = {
                 job_number: verifiedJob['Job Number'] || 'N/A',
                 customer_name: verifiedJob['Name'] || 'N/A',
@@ -1314,14 +1501,102 @@
                 photo_links: photoLinks
             };
             try {
-                await emailjs.send('service_o75fskf','template_ijhp8qj', emailData);
-                showAlert('Meter work notification sent successfully!','success');
+                await emailjs.send(EMAIL_SERVICE_METER, EMAIL_TEMPLATE_METER, emailData);
             } catch(error) {
-                showAlert('Warning: Could not send meter work notification email','error');
+                console.warn('Could not send meter work notification email', error);
+            }
+        }
+
+        // ── Build flagged issues text from Battery and Solar answers ──
+        function buildFlaggedIssues(getVal, getRadio) {
+            const flags = [];
+
+            const checks = [
+                { question: 'Is Gas Bonded?',                                                          radio: 'gas-bonded',       flagVal: 'No' },
+                { question: 'Is Water Bonded?',                                                        radio: 'water-bonded',     flagVal: 'No' },
+                { question: 'Is the Loft Accessible?',                                                 radio: 'loft-accessible',  flagVal: 'No' },
+                { question: 'Is a Loft Ladder Installed?',                                             radio: 'loft-ladder',      flagVal: 'No' },
+                { question: 'Is the Loft Boarded?',                                                    radio: 'loft-boarded',     flagVal: 'No' },
+                { question: 'Are there any Signs of Asbestos?',                                        radio: 'asbestos',         flagVal: 'Yes' },
+                { question: 'Are there any Signs of Deflection to the Existing Roof Slopes?',          radio: 'roof-deflection',  flagVal: 'Yes' },
+                { question: 'Are there any Signs of Rot/Damage to the Internal Roof Structure?',       radio: 'rot-damage',       flagVal: 'Yes' },
+                { question: 'Are there any Signs of Anything Which Would Cause for Concern When Fitting Panels to the Roof?', radio: 'roof-concern', flagVal: 'Yes' },
+                { question: 'Are there any Dwarf Walls/Props Which Support the Purlins?',              radio: 'dwarf-walls',      flagVal: 'Yes' },
+                { question: 'Is there any Signs of Structural Work Which Has Been Carried Out to the Roof Structure Before?', radio: 'structural-work', flagVal: 'Yes' },
+                { question: 'Does the Proposed Design Fit?',                                           radio: 'proposed-design',  flagVal: 'No' },
+                { question: 'Are there any Obstructions on the Roof?',                                 radio: 'roof-obstructions',flagVal: 'Yes' },
+            ];
+
+            checks.forEach(c => {
+                const val = getRadio(c.radio);
+                if (val === c.flagVal) flags.push('• ' + c.question + ' → ' + val);
+            });
+
+            // Text field: Condition of Roof? flag if contains "poor"
+            const roofCond = getVal('roof-condition');
+            if (roofCond && roofCond.toLowerCase().includes('poor')) {
+                flags.push('• Condition of Roof? → ' + roofCond);
+            }
+
+            return flags;
+        }
+
+        // ── Send survey completion email (both survey types) ──
+        async function sendSurveyCompletionEmail(surveyTypeLabel, summaryLines) {
+            if (!verifiedJob) return;
+            const emailData = {
+                job_number: verifiedJob['Job Number'] || 'N/A',
+                customer_name: verifiedJob['Name'] || 'N/A',
+                address: verifiedJob['1st line of address'] || 'N/A',
+                postcode: verifiedJob['Postcode'] || 'N/A',
+                install_date: verifiedJob['Install Date'] || 'TBD',
+                survey_type: surveyTypeLabel,
+                survey_summary: summaryLines.join('\n'),
+                submitted_at: new Date().toLocaleString('en-GB')
+            };
+            try {
+                await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE_COMPLETION, emailData);
+            } catch(error) {
+                console.warn('Could not send survey completion email', error);
+            }
+        }
+
+        // ── Send flagged issues email ──
+        async function sendFlaggedIssuesEmail(flags, getVal, getRadio) {
+            if (!verifiedJob || !flags.length) return;
+            const details = [];
+            // Add extra detail for flagged items
+            const roofCondVal = getVal('roof-condition');
+            if (roofCondVal && roofCondVal.toLowerCase().includes('poor')) details.push('Roof Condition Detail: ' + roofCondVal);
+            const designReason = getVal('proposed-design-reason-text');
+            if (getRadio('proposed-design') === 'No' && designReason) details.push('Design Does Not Fit - Reason: ' + designReason);
+            const obstrDesc = getVal('obstructions-description');
+            if (getRadio('roof-obstructions') === 'Yes' && obstrDesc) details.push('Roof Obstruction Detail: ' + obstrDesc);
+            const gasBondEquip = getVal('gas-bonding-equipment');
+            if (getRadio('gas-bonded') === 'No' && gasBondEquip) details.push('Gas Bonding Required: ' + gasBondEquip);
+            const waterBondEquip = getVal('water-bonding-equipment');
+            if (getRadio('water-bonded') === 'No' && waterBondEquip) details.push('Water Bonding Required: ' + waterBondEquip);
+
+            const emailData = {
+                job_number: verifiedJob['Job Number'] || 'N/A',
+                customer_name: verifiedJob['Name'] || 'N/A',
+                address: verifiedJob['1st line of address'] || 'N/A',
+                postcode: verifiedJob['Postcode'] || 'N/A',
+                install_date: verifiedJob['Install Date'] || 'TBD',
+                survey_type: 'Battery and Solar',
+                flagged_issues: flags.join('\n'),
+                issue_details: details.length ? details.join('\n') : 'No additional details',
+                submitted_at: new Date().toLocaleString('en-GB')
+            };
+            try {
+                await emailjs.send(EMAIL_SERVICE, EMAIL_TEMPLATE_COMPLETION, emailData);
+            } catch(error) {
+                console.warn('Could not send flagged issues email', error);
             }
         }
 
         function setupConditionalFields() {
+            // Battery and Solar conditional fields
             const radioFieldsWithPhotos = [
                 {name:'roof-obstructions', value:'Yes',               upload:'obstructions-upload'},
                 {name:'roof-shading',      value:'Yes',               upload:'shading-upload'},
@@ -1352,19 +1627,54 @@
                 }
             });
 
+            // Battery Only conditional fields
+            const boRadioFields = [
+                {name:'bo-gas-bonded',   value:'No', upload:'bo-gas-bonding-required'},
+                {name:'bo-water-bonded', value:'No', upload:'bo-water-bonding-required'},
+            ];
+            boRadioFields.forEach(field => {
+                const radios = document.querySelectorAll('input[name="'+field.name+'"]');
+                const upload = document.getElementById(field.upload);
+                if (upload) {
+                    radios.forEach(radio => {
+                        radio.addEventListener('change', () => {
+                            upload.classList.toggle('show', radio.value === field.value);
+                        });
+                    });
+                }
+            });
+
+            // Battery and Solar meter work conditional
             const meterWorkInput   = document.getElementById('meter-work-needed');
             const meterSection     = document.getElementById('meter-installation');
             const meterWorkDetails = document.getElementById('meter-work-details');
             if (meterWorkInput && meterSection) {
                 meterWorkInput.addEventListener('input', function(e) {
                     const answer = e.target.value.trim().toLowerCase();
-                    if (answer === 'yes') { meterSection.style.display = 'block'; }
-                    else if (answer === 'no') { meterSection.style.display = 'none'; }
+                    meterSection.style.display = answer === 'yes' ? 'block' : 'none';
                 });
                 if (meterWorkDetails) {
                     meterWorkDetails.addEventListener('blur', async function() {
                         if (meterWorkInput.value.trim().toLowerCase() === 'yes' && this.value.trim()) {
-                            setTimeout(() => sendMeterWorkEmail(), 2000);
+                            setTimeout(() => sendMeterWorkEmail(this.value, 'meter-installation-files'), 2000);
+                        }
+                    });
+                }
+            }
+
+            // Battery Only meter work conditional
+            const boMeterWorkInput   = document.getElementById('bo-meter-work-needed');
+            const boMeterSection     = document.getElementById('bo-meter-installation');
+            const boMeterWorkDetails = document.getElementById('bo-meter-work-details');
+            if (boMeterWorkInput && boMeterSection) {
+                boMeterWorkInput.addEventListener('input', function(e) {
+                    const answer = e.target.value.trim().toLowerCase();
+                    boMeterSection.style.display = answer === 'yes' ? 'block' : 'none';
+                });
+                if (boMeterWorkDetails) {
+                    boMeterWorkDetails.addEventListener('blur', async function() {
+                        if (boMeterWorkInput.value.trim().toLowerCase() === 'yes' && this.value.trim()) {
+                            setTimeout(() => sendMeterWorkEmail(this.value, 'bo-meter-installation-files'), 2000);
                         }
                     });
                 }
@@ -1373,18 +1683,20 @@
 
         function showSurveySection(surveyType) {
             selectedSurveyType = surveyType;
-            const batterySection      = document.getElementById('battery-survey');
-            const batterySolarSection = document.getElementById('battery-and-solar-survey');
-            batterySection.classList.remove('active');
-            batterySolarSection.classList.remove('active');
-            batterySection.querySelectorAll('[required]').forEach(f => { f.removeAttribute('required'); f.dataset.wasRequired='true'; });
-            batterySolarSection.querySelectorAll('[required]').forEach(f => { f.removeAttribute('required'); f.dataset.wasRequired='true'; });
-            if (surveyType === 'battery') {
-                batterySection.classList.add('active');
-                batterySection.querySelectorAll('[data-was-required="true"]').forEach(f => f.setAttribute('required','required'));
+            const boSection   = document.getElementById('battery-only-survey');
+            const basSection  = document.getElementById('battery-and-solar-survey');
+            boSection.classList.remove('active');
+            basSection.classList.remove('active');
+            // Clear required from all first
+            [boSection, basSection].forEach(sec => {
+                sec.querySelectorAll('[required]').forEach(f => { f.removeAttribute('required'); f.dataset.wasRequired='true'; });
+            });
+            if (surveyType === 'battery-only') {
+                boSection.classList.add('active');
+                boSection.querySelectorAll('[data-was-required="true"]').forEach(f => f.setAttribute('required','required'));
             } else if (surveyType === 'battery-and-solar') {
-                batterySolarSection.classList.add('active');
-                batterySolarSection.querySelectorAll('[data-was-required="true"]').forEach(f => {
+                basSection.classList.add('active');
+                basSection.querySelectorAll('[data-was-required="true"]').forEach(f => {
                     if (f.id !== 'meter-work-details') f.setAttribute('required','required');
                 });
             }
@@ -1413,7 +1725,7 @@
                 }
                 snapshot.forEach(d => { verifiedJob = { id: d.id, ...d.data() }; });
                 const grid = document.getElementById('job-info-grid');
-                const surveyTypeDisplay = surveyType === 'battery-and-solar' ? 'Battery and Solar' : surveyType.charAt(0).toUpperCase() + surveyType.slice(1);
+                const surveyTypeDisplay = surveyType === 'battery-and-solar' ? 'Battery and Solar' : surveyType === 'battery-only' ? 'Battery Only' : surveyType;
                 grid.innerHTML =
                     '<div class="job-info-item"><div class="job-info-label">Job Number</div><div class="job-info-value">'+escapeHtml(verifiedJob['Job Number'])+'</div></div>'+
                     '<div class="job-info-item"><div class="job-info-label">Customer</div><div class="job-info-value">'+escapeHtml(verifiedJob['Name'])+'</div></div>'+
@@ -1449,11 +1761,16 @@
                 form.reportValidity();
                 return;
             }
-            const submitBtn     = document.getElementById('submit-btn');
-            const progressEl    = document.getElementById('upload-progress');
+
+            // Determine which submit button and progress bar to use
+            const submitBtn  = document.getElementById(selectedSurveyType === 'battery-only' ? 'bo-submit-btn' : 'submit-btn');
+            const progressEl = document.getElementById(selectedSurveyType === 'battery-only' ? 'bo-upload-progress' : 'upload-progress');
             submitBtn.disabled  = true;
             submitBtn.textContent = 'Uploading photos…';
             progressEl.classList.add('active');
+
+            const getVal   = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            const getRadio = name => { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : ''; };
 
             try {
                 let surveyData = {
@@ -1464,25 +1781,108 @@
                     surveyType: selectedSurveyType
                 };
 
-                if (selectedSurveyType === 'battery') {
+                // ────────────────────────────────────────────────
+                // BATTERY ONLY SUBMISSION
+                // ────────────────────────────────────────────────
+                if (selectedSurveyType === 'battery-only') {
+                    const boGetVal   = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+                    const boGetRadio = name => { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : ''; };
+
+                    // Upload photos sequentially
+                    const boPhotoUrls = {};
+                    const boFields = ['bo-meter-position-files','bo-meter-installation-files','bo-earthing-system-files','bo-gas-bonded-files','bo-water-bonded-files','bo-cable-files','bo-battery-location-files','bo-surface-files'];
+                    let boTotal = 0, boDone = 0;
+                    boFields.forEach(f => { boTotal += (uploadedFiles[f] || []).length; });
+
+                    for (const fieldId of boFields) {
+                        boPhotoUrls[fieldId] = [];
+                        const files = uploadedFiles[fieldId] || [];
+                        for (let i = 0; i < files.length; i++) {
+                            boDone++;
+                            progressEl.textContent = `⏳ Uploading photo ${boDone} of ${boTotal}: ${files[i].name.substring(0,30)}…`;
+                            submitBtn.textContent   = `Uploading ${boDone}/${boTotal}…`;
+                            const path = 'surveys/' + verifiedJob['Job Number'] + '/' + fieldId + '/' + Date.now() + '_' + i + '_' + files[i].name;
+                            const url  = await uploadFileToStorage(files[i], path);
+                            boPhotoUrls[fieldId].push(url);
+                        }
+                    }
+
+                    progressEl.textContent = '✅ Photos uploaded. Saving survey…';
+                    submitBtn.textContent   = 'Saving survey…';
+
                     surveyData.sections = {
-                        batteryDetails: {
-                            date: document.getElementById('battery-survey-date') ? document.getElementById('battery-survey-date').value : '',
-                            time: document.getElementById('battery-survey-time') ? document.getElementById('battery-survey-time').value : '',
-                            name: document.getElementById('battery-surveyor-name') ? document.getElementById('battery-surveyor-name').value : ''
+                        surveyDetails: {
+                            conductedOn: boGetVal('bo-conducted-on'),
+                            surveyor: boGetVal('bo-surveyor'),
+                            customerPresent: boGetRadio('bo-customer-present')
+                        },
+                        riskAssessment: { riskAssessmentDone: boGetRadio('bo-risk-assessment') },
+                        electricalSystem: {
+                            meterPosition: boGetVal('bo-meter-position'),
+                            meterPositionPhotos: boPhotoUrls['bo-meter-position-files'] || [],
+                            meterWorkNeeded: boGetVal('bo-meter-work-needed'),
+                            meterWorkDetails: boGetVal('bo-meter-work-details'),
+                            meterWorkPhotos: boPhotoUrls['bo-meter-installation-files'] || [],
+                            fuseRating: boGetVal('bo-fuse-rating'),
+                            earthingSystem: boGetVal('bo-earthing-system'),
+                            earthingSystemPhotos: boPhotoUrls['bo-earthing-system-files'] || [],
+                            gasBonded: boGetRadio('bo-gas-bonded'),
+                            gasBondingEquipment: boGetVal('bo-gas-bonding-equipment'),
+                            gasBondedPhotos: boPhotoUrls['bo-gas-bonded-files'] || [],
+                            waterBonded: boGetRadio('bo-water-bonded'),
+                            waterBondingEquipment: boGetVal('bo-water-bonding-equipment'),
+                            waterBondedPhotos: boPhotoUrls['bo-water-bonded-files'] || [],
+                            cableRun: boGetVal('bo-cable-run'),
+                            cableRunPhotos: boPhotoUrls['bo-cable-files'] || [],
+                            batteryLocation: boGetVal('bo-battery-location'),
+                            batteryLocationPhotos: boPhotoUrls['bo-battery-location-files'] || [],
+                            surfaceType: boGetVal('bo-surface-type'),
+                            surfacePhotos: boPhotoUrls['bo-surface-files'] || [],
+                            batteryWidth: parseInt(boGetVal('bo-battery-width')) || 0,
+                            batteryDepth: parseInt(boGetVal('bo-battery-depth')) || 0,
+                            batteryLength: parseInt(boGetVal('bo-battery-length')) || 0,
+                            additionalNotesBattery: boGetVal('bo-additional-notes-battery'),
+                            renderCladding: boGetVal('bo-render-cladding'),
+                            wifiSignal: boGetVal('bo-wifi-signal')
+                        },
+                        customerSignOff: {
+                            date: boGetVal('bo-signoff-date'),
+                            name: boGetVal('bo-signoff-name')
                         }
                     };
+
+                    // Send completion email for Battery Only
+                    const summaryLines = [
+                        'Survey Type: Battery Only',
+                        'Conducted On: ' + boGetVal('bo-conducted-on'),
+                        'Surveyor: ' + boGetVal('bo-surveyor'),
+                        'Customer Present: ' + boGetRadio('bo-customer-present'),
+                        'Risk Assessment Done: ' + boGetRadio('bo-risk-assessment'),
+                        'Meter Position: ' + boGetVal('bo-meter-position'),
+                        'Meter Work Needed: ' + boGetVal('bo-meter-work-needed'),
+                        'Fuse Rating: ' + boGetVal('bo-fuse-rating'),
+                        'Earthing System: ' + boGetVal('bo-earthing-system'),
+                        'Gas Bonded: ' + boGetRadio('bo-gas-bonded'),
+                        'Water Bonded: ' + boGetRadio('bo-water-bonded'),
+                        'Cable Run: ' + boGetVal('bo-cable-run'),
+                        'Battery Location: ' + boGetVal('bo-battery-location'),
+                        'Surface Type: ' + boGetVal('bo-surface-type'),
+                        'Dimensions (W/D/L mm): ' + boGetVal('bo-battery-width') + ' / ' + boGetVal('bo-battery-depth') + ' / ' + boGetVal('bo-battery-length'),
+                        'Render/Cladding: ' + boGetVal('bo-render-cladding'),
+                        'WiFi Signal: ' + boGetVal('bo-wifi-signal'),
+                        'Customer Sign-off Name: ' + boGetVal('bo-signoff-name'),
+                        'Customer Sign-off Date: ' + boGetVal('bo-signoff-date')
+                    ];
+                    await sendSurveyCompletionEmail('Battery Only', summaryLines);
+
+                // ────────────────────────────────────────────────
+                // BATTERY AND SOLAR SUBMISSION
+                // ────────────────────────────────────────────────
                 } else if (selectedSurveyType === 'battery-and-solar') {
 
-                    // ── Sequential uploads (one file at a time) to prevent iOS memory errors ──
                     const photoUrls = {};
-                    let totalFiles = 0;
-                    let uploadedCount = 0;
-
-                    // Count total files first
-                    for (const [, files] of Object.entries(uploadedFiles)) {
-                        totalFiles += files.length;
-                    }
+                    let totalFiles = 0, uploadedCount = 0;
+                    for (const [, files] of Object.entries(uploadedFiles)) { totalFiles += files.length; }
 
                     for (const [fieldId, files] of Object.entries(uploadedFiles)) {
                         photoUrls[fieldId] = [];
@@ -1499,9 +1899,6 @@
 
                     progressEl.textContent = '✅ Photos uploaded. Saving survey…';
                     submitBtn.textContent   = 'Saving survey…';
-
-                    const getVal   = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-                    const getRadio = name => { const el = document.querySelector('input[name="'+name+'"]:checked'); return el ? el.value : ''; };
 
                     surveyData.sections = {
                         surveyDetails: {
@@ -1603,6 +2000,61 @@
                             name: getVal('signoff-name')
                         }
                     };
+
+                    // Send completion email for Battery and Solar
+                    const summaryLines = [
+                        'Survey Type: Battery and Solar',
+                        'Conducted On: ' + getVal('conducted-on'),
+                        'Surveyor: ' + getVal('surveyor'),
+                        'Customer Present: ' + getRadio('customer-present'),
+                        'Risk Assessment Done: ' + getRadio('risk-assessment'),
+                        'Meter Position: ' + getVal('meter-position'),
+                        'Meter Work Needed: ' + getVal('meter-work-needed'),
+                        'Fuse Rating: ' + getVal('fuse-rating'),
+                        'Earthing System: ' + getVal('earthing-system'),
+                        'Gas Bonded: ' + getRadio('gas-bonded'),
+                        'Water Bonded: ' + getRadio('water-bonded'),
+                        'Cable Run: ' + getVal('cable-run'),
+                        'Battery Location: ' + getVal('battery-location'),
+                        'Surface Type: ' + getVal('surface-type'),
+                        'Dimensions (W/D/L mm): ' + getVal('battery-width') + ' / ' + getVal('battery-depth') + ' / ' + getVal('battery-length'),
+                        'Render/Cladding: ' + getVal('render-cladding'),
+                        'WiFi Signal: ' + getVal('wifi-signal'),
+                        'Loft Accessible: ' + getRadio('loft-accessible'),
+                        'Loft Ladder: ' + getRadio('loft-ladder'),
+                        'Loft Boarded: ' + getRadio('loft-boarded'),
+                        'Asbestos: ' + getRadio('asbestos'),
+                        'Rafter W/D mm: ' + getVal('rafter-width') + ' / ' + getVal('rafter-depth'),
+                        'Web W/D/L mm: ' + getVal('web-width') + ' / ' + getVal('web-depth') + ' / ' + getVal('web-length'),
+                        'Truss Spacing mm: ' + getVal('truss-spacing'),
+                        'Deflection: ' + getRadio('roof-deflection'),
+                        'Rot/Damage: ' + getRadio('rot-damage'),
+                        'Roof Concern: ' + getRadio('roof-concern'),
+                        'Dwarf Walls: ' + getRadio('dwarf-walls'),
+                        'Structural Work: ' + getRadio('structural-work'),
+                        'Proposed Design Fits: ' + getRadio('proposed-design'),
+                        'Roof Covering: ' + getVal('roof-covering'),
+                        'Number of Stories: ' + getVal('number-stories'),
+                        'Roof Condition: ' + getVal('roof-condition'),
+                        'Roof Work Age (yrs): ' + getVal('roof-work-age'),
+                        'Roof Obstructions: ' + getRadio('roof-obstructions'),
+                        'Shading: ' + getRadio('roof-shading'),
+                        'Access Type: ' + getVal('access-type'),
+                        'Parking Available: ' + getRadio('parking-available'),
+                        'Overhead Powerlines: ' + getRadio('overhead-powerlines'),
+                        'Property on Pavement: ' + getRadio('property-location'),
+                        'Ground Type: ' + getVal('ground-type'),
+                        'Gutter Obstacles: ' + getRadio('gutter-obstacles'),
+                        'Customer Sign-off Name: ' + getVal('signoff-name'),
+                        'Customer Sign-off Date: ' + getVal('signoff-date')
+                    ];
+                    await sendSurveyCompletionEmail('Battery and Solar', summaryLines);
+
+                    // Check and send flagged issues email
+                    const flags = buildFlaggedIssues(getVal, getRadio);
+                    if (flags.length) {
+                        await sendFlaggedIssuesEmail(flags, getVal, getRadio);
+                    }
                 }
 
                 const { doc, setDoc } = window.firebaseModules;
@@ -1619,7 +2071,8 @@
                 showAlert('Error submitting survey: ' + (error.message || 'Please try again'),'error');
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Submit Survey';
-                document.getElementById('upload-progress').classList.remove('active');
+                const progressEl2 = document.getElementById(selectedSurveyType === 'battery-only' ? 'bo-upload-progress' : 'upload-progress');
+                if (progressEl2) progressEl2.classList.remove('active');
             }
         }
 
