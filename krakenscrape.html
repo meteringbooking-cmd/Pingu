@@ -475,16 +475,65 @@
         if (!rows.length) { showStatus('No data rows found.', 'error'); return; }
 
         window._processedRows = rows;
-        renderTable(rows);
 
-        const totalJobs = rows.reduce((acc, r) =>
-            acc + DAYS.reduce((a, d) => a + r.dayData[d].jobs.length, 0), 0);
+        // Build per-engineer unique-job counts per type (job spanning days = count once)
+        const typeTotals = {};
+        JOB_TYPES.forEach(jt => { typeTotals[jt.key] = 0; });
+        let totalUniqueJobs = 0;
+
+        rows.forEach(row => {
+            // Collect all unique job numbers this engineer has across all days
+            const allJobs = new Set();
+            DAYS.forEach(d => row.dayData[d].jobs.forEach(j => allJobs.add(j)));
+            totalUniqueJobs += allJobs.size;
+
+            // For each type, collect unique job numbers associated with that type across all days
+            JOB_TYPES.forEach(jt => {
+                const typeJobs = new Set();
+                DAYS.forEach(d => {
+                    const { jobs, types } = row.dayData[d];
+                    if (types.find(t => t.key === jt.key)) {
+                        jobs.forEach(j => typeJobs.add(j));
+                    }
+                });
+                typeTotals[jt.key] += typeJobs.size;
+            });
+        });
+
+        window._typeTotals = typeTotals;
 
         document.getElementById('summaryStrip').innerHTML = `
-            <div class="summary-item"><strong>${rows.length}</strong>Engineers</div>
-            <div class="summary-item"><strong>${totalJobs}</strong>Job refs found</div>
+            <div class="summary-item s-total">
+                <span class="s-count">${rows.length}</span>
+                <span class="s-label">Engineers</span>
+            </div>
+            <div class="summary-item s-total">
+                <span class="s-count">${totalUniqueJobs}</span>
+                <span class="s-label">Total unique jobs</span>
+            </div>
+            <div class="summary-item s-solar">
+                <span class="s-count">${typeTotals.solar}</span>
+                <span class="s-label">Solar PV Install</span>
+            </div>
+            <div class="summary-item s-aftercare">
+                <span class="s-count">${typeTotals.aftercare}</span>
+                <span class="s-label">Solar PV Install (Aftercare)</span>
+            </div>
+            <div class="summary-item s-battery">
+                <span class="s-count">${typeTotals.battery}</span>
+                <span class="s-label">Battery Install</span>
+            </div>
+            <div class="summary-item s-struct">
+                <span class="s-count">${typeTotals.struct}</span>
+                <span class="s-label">Solar PIV – Structural</span>
+            </div>
+            <div class="summary-item s-elec">
+                <span class="s-count">${typeTotals.elec}</span>
+                <span class="s-label">Solar PIV – Electrical</span>
+            </div>
         `;
 
+        renderTable(rows);
         showStatus(`✓ Processed ${rows.length} engineers across ${DAYS.length} days.`, 'success');
         document.getElementById('resultsArea').style.display = 'block';
     }
@@ -529,23 +578,39 @@
 
     function exportCSV() {
         const rows = window._processedRows;
+        const totals = window._typeTotals;
         if (!rows) return;
 
-        // Header: Name, then for each day: Day_JobNumbers, Day_JobTypes
-        let header = 'Name';
-        DAYS.forEach(d => { header += `,${d} - Job Number(s),${d} - Job Type(s)`; });
+        const lines = [];
 
-        const lines = [header];
+        // ── SUMMARY BLOCK ──────────────────────────────────────────
+        lines.push('WEEKLY SUMMARY');
+        lines.push(`"Solar PV Install","${totals.solar}"`);
+        lines.push(`"Solar PV Install (Aftercare)","${totals.aftercare}"`);
+        lines.push(`"Battery Install","${totals.battery}"`);
+        lines.push(`"Solar PIV - Structural","${totals.struct}"`);
+        lines.push(`"Solar PIV - Electrical","${totals.elec}"`);
+        lines.push('');  // blank spacer row
+
+        // ── DETAIL BLOCK ───────────────────────────────────────────
+        // Header row: Name | Mon Job | Mon Type | Tue Job | Tue Type | ...
+        const header = ['Name'];
+        DAYS.forEach(d => { header.push(`${d} - Job`, `${d} - Type`); });
+        lines.push(header.map(h => `"${h}"`).join(','));
 
         rows.forEach(row => {
-            let line = `"${row.name}"`;
+            // Collect all unique job numbers per engineer (for spanning detection)
+            const seenJobs = new Set();
+            DAYS.forEach(d => row.dayData[d].jobs.forEach(j => seenJobs.add(j)));
+
+            const cells = [`"${row.name}"`];
             DAYS.forEach(day => {
                 const { jobs, types } = row.dayData[day];
-                const jobStr = jobs.join(' | ');
+                const jobStr  = jobs.join(' | ');
                 const typeStr = types.map(t => t.label).join(' | ');
-                line += `,"${jobStr}","${typeStr}"`;
+                cells.push(`"${jobStr}"`, `"${typeStr}"`);
             });
-            lines.push(line);
+            lines.push(cells.join(','));
         });
 
         const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
