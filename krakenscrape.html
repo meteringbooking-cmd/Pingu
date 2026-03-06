@@ -380,11 +380,13 @@
     const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
 
     const JOB_TYPES = [
-        { label: 'Solar PV Install (Aftercare)', key: 'aftercare', css: 'type-solar-aftercare' },
-        { label: 'Solar PV Install',             key: 'solar',     css: 'type-solar-pv' },
-        { label: 'Battery Install',              key: 'battery',   css: 'type-battery' },
-        { label: 'Solar PIV - Structural',       key: 'struct',    css: 'type-structural' },
-        { label: 'Solar PIV - Electrical',       key: 'elec',      css: 'type-electrical' },
+        // Aftercare must come before plain Solar PV Install to avoid partial match
+        // Handles: "Solar PV Install Aftercare", "Solar PV Install Aftercare (v2)", "Solar PV Install (Aftercare)" etc.
+        { label: 'Solar PV Install Aftercare', pattern: /Solar PV Install[^a-zA-Z]*Aftercare/i, displayLabel: 'Solar PV Install (Aftercare)', key: 'aftercare', css: 'type-solar-aftercare' },
+        { label: 'Solar PV Install',           pattern: /Solar PV Install(?!\s*Aftercare)/i,     displayLabel: 'Solar PV Install',           key: 'solar',     css: 'type-solar-pv' },
+        { label: 'Battery Install',            pattern: /Battery Install/i,                       displayLabel: 'Battery Install',            key: 'battery',   css: 'type-battery' },
+        { label: 'Solar PIV - Structural',     pattern: /Solar PIV\s*-\s*Structural/i,            displayLabel: 'Solar PIV - Structural',     key: 'struct',    css: 'type-structural' },
+        { label: 'Solar PIV - Electrical',     pattern: /Solar PIV\s*-\s*Electrical/i,            displayLabel: 'Solar PIV - Electrical',     key: 'elec',      css: 'type-electrical' },
     ];
 
     const JOB_REGEX = /J-[A-Za-z0-9]{8}/g;
@@ -426,19 +428,11 @@
     }
 
     function extractFromCell(cell) {
-        // Find all J-numbers
         const jobs = [...(cell.matchAll(/J-[A-Za-z0-9]{8}/g))].map(m => m[0]);
 
-        // Match job types — consume matched text so longer strings (Aftercare)
-        // don't also trigger the shorter "Solar PV Install" match
         const types = [];
-        let remaining = cell;
         for (const jt of JOB_TYPES) {
-            if (remaining.includes(jt.label)) {
-                types.push(jt);
-                // Remove all occurrences so shorter labels don't re-match
-                remaining = remaining.split(jt.label).join('');
-            }
+            if (jt.pattern.test(cell)) types.push(jt);
         }
 
         return { jobs: [...new Set(jobs)], types };
@@ -564,14 +558,14 @@
                 let html = '';
                 if (jobs.length) {
                     jobs.forEach(j => {
-                        const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.label}</span>`).join(' ');
+                        const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.displayLabel}</span>`).join(' ');
                         html += `<div class="day-entry">
                             <span class="job-number">${j}</span>
                             ${typeHtml}
                         </div>`;
                     });
                 } else {
-                    const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.label}</span>`).join(' ');
+                    const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.displayLabel}</span>`).join(' ');
                     html += `<div class="day-entry">${typeHtml}</div>`;
                 }
 
@@ -591,8 +585,8 @@
 
         // ── SUMMARY BLOCK ──────────────────────────────────────────
         lines.push('WEEKLY SUMMARY');
-        lines.push(`"Solar PV Install","${totals.solar}"`);
         lines.push(`"Solar PV Install (Aftercare)","${totals.aftercare}"`);
+        lines.push(`"Solar PV Install","${totals.solar}"`);
         lines.push(`"Battery Install","${totals.battery}"`);
         lines.push(`"Solar PIV - Structural","${totals.struct}"`);
         lines.push(`"Solar PIV - Electrical","${totals.elec}"`);
@@ -613,7 +607,7 @@
             DAYS.forEach(day => {
                 const { jobs, types } = row.dayData[day];
                 const jobStr  = jobs.join(' | ');
-                const typeStr = types.map(t => t.label).join(' | ');
+                const typeStr = types.map(t => t.displayLabel).join(' | ');
                 cells.push(`"${jobStr}"`, `"${typeStr}"`);
             });
             lines.push(cells.join(','));
