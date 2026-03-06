@@ -505,7 +505,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, addDoc, getDocs, query, orderBy, writeBatch, doc, setDoc, deleteDoc }
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, where, writeBatch, doc, deleteDoc }
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
@@ -521,7 +521,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, addDoc, getDocs, query, orderBy, writeBatch, doc, setDoc, deleteDoc };
+            window.firebaseModules = { collection, addDoc, getDocs, query, orderBy, where, writeBatch, doc, deleteDoc };
             console.log('✅ Firebase ready');
         } catch(e) { console.error('Firebase error:', e); }
 
@@ -539,11 +539,9 @@
             email:     'admin@pingu-solar.com'
         };
 
-        const SESSION_KEY = 'adminSession';
-        const LOG_KEY     = 'adminLoginLog';
-        const USERS_KEY   = 'adminUsers';
-        const REDIRECT_KEY = 'loginRedirect';   // stores the page that sent user here
-        const COOLDOWN_MS = 12 * 60 * 60 * 1000;
+        const SESSION_KEY  = 'adminSession';   // localStorage — session is device-specific by design
+        const REDIRECT_KEY = 'loginRedirect';  // sessionStorage — which page sent user here
+        const COOLDOWN_MS  = 12 * 60 * 60 * 1000;
 
         let visitorIP      = 'Unknown';
         let countdownTimer = null;
@@ -553,31 +551,22 @@
         // ── INIT ──
         function init() {
             fetchIP();
-
-            // Check if a redirect target was set by a protected page
             const redirect = sessionStorage.getItem(REDIRECT_KEY);
-
-            const session = getSession();
+            const session  = getSession();
             if (session && isSessionValid(session)) {
-                // Already logged in
                 applyActiveState(session);
-
                 if (BUILTIN_ADMIN.nameLower === session.name.toLowerCase()) {
-                    // Barry: show destination picker
                     showDestPicker(redirect);
                 } else if (redirect) {
-                    // Regular user with a redirect target — go straight there
                     sessionStorage.removeItem(REDIRECT_KEY);
                     window.location.replace(redirect);
                 } else {
-                    // Regular user, no redirect — go to index by default
                     window.location.replace('index.html');
                 }
             } else if (session) {
                 clearSession();
                 applyExpiredState();
             }
-            // else: show login form (default state)
         }
 
         // ── IP ──
@@ -591,7 +580,7 @@
             document.getElementById('live-ip').textContent = visitorIP;
         }
 
-        // ── SESSION ──
+        // ── SESSION (localStorage is correct here — sessions are per-device) ──
         function getSession() {
             try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; }
         }
@@ -606,11 +595,10 @@
         }
 
         function applyActiveState(session) {
-            document.getElementById('login-form').style.opacity = '0.4';
+            document.getElementById('login-form').style.opacity      = '0.4';
             document.getElementById('login-form').style.pointerEvents = 'none';
-            document.getElementById('card-title').textContent    = '✅ Already Signed In';
-            document.getElementById('card-subtitle').textContent = `Signed in as ${session.name}`;
-
+            document.getElementById('card-title').textContent         = '✅ Already Signed In';
+            document.getElementById('card-subtitle').textContent      = `Signed in as ${session.name}`;
             const banner = document.getElementById('session-banner');
             banner.className = 'session-banner active';
             document.getElementById('session-icon').textContent  = '✅';
@@ -638,18 +626,18 @@
                     clearInterval(countdownTimer);
                     clearSession();
                     applyExpiredState();
-                    document.getElementById('login-form').style.opacity = '1';
+                    document.getElementById('login-form').style.opacity      = '1';
                     document.getElementById('login-form').style.pointerEvents = 'auto';
                     document.getElementById('dest-card').classList.remove('show');
                     document.getElementById('tabs-wrapper').classList.add('hidden');
                     return;
                 }
-                const h = String(Math.floor(rem / 3600000)).padStart(2,'0');
-                const m = String(Math.floor((rem % 3600000) / 60000)).padStart(2,'0');
-                const s = String(Math.floor((rem % 60000) / 1000)).padStart(2,'0');
+                const h   = String(Math.floor(rem / 3600000)).padStart(2,'0');
+                const m   = String(Math.floor((rem % 3600000) / 60000)).padStart(2,'0');
+                const s   = String(Math.floor((rem % 60000) / 1000)).padStart(2,'0');
                 const str = `${h}:${m}:${s}`;
-                document.getElementById('countdown-ring').textContent   = str;
-                document.getElementById('card-subtitle').textContent    = `Session expires in ${str}`;
+                document.getElementById('countdown-ring').textContent  = str;
+                document.getElementById('card-subtitle').textContent   = `Session expires in ${str}`;
             }
             tick();
             countdownTimer = setInterval(tick, 1000);
@@ -657,17 +645,13 @@
 
         // ── DESTINATION PICKER (Barry only) ──
         function showDestPicker(redirect) {
-            // If there's a redirect target, add it as the first "go back" button
             const destCard = document.getElementById('dest-card');
-
             if (redirect) {
                 const label = redirect === 'admin.html' ? 'Admin Dashboard' : 'Project Hub';
                 const icon  = redirect === 'admin.html' ? '⚙️' : '🏠';
                 const desc  = redirect === 'admin.html'
                     ? 'admin.html — where you were trying to go'
                     : 'index.html — where you were trying to go';
-
-                // Insert a "return to" button at the top of the options list
                 const opts = destCard.querySelector('.dest-options');
                 const returnBtn = document.createElement('button');
                 returnBtn.className = 'dest-btn';
@@ -679,13 +663,9 @@
                         <div class="dest-btn-desc">${desc}</div>
                     </div>
                     <span class="dest-arrow" style="color:var(--success)">→</span>`;
-                returnBtn.onclick = () => {
-                    sessionStorage.removeItem(REDIRECT_KEY);
-                    goTo(redirect);
-                };
+                returnBtn.onclick = () => { sessionStorage.removeItem(REDIRECT_KEY); goTo(redirect); };
                 opts.insertBefore(returnBtn, opts.firstChild);
             }
-
             destCard.classList.add('show');
         }
 
@@ -701,53 +681,50 @@
             renderManagedUsers();
         }
 
-        // ── AUTHENTICATE (checks Firestore first, localStorage as fallback) ──
+        // ── AUTHENTICATE — Firestore only ──
         async function findUser(name, password) {
             const nameTrim = name.trim().toLowerCase();
             const passTrim = password.trim();
 
-            // Always check built-in admin first (no network needed)
+            // Built-in admin — no network needed
             if (nameTrim === BUILTIN_ADMIN.nameLower && passTrim === BUILTIN_ADMIN.password) {
                 return { name: BUILTIN_ADMIN.name, email: BUILTIN_ADMIN.email, isAdmin: true };
             }
 
-            // 1. Try Firestore (source of truth — works on any device)
-            if (window.db && window.firebaseModules) {
-                try {
-                    const { collection, getDocs } = window.firebaseModules;
-                    const snap = await getDocs(collection(window.db, 'admin-users'));
-                    for (const d of snap.docs) {
-                        const u = d.data();
-                        if ((u.name||'').trim().toLowerCase() === nameTrim && u.password === passTrim) {
-                            return { name: u.name, email: u.email || '', isAdmin: false };
-                        }
-                    }
-                } catch(e) {
-                    console.warn('Firestore user lookup failed, falling back to localStorage:', e);
+            // Firestore is the only source of truth for added users
+            if (!window.db || !window.firebaseModules) {
+                showStatus('Cannot reach database. Please try again shortly.', 'error');
+                return null;
+            }
+            const { collection, getDocs } = window.firebaseModules;
+            const snap = await getDocs(collection(window.db, 'admin-users'));
+            for (const d of snap.docs) {
+                const u = d.data();
+                if ((u.name || '').trim().toLowerCase() === nameTrim && u.password === passTrim) {
+                    return { name: u.name, email: u.email || '', isAdmin: false };
                 }
             }
-
-            // 2. Fallback: localStorage (same device as where user was added)
-            const localUsers = getUsers();
-            const match = localUsers.find(u =>
-                u.name.trim().toLowerCase() === nameTrim && u.password === passTrim
-            );
-            if (match) return { name: match.name, email: match.email || '', isAdmin: false };
-
             return null;
         }
 
         // ── LOGIN ──
         async function handleLogin(event) {
             event.preventDefault();
-
             const name     = document.getElementById('admin-name').value;
             const password = document.getElementById('admin-password').value;
             const btn      = document.getElementById('submit-btn');
             const redirect = sessionStorage.getItem(REDIRECT_KEY);
 
             btn.disabled = true; btn.textContent = 'Checking…';
-            const user = await findUser(name, password);
+
+            let user;
+            try {
+                user = await findUser(name, password);
+            } catch(e) {
+                btn.disabled = false; btn.textContent = 'Sign In';
+                showStatus('Login error: ' + e.message, 'error');
+                return;
+            }
 
             if (!user) {
                 btn.disabled = false; btn.textContent = 'Sign In';
@@ -764,50 +741,48 @@
 
             btn.textContent = 'Signing in…';
 
-            // Log the login
+            // Log the login to Firestore only
             const entry = {
                 name: user.name, email: user.email,
                 ip: visitorIP, timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent
             };
-
             try {
-                if (window.db && window.firebaseModules) {
-                    const { collection, addDoc } = window.firebaseModules;
-                    await addDoc(collection(window.db, 'admin-login-log'), entry);
-                }
-            } catch(e) { console.warn('Firestore log failed:', e); }
-
-            const log = getLog();
-            log.unshift(entry);
-            localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 500)));
+                const { collection, addDoc } = window.firebaseModules;
+                await addDoc(collection(window.db, 'admin-login-log'), entry);
+            } catch(e) { console.warn('Login log write failed:', e); }
 
             const session = saveSession(user.name, user.email);
             applyActiveState(session);
-
             showStatus(`Welcome, ${user.name}!`, 'success');
             document.getElementById('login-form').reset();
-
             btn.disabled = false; btn.textContent = 'Sign In';
 
-            // ── Route after login ──
             if (user.isAdmin) {
-                // Barry: show destination picker
                 showDestPicker(redirect);
             } else if (redirect) {
-                // Regular user was sent here from a protected page — go back
                 sessionStorage.removeItem(REDIRECT_KEY);
                 setTimeout(() => window.location.replace(redirect), 600);
             } else {
-                // Regular user, no specific redirect — go to index
                 setTimeout(() => window.location.replace('index.html'), 600);
             }
         }
 
-        // ── DATA ──
-        function getLog() {
-            try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch { return []; }
+        // ── LOGIN HISTORY — read from Firestore ──
+        async function loadLog() {
+            if (!window.db || !window.firebaseModules) return [];
+            try {
+                const { collection, getDocs, query, orderBy } = window.firebaseModules;
+                const snap = await getDocs(
+                    query(collection(window.db, 'admin-login-log'), orderBy('timestamp', 'desc'))
+                );
+                return snap.docs.map(d => d.data());
+            } catch(e) {
+                console.warn('Failed to load login log:', e);
+                return [];
+            }
         }
+
         function groupByUser(log) {
             const map = {};
             log.forEach(e => {
@@ -824,9 +799,13 @@
         }
 
         // ── RENDER HISTORY ──
-        function renderHistory() {
-            const log   = getLog();
+        async function renderHistory() {
             const panel = document.getElementById('users-grid');
+            panel.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">Loading…</p>';
+            document.getElementById('user-count-badge').textContent = '…';
+
+            const log = await loadLog();
+
             if (log.length === 0) {
                 panel.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">No logins recorded yet.</p>';
                 document.getElementById('user-count-badge').textContent = '0 users';
@@ -884,19 +863,19 @@
 
         async function clearAllData() {
             if (!confirm('Delete ALL login history? This cannot be undone.')) return;
-            localStorage.removeItem(LOG_KEY);
+            if (!window.db || !window.firebaseModules) { showStatus('Database unavailable.', 'error'); return; }
             try {
-                if (window.db && window.firebaseModules) {
-                    const { collection, getDocs, writeBatch, doc } = window.firebaseModules;
-                    const snap  = await getDocs(collection(window.db, 'admin-login-log'));
-                    const batch = writeBatch(window.db);
-                    snap.docs.forEach(d => batch.delete(doc(window.db, 'admin-login-log', d.id)));
-                    await batch.commit();
-                }
-            } catch(e) { console.warn('Firestore clear failed:', e); }
+                const { collection, getDocs, writeBatch, doc } = window.firebaseModules;
+                const snap  = await getDocs(collection(window.db, 'admin-login-log'));
+                const batch = writeBatch(window.db);
+                snap.docs.forEach(d => batch.delete(doc(window.db, 'admin-login-log', d.id)));
+                await batch.commit();
+                showStatus('All login history cleared.', 'info');
+            } catch(e) {
+                showStatus('Failed to clear: ' + e.message, 'error');
+            }
             expandedUser = null;
             renderHistory();
-            showStatus('All login history cleared.', 'info');
         }
 
         // ── TAB SWITCHING ──
@@ -910,12 +889,7 @@
             if (tab === 'adduser') renderManagedUsers();
         }
 
-        // ── USER MANAGEMENT ──
-        function getUsers() {
-            try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
-        }
-        function saveUsers(users) { localStorage.setItem(USERS_KEY, JSON.stringify(users)); }
-
+        // ── USER MANAGEMENT — Firestore only ──
         async function addNewUser(event) {
             event.preventDefault();
             const name     = document.getElementById('new-name').value.trim();
@@ -923,69 +897,96 @@
             const password = document.getElementById('new-password').value.trim();
             const btn      = document.getElementById('add-user-btn');
 
-            const existing = getUsers();
-            if (existing.some(u => u.name.toLowerCase() === name.toLowerCase())) {
-                showStatus('A user with that name already exists.', 'error'); return;
-            }
             if (name.toLowerCase() === BUILTIN_ADMIN.nameLower) {
                 showStatus('That name is reserved for the built-in admin.', 'error'); return;
             }
+            if (!window.db || !window.firebaseModules) {
+                showStatus('Database unavailable.', 'error'); return;
+            }
 
-            btn.disabled = true; btn.textContent = 'Adding…';
+            btn.disabled = true; btn.textContent = 'Checking…';
 
-            const newUser = { name, email, password, createdAt: new Date().toISOString() };
-            existing.push(newUser);
-            saveUsers(existing);
-
+            // Check for duplicate name in Firestore
+            const { collection, getDocs, addDoc, query, where } = window.firebaseModules;
             try {
-                if (window.db && window.firebaseModules) {
-                    const { collection, addDoc } = window.firebaseModules;
-                    await addDoc(collection(window.db, 'admin-users'), { name, email, password, createdAt: newUser.createdAt });
+                const existing = await getDocs(
+                    query(collection(window.db, 'admin-users'), where('name', '==', name))
+                );
+                if (!existing.empty) {
+                    showStatus('A user with that name already exists.', 'error');
+                    btn.disabled = false; btn.textContent = 'Add User';
+                    return;
                 }
-            } catch(e) { console.warn('Firestore user save failed:', e); }
-
-            showStatus(`User "${name}" added!`, 'success');
-            document.getElementById('add-user-form').reset();
-            renderManagedUsers();
+                btn.textContent = 'Adding…';
+                await addDoc(collection(window.db, 'admin-users'), {
+                    name, email, password, createdAt: new Date().toISOString()
+                });
+                showStatus(`User "${name}" added!`, 'success');
+                document.getElementById('add-user-form').reset();
+                renderManagedUsers();
+            } catch(e) {
+                showStatus('Failed to add user: ' + e.message, 'error');
+            }
             btn.disabled = false; btn.textContent = 'Add User';
         }
 
-        function renderManagedUsers() {
-            const users   = getUsers();
+        async function renderManagedUsers() {
             const section = document.getElementById('managed-users-section');
             const list    = document.getElementById('managed-users-list');
-            if (users.length === 0) { section.style.display = 'none'; return; }
+            list.innerHTML = '<p style="color:var(--text-dim);font-size:0.8rem;padding:0.5rem 0;">Loading…</p>';
             section.style.display = 'block';
-            list.innerHTML = users.map((u, i) => `
-                <div style="display:flex;align-items:center;gap:1rem;padding:0.9rem 1rem;
-                            background:var(--dark-lighter);border-radius:8px;font-size:0.82rem;">
-                    <div style="width:36px;height:36px;border-radius:50%;
-                                background:linear-gradient(135deg,var(--primary),var(--accent));
-                                display:flex;align-items:center;justify-content:center;
-                                font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;
-                                color:white;flex-shrink:0;">${getInitials(u.name)}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-family:'Syne',sans-serif;font-weight:600;color:var(--text);">${escapeHtml(u.name)}</div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">${escapeHtml(u.email || 'No email')}</div>
-                    </div>
-                    <button onclick="removeUser(${i})"
-                        style="background:none;border:1px solid var(--error);color:var(--error);
-                               font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                               padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;transition:all 0.2s;flex-shrink:0;"
-                        onmouseover="this.style.background='var(--error)';this.style.color='white';"
-                        onmouseout="this.style.background='none';this.style.color='var(--error)';">
-                        Remove
-                    </button>
-                </div>`).join('');
+
+            if (!window.db || !window.firebaseModules) {
+                list.innerHTML = '<p style="color:var(--error);font-size:0.8rem;">Database unavailable.</p>';
+                return;
+            }
+            try {
+                const { collection, getDocs } = window.firebaseModules;
+                const snap  = await getDocs(collection(window.db, 'admin-users'));
+                const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                if (users.length === 0) {
+                    section.style.display = 'none';
+                    return;
+                }
+                section.style.display = 'block';
+                list.innerHTML = users.map(u => `
+                    <div style="display:flex;align-items:center;gap:1rem;padding:0.9rem 1rem;
+                                background:var(--dark-lighter);border-radius:8px;font-size:0.82rem;">
+                        <div style="width:36px;height:36px;border-radius:50%;
+                                    background:linear-gradient(135deg,var(--primary),var(--accent));
+                                    display:flex;align-items:center;justify-content:center;
+                                    font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;
+                                    color:white;flex-shrink:0;">${getInitials(u.name)}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-family:'Syne',sans-serif;font-weight:600;color:var(--text);">${escapeHtml(u.name)}</div>
+                            <div style="color:var(--text-dim);font-size:0.75rem;">${escapeHtml(u.email || 'No email')}</div>
+                        </div>
+                        <button onclick="removeUser('${escapeAttr(u.id)}')"
+                            style="background:none;border:1px solid var(--error);color:var(--error);
+                                   font-family:'JetBrains Mono',monospace;font-size:0.72rem;
+                                   padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;transition:all 0.2s;flex-shrink:0;"
+                            onmouseover="this.style.background='var(--error)';this.style.color='white';"
+                            onmouseout="this.style.background='none';this.style.color='var(--error)';">
+                            Remove
+                        </button>
+                    </div>`).join('');
+            } catch(e) {
+                list.innerHTML = `<p style="color:var(--error);font-size:0.8rem;">Failed to load users: ${escapeHtml(e.message)}</p>`;
+            }
         }
 
-        function removeUser(idx) {
-            const users = getUsers();
-            if (!confirm(`Remove user "${users[idx]?.name}"?`)) return;
-            users.splice(idx, 1);
-            saveUsers(users);
-            renderManagedUsers();
-            showStatus('User removed.', 'info');
+        async function removeUser(docId) {
+            if (!confirm('Remove this user?')) return;
+            if (!window.db || !window.firebaseModules) return;
+            try {
+                const { doc, deleteDoc } = window.firebaseModules;
+                await deleteDoc(doc(window.db, 'admin-users', docId));
+                showStatus('User removed.', 'info');
+                renderManagedUsers();
+            } catch(e) {
+                showStatus('Failed to remove: ' + e.message, 'error');
+            }
         }
 
         // ── UTILS ──
@@ -995,7 +996,7 @@
             return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
                  + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
         }
-        function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
+        function escapeHtml(t) { const d=document.createElement('div'); d.textContent=String(t||''); return d.innerHTML; }
         function escapeAttr(t) { return (t||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
         function showStatus(msg, type) {
             const el = document.getElementById('status-message');
