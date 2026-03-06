@@ -43,11 +43,10 @@
             pointer-events: none;
             z-index: 0;
         }
-
         @keyframes float {
             0%,100% { transform: translate(0,0) rotate(0deg); }
-            33% { transform: translate(30px,-30px) rotate(120deg); }
-            66% { transform: translate(-20px,20px) rotate(240deg); }
+            33%  { transform: translate(30px,-30px) rotate(120deg); }
+            66%  { transform: translate(-20px,20px) rotate(240deg); }
         }
 
         .grid-bg {
@@ -93,8 +92,8 @@
         .session-banner.active  { background: rgba(78,204,163,0.12); border: 1px solid rgba(78,204,163,0.4); color: var(--success); }
         .session-banner.expired { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.4); color: var(--error); }
         .session-banner.hidden  { display: none; }
-        .session-icon { font-size: 1.4rem; flex-shrink: 0; }
-        .session-info { flex: 1; }
+        .session-icon  { font-size: 1.4rem; flex-shrink: 0; }
+        .session-info  { flex: 1; }
         .session-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; }
         .session-sub   { font-size: 0.78rem; opacity: 0.85; }
         .countdown-ring { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; flex-shrink: 0; }
@@ -115,7 +114,7 @@
         }
 
         .card-title    { font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:700; color:var(--text); margin-bottom:0.3rem; }
-        .card-subtitle { color:var(--text-dim); font-size:0.82rem; margin-bottom:2rem; }
+        .card-subtitle { color:var(--text-dim); font-size:0.82rem; margin-bottom:2rem; line-height:1.5; }
 
         .form-group { margin-bottom: 1.4rem; }
         .form-group label {
@@ -173,16 +172,68 @@
         @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.8);} }
         .ip-value { color:var(--accent); font-weight:500; margin-left:auto; }
 
-        /* ── TABS (shown after login) ── */
-        .tabs-wrapper {
-            width:100%; max-width:700px; margin-top:2rem;
-            animation: fadeInUp 0.6s ease-out 0.2s both;
+        /* ── BARRY: DESTINATION PICKER ── */
+        .dest-card {
+            background: var(--dark-light); border-radius: 20px;
+            padding: 2.5rem; border: 2px solid var(--primary);
+            width: 100%; max-width: 480px;
+            position: relative; overflow: hidden;
+            animation: fadeInUp 0.5s ease-out both;
+            display: none;
         }
-        .tabs-wrapper.hidden { display:none; }
+        .dest-card::before {
+            content:''; position:absolute; top:0; left:0; right:0; height:3px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+        }
+        .dest-card.show { display: block; }
+        .dest-greeting {
+            font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700;
+            color: var(--text); margin-bottom: 0.4rem;
+        }
+        .dest-greeting span {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .dest-sub {
+            color: var(--text-dim); font-size: 0.82rem; margin-bottom: 2rem; line-height: 1.5;
+        }
+        .dest-options {
+            display: flex; flex-direction: column; gap: 0.8rem;
+        }
+        .dest-btn {
+            display: flex; align-items: center; gap: 1.1rem;
+            padding: 1.1rem 1.4rem;
+            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
+            border-radius: 12px; color: var(--text);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+            cursor: pointer; transition: all 0.25s ease; text-align: left; width: 100%;
+        }
+        .dest-btn:hover {
+            border-color: var(--primary);
+            background: rgba(255,107,53,0.08);
+            transform: translateX(4px);
+        }
+        .dest-btn.accent:hover {
+            border-color: var(--accent);
+            background: rgba(0,217,255,0.07);
+        }
+        .dest-btn.secondary:hover {
+            border-color: var(--secondary);
+            background: rgba(255,200,87,0.07);
+        }
+        .dest-icon { font-size: 1.6rem; flex-shrink: 0; }
+        .dest-btn-info { flex: 1; }
+        .dest-btn-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem; margin-bottom: 0.15rem; }
+        .dest-btn-desc  { color: var(--text-dim); font-size: 0.75rem; }
+        .dest-arrow { color: var(--text-dim); font-size: 1rem; transition: transform 0.2s; }
+        .dest-btn:hover .dest-arrow { transform: translateX(4px); color: var(--primary); }
+        .dest-btn.accent:hover .dest-arrow { color: var(--accent); }
+        .dest-btn.secondary:hover .dest-arrow { color: var(--secondary); }
 
-        .tab-bar {
-            display:flex; gap:0.5rem; margin-bottom:1.5rem;
-        }
+        /* ── TABS (Barry's admin panel — shown after staying on this page) ── */
+        .tabs-wrapper { width:100%; max-width:700px; margin-top:2rem; animation: fadeInUp 0.6s ease-out 0.2s both; }
+        .tabs-wrapper.hidden { display:none; }
+        .tab-bar { display:flex; gap:0.5rem; margin-bottom:1.5rem; }
         .tab-btn {
             flex:1; padding:0.8rem 1rem;
             background:var(--dark-light); border:2px solid var(--dark-lighter);
@@ -195,18 +246,12 @@
             background: linear-gradient(135deg, rgba(255,107,53,0.15), rgba(0,217,255,0.1));
             border-color:var(--primary); color:var(--text);
         }
-
         .tab-panel { display:none; }
         .tab-panel.active { display:block; }
 
         /* ── HISTORY PANEL ── */
-        .history-header {
-            display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem;
-        }
-        .history-title {
-            font-family:'Syne',sans-serif; font-size:1.1rem; color:var(--text);
-            display:flex; align-items:center; gap:0.7rem;
-        }
+        .history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.2rem; }
+        .history-title  { font-family:'Syne',sans-serif; font-size:1.1rem; color:var(--text); display:flex; align-items:center; gap:0.7rem; }
         .badge-pill {
             background: linear-gradient(135deg, var(--primary), var(--accent));
             color:white; font-size:0.7rem; padding:0.2rem 0.6rem;
@@ -219,20 +264,15 @@
             cursor:pointer; transition:all 0.2s;
         }
         .clear-all-btn:hover { border-color:var(--error); color:var(--error); }
-
         .users-grid { display:flex; flex-direction:column; gap:1rem; }
-
         .user-card {
-            background:var(--dark-light); border-radius:14px;
-            border:2px solid var(--dark-lighter);
+            background:var(--dark-light); border-radius:14px; border:2px solid var(--dark-lighter);
             overflow:hidden; transition:border-color 0.3s ease; cursor:pointer;
         }
-        .user-card:hover  { border-color:rgba(255,107,53,0.5); }
+        .user-card:hover   { border-color:rgba(255,107,53,0.5); }
         .user-card.expanded { border-color:var(--primary); }
-
         .user-card-header {
-            display:flex; align-items:center; gap:1rem;
-            padding:1.2rem 1.5rem; position:relative;
+            display:flex; align-items:center; gap:1rem; padding:1.2rem 1.5rem; position:relative;
         }
         .user-card-header::before {
             content:''; position:absolute; top:0; left:0; width:4px; height:100%;
@@ -242,70 +282,38 @@
             width:46px; height:46px; border-radius:50%;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             display:flex; align-items:center; justify-content:center;
-            font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700;
-            color:white; flex-shrink:0;
+            font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; color:white; flex-shrink:0;
         }
         .user-meta { flex:1; min-width:0; }
-        .user-name  {
-            font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:var(--text);
-            margin-bottom:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }
+        .user-name  { font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; color:var(--text); margin-bottom:0.2rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .user-email { color:var(--text-dim); font-size:0.78rem; }
-
-        .user-card-right {
-            display:flex; flex-direction:column; align-items:flex-end; gap:0.3rem; flex-shrink:0;
-        }
-        .login-count-pill {
-            background:var(--dark-lighter); border-radius:99px;
-            padding:0.25rem 0.7rem; font-size:0.72rem; color:var(--text-dim); white-space:nowrap;
-        }
+        .user-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:0.3rem; flex-shrink:0; }
+        .login-count-pill { background:var(--dark-lighter); border-radius:99px; padding:0.25rem 0.7rem; font-size:0.72rem; color:var(--text-dim); white-space:nowrap; }
         .login-count-pill span { color:var(--secondary); font-weight:600; }
-        .last-seen     { font-size:0.72rem; color:var(--text-dim); }
-        .expand-arrow  { color:var(--text-dim); font-size:0.8rem; transition:transform 0.3s; margin-top:0.2rem; }
+        .last-seen    { font-size:0.72rem; color:var(--text-dim); }
+        .expand-arrow { color:var(--text-dim); font-size:0.8rem; transition:transform 0.3s; margin-top:0.2rem; }
         .user-card.expanded .expand-arrow { transform:rotate(180deg); }
-
-        .user-history {
-            max-height:0; overflow:hidden; transition:max-height 0.45s ease;
-            border-top:0 solid transparent;
-        }
-        .user-card.expanded .user-history {
-            max-height:600px; border-top:1px solid var(--dark-lighter);
-        }
+        .user-history { max-height:0; overflow:hidden; transition:max-height 0.45s ease; border-top:0 solid transparent; }
+        .user-card.expanded .user-history { max-height:600px; border-top:1px solid var(--dark-lighter); }
         .history-inner { padding:1.2rem 1.5rem; }
         .history-list-title {
             font-size:0.75rem; text-transform:uppercase; letter-spacing:0.12em;
-            color:var(--text-dim); margin-bottom:0.9rem;
-            display:flex; align-items:center; gap:0.5rem;
+            color:var(--text-dim); margin-bottom:0.9rem; display:flex; align-items:center; gap:0.5rem;
         }
         .history-list-title::after { content:''; flex:1; height:1px; background:var(--dark-lighter); }
-
-        .history-entries {
-            display:flex; flex-direction:column; gap:0.6rem;
-            max-height:380px; overflow-y:auto;
-        }
+        .history-entries { display:flex; flex-direction:column; gap:0.6rem; max-height:380px; overflow-y:auto; }
         .history-entries::-webkit-scrollbar { width:4px; }
         .history-entries::-webkit-scrollbar-track { background:var(--dark-lighter); border-radius:4px; }
         .history-entries::-webkit-scrollbar-thumb { background:var(--primary); border-radius:4px; }
-
-        .history-entry {
-            display:flex; align-items:center; gap:1rem;
-            padding:0.8rem 1rem; background:var(--dark-lighter);
-            border-radius:8px; font-size:0.8rem;
-        }
+        .history-entry { display:flex; align-items:center; gap:1rem; padding:0.8rem 1rem; background:var(--dark-lighter); border-radius:8px; font-size:0.8rem; }
         .entry-num  { color:var(--text-dim); font-size:0.7rem; width:20px; text-align:right; flex-shrink:0; }
         .entry-ip   { color:var(--accent); font-weight:500; flex:1; min-width:0; }
         .entry-date { color:var(--text-dim); font-size:0.75rem; white-space:nowrap; }
-        .entry-new-badge {
-            background:var(--success); color:var(--dark);
-            font-size:0.65rem; padding:0.15rem 0.45rem;
-            border-radius:4px; font-weight:700; flex-shrink:0;
-        }
+        .entry-new-badge { background:var(--success); color:var(--dark); font-size:0.65rem; padding:0.15rem 0.45rem; border-radius:4px; font-weight:700; flex-shrink:0; }
 
         /* ── ADD USER PANEL ── */
         .add-user-card {
-            background:var(--dark-light); border-radius:16px;
-            padding:2rem; border:2px solid var(--dark-lighter);
-            transition:border-color 0.3s;
+            background:var(--dark-light); border-radius:16px; padding:2rem; border:2px solid var(--dark-lighter); transition:border-color 0.3s;
         }
         .add-user-card:focus-within { border-color:rgba(255,107,53,0.4); }
         .add-user-card::before {
@@ -316,25 +324,14 @@
         .add-user-note {
             font-size:0.8rem; color:var(--text-dim); margin-bottom:1.5rem;
             padding:0.8rem 1rem; background:var(--dark-lighter); border-radius:8px;
-            border-left:3px solid var(--secondary);
-            line-height:1.6;
+            border-left:3px solid var(--secondary); line-height:1.6;
         }
         .add-user-note strong { color:var(--secondary); }
 
-        /* ── BACK LINK ── */
-        .back-link {
-            display:block; text-align:center; margin-top:2rem;
-            color:var(--text-dim); font-size:0.82rem;
-            text-decoration:none; transition:color 0.3s;
-        }
-        .back-link:hover { color:var(--primary); }
-
         /* ── TOAST ── */
         .status-message {
-            position:fixed; top:2rem; right:2rem;
-            padding:1rem 1.5rem; border-radius:10px;
-            font-size:0.88rem; z-index:9999; display:none;
-            animation:slideInRight 0.4s ease; max-width:320px;
+            position:fixed; top:2rem; right:2rem; padding:1rem 1.5rem; border-radius:10px;
+            font-size:0.88rem; z-index:9999; display:none; animation:slideInRight 0.4s ease; max-width:320px;
         }
         @keyframes slideInRight { from{opacity:0;transform:translateX(100px);} to{opacity:1;transform:translateX(0);} }
         .status-message.show    { display:block; }
@@ -345,7 +342,7 @@
         @keyframes fadeInUp { from{opacity:0;transform:translateY(30px);} to{opacity:1;transform:translateY(0);} }
 
         @media(max-width:520px) {
-            .login-card { padding:1.8rem 1.2rem; }
+            .login-card, .dest-card { padding:1.8rem 1.2rem; }
             .user-card-header { padding:1rem 1.2rem; }
             .history-inner { padding:1rem 1.2rem; }
             .entry-date { display:none; }
@@ -359,11 +356,11 @@
 
         <!-- Logo -->
         <div class="logo-area">
-            <a href="index.html" class="logo">Pingu - Solar</a>
+            <div class="logo">Pingu - Solar</div>
             <div class="login-label">Admin Access</div>
         </div>
 
-        <!-- Session Banner -->
+        <!-- Session Banner (active/expired) -->
         <div class="session-banner hidden" id="session-banner">
             <div class="session-icon" id="session-icon">✅</div>
             <div class="session-info">
@@ -396,18 +393,50 @@
                     </div>
                 </div>
                 <button type="submit" class="submit-btn" id="submit-btn">
-                    Sign In to Admin Panel
+                    Sign In
                 </button>
             </form>
 
             <div class="ip-strip">
                 <div class="dot"></div>
                 <span>Your IP address</span>
-                <span class="ip-value" id="live-ip">Fetching...</span>
+                <span class="ip-value" id="live-ip">Fetching…</span>
             </div>
         </div>
 
-        <!-- Post-login tabs -->
+        <!-- Barry Dixon: Destination Picker (shown instead of auto-redirect) -->
+        <div class="dest-card" id="dest-card">
+            <div class="dest-greeting">Welcome back, <span>Barry</span> 👋</div>
+            <div class="dest-sub">You're signed in. Where would you like to go?</div>
+            <div class="dest-options">
+                <button class="dest-btn" onclick="goTo('index.html')">
+                    <span class="dest-icon">🏠</span>
+                    <div class="dest-btn-info">
+                        <div class="dest-btn-title">Project Hub</div>
+                        <div class="dest-btn-desc">index.html — jobs, stats, team management</div>
+                    </div>
+                    <span class="dest-arrow">→</span>
+                </button>
+                <button class="dest-btn accent" onclick="goTo('admin.html')">
+                    <span class="dest-icon">⚙️</span>
+                    <div class="dest-btn-info">
+                        <div class="dest-btn-title">Admin Dashboard</div>
+                        <div class="dest-btn-desc">admin.html — add/edit jobs, export, analytics</div>
+                    </div>
+                    <span class="dest-arrow">→</span>
+                </button>
+                <button class="dest-btn secondary" onclick="showAdminPanel()">
+                    <span class="dest-icon">🔐</span>
+                    <div class="dest-btn-info">
+                        <div class="dest-btn-title">Stay Here</div>
+                        <div class="dest-btn-desc">View login history and manage users</div>
+                    </div>
+                    <span class="dest-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Post-login admin panel tabs (Barry only, "Stay Here" option) -->
         <div class="tabs-wrapper hidden" id="tabs-wrapper">
             <div class="tab-bar">
                 <button class="tab-btn active" onclick="switchTab('history')">🔐 Login History</button>
@@ -424,77 +453,60 @@
                     <button class="clear-all-btn" onclick="clearAllData()">Clear All</button>
                 </div>
                 <div class="users-grid" id="users-grid">
-                    <p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">
-                        No logins recorded yet.
-                    </p>
+                    <p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">No logins recorded yet.</p>
                 </div>
             </div>
 
             <!-- TAB: Add User -->
             <div class="tab-panel" id="tab-adduser">
                 <div class="add-user-card">
-                    <div class="history-title" style="margin-bottom:1rem;">
-                        ➕ Add New User
-                    </div>
+                    <div class="history-title" style="margin-bottom:1rem;">➕ Add New User</div>
                     <div class="add-user-note">
                         <strong>Admin only.</strong> Add users here by name, email and password.
                         The email is stored for your reference but users only need their
                         <strong>name + password</strong> to log in.
                     </div>
-
                     <form id="add-user-form" onsubmit="addNewUser(event)">
                         <div class="form-group">
                             <label for="new-name">Full Name *</label>
                             <div class="input-wrapper">
                                 <span class="input-icon">👤</span>
-                                <input type="text" id="new-name" class="form-input"
-                                       placeholder="e.g. Jane Smith" required/>
+                                <input type="text" id="new-name" class="form-input" placeholder="e.g. Jane Smith" required/>
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="new-email">Email Address (admin reference)</label>
                             <div class="input-wrapper">
                                 <span class="input-icon">📧</span>
-                                <input type="email" id="new-email" class="form-input"
-                                       placeholder="e.g. jane.smith@example.com"/>
+                                <input type="email" id="new-email" class="form-input" placeholder="e.g. jane.smith@example.com"/>
                             </div>
                         </div>
                         <div class="form-group">
                             <label for="new-password">Password *</label>
                             <div class="input-wrapper">
                                 <span class="input-icon">🔑</span>
-                                <input type="password" id="new-password" class="form-input"
-                                       placeholder="Set a password for this user" required/>
+                                <input type="password" id="new-password" class="form-input" placeholder="Set a password for this user" required/>
                             </div>
                         </div>
-                        <button type="submit" class="submit-btn" id="add-user-btn">
-                            Add User
-                        </button>
+                        <button type="submit" class="submit-btn" id="add-user-btn">Add User</button>
                     </form>
-
-                    <!-- Existing users list -->
                     <div id="managed-users-section" style="margin-top:2rem;display:none;">
-                        <div class="history-list-title" style="margin-bottom:1rem;">
-                            Registered Users
-                        </div>
+                        <div class="history-list-title" style="margin-bottom:1rem;">Registered Users</div>
                         <div id="managed-users-list" style="display:flex;flex-direction:column;gap:0.6rem;"></div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <a href="index.html" class="back-link">← Back to Home</a>
-    </div>
+    </div><!-- end .page -->
 
     <div class="status-message" id="status-message"></div>
 
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import {
-            getFirestore, collection, addDoc, getDocs,
-            query, orderBy, writeBatch, doc, setDoc, deleteDoc
-        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, writeBatch, doc, setDoc, deleteDoc }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -508,8 +520,7 @@
 
         try {
             const app = initializeApp(firebaseConfig);
-            const db  = getFirestore(app);
-            window.db = db;
+            window.db = getFirestore(app);
             window.firebaseModules = { collection, addDoc, getDocs, query, orderBy, writeBatch, doc, setDoc, deleteDoc };
             console.log('✅ Firebase ready');
         } catch(e) { console.error('Firebase error:', e); }
@@ -518,19 +529,20 @@
     </script>
 
     <script>
-        // ─────────────────────────────────────────────
-        //  BUILT-IN ADMIN (always works, never stored)
-        // ─────────────────────────────────────────────
+        // ─────────────────────────────────────────────────────
+        //  BUILT-IN ADMIN
+        // ─────────────────────────────────────────────────────
         const BUILTIN_ADMIN = {
-            name: 'Barry Dixon',
+            name:      'Barry Dixon',
             nameLower: 'barry dixon',
-            password: 'Pingu2020!&',
-            email: 'admin@pingu-solar.com'
+            password:  'Pingu2020!&',
+            email:     'admin@pingu-solar.com'
         };
 
         const SESSION_KEY = 'adminSession';
         const LOG_KEY     = 'adminLoginLog';
         const USERS_KEY   = 'adminUsers';
+        const REDIRECT_KEY = 'loginRedirect';   // stores the page that sent user here
         const COOLDOWN_MS = 12 * 60 * 60 * 1000;
 
         let visitorIP      = 'Unknown';
@@ -541,7 +553,31 @@
         // ── INIT ──
         function init() {
             fetchIP();
-            checkSession();
+
+            // Check if a redirect target was set by a protected page
+            const redirect = sessionStorage.getItem(REDIRECT_KEY);
+
+            const session = getSession();
+            if (session && isSessionValid(session)) {
+                // Already logged in
+                applyActiveState(session);
+
+                if (BUILTIN_ADMIN.nameLower === session.name.toLowerCase()) {
+                    // Barry: show destination picker
+                    showDestPicker(redirect);
+                } else if (redirect) {
+                    // Regular user with a redirect target — go straight there
+                    sessionStorage.removeItem(REDIRECT_KEY);
+                    window.location.replace(redirect);
+                } else {
+                    // Regular user, no redirect — go to index by default
+                    window.location.replace('index.html');
+                }
+            } else if (session) {
+                clearSession();
+                applyExpiredState();
+            }
+            // else: show login form (default state)
         }
 
         // ── IP ──
@@ -565,17 +601,8 @@
             return s;
         }
         function clearSession() { localStorage.removeItem(SESSION_KEY); }
-        function isSessionValid(s) { return s && s.loginTime && (Date.now() - s.loginTime) < COOLDOWN_MS; }
-
-        function checkSession() {
-            const s = getSession();
-            if (s && isSessionValid(s)) {
-                applyActiveState(s);
-                showPostLogin();
-            } else if (s) {
-                clearSession();
-                applyExpiredState();
-            }
+        function isSessionValid(s) {
+            return s && s.loginTime && (Date.now() - s.loginTime) < COOLDOWN_MS;
         }
 
         function applyActiveState(session) {
@@ -601,7 +628,6 @@
             document.getElementById('countdown-ring').textContent = '';
             document.getElementById('card-title').textContent    = 'Sign In Again';
             document.getElementById('card-subtitle').textContent = 'Your session expired. Please re-authenticate.';
-            document.getElementById('tabs-wrapper').classList.add('hidden');
         }
 
         function startCountdown(loginTime) {
@@ -612,8 +638,10 @@
                     clearInterval(countdownTimer);
                     clearSession();
                     applyExpiredState();
-                    const f = document.getElementById('login-form');
-                    f.style.opacity = '1'; f.style.pointerEvents = 'auto';
+                    document.getElementById('login-form').style.opacity = '1';
+                    document.getElementById('login-form').style.pointerEvents = 'auto';
+                    document.getElementById('dest-card').classList.remove('show');
+                    document.getElementById('tabs-wrapper').classList.add('hidden');
                     return;
                 }
                 const h = String(Math.floor(rem / 3600000)).padStart(2,'0');
@@ -623,7 +651,54 @@
                 document.getElementById('countdown-ring').textContent   = str;
                 document.getElementById('card-subtitle').textContent    = `Session expires in ${str}`;
             }
-            tick(); countdownTimer = setInterval(tick, 1000);
+            tick();
+            countdownTimer = setInterval(tick, 1000);
+        }
+
+        // ── DESTINATION PICKER (Barry only) ──
+        function showDestPicker(redirect) {
+            // If there's a redirect target, add it as the first "go back" button
+            const destCard = document.getElementById('dest-card');
+
+            if (redirect) {
+                const label = redirect === 'admin.html' ? 'Admin Dashboard' : 'Project Hub';
+                const icon  = redirect === 'admin.html' ? '⚙️' : '🏠';
+                const desc  = redirect === 'admin.html'
+                    ? 'admin.html — where you were trying to go'
+                    : 'index.html — where you were trying to go';
+
+                // Insert a "return to" button at the top of the options list
+                const opts = destCard.querySelector('.dest-options');
+                const returnBtn = document.createElement('button');
+                returnBtn.className = 'dest-btn';
+                returnBtn.style.borderColor = 'var(--success)';
+                returnBtn.innerHTML = `
+                    <span class="dest-icon">${icon}</span>
+                    <div class="dest-btn-info">
+                        <div class="dest-btn-title">↩ Return to ${label}</div>
+                        <div class="dest-btn-desc">${desc}</div>
+                    </div>
+                    <span class="dest-arrow" style="color:var(--success)">→</span>`;
+                returnBtn.onclick = () => {
+                    sessionStorage.removeItem(REDIRECT_KEY);
+                    goTo(redirect);
+                };
+                opts.insertBefore(returnBtn, opts.firstChild);
+            }
+
+            destCard.classList.add('show');
+        }
+
+        function goTo(url) {
+            sessionStorage.removeItem(REDIRECT_KEY);
+            window.location.replace(url);
+        }
+
+        function showAdminPanel() {
+            document.getElementById('dest-card').classList.remove('show');
+            document.getElementById('tabs-wrapper').classList.remove('hidden');
+            renderHistory();
+            renderManagedUsers();
         }
 
         // ── AUTHENTICATE ──
@@ -631,18 +706,15 @@
             const nameTrim = name.trim().toLowerCase();
             const passTrim = password.trim();
 
-            // Check built-in admin first
             if (nameTrim === BUILTIN_ADMIN.nameLower && passTrim === BUILTIN_ADMIN.password) {
                 return { name: BUILTIN_ADMIN.name, email: BUILTIN_ADMIN.email, isAdmin: true };
             }
 
-            // Check stored users
             const users = getUsers();
             const match = users.find(u =>
                 u.name.trim().toLowerCase() === nameTrim && u.password === passTrim
             );
             if (match) return { name: match.name, email: match.email || '', isAdmin: false };
-
             return null;
         }
 
@@ -653,78 +725,68 @@
             const name     = document.getElementById('admin-name').value;
             const password = document.getElementById('admin-password').value;
             const btn      = document.getElementById('submit-btn');
+            const redirect = sessionStorage.getItem(REDIRECT_KEY);
 
             const user = findUser(name, password);
 
             if (!user) {
-                // Shake the card and show error
                 document.getElementById('login-card').classList.add('shake');
                 setTimeout(() => document.getElementById('login-card').classList.remove('shake'), 500);
-                document.getElementById('admin-name').classList.add('error-field');
-                document.getElementById('admin-password').classList.add('error-field');
-                setTimeout(() => {
-                    document.getElementById('admin-name').classList.remove('error-field');
-                    document.getElementById('admin-password').classList.remove('error-field');
-                }, 2000);
+                ['admin-name','admin-password'].forEach(id => {
+                    const el = document.getElementById(id);
+                    el.classList.add('error-field');
+                    setTimeout(() => el.classList.remove('error-field'), 2000);
+                });
                 showStatus('Incorrect name or password.', 'error');
                 return;
             }
 
-            btn.disabled = true; btn.textContent = 'Signing in...';
+            btn.disabled = true; btn.textContent = 'Signing in…';
 
+            // Log the login
             const entry = {
-                name:      user.name,
-                email:     user.email,
-                ip:        visitorIP,
-                timestamp: new Date().toISOString(),
+                name: user.name, email: user.email,
+                ip: visitorIP, timestamp: new Date().toISOString(),
                 userAgent: navigator.userAgent
             };
 
-            // Firestore log
             try {
                 if (window.db && window.firebaseModules) {
                     const { collection, addDoc } = window.firebaseModules;
                     await addDoc(collection(window.db, 'admin-login-log'), entry);
                 }
-            } catch(e) { console.warn('Firestore write failed:', e); }
+            } catch(e) { console.warn('Firestore log failed:', e); }
 
-            // localStorage log
             const log = getLog();
             log.unshift(entry);
             localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 500)));
 
             const session = saveSession(user.name, user.email);
-            showStatus(`Welcome, ${user.name}! Session active for 12 hours.`, 'success');
-            document.getElementById('login-form').reset();
             applyActiveState(session);
-            showPostLogin();
 
-            btn.disabled = false; btn.textContent = 'Sign In to Admin Panel';
+            showStatus(`Welcome, ${user.name}!`, 'success');
+            document.getElementById('login-form').reset();
+
+            btn.disabled = false; btn.textContent = 'Sign In';
+
+            // ── Route after login ──
+            if (user.isAdmin) {
+                // Barry: show destination picker
+                showDestPicker(redirect);
+            } else if (redirect) {
+                // Regular user was sent here from a protected page — go back
+                sessionStorage.removeItem(REDIRECT_KEY);
+                setTimeout(() => window.location.replace(redirect), 600);
+            } else {
+                // Regular user, no specific redirect — go to index
+                setTimeout(() => window.location.replace('index.html'), 600);
+            }
         }
 
-        // ── POST-LOGIN UI ──
-        function showPostLogin() {
-            document.getElementById('tabs-wrapper').classList.remove('hidden');
-            renderHistory();
-            renderManagedUsers();
-        }
-
-        // ── TAB SWITCHING ──
-        function switchTab(tab) {
-            activeTab = tab;
-            document.querySelectorAll('.tab-btn').forEach((b, i) => {
-                b.classList.toggle('active', (i === 0 && tab === 'history') || (i === 1 && tab === 'adduser'));
-            });
-            document.getElementById('tab-history').classList.toggle('active', tab === 'history');
-            document.getElementById('tab-adduser').classList.toggle('active', tab === 'adduser');
-            if (tab === 'adduser') renderManagedUsers();
-        }
-
-        // ── HISTORY RENDER ──
+        // ── DATA ──
         function getLog() {
             try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch { return []; }
         }
-
         function groupByUser(log) {
             const map = {};
             log.forEach(e => {
@@ -740,20 +802,18 @@
             );
         }
 
+        // ── RENDER HISTORY ──
         function renderHistory() {
             const log   = getLog();
-            const grid  = document.getElementById('users-grid');
-
+            const panel = document.getElementById('users-grid');
             if (log.length === 0) {
-                grid.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">No logins recorded yet.</p>';
+                panel.innerHTML = '<p style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:2rem 0;">No logins recorded yet.</p>';
                 document.getElementById('user-count-badge').textContent = '0 users';
                 return;
             }
-
             const users = groupByUser(log);
             document.getElementById('user-count-badge').textContent = `${users.length} user${users.length !== 1 ? 's' : ''}`;
-
-            grid.innerHTML = users.map((user, idx) => {
+            panel.innerHTML = users.map((user, idx) => {
                 const isExpanded = expandedUser === user.name.toLowerCase();
                 const rows = user.entries.map((e, i) => {
                     const isNew = i === 0 && (Date.now() - new Date(e.timestamp).getTime()) < 120000;
@@ -765,7 +825,6 @@
                             ${isNew ? '<span class="entry-new-badge">NEW</span>' : ''}
                         </div>`;
                 }).join('');
-
                 return `
                     <div class="user-card${isExpanded ? ' expanded' : ''}" id="ucard-${idx}"
                          onclick="toggleUser('${escapeAttr(user.name)}', ${idx})">
@@ -819,6 +878,17 @@
             showStatus('All login history cleared.', 'info');
         }
 
+        // ── TAB SWITCHING ──
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach((b, i) => {
+                b.classList.toggle('active', (i === 0 && tab === 'history') || (i === 1 && tab === 'adduser'));
+            });
+            document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+            document.getElementById('tab-adduser').classList.toggle('active', tab === 'adduser');
+            if (tab === 'adduser') renderManagedUsers();
+        }
+
         // ── USER MANAGEMENT ──
         function getUsers() {
             try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch { return []; }
@@ -832,7 +902,6 @@
             const password = document.getElementById('new-password').value.trim();
             const btn      = document.getElementById('add-user-btn');
 
-            // Prevent duplicate name
             const existing = getUsers();
             if (existing.some(u => u.name.toLowerCase() === name.toLowerCase())) {
                 showStatus('A user with that name already exists.', 'error'); return;
@@ -841,13 +910,12 @@
                 showStatus('That name is reserved for the built-in admin.', 'error'); return;
             }
 
-            btn.disabled = true; btn.textContent = 'Adding...';
+            btn.disabled = true; btn.textContent = 'Adding…';
 
             const newUser = { name, email, password, createdAt: new Date().toISOString() };
             existing.push(newUser);
             saveUsers(existing);
 
-            // Optionally mirror to Firestore
             try {
                 if (window.db && window.firebaseModules) {
                     const { collection, addDoc } = window.firebaseModules;
@@ -855,10 +923,9 @@
                 }
             } catch(e) { console.warn('Firestore user save failed:', e); }
 
-            showStatus(`User "${name}" added successfully!`, 'success');
+            showStatus(`User "${name}" added!`, 'success');
             document.getElementById('add-user-form').reset();
             renderManagedUsers();
-
             btn.disabled = false; btn.textContent = 'Add User';
         }
 
@@ -866,10 +933,8 @@
             const users   = getUsers();
             const section = document.getElementById('managed-users-section');
             const list    = document.getElementById('managed-users-list');
-
             if (users.length === 0) { section.style.display = 'none'; return; }
             section.style.display = 'block';
-
             list.innerHTML = users.map((u, i) => `
                 <div style="display:flex;align-items:center;gap:1rem;padding:0.9rem 1rem;
                             background:var(--dark-lighter);border-radius:8px;font-size:0.82rem;">
@@ -879,24 +944,18 @@
                                 font-family:'Syne',sans-serif;font-weight:700;font-size:0.85rem;
                                 color:white;flex-shrink:0;">${getInitials(u.name)}</div>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-family:'Syne',sans-serif;font-weight:600;color:var(--text);">
-                            ${escapeHtml(u.name)}
-                        </div>
-                        <div style="color:var(--text-dim);font-size:0.75rem;">
-                            ${escapeHtml(u.email || 'No email')}
-                        </div>
+                        <div style="font-family:'Syne',sans-serif;font-weight:600;color:var(--text);">${escapeHtml(u.name)}</div>
+                        <div style="color:var(--text-dim);font-size:0.75rem;">${escapeHtml(u.email || 'No email')}</div>
                     </div>
                     <button onclick="removeUser(${i})"
                         style="background:none;border:1px solid var(--error);color:var(--error);
                                font-family:'JetBrains Mono',monospace;font-size:0.72rem;
-                               padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;
-                               transition:all 0.2s;flex-shrink:0;"
+                               padding:0.3rem 0.6rem;border-radius:6px;cursor:pointer;transition:all 0.2s;flex-shrink:0;"
                         onmouseover="this.style.background='var(--error)';this.style.color='white';"
                         onmouseout="this.style.background='none';this.style.color='var(--error)';">
                         Remove
                     </button>
-                </div>
-            `).join('');
+                </div>`).join('');
         }
 
         function removeUser(idx) {
@@ -909,17 +968,13 @@
         }
 
         // ── UTILS ──
-        function getInitials(n) {
-            return (n || '?').split(' ').map(w => w[0]).join('').toUpperCase().substring(0,2);
-        }
+        function getInitials(n) { return (n||'?').split(' ').map(w=>w[0]).join('').toUpperCase().substring(0,2); }
         function formatDate(ts) {
             const d = new Date(ts);
-            return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
-                 + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+            return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+                 + ' ' + d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
         }
-        function escapeHtml(t) {
-            const d = document.createElement('div'); d.textContent = t; return d.innerHTML;
-        }
+        function escapeHtml(t) { const d=document.createElement('div'); d.textContent=t; return d.innerHTML; }
         function escapeAttr(t) { return (t||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
         function showStatus(msg, type) {
             const el = document.getElementById('status-message');
