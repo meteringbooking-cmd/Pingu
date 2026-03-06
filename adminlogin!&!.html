@@ -701,20 +701,39 @@
             renderManagedUsers();
         }
 
-        // ── AUTHENTICATE ──
-        function findUser(name, password) {
+        // ── AUTHENTICATE (checks Firestore first, localStorage as fallback) ──
+        async function findUser(name, password) {
             const nameTrim = name.trim().toLowerCase();
             const passTrim = password.trim();
 
+            // Always check built-in admin first (no network needed)
             if (nameTrim === BUILTIN_ADMIN.nameLower && passTrim === BUILTIN_ADMIN.password) {
                 return { name: BUILTIN_ADMIN.name, email: BUILTIN_ADMIN.email, isAdmin: true };
             }
 
-            const users = getUsers();
-            const match = users.find(u =>
+            // 1. Try Firestore (source of truth — works on any device)
+            if (window.db && window.firebaseModules) {
+                try {
+                    const { collection, getDocs } = window.firebaseModules;
+                    const snap = await getDocs(collection(window.db, 'admin-users'));
+                    for (const d of snap.docs) {
+                        const u = d.data();
+                        if ((u.name||'').trim().toLowerCase() === nameTrim && u.password === passTrim) {
+                            return { name: u.name, email: u.email || '', isAdmin: false };
+                        }
+                    }
+                } catch(e) {
+                    console.warn('Firestore user lookup failed, falling back to localStorage:', e);
+                }
+            }
+
+            // 2. Fallback: localStorage (same device as where user was added)
+            const localUsers = getUsers();
+            const match = localUsers.find(u =>
                 u.name.trim().toLowerCase() === nameTrim && u.password === passTrim
             );
             if (match) return { name: match.name, email: match.email || '', isAdmin: false };
+
             return null;
         }
 
@@ -727,9 +746,11 @@
             const btn      = document.getElementById('submit-btn');
             const redirect = sessionStorage.getItem(REDIRECT_KEY);
 
-            const user = findUser(name, password);
+            btn.disabled = true; btn.textContent = 'Checking…';
+            const user = await findUser(name, password);
 
             if (!user) {
+                btn.disabled = false; btn.textContent = 'Sign In';
                 document.getElementById('login-card').classList.add('shake');
                 setTimeout(() => document.getElementById('login-card').classList.remove('shake'), 500);
                 ['admin-name','admin-password'].forEach(id => {
@@ -741,7 +762,7 @@
                 return;
             }
 
-            btn.disabled = true; btn.textContent = 'Signing in…';
+            btn.textContent = 'Signing in…';
 
             // Log the login
             const entry = {
@@ -919,7 +940,7 @@
             try {
                 if (window.db && window.firebaseModules) {
                     const { collection, addDoc } = window.firebaseModules;
-                    await addDoc(collection(window.db, 'admin-users'), { name, email, createdAt: newUser.createdAt });
+                    await addDoc(collection(window.db, 'admin-users'), { name, email, password, createdAt: newUser.createdAt });
                 }
             } catch(e) { console.warn('Firestore user save failed:', e); }
 
