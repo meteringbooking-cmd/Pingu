@@ -4,258 +4,558 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kraken Scrape</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #0a0d14;
+            --surface: #111520;
+            --surface2: #161c2e;
+            --accent: #00e5ff;
+            --accent2: #7c3aed;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --border: #1e2a45;
+            --success: #10b981;
+            --danger: #f43f5e;
+            --monday: #3b82f6;
+            --tuesday: #8b5cf6;
+            --wednesday: #ec4899;
+            --thursday: #f59e0b;
+            --friday: #10b981;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 40px 24px;
         }
+
+        .grid-bg {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
         .container {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
+
+        header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 48px;
         }
-        .upload-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 2px dashed #ccc;
-            border-radius: 8px;
+
+        .logo {
+            font-size: 40px;
+            line-height: 1;
+        }
+
+        .title-block h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.4rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--accent);
+            text-shadow: 0 0 40px rgba(0,229,255,0.3);
+        }
+
+        .title-block p {
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            padding: 48px;
             text-align: center;
-        }
-        input[type="file"] {
-            margin: 10px 0;
-        }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
             cursor: pointer;
-            font-size: 16px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 32px;
         }
-        button:hover {
-            background-color: #0056b3;
+
+        .upload-zone::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(0,229,255,0.04) 0%, transparent 70%);
+            pointer-events: none;
         }
-        button:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
+
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: var(--accent);
+            background: var(--surface2);
+            box-shadow: 0 0 30px rgba(0,229,255,0.08);
         }
-        .results {
-            margin-top: 20px;
+
+        .upload-icon { font-size: 3rem; margin-bottom: 16px; display: block; }
+
+        .upload-zone h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 8px;
         }
+
+        .upload-zone p {
+            color: var(--muted);
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .tag-pill {
+            display: inline-block;
+            background: rgba(0,229,255,0.08);
+            border: 1px solid rgba(0,229,255,0.2);
+            color: var(--accent);
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        .status-bar {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 24px;
+            display: none;
+        }
+        .status-bar.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--success); display: block; }
+        .status-bar.error { background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: var(--danger); display: block; }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 10px 22px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: all 0.15s;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
+        }
+        .btn-primary:hover { background: #00c4db; box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+
+        .btn-secondary {
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Main results table */
+        .results-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            font-size: 0.8rem;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
+
+        thead th {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 16px 14px;
             text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            white-space: nowrap;
         }
-        th {
-            background-color: #007bff;
-            color: white;
+
+        thead th:first-child {
+            background: var(--surface2);
+            color: var(--muted);
+            border-right: 1px solid var(--border);
+            min-width: 160px;
         }
-        tr:nth-child(even) {
-            background-color: #f9f9f9;
+
+        .col-monday { background: rgba(59,130,246,0.15); color: #93c5fd; border-right: 1px solid var(--border); }
+        .col-tuesday { background: rgba(139,92,246,0.15); color: #c4b5fd; border-right: 1px solid var(--border); }
+        .col-wednesday { background: rgba(236,72,153,0.15); color: #f9a8d4; border-right: 1px solid var(--border); }
+        .col-thursday { background: rgba(245,158,11,0.15); color: #fcd34d; border-right: 1px solid var(--border); }
+        .col-friday { background: rgba(16,185,129,0.15); color: #6ee7b7; }
+
+        tbody tr {
+            border-top: 1px solid var(--border);
+            transition: background 0.1s;
         }
-        .status {
-            margin-top: 10px;
-            padding: 10px;
-            border-radius: 4px;
+
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+        tbody td {
+            padding: 14px;
+            vertical-align: top;
+            border-right: 1px solid var(--border);
         }
-        .status.success {
-            background-color: #d4edda;
-            color: #155724;
+
+        tbody td:first-child {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text);
+            white-space: nowrap;
+            border-right: 2px solid var(--border);
+            background: rgba(255,255,255,0.01);
         }
-        .status.error {
-            background-color: #f8d7da;
-            color: #721c24;
+
+        tbody td:last-child { border-right: none; }
+
+        .day-entry {
+            margin-bottom: 8px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            border-left: 3px solid var(--border);
+        }
+
+        .day-entry:last-child { margin-bottom: 0; }
+
+        .job-number {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: var(--accent);
+            display: block;
+        }
+
+        .job-type {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 3px;
+            display: block;
+        }
+
+        .job-type-tag {
+            display: inline-block;
+            font-size: 0.65rem;
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .type-solar-pv { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.2); }
+        .type-solar-aftercare { background: rgba(251,191,36,0.1); color: #fde68a; border: 1px solid rgba(251,191,36,0.2); }
+        .type-battery { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.2); }
+        .type-structural { background: rgba(139,92,246,0.15); color: #c4b5fd; border: 1px solid rgba(139,92,246,0.2); }
+        .type-electrical { background: rgba(236,72,153,0.15); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.2); }
+        .type-unknown { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+
+        .empty-cell { color: var(--muted); font-size: 0.75rem; opacity: 0.4; }
+
+        .summary-strip {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .summary-item {
+            font-size: 0.78rem;
+            color: var(--muted);
+        }
+
+        .summary-item strong {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            color: var(--accent);
+            display: block;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🐙 Kraken Scrape</h1>
-        
-        <div class="upload-section">
-            <h3>Upload CSV File</h3>
-            <p>Expected columns: Name, Monday, Tuesday, Wednesday, Thursday, Friday</p>
-            <input type="file" id="csvFile" accept=".csv">
+<div class="grid-bg"></div>
+<div class="container">
+    <header>
+        <span class="logo">🐙</span>
+        <div class="title-block">
+            <h1>Kraken Scrape</h1>
+            <p>Schedule parser · Job number & type extractor</p>
         </div>
+    </header>
 
-        <div id="status"></div>
-        
-        <div class="results" id="results"></div>
+    <div class="upload-zone" id="uploadZone">
+        <input type="file" id="csvFile" accept=".csv">
+        <span class="upload-icon">📂</span>
+        <h3>Drop your CSV here or click to browse</h3>
+        <p>
+            Expected columns: <strong>Name, Monday, Tuesday, Wednesday, Thursday, Friday</strong><br><br>
+            Extracts: &nbsp;
+            <span class="tag-pill">J-XXXXXXXX</span>
+            <span class="tag-pill">Solar PV Install</span>
+            <span class="tag-pill">Solar PV Install (Aftercare)</span>
+            <span class="tag-pill">Battery Install</span>
+            <span class="tag-pill">Solar PIV - Structural</span>
+            <span class="tag-pill">Solar PIV - Electrical</span>
+        </p>
     </div>
 
-    <script>
-        document.getElementById('csvFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
+    <div class="status-bar" id="statusBar"></div>
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                try {
-                    processCSV(event.target.result);
-                } catch (error) {
-                    showStatus('Error processing file: ' + error.message, 'error');
+    <div id="resultsArea" style="display:none;">
+        <div class="summary-strip" id="summaryStrip"></div>
+        <div class="controls">
+            <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn btn-secondary" onclick="clearResults()">✕ Clear</button>
+        </div>
+        <div class="results-wrap">
+            <table id="resultsTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+    const JOB_TYPES = [
+        { label: 'Solar PV Install (Aftercare)', key: 'aftercare', css: 'type-solar-aftercare' },
+        { label: 'Solar PV Install',             key: 'solar',     css: 'type-solar-pv' },
+        { label: 'Battery Install',              key: 'battery',   css: 'type-battery' },
+        { label: 'Solar PIV - Structural',       key: 'struct',    css: 'type-structural' },
+        { label: 'Solar PIV - Electrical',       key: 'elec',      css: 'type-electrical' },
+    ];
+
+    const JOB_REGEX = /J-[A-Za-z0-9]{8}/g;
+
+    // drag-drop
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) readFile(file);
+    });
+
+    document.getElementById('csvFile').addEventListener('change', e => {
+        if (e.target.files[0]) readFile(e.target.files[0]);
+    });
+
+    function readFile(file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try { processCSV(ev.target.result); }
+            catch(err) { showStatus('Error: ' + err.message, 'error'); }
+        };
+        reader.readAsText(file);
+    }
+
+    function parseCSVLine(line) {
+        const values = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; }
+            else if (ch === ',' && !inQ) { values.push(cur.trim()); cur = ''; }
+            else cur += ch;
+        }
+        values.push(cur.trim());
+        return values;
+    }
+
+    function extractFromCell(cell) {
+        // Find all J-numbers
+        const jobs = [...(cell.matchAll(/J-[A-Za-z0-9]{8}/g))].map(m => m[0]);
+
+        // Find all job types (aftercare before solar so it matches first)
+        const types = [];
+        for (const jt of JOB_TYPES) {
+            if (cell.includes(jt.label)) types.push(jt);
+        }
+
+        return { jobs: [...new Set(jobs)], types };
+    }
+
+    function cleanName(raw) {
+        // strip "SEngineer" suffix and trim
+        const idx = raw.indexOf('SEngineer');
+        return idx !== -1 ? raw.substring(0, idx).trim() : raw.trim();
+    }
+
+    function processCSV(csv) {
+        const lines = csv.split('\n').filter(l => l.trim());
+        if (lines.length < 2) { showStatus('CSV appears empty.', 'error'); return; }
+
+        const headers = parseCSVLine(lines[0]);
+        const nameIdx = headers.findIndex(h => /name/i.test(h));
+        const dayIndices = DAYS.map(d => headers.findIndex(h => h.trim().toLowerCase() === d.toLowerCase()));
+
+        const rows = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const vals = parseCSVLine(lines[i]);
+            if (!vals.length) continue;
+
+            const nameRaw = nameIdx >= 0 ? (vals[nameIdx] || '') : (vals[0] || '');
+            const name = cleanName(nameRaw);
+            if (!name) continue;
+
+            const dayData = {};
+            DAYS.forEach((day, di) => {
+                const colIdx = dayIndices[di];
+                const cell = colIdx >= 0 ? (vals[colIdx] || '') : '';
+                dayData[day] = extractFromCell(cell);
+            });
+
+            rows.push({ name, dayData });
+        }
+
+        if (!rows.length) { showStatus('No data rows found.', 'error'); return; }
+
+        window._processedRows = rows;
+        renderTable(rows);
+
+        const totalJobs = rows.reduce((acc, r) =>
+            acc + DAYS.reduce((a, d) => a + r.dayData[d].jobs.length, 0), 0);
+
+        document.getElementById('summaryStrip').innerHTML = `
+            <div class="summary-item"><strong>${rows.length}</strong>Engineers</div>
+            <div class="summary-item"><strong>${totalJobs}</strong>Job refs found</div>
+        `;
+
+        showStatus(`✓ Processed ${rows.length} engineers across ${DAYS.length} days.`, 'success');
+        document.getElementById('resultsArea').style.display = 'block';
+    }
+
+    function renderTable(rows) {
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+
+        const dayClass = ['col-monday','col-tuesday','col-wednesday','col-thursday','col-friday'];
+
+        head.innerHTML = `<tr>
+            <th style="background:var(--surface2);color:var(--muted)">Name</th>
+            ${DAYS.map((d,i) => `<th class="${dayClass[i]}">${d}</th>`).join('')}
+        </tr>`;
+
+        body.innerHTML = rows.map(row => {
+            const cells = DAYS.map(day => {
+                const { jobs, types } = row.dayData[day];
+                if (!jobs.length && !types.length) return `<td><span class="empty-cell">—</span></td>`;
+
+                // Pair up: if we have jobs, show each with the type(s); if only types no job, show types alone
+                let html = '';
+                if (jobs.length) {
+                    jobs.forEach(j => {
+                        const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.label}</span>`).join(' ');
+                        html += `<div class="day-entry">
+                            <span class="job-number">${j}</span>
+                            ${typeHtml}
+                        </div>`;
+                    });
+                } else {
+                    const typeHtml = types.map(t => `<span class="job-type-tag ${t.css}">${t.label}</span>`).join(' ');
+                    html += `<div class="day-entry">${typeHtml}</div>`;
                 }
-            };
-            reader.readAsText(file);
+
+                return `<td>${html}</td>`;
+            }).join('');
+
+            return `<tr><td>${escHtml(row.name)}</td>${cells}</tr>`;
+        }).join('');
+    }
+
+    function exportCSV() {
+        const rows = window._processedRows;
+        if (!rows) return;
+
+        // Header: Name, then for each day: Day_JobNumbers, Day_JobTypes
+        let header = 'Name';
+        DAYS.forEach(d => { header += `,${d} - Job Number(s),${d} - Job Type(s)`; });
+
+        const lines = [header];
+
+        rows.forEach(row => {
+            let line = `"${row.name}"`;
+            DAYS.forEach(day => {
+                const { jobs, types } = row.dayData[day];
+                const jobStr = jobs.join(' | ');
+                const typeStr = types.map(t => t.label).join(' | ');
+                line += `,"${jobStr}","${typeStr}"`;
+            });
+            lines.push(line);
         });
 
-        function processCSV(csvText) {
-            const lines = csvText.split('\n').filter(line => line.trim());
-            if (lines.length < 2) {
-                showStatus('CSV file appears to be empty', 'error');
-                return;
-            }
+        const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `kraken_${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
 
-            const headers = lines[0].split(',').map(h => h.trim());
-            const results = [];
+    function clearResults() {
+        window._processedRows = null;
+        document.getElementById('resultsArea').style.display = 'none';
+        document.getElementById('statusBar').className = 'status-bar';
+        document.getElementById('csvFile').value = '';
+    }
 
-            // Process each row (skip header)
-            for (let i = 1; i < lines.length; i++) {
-                const values = parseCSVLine(lines[i]);
-                if (values.length === 0) continue;
+    function showStatus(msg, type) {
+        const el = document.getElementById('statusBar');
+        el.textContent = msg;
+        el.className = 'status-bar ' + type;
+    }
 
-                const row = {};
-                
-                // Extract name (everything before "SEngineer")
-                const nameCell = values[0] || '';
-                const sengineerIndex = nameCell.indexOf('SEngineer');
-                row.Name = sengineerIndex !== -1 ? nameCell.substring(0, sengineerIndex).trim() : nameCell.trim();
-
-                // Extract J-******** patterns from remaining columns
-                const jPatterns = [];
-                for (let j = 1; j < values.length; j++) {
-                    const cell = values[j] || '';
-                    const matches = cell.match(/J-[A-Za-z0-9]{8}/g);
-                    if (matches) {
-                        jPatterns.push(...matches);
-                    }
-                }
-                
-                // Remove duplicates
-                row.JPatterns = [...new Set(jPatterns)];
-
-                results.push(row);
-            }
-
-            displayResults(results);
-            showStatus(`Successfully processed ${results.length} rows`, 'success');
-        }
-
-        function parseCSVLine(line) {
-            const values = [];
-            let current = '';
-            let inQuotes = false;
-
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                
-                if (char === '"') {
-                    inQuotes = !inQuotes;
-                } else if (char === ',' && !inQuotes) {
-                    values.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
-            }
-            values.push(current.trim());
-            return values;
-        }
-
-        function displayResults(results) {
-            const resultsDiv = document.getElementById('results');
-            
-            // Find max number of J-patterns
-            const maxPatterns = Math.max(...results.map(r => r.JPatterns.length), 0);
-            
-            let html = '<h3>Extracted Data</h3>';
-            html += '<button onclick="exportCSV()">Export as CSV</button>';
-            html += '<table>';
-            html += '<thead><tr><th>Name</th>';
-            
-            // Create headers for J-pattern columns
-            for (let i = 0; i < maxPatterns; i++) {
-                html += `<th>J-Pattern ${i + 1}</th>`;
-            }
-            
-            html += '</tr></thead>';
-            html += '<tbody>';
-            
-            results.forEach(row => {
-                html += `<tr><td>${escapeHtml(row.Name)}</td>`;
-                
-                // Add each J-pattern in its own column
-                for (let i = 0; i < maxPatterns; i++) {
-                    const pattern = row.JPatterns[i] || '';
-                    html += `<td>${escapeHtml(pattern)}</td>`;
-                }
-                
-                html += '</tr>';
-            });
-            
-            html += '</tbody></table>';
-            resultsDiv.innerHTML = html;
-
-            // Store results globally for export
-            window.processedResults = results;
-            window.maxPatterns = maxPatterns;
-        }
-
-        function exportCSV() {
-            if (!window.processedResults) return;
-
-            // Create header row
-            let csv = 'Name';
-            for (let i = 0; i < window.maxPatterns; i++) {
-                csv += `,J-Pattern ${i + 1}`;
-            }
-            csv += '\n';
-            
-            // Add data rows
-            window.processedResults.forEach(row => {
-                csv += `"${row.Name}"`;
-                for (let i = 0; i < window.maxPatterns; i++) {
-                    const pattern = row.JPatterns[i] || '';
-                    csv += `,"${pattern}"`;
-                }
-                csv += '\n';
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'kraken_scraped_' + new Date().toISOString().slice(0,10) + '.csv';
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('status');
-            statusDiv.className = 'status ' + type;
-            statusDiv.textContent = message;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-    </script>
+    function escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+</script>
 </body>
 </html>
