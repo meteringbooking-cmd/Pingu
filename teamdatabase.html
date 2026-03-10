@@ -183,11 +183,6 @@
         }
         .slot-remove:hover { color: var(--error); background: rgba(255,107,107,0.1); }
 
-        .slot-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-        .slot-row .form-input { font-size: 0.82rem; padding: 0.7rem 0.8rem; }
-        .slot-email { margin-top: 0.5rem; }
-        .slot-email .form-input { font-size: 0.82rem; padding: 0.65rem 0.8rem; }
-
         .add-engineer-btn {
             display: flex; align-items: center; gap: 0.7rem;
             background: transparent; border: 2px dashed var(--dark-lighter);
@@ -267,8 +262,6 @@
             color: var(--dark); font-size: 0.62rem; padding: 0.2rem 0.6rem;
             border-radius: 20px; font-weight: 700; text-transform: uppercase;
         }
-        .lead-contact { color: var(--text-dim); font-size: 0.78rem; margin-top: 0.15rem; }
-
         .engineers-label {
             color: var(--text-dim); font-size: 0.72rem; text-transform: uppercase;
             letter-spacing: 0.1em; margin-bottom: 0.8rem;
@@ -295,8 +288,6 @@
             color: white; flex-shrink: 0;
         }
         .eng-name { font-size: 0.88rem; font-weight: 500; }
-        .eng-detail { color: var(--text-dim); font-size: 0.73rem; }
-
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-dim); }
         .empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.4; }
         .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text); }
@@ -364,7 +355,6 @@
         }
         @media (max-width: 600px) {
             .modal-buttons { flex-direction: column; }
-            .slot-row { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -412,14 +402,6 @@
                         <label for="lead-name">Full Name *</label>
                         <input type="text" id="lead-name" class="form-input" placeholder="e.g. James Carter" required />
                     </div>
-                    <div class="form-group">
-                        <label for="lead-phone">Phone Number *</label>
-                        <input type="tel" id="lead-phone" class="form-input" placeholder="e.g. 07700 900123" required />
-                    </div>
-                    <div class="form-group">
-                        <label for="lead-email">Email Address</label>
-                        <input type="email" id="lead-email" class="form-input" placeholder="e.g. james@example.com" />
-                    </div>
                 </div>
 
                 <div class="section-divider"><span>👷 Engineers</span></div>
@@ -465,14 +447,6 @@
                 <div class="form-group">
                     <label for="edit-lead-name">Full Name *</label>
                     <input type="text" id="edit-lead-name" class="form-input" required />
-                </div>
-                <div class="form-group">
-                    <label for="edit-lead-phone">Phone Number *</label>
-                    <input type="tel" id="edit-lead-phone" class="form-input" required />
-                </div>
-                <div class="form-group">
-                    <label for="edit-lead-email">Email Address</label>
-                    <input type="email" id="edit-lead-email" class="form-input" />
                 </div>
             </div>
 
@@ -543,13 +517,7 @@
                 <span class="slot-num">Engineer #${num}</span>
                 <button type="button" class="slot-remove" onclick="removeSlot('${slotId}')">✕ Remove</button>
             </div>
-            <div class="slot-row">
-                <input type="text" class="form-input eng-name" placeholder="Full Name *" />
-                <input type="tel" class="form-input eng-phone" placeholder="Phone Number" />
-            </div>
-            <div class="slot-email">
-                <input type="email" class="form-input eng-email" placeholder="Email Address (optional)" />
-            </div>
+            <input type="text" class="form-input eng-name" placeholder="Full Name *" />
         `;
         container.appendChild(div);
     };
@@ -563,10 +531,8 @@
         const slots = document.querySelectorAll('#' + containerId + ' .engineer-slot');
         const result = [];
         slots.forEach(slot => {
-            const name  = slot.querySelector('.eng-name')?.value.trim() || '';
-            const phone = slot.querySelector('.eng-phone')?.value.trim() || '';
-            const email = slot.querySelector('.eng-email')?.value.trim() || '';
-            if (name) result.push({ name, phone, email });
+            const name = slot.querySelector('.eng-name')?.value.trim() || '';
+            if (name) result.push({ name });
         });
         return result;
     }
@@ -578,8 +544,6 @@
 
         const teamName  = document.getElementById('team-name').value.trim();
         const leadName  = document.getElementById('lead-name').value.trim();
-        const leadPhone = document.getElementById('lead-phone').value.trim();
-        const leadEmail = document.getElementById('lead-email').value.trim();
         const engineers = collectEngineers('engineer-slots');
 
         try {
@@ -587,7 +551,7 @@
             await addDoc(collection(window.db, 'team-database'), {
                 name: teamName,
                 emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
-                lead: { name: leadName, phone: leadPhone, email: leadEmail },
+                lead: { name: leadName },
                 engineers: engineers,
                 createdAt: new Date().toISOString()
             });
@@ -629,7 +593,6 @@
 
         panel.innerHTML = allTeams.map(team => {
             const engs = team.engineers || [];
-            const contactLine = [team.lead?.phone, team.lead?.email].filter(Boolean).map(v => esc(v)).join(' &nbsp;·&nbsp; ');
             return `
             <div class="team-card">
                 <div class="team-card-header">
@@ -655,7 +618,6 @@
                                 ${esc(team.lead?.name || '—')}
                                 <span class="badge-lead">Lead</span>
                             </div>
-                            <div class="lead-contact">${contactLine || '—'}</div>
                         </div>
                     </div>
                     ${engs.length > 0 ? `
@@ -666,7 +628,6 @@
                                 <div class="eng-avatar">${initials(eng.name)}</div>
                                 <div>
                                     <div class="eng-name">${esc(eng.name)}</div>
-                                    <div class="eng-detail">${[eng.phone, eng.email].filter(Boolean).map(v => esc(v)).join(' · ')}</div>
                                 </div>
                             </div>`).join('')}
                         </div>
@@ -684,8 +645,6 @@
         document.getElementById('edit-id').value = teamId;
         document.getElementById('edit-team-name').value = team.name;
         document.getElementById('edit-lead-name').value = team.lead?.name || '';
-        document.getElementById('edit-lead-phone').value = team.lead?.phone || '';
-        document.getElementById('edit-lead-email').value = team.lead?.email || '';
 
         const slotsEl = document.getElementById('edit-slots');
         slotsEl.innerHTML = '';
@@ -695,8 +654,6 @@
             addSlot('edit-slots', 'edit');
             const slot = slotsEl.lastElementChild;
             slot.querySelector('.eng-name').value = eng.name || '';
-            slot.querySelector('.eng-phone').value = eng.phone || '';
-            slot.querySelector('.eng-email').value = eng.email || '';
         });
 
         document.getElementById('edit-modal').classList.add('show');
@@ -713,15 +670,13 @@
 
         const name      = document.getElementById('edit-team-name').value.trim();
         const leadName  = document.getElementById('edit-lead-name').value.trim();
-        const leadPhone = document.getElementById('edit-lead-phone').value.trim();
-        const leadEmail = document.getElementById('edit-lead-email').value.trim();
         const engineers = collectEngineers('edit-slots');
 
         try {
             const { doc, updateDoc } = window.FM;
             await updateDoc(doc(window.db, 'team-database', editingId), {
                 name,
-                lead: { name: leadName, phone: leadPhone, email: leadEmail },
+                lead: { name: leadName },
                 engineers,
                 updatedAt: new Date().toISOString()
             });
