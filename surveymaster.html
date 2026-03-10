@@ -565,6 +565,7 @@
 // ── Global state ────────────────────────────────────────────────────
 let allJobs      = [];   // raw job docs
 let picklists    = {};   // keyed by jobNumber → picklist doc
+let surveys      = {};   // keyed by jobNumber → site-survey doc (from conductsurvey.html)
 let currentFilter= 'all';
 let currentSort  = 'date-asc';
 
@@ -630,6 +631,19 @@ async function loadData() {
             if(data.jobNumber) picklists[data.jobNumber] = {id:d.id,...data};
         });
 
+        // Load site surveys (submitted via conductsurvey.html) keyed by jobNumber
+        // A job may have multiple survey docs; we keep the most recent per job
+        surveys = {};
+        const svSnap = await getDocs(collection(window.db,'site-surveys'));
+        svSnap.docs.forEach(d=>{
+            const data = d.data();
+            const jn = data.jobNumber;
+            if(!jn) return;
+            if(!surveys[jn] || (data.submittedAt||'') > (surveys[jn].submittedAt||'')) {
+                surveys[jn] = {id:d.id,...data};
+            }
+        });
+
         updateStats();
         applyFilters();
     } catch(e) {
@@ -652,9 +666,9 @@ function updateStats() {
     document.getElementById('stat-picklist').textContent = withPl;
 }
 
-// A survey is "complete" if a picklist exists for this job number
+// A survey is "complete" if a site-survey doc exists (submitted via conductsurvey.html)
 function isSurveyComplete(job) {
-    return !!picklists[job['Job Number']];
+    return !!surveys[job['Job Number']];
 }
 
 // ── Filter & sort ───────────────────────────────────────────────────
@@ -756,7 +770,7 @@ function renderTable(jobs) {
             <div>
                 <span class="status-badge ${done?'complete':'pending'}">
                     <span class="status-dot"></span>
-                    ${done?'Complete':'Pending'}
+                    ${done?(surveys[jn]?.surveyType==='battery-only'?'Complete · Bat':'Complete · B&S'):'Pending'}
                 </span>
             </div>
             <div class="picklist-cell">
@@ -791,6 +805,8 @@ function openJobDetail(jobNumber) {
     document.getElementById('tab-kf').style.display    = hasKf ? '' : 'none';
 
     // ── Info pane ──
+    const sv      = surveys[jobNumber];
+    const hasSv   = !!sv;
     const infoFields = ['Phone Number','Email Address','1st line of address','Postcode','Job Length','Lead Engineer'];
     document.getElementById('pane-info').innerHTML = `
         <div class="job-info-grid">
@@ -800,22 +816,38 @@ function openJobDetail(jobNumber) {
                     <div class="info-value">${esc(job[f]||'—')}</div>
                 </div>`).join('')}
         </div>
-        <div style="padding:1rem;background:var(--dark-lighter);border-radius:10px;border-left:3px solid ${hasPl?'var(--success)':'var(--secondary)'}">
-            <div style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Survey Status</div>
-            <span class="status-badge ${hasPl?'complete':'pending'}">
+        <div style="padding:1rem;background:var(--dark-lighter);border-radius:10px;border-left:3px solid ${hasSv?'var(--success)':'var(--secondary)'};margin-top:1rem">
+            <div style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Survey Status</div>
+            <span class="status-badge ${hasSv?'complete':'pending'}">
                 <span class="status-dot"></span>
-                ${hasPl?'Survey Complete — Picklist Saved':'Awaiting Survey / Picklist'}
+                ${hasSv?'Survey Complete':'Awaiting Survey'}
             </span>
-            ${hasPl?`<div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.6rem">
-                Saved: ${pl.savedAt?new Date(pl.savedAt).toLocaleString('en-GB'):'—'}
+            ${hasSv?`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.6rem;margin-top:0.9rem">
+                <div><div style="font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Survey Type</div>
+                    <div style="font-size:0.88rem;color:var(--text);margin-top:0.15rem">${esc(sv.surveyType==='battery-and-solar'?'Battery & Solar':sv.surveyType==='battery-only'?'Battery Only':(sv.surveyType||'—'))}</div></div>
+                <div><div style="font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Surveyor</div>
+                    <div style="font-size:0.88rem;color:var(--text);margin-top:0.15rem">${esc((sv.sections?.surveyDetails?.surveyor)||'—')}</div></div>
+                <div><div style="font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Conducted On</div>
+                    <div style="font-size:0.88rem;color:var(--text);margin-top:0.15rem">${esc(sv.sections?.surveyDetails?.conductedOn||'—')}</div></div>
+                <div><div style="font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em">Submitted</div>
+                    <div style="font-size:0.88rem;color:var(--text);margin-top:0.15rem">${sv.submittedAt?new Date(sv.submittedAt).toLocaleString('en-GB'):'—'}</div></div>
             </div>`:''}
         </div>
-        ${!hasPl?`
+        ${!hasSv?`
         <div class="no-picklist-notice" style="margin-top:1.5rem">
-            <div class="ni">📋</div>
-            <p>No picklist has been saved for this job yet.<br>
-            Visit the <a href="picklist.html">Picklist Generator</a> to add one.</p>
-        </div>`:''}`;
+            <div class="ni">🔍</div>
+            <p>No site survey has been submitted for this job yet.<br>
+            Visit <a href="conductsurvey.html">Conduct Site Survey</a> to submit one.</p>
+        </div>`:''}
+        <div style="margin-top:1.2rem;padding:1rem;background:var(--dark-lighter);border-radius:10px;border-left:3px solid ${hasPl?'rgba(181,123,255,0.6)':'rgba(255,255,255,0.08)'}">
+            <div style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Picklist</div>
+            <span class="picklist-pill ${hasPl?'has-pl':'no-pl'}" style="display:inline-flex">
+                ${hasPl?('🧩 Picklist saved'+((pl?.kfPicklist?.length)?(' · '+pl.kfPicklist.length+' KF items'):'')):'— No picklist yet'}
+            </span>
+            ${hasPl?`<div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.5rem">Saved: ${pl.savedAt?new Date(pl.savedAt).toLocaleString('en-GB'):'—'}</div>`:''}
+            ${!hasPl?'<div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.5rem">Upload via <a href="picklist.html" style="color:var(--accent)">Picklist Generator</a></div>':''}
+        </div>`;
+
 
     // ── Specs pane ──
     if(hasPl && pl.specs) {
