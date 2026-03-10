@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Master | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+            --kf: #B57BFF;
+            --warning: #FFC857;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0,217,255,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255,200,87,0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0%,100% { transform: translate(0,0) rotate(0deg); }
+            33%      { transform: translate(30px,-30px) rotate(120deg); }
+            66%      { transform: translate(-20px,20px) rotate(240deg); }
+        }
+        @keyframes slideDown   { from{opacity:0;transform:translateY(-30px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeInUp    { from{opacity:0;transform:translateY(30px)}  to{opacity:1;transform:translateY(0)} }
+        @keyframes slideInRight{ from{opacity:0;transform:translateX(100px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes slideUp     { from{opacity:0;transform:translateY(50px)}  to{opacity:1;transform:translateY(0)} }
+        @keyframes spin        { to{transform:rotate(360deg)} }
+        @keyframes pulse       { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        .container { max-width: 1300px; margin: 0 auto; padding: 2rem; }
+
+        /* ── HEADER ── */
+        header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
+        .header-content {
+            display: flex; align-items: center;
+            justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; text-decoration: none;
+        }
+        .back-btn {
+            background: var(--dark-light); color: var(--text); text-decoration: none;
+            padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
+            transition: all 0.3s ease; border: 2px solid transparent;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .back-btn:hover { background: var(--dark-lighter); border-color: var(--primary); transform: translateX(-5px); }
+        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
+
+        /* ── STATS BAR ── */
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        .stat-card {
+            background: var(--dark-light);
+            border-radius: 12px; padding: 1.2rem 1.5rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+        .stat-card:hover { transform: translateY(-3px); }
+        .stat-card.total  { border-color: rgba(255,107,53,0.3); }
+        .stat-card.complete { border-color: rgba(78,204,163,0.3); }
+        .stat-card.pending  { border-color: rgba(255,200,87,0.3); }
+        .stat-card.picklist { border-color: rgba(181,123,255,0.3); }
+        .stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+        .stat-value { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; }
+        .stat-card.total    .stat-value { color: var(--primary); }
+        .stat-card.complete .stat-value { color: var(--success); }
+        .stat-card.pending  .stat-value { color: var(--secondary); }
+        .stat-card.picklist .stat-value { color: var(--kf); }
+
+        /* ── CONTROLS ── */
+        .controls {
+            display: flex; gap: 1rem; align-items: center;
+            flex-wrap: wrap; margin-bottom: 1.5rem;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+        .filter-group {
+            display: flex; background: var(--dark-light);
+            border-radius: 10px; padding: 0.3rem;
+            border: 2px solid var(--dark-lighter);
+            gap: 0.2rem;
+        }
+        .filter-btn {
+            padding: 0.5rem 1.2rem; border: none; border-radius: 8px;
+            font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; transition: all 0.25s ease;
+            background: transparent; color: var(--text-dim);
+        }
+        .filter-btn.active     { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+        .filter-btn.active-ok  { background: var(--success); color: var(--dark); }
+        .filter-btn.active-pend{ background: var(--secondary); color: var(--dark); }
+        .filter-btn:hover:not(.active):not(.active-ok):not(.active-pend) { color: var(--text); background: var(--dark-lighter); }
+
+        .search-box {
+            flex: 1; min-width: 220px;
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            color: var(--text); padding: 0.7rem 1.2rem; border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+        .search-box:focus { outline: none; border-color: var(--accent); background: rgba(0,217,255,0.04); }
+        .search-box::placeholder { color: var(--text-dim); }
+
+        .sort-select {
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            color: var(--text); padding: 0.7rem 1.1rem; border-radius: 10px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+            cursor: pointer; transition: all 0.3s ease;
+        }
+        .sort-select:focus { outline: none; border-color: var(--primary); }
+
+        .refresh-btn {
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            color: var(--text-dim); padding: 0.7rem 1rem; border-radius: 10px;
+            cursor: pointer; transition: all 0.3s ease; font-size: 1rem;
+        }
+        .refresh-btn:hover { border-color: var(--accent); color: var(--accent); transform: rotate(90deg); }
+
+        /* ── TABLE ── */
+        .table-wrap {
+            background: var(--dark-light); border-radius: 16px;
+            border: 2px solid var(--dark-lighter); overflow: hidden;
+            animation: fadeInUp 0.6s ease-out 0.2s both;
+        }
+        .table-header {
+            display: grid;
+            grid-template-columns: 130px 1fr 150px 130px 120px 80px;
+            gap: 0; padding: 0.9rem 1.5rem;
+            background: var(--dark-lighter);
+            border-bottom: 2px solid var(--dark);
+        }
+        .th {
+            font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;
+            letter-spacing: 0.08em; font-weight: 600;
+            display: flex; align-items: center; gap: 0.3rem; cursor: pointer;
+            transition: color 0.2s; user-select: none;
+        }
+        .th:hover { color: var(--text); }
+        .th .sort-arrow { font-size: 0.6rem; opacity: 0.4; }
+        .th.sorted { color: var(--accent); }
+        .th.sorted .sort-arrow { opacity: 1; }
+
+        .survey-row {
+            display: grid;
+            grid-template-columns: 130px 1fr 150px 130px 120px 80px;
+            gap: 0; padding: 1.1rem 1.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer; transition: all 0.25s ease;
+            animation: fadeInUp 0.4s ease-out;
+            align-items: center;
+        }
+        .survey-row:last-child { border-bottom: none; }
+        .survey-row:hover { background: rgba(255,107,53,0.06); transform: translateX(4px); }
+        .survey-row:hover .job-num { -webkit-text-fill-color: var(--secondary); }
+
+        .job-num {
+            font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; transition: all 0.2s;
+        }
+        .customer-name { font-size: 0.92rem; color: var(--text); }
+        .customer-address { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.1rem; }
+
+        .engineer-cell { font-size: 0.85rem; color: var(--accent); }
+        .date-cell { font-size: 0.82rem; color: var(--text-dim); }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            padding: 0.3rem 0.9rem; border-radius: 20px;
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .status-badge.complete {
+            background: rgba(78,204,163,0.15);
+            color: var(--success);
+            border: 1px solid rgba(78,204,163,0.4);
+        }
+        .status-badge.pending {
+            background: rgba(255,200,87,0.15);
+            color: var(--secondary);
+            border: 1px solid rgba(255,200,87,0.4);
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .status-badge.complete .status-dot { background: var(--success); }
+        .status-badge.pending  .status-dot { background: var(--secondary); animation: pulse 1.5s infinite; }
+
+        /* Picklist indicator */
+        .picklist-cell { display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+        .picklist-pill {
+            display: inline-flex; align-items: center; gap: 0.25rem;
+            padding: 0.25rem 0.6rem; border-radius: 6px;
+            font-size: 0.68rem; font-weight: 700;
+        }
+        .picklist-pill.has-pl {
+            background: rgba(181,123,255,0.15);
+            color: var(--kf);
+            border: 1px solid rgba(181,123,255,0.35);
+        }
+        .picklist-pill.no-pl {
+            background: rgba(255,255,255,0.04);
+            color: var(--text-dim);
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+
+        /* Empty / loading states */
+        .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-dim); }
+        .empty-state .ei { font-size: 3.5rem; margin-bottom: 1rem; }
+        .empty-state h3 { font-family: 'Syne', sans-serif; font-size: 1.3rem; color: var(--text); margin-bottom: 0.5rem; }
+        .empty-state p  { font-size: 0.88rem; }
+
+        .loading-row { padding: 3rem; text-align: center; color: var(--text-dim); }
+
+        .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top-color: white; animation: spin 0.6s linear infinite;
+            margin-left: 0.5rem; vertical-align: middle;
+        }
+        .big-spinner {
+            display: inline-block; width: 36px; height: 36px;
+            border: 3px solid rgba(255,107,53,0.2); border-radius: 50%;
+            border-top-color: var(--primary); animation: spin 0.8s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        /* ── MODAL ── */
+        .modal {
+            display: none; position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85); backdrop-filter: blur(12px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--dark-light); border-radius: 20px; padding: 2.5rem;
+            max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;
+            border: 2px solid var(--accent); animation: slideUp 0.4s ease;
+        }
+        .modal-hdr {
+            display: flex; justify-content: space-between;
+            align-items: flex-start; margin-bottom: 1.5rem; gap: 1rem;
+        }
+        .modal-hdr-left { display: flex; flex-direction: column; gap: 0.4rem; }
+        .modal-job-num {
+            font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .modal-customer { color: var(--text); font-size: 1rem; }
+        .modal-meta     { color: var(--text-dim); font-size: 0.82rem; }
+        .close-btn { background: none; border: none; color: var(--text-dim); font-size: 2rem; cursor: pointer; line-height: 1; transition: color 0.3s; flex-shrink: 0; }
+        .close-btn:hover { color: var(--error); }
+
+        /* Modal tabs */
+        .modal-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .modal-tab {
+            padding: 0.5rem 1.2rem; border-radius: 8px;
+            font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; border: 2px solid transparent;
+            background: var(--dark-lighter); color: var(--text-dim); transition: all 0.2s;
+        }
+        .modal-tab:hover { border-color: var(--primary); color: var(--text); }
+        .modal-tab.active          { background: var(--dark); color: var(--accent); border-color: var(--accent); }
+        .modal-tab.kf-tab.active   { color: var(--kf); border-color: var(--kf); }
+        .modal-tab.info-tab.active { color: var(--secondary); border-color: var(--secondary); }
+        .modal-pane { display: none; }
+        .modal-pane.active { display: block; animation: fadeInUp 0.3s ease-out; }
+
+        /* Job info grid in modal */
+        .job-info-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem; margin-bottom: 1.5rem;
+        }
+        .info-item { background: var(--dark-lighter); padding: 0.9rem 1.1rem; border-radius: 10px; }
+        .info-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.3rem; }
+        .info-value { font-size: 0.95rem; color: var(--text); }
+
+        /* Specs inside modal */
+        .specs-section-title {
+            font-family: 'Syne', sans-serif; font-size: 0.88rem; font-weight: 700;
+            color: var(--secondary); text-transform: uppercase; letter-spacing: 0.08em;
+            margin: 1.5rem 0 0.8rem; padding-bottom: 0.4rem;
+            border-bottom: 1px solid rgba(255,200,87,0.2);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .specs-section-title:first-child { margin-top: 0; }
+        .specs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 0.75rem; }
+        .spec-item {
+            background: var(--dark-lighter); border-radius: 10px;
+            padding: 0.85rem 1rem 0.85rem 1.1rem;
+            border-left: 3px solid transparent; transition: border-color 0.2s, transform 0.2s;
+            position: relative;
+        }
+        .spec-item:hover { border-left-color: var(--primary); transform: translateX(3px); }
+        .spec-item.has-value { border-left-color: rgba(0,217,255,0.5); }
+        .spec-item.no-value  { opacity: 0.42; }
+        .spec-ref { position: absolute; top: 0.45rem; right: 0.65rem; font-size: 0.62rem; color: var(--dark-lighter); background: var(--dark); padding: 0.1rem 0.35rem; border-radius: 3px; }
+        .spec-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.25rem; }
+        .spec-value { font-size: 0.98rem; color: var(--text); font-weight: 500; }
+        .spec-value.empty-val { font-style: italic; color: var(--text-dim); font-size: 0.82rem; font-weight: 400; }
+        .spec-unit  { font-size: 0.7rem; color: var(--text-dim); margin-left: 0.25rem; }
+
+        /* Roof map */
+        .roof-map-wrap {
+            margin-top: 1.5rem; padding: 1.5rem; background: var(--dark);
+            border-radius: 16px; border: 2px solid rgba(0,217,255,0.25);
+        }
+        .roof-map-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; flex-wrap: wrap; gap: 0.8rem; }
+        .roof-map-hdr h4 { font-family: 'Syne', sans-serif; font-size: 1.05rem; color: var(--accent); display: flex; align-items: center; gap: 0.5rem; }
+        .legend { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; color: var(--text-dim); }
+        .swatch { width: 28px; height: 18px; border-radius: 3px; }
+        .swatch.p { background: linear-gradient(135deg,#FF6B35,#FF9559); border: 1px solid rgba(255,107,53,0.6); }
+        .swatch.l { background: linear-gradient(135deg,#00D9FF,#00A8CC); border: 1px solid rgba(0,217,255,0.6); width: 36px; height: 16px; }
+        .swatch.e { background: var(--dark-lighter); border: 1px dashed rgba(255,255,255,0.1); }
+        .roof-grid-wrap { overflow-x: auto; padding-bottom: 0.5rem; }
+        .roof-grid { display: inline-grid; gap: 3px; padding: 1rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); min-width: 100%; }
+        .cell { width: 28px; height: 28px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 700; position: relative; transition: transform 0.15s,box-shadow 0.15s; cursor: default; }
+        .cell:hover { transform: scale(1.3); z-index: 10; }
+        .cell.e { background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.07); }
+        .cell.p { background: linear-gradient(135deg,#FF6B35,#FF9559); border: 1px solid rgba(255,149,89,0.8); color: rgba(255,255,255,0.9); box-shadow: 0 2px 6px rgba(255,107,53,0.4); }
+        .cell.l { background: linear-gradient(135deg,#00D9FF,#00A8CC); border: 1px solid rgba(0,217,255,0.8); color: rgba(0,30,50,0.9); box-shadow: 0 2px 6px rgba(0,217,255,0.35); }
+        .cell.p::after,.cell.l::after { content:''; position:absolute; inset:3px; border:1px solid rgba(255,255,255,0.3); border-radius:1px; }
+        .roof-stats { display: flex; gap: 1.5rem; margin-top: 1rem; flex-wrap: wrap; }
+        .roof-stat  { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; color: var(--text-dim); }
+        .roof-stat strong { color: var(--text); }
+
+        /* KF table in modal */
+        .kf-table-wrap { overflow-x: auto; }
+        .kf-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .kf-table th { text-align: left; padding: 0.5rem 0.8rem; font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid rgba(181,123,255,0.2); }
+        .kf-table td { padding: 0.5rem 0.8rem; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+        .kf-table tr:last-child td { border-bottom: none; }
+        .kf-table tr:hover td { background: rgba(181,123,255,0.05); }
+        .kf-part-code { font-family: 'JetBrains Mono',monospace; color: var(--kf); font-size: 0.82rem; }
+        .kf-qty { background: rgba(181,123,255,0.12); color: var(--kf); padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.82rem; display: inline-block; border: 1px solid rgba(181,123,255,0.3); }
+        .kf-total-row td { border-top: 2px solid rgba(181,123,255,0.3); color: var(--text-dim); font-size: 0.78rem; padding-top: 0.7rem; }
+
+        /* No picklist notice */
+        .no-picklist-notice {
+            text-align: center; padding: 3rem 2rem;
+            background: rgba(255,200,87,0.05); border: 2px dashed rgba(255,200,87,0.2);
+            border-radius: 12px; color: var(--text-dim);
+        }
+        .no-picklist-notice .ni { font-size: 2.5rem; margin-bottom: 0.8rem; }
+        .no-picklist-notice p { font-size: 0.88rem; }
+        .no-picklist-notice a { color: var(--accent); text-decoration: none; }
+        .no-picklist-notice a:hover { text-decoration: underline; }
+
+        /* Status message */
+        .status-msg {
+            position: fixed; top: 2rem; right: 2rem;
+            padding: 1rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
+            z-index: 1001; display: none; max-width: 380px;
+            animation: slideInRight 0.4s ease;
+        }
+        .status-msg.show    { display: block; }
+        .status-msg.success { background: var(--success); color: var(--dark); }
+        .status-msg.error   { background: var(--error);   color: white; }
+        .status-msg.warning { background: var(--warning); color: var(--dark); }
+
+        /* Result count */
+        .result-count {
+            font-size: 0.8rem; color: var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            text-align: right;
+        }
+
+        @media (max-width: 900px) {
+            .table-header,
+            .survey-row {
+                grid-template-columns: 100px 1fr 120px 90px;
+            }
+            .table-header .th:nth-child(3),
+            .survey-row   > *:nth-child(3),
+            .table-header .th:nth-child(5),
+            .survey-row   > *:nth-child(5) { display: none; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            h1 { font-size: 1.8rem; }
+            .table-header,
+            .survey-row { grid-template-columns: 90px 1fr 80px; }
+            .table-header .th:nth-child(4),
+            .survey-row   > *:nth-child(4) { display: none; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">Pingu - Solar</a>
+            <a href="index.html" class="back-btn">← Back to Home</a>
+        </div>
+        <h1>Survey Master</h1>
+        <p class="subtitle">All uploaded jobs — survey status, engineer assignments, and picklist data at a glance.</p>
+    </header>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar">
+        <div class="stat-card total">
+            <div class="stat-label">Total Jobs</div>
+            <div class="stat-value" id="stat-total">—</div>
+        </div>
+        <div class="stat-card complete">
+            <div class="stat-label">Survey Complete</div>
+            <div class="stat-value" id="stat-complete">—</div>
+        </div>
+        <div class="stat-card pending">
+            <div class="stat-label">Awaiting Survey</div>
+            <div class="stat-value" id="stat-pending">—</div>
+        </div>
+        <div class="stat-card picklist">
+            <div class="stat-label">Has Picklist</div>
+            <div class="stat-value" id="stat-picklist">—</div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="filter-group" id="filter-group">
+            <button class="filter-btn active" data-filter="all"      onclick="setFilter('all',this)">All</button>
+            <button class="filter-btn"         data-filter="complete" onclick="setFilter('complete',this)">✅ Complete</button>
+            <button class="filter-btn"         data-filter="pending"  onclick="setFilter('pending',this)">⏳ Pending</button>
+        </div>
+        <input type="text" class="search-box" id="search-box"
+            placeholder="🔍  Search job, name, engineer…"
+            oninput="applyFilters()" />
+        <select class="sort-select" id="sort-select" onchange="applyFilters()">
+            <option value="date-asc">Install Date ↑</option>
+            <option value="date-desc">Install Date ↓</option>
+            <option value="job-asc">Job No. A–Z</option>
+            <option value="job-desc">Job No. Z–A</option>
+            <option value="engineer">Engineer A–Z</option>
+        </select>
+        <button class="refresh-btn" onclick="loadData()" title="Refresh">↻</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+        <div class="table-header">
+            <div class="th sorted" id="th-job" onclick="sortBy('job-asc')">Job # <span class="sort-arrow">↕</span></div>
+            <div class="th" id="th-customer">Customer</div>
+            <div class="th" id="th-engineer">Lead Engineer</div>
+            <div class="th" id="th-date">Install Date</div>
+            <div class="th" id="th-status">Survey Status</div>
+            <div class="th" id="th-picklist">Picklist</div>
+        </div>
+        <div id="survey-table-body">
+            <div class="loading-row">
+                <div class="big-spinner"></div>
+                <p>Loading jobs…</p>
+            </div>
+        </div>
+        <div class="result-count" id="result-count" style="display:none"></div>
+    </div>
+
+</div>
+
+<!-- Detail Modal -->
+<div class="modal" id="detail-modal">
+    <div class="modal-content">
+        <div class="modal-hdr">
+            <div class="modal-hdr-left">
+                <div class="modal-job-num" id="modal-job-num"></div>
+                <div class="modal-customer" id="modal-customer"></div>
+                <div class="modal-meta"    id="modal-meta"></div>
+            </div>
+            <button class="close-btn" onclick="closeModal()">×</button>
+        </div>
+
+        <div class="modal-tabs">
+            <div class="modal-tab info-tab active" onclick="switchTab('info')">📋 Job Info</div>
+            <div class="modal-tab active-specs"    id="tab-specs"  onclick="switchTab('specs')" style="display:none">⚡ Picklist Specs</div>
+            <div class="modal-tab kf-tab"          id="tab-kf"     onclick="switchTab('kf')"    style="display:none">🧩 KF Picklist</div>
+        </div>
+
+        <div id="pane-info"  class="modal-pane active"></div>
+        <div id="pane-specs" class="modal-pane"></div>
+        <div id="pane-kf"    class="modal-pane"></div>
+    </div>
+</div>
+
+<!-- Status -->
+<div class="status-msg" id="status-msg"></div>
+
+<!-- Firebase -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import {
+        getFirestore, collection, getDocs, query, orderBy, where
+    } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const cfg = {
+        apiKey:"AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain:"pingu-solar.firebaseapp.com",
+        projectId:"pingu-solar",
+        storageBucket:"pingu-solar.firebasestorage.app",
+        messagingSenderId:"232764952866",
+        appId:"1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId:"G-PFH059DZ64"
+    };
+
+    try {
+        const app = initializeApp(cfg);
+        window.db  = getFirestore(app);
+        window.fb  = { collection, getDocs, query, orderBy, where };
+        window.loadData();
+    } catch(e) {
+        showStatus('Firebase error: '+e.message,'error');
+    }
+</script>
+
+<script>
+// ── Global state ────────────────────────────────────────────────────
+let allJobs      = [];   // raw job docs
+let picklists    = {};   // keyed by jobNumber → picklist doc
+let currentFilter= 'all';
+let currentSort  = 'date-asc';
+
+const SPECS_DEF = {
+    system: [
+        {label:'Type of System',     col:'AO', row:2},
+        {label:'Inverter Size',      col:'AO', row:4,  note:'Fox & Tesla'},
+        {label:'No. of Batteries',   col:'AO', row:6},
+        {label:'Battery',            col:'AO', row:7},
+        {label:'Retrofit',           col:'AO', row:8,  note:'Fox only'},
+        {label:'Enphase Pedestal',   col:'AO', row:17},
+        {label:'Enphase Branches',   col:'AO', row:12},
+        {label:'DC Expansion',       col:'AO', row:21, note:'Tesla'},
+    ],
+    mounting: [
+        {label:'Mounting System',    col:'AS', row:2},
+        {label:'Hook Type',          col:'AS', row:4},
+        {label:'Ave Hook Spacing',   col:'AS', row:6,  unit:'mm'},
+        {label:'Hook Spacing',       col:'AS', row:7,  unit:'mm'},
+        {label:'Min. Roof Anchors',  col:'AS', row:12},
+        {label:'Bird Mesh',          col:'AS', row:14},
+        {label:'Roof Type',          col:'AS', row:16},
+        {label:'Rafter Spacing',     col:'AS', row:17},
+    ],
+    electrical: [
+        {label:'Supply Cables',      col:'AO', row:10},
+        {label:'Submain Location',   col:'AO', row:15},
+        {label:'Trenching',          col:'AO', row:19},
+    ]
+};
+
+const MOUNT_CHECK = [
+    {label:'# Portrait Panels',        col:'I', row:23},
+    {label:'# Landscape Panels',       col:'I', row:24},
+    {label:'Total Panels',             col:'I', row:25},
+    {label:'Total Perimeter',          col:'I', row:26},
+    {label:'End Clamps',               col:'S', row:23},
+    {label:'Mid Clamps',               col:'S', row:24},
+    {label:'Rail Length',              col:'S', row:25},
+    {label:'# Roof Anchors',           col:'S', row:26},
+    {label:'New Picklist Cost Saving', col:'R', row:28, highlight:true},
+];
+
+// ── Load data ───────────────────────────────────────────────────────
+async function loadData() {
+    if(!window.db) return;
+    document.getElementById('survey-table-body').innerHTML =
+        `<div class="loading-row"><div class="big-spinner"></div><p>Loading jobs…</p></div>`;
+    document.getElementById('result-count').style.display='none';
+
+    try {
+        const {collection, getDocs, query, orderBy} = window.fb;
+
+        // Load jobs
+        const jobsSnap = await getDocs(collection(window.db,'jobs'));
+        allJobs = jobsSnap.docs.map(d=>({id:d.id,...d.data()}));
+
+        // Load picklists — build a map keyed by jobNumber
+        picklists = {};
+        const plSnap = await getDocs(collection(window.db,'picklists'));
+        plSnap.docs.forEach(d=>{
+            const data = d.data();
+            if(data.jobNumber) picklists[data.jobNumber] = {id:d.id,...data};
+        });
+
+        updateStats();
+        applyFilters();
+    } catch(e) {
+        document.getElementById('survey-table-body').innerHTML =
+            `<div class="empty-state"><div class="ei">⚠️</div><h3>Failed to load</h3><p>${esc(e.message)}</p></div>`;
+        showStatus('Load failed: '+e.message,'error');
+    }
+}
+
+// ── Stats ───────────────────────────────────────────────────────────
+function updateStats() {
+    const total    = allJobs.length;
+    const complete = allJobs.filter(j=>isSurveyComplete(j)).length;
+    const pending  = total - complete;
+    const withPl   = allJobs.filter(j=>picklists[j['Job Number']]).length;
+
+    document.getElementById('stat-total').textContent    = total;
+    document.getElementById('stat-complete').textContent = complete;
+    document.getElementById('stat-pending').textContent  = pending;
+    document.getElementById('stat-picklist').textContent = withPl;
+}
+
+// A survey is "complete" if a picklist exists for this job number
+function isSurveyComplete(job) {
+    return !!picklists[job['Job Number']];
+}
+
+// ── Filter & sort ───────────────────────────────────────────────────
+function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b=>{
+        b.className='filter-btn';
+    });
+    if(filter==='all')      btn.classList.add('active');
+    else if(filter==='complete') btn.classList.add('active-ok');
+    else                    btn.classList.add('active-pend');
+    applyFilters();
+}
+
+function sortBy(s) { currentSort = s; document.getElementById('sort-select').value=s; applyFilters(); }
+
+function applyFilters() {
+    currentSort = document.getElementById('sort-select').value;
+    const search = document.getElementById('search-box').value.toLowerCase().trim();
+
+    let jobs = [...allJobs];
+
+    // Filter by status
+    if(currentFilter==='complete') jobs = jobs.filter(j=>isSurveyComplete(j));
+    else if(currentFilter==='pending') jobs = jobs.filter(j=>!isSurveyComplete(j));
+
+    // Search
+    if(search) {
+        jobs = jobs.filter(j=>{
+            return (
+                (j['Job Number']||'').toLowerCase().includes(search) ||
+                (j['Name']||'').toLowerCase().includes(search) ||
+                (j['Lead Engineer']||'').toLowerCase().includes(search) ||
+                (j['1st line of address']||'').toLowerCase().includes(search) ||
+                (j['Postcode']||'').toLowerCase().includes(search)
+            );
+        });
+    }
+
+    // Sort
+    jobs.sort((a,b)=>{
+        switch(currentSort){
+            case 'date-asc':   return parseDate(a['Install Date']) - parseDate(b['Install Date']);
+            case 'date-desc':  return parseDate(b['Install Date']) - parseDate(a['Install Date']);
+            case 'job-asc':    return (a['Job Number']||'').localeCompare(b['Job Number']||'');
+            case 'job-desc':   return (b['Job Number']||'').localeCompare(a['Job Number']||'');
+            case 'engineer':   return (a['Lead Engineer']||'').localeCompare(b['Lead Engineer']||'');
+            default: return 0;
+        }
+    });
+
+    renderTable(jobs);
+}
+
+function parseDate(str) {
+    if(!str) return 0;
+    const parts = str.split('/');
+    if(parts.length===3) return new Date(parts[2], parts[1]-1, parts[0]).getTime();
+    return new Date(str).getTime()||0;
+}
+
+// ── Render table ────────────────────────────────────────────────────
+function renderTable(jobs) {
+    const body   = document.getElementById('survey-table-body');
+    const count  = document.getElementById('result-count');
+
+    if(!jobs.length) {
+        body.innerHTML = `
+            <div class="empty-state">
+                <div class="ei">🔭</div>
+                <h3>No jobs found</h3>
+                <p>Try adjusting your filters or search term.</p>
+            </div>`;
+        count.style.display='none';
+        return;
+    }
+
+    body.innerHTML = jobs.map((job,i) => {
+        const jn      = job['Job Number']||'—';
+        const name    = job['Name']||'—';
+        const addr    = [job['1st line of address'], job['Postcode']].filter(Boolean).join(', ');
+        const eng     = job['Lead Engineer']||'—';
+        const date    = job['Install Date']||'—';
+        const done    = isSurveyComplete(job);
+        const hasPl   = !!picklists[jn];
+        const plData  = picklists[jn];
+        const kfCount = (plData?.kfPicklist?.length)||0;
+
+        return `
+        <div class="survey-row" onclick="openJobDetail('${esc(jn)}')"
+             style="animation-delay:${Math.min(i*0.04,0.6)}s">
+            <div class="job-num">#${esc(jn)}</div>
+            <div>
+                <div class="customer-name">${esc(name)}</div>
+                <div class="customer-address">${esc(addr)}</div>
+            </div>
+            <div class="engineer-cell">${esc(eng)}</div>
+            <div class="date-cell">${esc(date)}</div>
+            <div>
+                <span class="status-badge ${done?'complete':'pending'}">
+                    <span class="status-dot"></span>
+                    ${done?'Complete':'Pending'}
+                </span>
+            </div>
+            <div class="picklist-cell">
+                ${hasPl
+                    ? `<span class="picklist-pill has-pl">🧩 ${kfCount>0?kfCount+' KF':'Yes'}</span>`
+                    : `<span class="picklist-pill no-pl">—</span>`
+                }
+            </div>
+        </div>`;
+    }).join('');
+
+    count.style.display='block';
+    count.textContent=`Showing ${jobs.length} of ${allJobs.length} job${allJobs.length!==1?'s':''}`;
+}
+
+// ── Modal ────────────────────────────────────────────────────────────
+function openJobDetail(jobNumber) {
+    const job = allJobs.find(j=>j['Job Number']===jobNumber);
+    if(!job) return;
+
+    const pl     = picklists[jobNumber];
+    const hasPl  = !!pl;
+    const hasKf  = hasPl && pl.kfPicklist && pl.kfPicklist.length > 0;
+
+    document.getElementById('modal-job-num').textContent   = `#${jobNumber}`;
+    document.getElementById('modal-customer').textContent  = job['Name']||'—';
+    document.getElementById('modal-meta').textContent      =
+        `📅 Install: ${job['Install Date']||'—'}  ·  👷 ${job['Lead Engineer']||'—'}  ·  ⏱ ${job['Job Length']||'—'}`;
+
+    // Show/hide tabs
+    document.getElementById('tab-specs').style.display = hasPl ? '' : 'none';
+    document.getElementById('tab-kf').style.display    = hasKf ? '' : 'none';
+
+    // ── Info pane ──
+    const infoFields = ['Phone Number','Email Address','1st line of address','Postcode','Job Length','Lead Engineer'];
+    document.getElementById('pane-info').innerHTML = `
+        <div class="job-info-grid">
+            ${infoFields.map(f=>`
+                <div class="info-item">
+                    <div class="info-label">${f}</div>
+                    <div class="info-value">${esc(job[f]||'—')}</div>
+                </div>`).join('')}
+        </div>
+        <div style="padding:1rem;background:var(--dark-lighter);border-radius:10px;border-left:3px solid ${hasPl?'var(--success)':'var(--secondary)'}">
+            <div style="font-size:0.75rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Survey Status</div>
+            <span class="status-badge ${hasPl?'complete':'pending'}">
+                <span class="status-dot"></span>
+                ${hasPl?'Survey Complete — Picklist Saved':'Awaiting Survey / Picklist'}
+            </span>
+            ${hasPl?`<div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.6rem">
+                Saved: ${pl.savedAt?new Date(pl.savedAt).toLocaleString('en-GB'):'—'}
+            </div>`:''}
+        </div>
+        ${!hasPl?`
+        <div class="no-picklist-notice" style="margin-top:1.5rem">
+            <div class="ni">📋</div>
+            <p>No picklist has been saved for this job yet.<br>
+            Visit the <a href="picklist.html">Picklist Generator</a> to add one.</p>
+        </div>`:''}`;
+
+    // ── Specs pane ──
+    if(hasPl && pl.specs) {
+        const grp = defs => defs.map(def=>{
+            const v = pl.specs[def.label]||'';
+            const noteH = def.note?`<span class="spec-note"> (${def.note})</span>`:'';
+            const unitH = (v&&def.unit)?`<span class="spec-unit">${def.unit}</span>`:'';
+            return `<div class="spec-item ${v?'has-value':'no-value'}">
+                <div class="spec-ref">${def.col}${def.row}</div>
+                <div class="spec-label">${def.label}${noteH}</div>
+                <div class="spec-value ${v?'':'empty-val'}">${v?esc(v)+unitH:'—'}</div>
+            </div>`;
+        }).join('');
+
+        let specsHtml = `
+            <div class="specs-section-title">⚡ System Configuration</div>
+            <div class="specs-grid">${grp(SPECS_DEF.system)}</div>
+            <div class="specs-section-title">🔩 Mounting &amp; Hardware</div>
+            <div class="specs-grid">${grp(SPECS_DEF.mounting)}</div>
+            <div class="specs-section-title">🔌 Electrical &amp; Supply</div>
+            <div class="specs-grid">${grp(SPECS_DEF.electrical)}</div>`;
+
+        if(pl.mountCheck) {
+            const mc = MOUNT_CHECK.map(def=>{
+                const v = pl.mountCheck[def.label]||'';
+                return `<div class="spec-item ${v?'has-value':'no-value'}">
+                    <div class="spec-ref">${def.col}${def.row}</div>
+                    <div class="spec-label">${def.label}</div>
+                    <div class="spec-value ${v?'':'empty-val'}">${v?esc(v):'—'}</div>
+                </div>`;
+            }).join('');
+            specsHtml += `<div class="specs-section-title">✅ Mount System Sense Check</div>
+                          <div class="specs-grid">${mc}</div>`;
+        }
+
+        // Roof map
+        const flatArr = pl.panelFlat || (pl.panelGrid?pl.panelGrid.flat():null);
+        const cols    = pl.panelCols || (pl.panelGrid?.[0]?.length)||0;
+        if(flatArr && cols) {
+            let pC=0, lC=0, cells='';
+            flatArr.forEach(v=>{
+                if(v==='P')pC++; if(v==='L')lC++;
+                const cls=v==='P'?'p':v==='L'?'l':'e';
+                cells+=`<div class="cell ${cls}">${v==='P'?'P':v==='L'?'L':''}</div>`;
+            });
+            if(pC||lC) specsHtml+=`
+            <div class="roof-map-wrap">
+                <div class="roof-map-hdr">
+                    <h4>🏠 Roof Panel Layout</h4>
+                    <div class="legend">
+                        <div class="legend-item"><div class="swatch p"></div>Portrait</div>
+                        <div class="legend-item"><div class="swatch l"></div>Landscape</div>
+                        <div class="legend-item"><div class="swatch e"></div>Empty</div>
+                    </div>
+                </div>
+                <div class="roof-grid-wrap">
+                    <div class="roof-grid" style="grid-template-columns:repeat(${cols},28px)">${cells}</div>
+                </div>
+                <div class="roof-stats">
+                    <div class="roof-stat">🟧 Portrait: <strong>${pC}</strong></div>
+                    <div class="roof-stat">🟦 Landscape: <strong>${lC}</strong></div>
+                    <div class="roof-stat">📐 Total: <strong>${pC+lC}</strong></div>
+                </div>
+            </div>`;
+        }
+
+        document.getElementById('pane-specs').innerHTML = specsHtml;
+    }
+
+    // ── KF pane ──
+    if(hasKf) {
+        let totalQty=0;
+        pl.kfPicklist.forEach(it=>{const q=parseFloat(it.qty);if(!isNaN(q))totalQty+=q;});
+        const rows = pl.kfPicklist.map((it,i)=>`
+            <tr>
+                <td style="color:var(--text-dim);font-size:0.75rem">${i+1}</td>
+                <td><span class="kf-part-code">${esc(it.partCode)}</span></td>
+                <td><span class="kf-qty">${esc(it.qty||'—')}</span></td>
+            </tr>`).join('') +
+            `<tr class="kf-total-row">
+                <td></td>
+                <td style="color:var(--text-dim)">Total qty</td>
+                <td><span class="kf-qty">${totalQty}</span></td>
+            </tr>`;
+        document.getElementById('pane-kf').innerHTML=`
+            <div style="margin-bottom:1rem;display:flex;align-items:center;gap:0.8rem">
+                <span style="font-family:'Syne',sans-serif;font-size:0.85rem;color:var(--kf);text-transform:uppercase;letter-spacing:0.08em">🧩 KF Picklist</span>
+                <span style="font-size:0.75rem;color:var(--text-dim);background:var(--dark);padding:0.2rem 0.6rem;border-radius:20px;border:1px solid rgba(181,123,255,0.3)">${pl.kfPicklist.length} items</span>
+            </div>
+            <div class="kf-table-wrap">
+                <table class="kf-table">
+                    <thead><tr><th>#</th><th>Part Code</th><th>Quantity</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    }
+
+    switchTab('info');
+    document.getElementById('detail-modal').classList.add('show');
+}
+
+function switchTab(tab) {
+    document.querySelectorAll('.modal-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.modal-pane').forEach(p=>p.classList.remove('active'));
+
+    const map = {info:'pane-info', specs:'pane-specs', kf:'pane-kf'};
+    const tabMap = {
+        info:  document.querySelectorAll('.modal-tab')[0],
+        specs: document.getElementById('tab-specs'),
+        kf:    document.getElementById('tab-kf')
+    };
+    document.getElementById(map[tab]).classList.add('active');
+    if(tabMap[tab]) tabMap[tab].classList.add('active');
+}
+
+function closeModal() { document.getElementById('detail-modal').classList.remove('show'); }
+document.getElementById('detail-modal').addEventListener('click', e=>{
+    if(e.target===document.getElementById('detail-modal')) closeModal();
+});
+
+// ── Utils ────────────────────────────────────────────────────────────
+function esc(t) { const d=document.createElement('div'); d.textContent=String(t||''); return d.innerHTML; }
+
+function showStatus(msg, type) {
+    const el = document.getElementById('status-msg');
+    el.textContent=msg; el.className=`status-msg ${type} show`;
+    clearTimeout(window._st); window._st=setTimeout(()=>el.classList.remove('show'),5000);
+}
+
+// Expose globals
+window.loadData       = loadData;
+window.setFilter      = setFilter;
+window.sortBy         = sortBy;
+window.applyFilters   = applyFilters;
+window.openJobDetail  = openJobDetail;
+window.closeModal     = closeModal;
+window.switchTab      = switchTab;
+window.showStatus     = showStatus;
+</script>
+</body>
+</html>
