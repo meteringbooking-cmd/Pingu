@@ -390,11 +390,6 @@
             </div>
 
             <form id="build-form" onsubmit="saveTeam(event)">
-                <div class="form-group">
-                    <label for="team-name">Team Name *</label>
-                    <input type="text" id="team-name" class="form-input" placeholder="e.g. Alpha Squad" required />
-                </div>
-
                 <div class="section-divider"><span>⭐ Lead Engineer</span></div>
 
                 <div class="lead-block">
@@ -436,11 +431,6 @@
         </div>
         <form id="edit-form" onsubmit="updateTeam(event)">
             <input type="hidden" id="edit-id" />
-
-            <div class="form-group">
-                <label for="edit-team-name">Team Name *</label>
-                <input type="text" id="edit-team-name" class="form-input" required />
-            </div>
 
             <div class="section-divider"><span>⭐ Lead Engineer</span></div>
             <div class="lead-block">
@@ -542,14 +532,12 @@
         const btn = document.getElementById('submit-btn');
         btn.disabled = true; btn.textContent = 'Saving...';
 
-        const teamName  = document.getElementById('team-name').value.trim();
         const leadName  = document.getElementById('lead-name').value.trim();
         const engineers = collectEngineers('engineer-slots');
 
         try {
             const { collection, addDoc } = window.FM;
             await addDoc(collection(window.db, 'team-database'), {
-                name: teamName,
                 emoji: EMOJIS[Math.floor(Math.random() * EMOJIS.length)],
                 lead: { name: leadName },
                 engineers: engineers,
@@ -599,8 +587,8 @@
                     <div class="team-card-title">
                         <span class="team-emoji">${team.emoji || '⚡'}</span>
                         <div>
-                            <div class="team-name-display">${esc(team.name)}</div>
-                            <div class="team-meta">Lead: ${esc(team.lead?.name || '—')} &nbsp;·&nbsp; ${engs.length} engineer${engs.length !== 1 ? 's' : ''}</div>
+                            <div class="team-name-display">${esc(team.lead?.name || '—')}'s Team</div>
+                            <div class="team-meta">${engs.length} engineer${engs.length !== 1 ? 's' : ''}</div>
                         </div>
                     </div>
                     <div class="team-card-actions">
@@ -668,14 +656,12 @@
         e.preventDefault();
         if (!editingId) return;
 
-        const name      = document.getElementById('edit-team-name').value.trim();
         const leadName  = document.getElementById('edit-lead-name').value.trim();
         const engineers = collectEngineers('edit-slots');
 
         try {
             const { doc, updateDoc } = window.FM;
             await updateDoc(doc(window.db, 'team-database', editingId), {
-                name,
                 lead: { name: leadName },
                 engineers,
                 updatedAt: new Date().toISOString()
