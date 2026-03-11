@@ -8,7 +8,6 @@
     <style>
         :root {
             --primary: #FF6B35;
-            --primary-dark: #E55A2B;
             --secondary: #FFC857;
             --accent: #00D9FF;
             --dark: #1A1A2E;
@@ -17,815 +16,481 @@
             --text: #EAEAEA;
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
-            --error: #FF6B6B;
-            --warning: #FFA500;
             --kf: #B57BFF;
             --shadow: rgba(255, 107, 53, 0.3);
         }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'JetBrains Mono', monospace;
-            background: var(--dark);
-            color: var(--text);
-            line-height: 1.6;
-            min-height: 100vh;
-            overflow-x: hidden;
+            background: var(--dark); color: var(--text);
+            line-height: 1.6; min-height: 100vh; overflow-x: hidden;
         }
-
         body::before {
-            content: '';
-            position: fixed;
-            top: -50%; left: -50%;
+            content: ''; position: fixed; top: -50%; left: -50%;
             width: 200%; height: 200%;
             background:
                 radial-gradient(circle at 15% 50%, rgba(255,107,53,0.07) 0%, transparent 50%),
                 radial-gradient(circle at 85% 20%, rgba(0,217,255,0.07) 0%, transparent 50%),
                 radial-gradient(circle at 50% 90%, rgba(181,123,255,0.05) 0%, transparent 45%);
-            animation: float 25s ease-in-out infinite;
-            pointer-events: none;
-            z-index: 0;
+            animation: bgFloat 25s ease-in-out infinite;
+            pointer-events: none; z-index: 0;
         }
+        @keyframes bgFloat { 0%,100% { transform:translate(0,0); } 50% { transform:translate(20px,-20px); } }
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
 
-        @keyframes float {
-            0%,100% { transform: translate(0,0) rotate(0deg); }
-            33% { transform: translate(20px,-20px) rotate(120deg); }
-            66% { transform: translate(-15px,15px) rotate(240deg); }
-        }
-
-        .container {
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        /* ── HEADER ── */
-        header { margin-bottom: 2.5rem; animation: slideDown 0.7s ease-out; }
-        @keyframes slideDown { from { opacity:0; transform:translateY(-28px); } to { opacity:1; transform:translateY(0); } }
-
-        .header-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-bottom: 1.2rem;
-        }
-
+        header { margin-bottom: 2rem; animation: slideDown 0.6s ease-out; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
+        .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
         .logo {
-            font-family: 'Syne', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-decoration: none;
+            font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+            background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none;
         }
-
         .back-btn {
-            background: var(--dark-light);
-            color: var(--text);
-            text-decoration: none;
-            padding: 0.7rem 1.4rem;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            border: 2px solid transparent;
-            transition: all 0.25s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
+            background:var(--dark-light); color:var(--text); text-decoration:none;
+            padding:0.65rem 1.3rem; border-radius:8px; font-size:0.85rem;
+            border:2px solid transparent; transition:all 0.2s;
         }
-        .back-btn:hover { border-color: var(--accent); background: var(--dark-lighter); }
+        .back-btn:hover { border-color:var(--accent); }
+        h1 { font-family:'Syne',sans-serif; font-size:2.2rem; }
+        .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.2rem; }
 
-        .page-title-wrap h1 {
-            font-family: 'Syne', sans-serif;
-            font-size: 2.4rem;
-            color: var(--text);
-            margin-bottom: 0.2rem;
-        }
-        .page-subtitle { color: var(--text-dim); font-size: 0.9rem; }
-
-        /* ── CONTROLS ── */
         .controls-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: center;
-            margin-bottom: 2rem;
-            background: var(--dark-light);
-            border: 2px solid var(--dark-lighter);
-            border-radius: 14px;
-            padding: 1.2rem 1.5rem;
-            animation: fadeUp 0.7s ease-out 0.15s both;
+            display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:12px; padding:1rem 1.3rem; margin-bottom:1.8rem;
+            animation: fadeUp 0.6s ease-out 0.1s both;
         }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
-
-        .ctrl-group { display: flex; align-items: center; gap: 0.6rem; }
-        .ctrl-label { font-size: 0.78rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
-
+        @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+        .ctrl-group { display:flex; align-items:center; gap:0.5rem; }
+        .ctrl-label { font-size:0.72rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
         .ctrl-select, .ctrl-input {
-            background: var(--dark-lighter);
-            border: 2px solid var(--dark-lighter);
-            color: var(--text);
-            padding: 0.55rem 1rem;
-            border-radius: 9px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.88rem;
-            transition: border-color 0.2s;
+            background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.5rem 0.9rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.85rem; transition:border-color 0.2s;
         }
-        .ctrl-select:focus, .ctrl-input:focus { outline: none; border-color: var(--primary); }
-        .ctrl-input { min-width: 200px; }
-
+        .ctrl-select:focus, .ctrl-input:focus { outline:none; border-color:var(--primary); }
+        .ctrl-input { min-width:190px; }
         .refresh-btn {
-            margin-left: auto;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            border: none;
-            padding: 0.6rem 1.4rem;
-            border-radius: 9px;
-            font-family: 'Syne', sans-serif;
-            font-size: 0.9rem;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.25s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            margin-left:auto; background:linear-gradient(135deg,var(--primary),var(--accent));
+            color:white; border:none; padding:0.55rem 1.3rem; border-radius:8px;
+            font-family:'Syne',sans-serif; font-size:0.88rem; font-weight:700;
+            cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.4rem;
         }
-        .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow); }
-        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .refresh-btn:hover { transform:translateY(-2px); box-shadow:0 5px 18px var(--shadow); }
+        .refresh-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
 
-        /* ── STATS BAR ── */
         .stats-bar {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 1rem;
-            margin-bottom: 2rem;
-            animation: fadeUp 0.7s ease-out 0.25s both;
+            display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+            gap:0.9rem; margin-bottom:1.8rem; animation: fadeUp 0.6s ease-out 0.2s both;
         }
-
         .stat-card {
-            background: var(--dark-light);
-            border: 2px solid var(--dark-lighter);
-            border-radius: 12px;
-            padding: 1.2rem 1.4rem;
-            transition: border-color 0.2s;
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:10px; padding:1rem 1.2rem;
         }
-        .stat-card:hover { border-color: var(--primary); }
-        .stat-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 0.4rem; }
-        .stat-value { font-family: 'Syne', sans-serif; font-size: 1.9rem; font-weight: 800; }
-        .stat-value.orange { color: var(--primary); }
-        .stat-value.cyan   { color: var(--accent); }
-        .stat-value.purple { color: var(--kf); }
-        .stat-value.green  { color: var(--success); }
+        .stat-label { font-size:0.68rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.3rem; }
+        .stat-value { font-family:'Syne',sans-serif; font-size:1.7rem; font-weight:800; }
+        .c-orange { color:var(--primary); }
+        .c-cyan   { color:var(--accent); }
+        .c-purple { color:var(--kf); }
+        .c-green  { color:var(--success); }
 
-        /* ── LOADING / EMPTY ── */
-        .state-msg {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text-dim);
-            font-size: 0.95rem;
-            display: none;
-        }
-        .state-msg.show { display: block; }
-        .state-msg .icon { font-size: 3rem; margin-bottom: 1rem; }
+        .state-msg { text-align:center; padding:3.5rem 2rem; color:var(--text-dim); font-size:0.9rem; display:none; }
+        .state-msg.show { display:block; }
+        .state-msg .icon { font-size:2.8rem; margin-bottom:0.8rem; }
 
-        /* ── SURVEYOR SECTION ── */
-        .surveyor-section {
-            margin-bottom: 2.5rem;
-            animation: fadeUp 0.5s ease-out both;
-        }
-
-        .surveyor-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1.2rem;
-            padding: 1rem 1.5rem;
-            background: var(--dark-light);
-            border-radius: 12px 12px 0 0;
-            border: 2px solid var(--dark-lighter);
-            border-bottom: 2px solid var(--primary);
-        }
-
-        .surveyor-avatar {
-            width: 42px; height: 42px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            display: flex; align-items: center; justify-content: center;
-            font-family: 'Syne', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 800;
-            color: white;
-            flex-shrink: 0;
-        }
-
-        .surveyor-name {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .surveyor-count {
-            margin-left: auto;
-            background: rgba(255,107,53,0.15);
-            border: 1px solid rgba(255,107,53,0.4);
-            color: var(--primary);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-
-        /* ── JOB CARD ── */
-        .jobs-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-            gap: 1.2rem;
-            background: var(--dark-light);
-            border: 2px solid var(--dark-lighter);
-            border-top: none;
-            border-radius: 0 0 12px 12px;
-            padding: 1.2rem;
-        }
-
-        .job-card {
-            background: var(--dark);
-            border: 2px solid var(--dark-lighter);
-            border-radius: 12px;
-            overflow: hidden;
-            transition: border-color 0.2s, transform 0.2s;
-        }
-        .job-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-
-        .job-card-header {
-            padding: 1rem 1.2rem;
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 0.8rem;
-            border-bottom: 1px solid var(--dark-lighter);
-        }
-
-        .job-num {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.05rem;
-            font-weight: 800;
-            color: var(--accent);
-        }
-
-        .job-meta { flex: 1; min-width: 0; }
-        .job-customer {
-            font-size: 0.82rem;
-            color: var(--text-dim);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .survey-type-badge {
-            padding: 0.2rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.72rem;
-            font-weight: 600;
-            white-space: nowrap;
-            flex-shrink: 0;
-        }
-        .badge-bas { background: rgba(0,217,255,0.15); border: 1px solid rgba(0,217,255,0.4); color: var(--accent); }
-        .badge-bo  { background: rgba(255,200,87,0.15); border: 1px solid rgba(255,200,87,0.4); color: var(--secondary); }
-
-        .job-card-info {
-            padding: 0.8rem 1.2rem;
-            display: flex;
-            gap: 1.5rem;
-            border-bottom: 1px solid var(--dark-lighter);
-            flex-wrap: wrap;
-        }
-
-        .info-pill { display: flex; flex-direction: column; gap: 0.1rem; }
-        .info-pill-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
-        .info-pill-value { font-size: 0.88rem; color: var(--text); font-weight: 600; }
-        .info-pill-value.highlight { color: var(--secondary); }
-        .info-pill-value.cable { color: var(--success); }
-
-        /* ── MATERIALS TABLE ── */
-        .materials-section { padding: 0.8rem 1.2rem 1rem; }
-
-        .materials-section-title {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-dim);
-            margin-bottom: 0.6rem;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .materials-section-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--dark-lighter);
-        }
-
-        .no-materials {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            font-style: italic;
-            padding: 0.5rem 0;
-        }
-
-        .material-category-group { margin-bottom: 0.8rem; }
-        .material-category-group:last-child { margin-bottom: 0; }
-
-        .mat-cat-label {
-            font-size: 0.67rem;
-            text-transform: uppercase;
-            letter-spacing: 0.07em;
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            margin-bottom: 0.4rem;
-            display: inline-block;
-        }
-        .mat-cat-label.electrical { background: rgba(255,107,53,0.12); color: var(--primary); border: 1px solid rgba(255,107,53,0.25); }
-        .mat-cat-label.roof       { background: rgba(0,217,255,0.1);  color: var(--accent);   border: 1px solid rgba(0,217,255,0.25); }
-        .mat-cat-label.kf         { background: rgba(181,123,255,0.12); color: var(--kf);     border: 1px solid rgba(181,123,255,0.25); }
-
-        .mat-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 0.5rem;
-            padding: 0.3rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-        }
-        .mat-item:last-child { border-bottom: none; }
-
-        .mat-desc { font-size: 0.8rem; color: var(--text); flex: 1; min-width: 0; }
-        .mat-qty-badge {
-            background: rgba(181,123,255,0.15);
-            border: 1px solid rgba(181,123,255,0.3);
-            color: var(--kf);
-            padding: 0.1rem 0.5rem;
-            border-radius: 5px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        /* ── DATE CHIP ── */
-        .date-chip {
-            font-size: 0.78rem;
-            color: var(--text-dim);
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--dark-lighter);
-            padding: 0.15rem 0.55rem;
-            border-radius: 5px;
-            display: inline-block;
-        }
-
-        /* ── EXPORT ROW ── */
-        .export-row {
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-            margin-bottom: 2rem;
-            animation: fadeUp 0.7s ease-out 0.3s both;
-        }
-
+        .export-row { display:flex; gap:0.8rem; margin-bottom:1.8rem; animation: fadeUp 0.6s ease-out 0.25s both; }
         .export-btn {
-            background: var(--dark-light);
-            border: 2px solid var(--dark-lighter);
-            color: var(--text);
-            padding: 0.6rem 1.3rem;
-            border-radius: 9px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.5rem 1.1rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.82rem;
+            cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.4rem;
         }
-        .export-btn:hover { border-color: var(--success); color: var(--success); }
+        .export-btn:hover { border-color:var(--success); color:var(--success); }
 
-        /* ── SCROLLBACK ── */
+        /* SURVEYOR BLOCK */
+        .surveyor-block { margin-bottom:1.5rem; animation: fadeUp 0.4s ease-out both; }
+        .surveyor-header {
+            display:flex; align-items:center; gap:0.9rem;
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-bottom:2px solid var(--primary);
+            border-radius:12px 12px 0 0; padding:0.9rem 1.3rem;
+        }
+        .surveyor-avatar {
+            width:38px; height:38px; border-radius:50%;
+            background:linear-gradient(135deg,var(--primary),var(--accent));
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Syne',sans-serif; font-size:1rem; font-weight:800;
+            color:white; flex-shrink:0;
+        }
+        .surveyor-name { font-family:'Syne',sans-serif; font-size:1.15rem; font-weight:700; }
+        .surveyor-pills { display:flex; gap:0.6rem; align-items:center; margin-left:auto; flex-wrap:wrap; }
+        .pill { padding:0.2rem 0.7rem; border-radius:20px; font-size:0.75rem; font-weight:600; white-space:nowrap; }
+        .pill-cable { background:rgba(78,204,163,0.14); border:1px solid rgba(78,204,163,0.35); color:var(--success); }
+        .pill-mats  { background:rgba(181,123,255,0.14); border:1px solid rgba(181,123,255,0.35); color:var(--kf); }
+
+        /* JOB LIST */
+        .jobs-list {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-top:none; border-radius:0 0 12px 12px; overflow:hidden;
+        }
+        .job-row { border-bottom:1px solid rgba(255,255,255,0.05); }
+        .job-row:last-child { border-bottom:none; }
+
+        .job-summary {
+            display:flex; align-items:center; gap:0.9rem;
+            padding:0.75rem 1.2rem; cursor:pointer;
+            transition:background 0.15s; user-select:none;
+        }
+        .job-summary:hover { background:rgba(255,255,255,0.03); }
+
+        .job-chevron { color:var(--text-dim); font-size:0.72rem; flex-shrink:0; transition:transform 0.2s; }
+        .job-row.open .job-chevron { transform:rotate(90deg); }
+
+        .job-num { font-family:'Syne',sans-serif; font-size:0.92rem; font-weight:800; color:var(--accent); white-space:nowrap; min-width:80px; }
+        .job-date { color:var(--text-dim); font-size:0.78rem; white-space:nowrap; }
+        .job-cable {
+            background:rgba(78,204,163,0.12); border:1px solid rgba(78,204,163,0.3);
+            color:var(--success); padding:0.15rem 0.55rem; border-radius:5px;
+            font-size:0.78rem; font-weight:600; white-space:nowrap;
+        }
+        .job-type-badge { padding:0.15rem 0.55rem; border-radius:5px; font-size:0.72rem; font-weight:600; white-space:nowrap; }
+        .badge-bas { background:rgba(0,217,255,0.12); border:1px solid rgba(0,217,255,0.3); color:var(--accent); }
+        .badge-bo  { background:rgba(255,200,87,0.12); border:1px solid rgba(255,200,87,0.3); color:var(--secondary); }
+        .job-mat-count {
+            margin-left:auto; background:rgba(181,123,255,0.12); border:1px solid rgba(181,123,255,0.3);
+            color:var(--kf); padding:0.15rem 0.55rem; border-radius:5px; font-size:0.75rem; font-weight:600; white-space:nowrap;
+        }
+
+        /* EXPANDED DETAIL */
+        .job-detail {
+            display:none; padding:0.8rem 1.2rem 1rem 2.8rem;
+            border-top:1px solid rgba(255,255,255,0.05);
+            background:rgba(0,0,0,0.15);
+        }
+        .job-row.open .job-detail { display:block; }
+
+        .mat-cat-block { margin-bottom:0.9rem; }
+        .mat-cat-block:last-child { margin-bottom:0; }
+        .mat-cat-label {
+            font-size:0.65rem; text-transform:uppercase; letter-spacing:0.07em;
+            padding:0.18rem 0.55rem; border-radius:4px; margin-bottom:0.5rem; display:inline-block;
+        }
+        .mat-cat-label.electrical { background:rgba(255,107,53,0.12); border:1px solid rgba(255,107,53,0.25); color:var(--primary); }
+        .mat-cat-label.roof       { background:rgba(0,217,255,0.1); border:1px solid rgba(0,217,255,0.25); color:var(--accent); }
+        .mat-cat-label.kf         { background:rgba(181,123,255,0.12); border:1px solid rgba(181,123,255,0.25); color:var(--kf); }
+        .mat-cat-label.other      { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); color:var(--text-dim); }
+
+        .mat-item { display:flex; justify-content:space-between; align-items:baseline; gap:0.8rem; padding:0.28rem 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+        .mat-item:last-child { border-bottom:none; }
+        .mat-desc { font-size:0.82rem; color:var(--text); flex:1; min-width:0; }
+        .mat-qty {
+            background:rgba(181,123,255,0.15); border:1px solid rgba(181,123,255,0.3);
+            color:var(--kf); padding:0.1rem 0.5rem; border-radius:4px;
+            font-size:0.78rem; font-weight:700; flex-shrink:0;
+        }
+
         #back-top {
-            position: fixed;
-            bottom: 2rem; right: 2rem;
-            background: var(--primary);
-            color: white;
-            border: none;
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            font-size: 1.1rem;
-            cursor: pointer;
-            box-shadow: 0 4px 16px var(--shadow);
-            transition: all 0.2s;
-            display: none;
-            z-index: 100;
+            position:fixed; bottom:1.8rem; right:1.8rem;
+            background:var(--primary); color:white; border:none;
+            width:40px; height:40px; border-radius:50%; font-size:1rem;
+            cursor:pointer; box-shadow:0 3px 14px var(--shadow);
+            transition:all 0.2s; display:none; align-items:center; justify-content:center; z-index:100;
         }
-        #back-top.show { display: flex; align-items: center; justify-content: center; }
-        #back-top:hover { transform: translateY(-3px); }
+        #back-top.show { display:flex; }
+        #back-top:hover { transform:translateY(-2px); }
 
-        @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            .jobs-grid { grid-template-columns: 1fr; padding: 0.8rem; }
-            .controls-bar { padding: 1rem; }
-            .page-title-wrap h1 { font-size: 1.8rem; }
-            .stats-bar { grid-template-columns: 1fr 1fr; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        #refresh-icon { display:inline-block; }
+
+        @media (max-width:640px) {
+            .container { padding:1rem; }
+            h1 { font-size:1.8rem; }
+            .job-summary { flex-wrap:wrap; gap:0.5rem; }
+            .job-mat-count { margin-left:0; }
+        }
+        @media print {
+            .controls-bar,.export-row,#back-top,.back-btn { display:none !important; }
+            .job-detail { display:block !important; }
+            body { background:white; color:black; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
+<div class="container">
 
-        <!-- HEADER -->
-        <header>
-            <div class="header-row">
-                <a href="teamview.html" class="logo">Pingu - Solar</a>
-                <a href="teamview.html" class="back-btn">← Back to Dashboard</a>
-            </div>
-            <div class="page-title-wrap">
-                <h1>📦 Inventory Check</h1>
-                <p class="page-subtitle">Additional materials requested per surveyor — all submitted site surveys</p>
-            </div>
-        </header>
-
-        <!-- CONTROLS -->
-        <div class="controls-bar">
-            <div class="ctrl-group">
-                <span class="ctrl-label">Surveyor</span>
-                <select class="ctrl-select" id="filter-surveyor">
-                    <option value="">All Surveyors</option>
-                </select>
-            </div>
-            <div class="ctrl-group">
-                <span class="ctrl-label">Survey Type</span>
-                <select class="ctrl-select" id="filter-type">
-                    <option value="">All Types</option>
-                    <option value="battery-only">Battery Only</option>
-                    <option value="battery-and-solar">Battery & Solar</option>
-                </select>
-            </div>
-            <div class="ctrl-group">
-                <span class="ctrl-label">Search</span>
-                <input type="text" class="ctrl-input" id="search-input" placeholder="Job number, material…" />
-            </div>
-            <button class="refresh-btn" id="refresh-btn" onclick="loadSurveys()">
-                <span id="refresh-icon">↻</span> Refresh
-            </button>
+    <header>
+        <div class="header-row">
+            <a href="teamview.html" class="logo">Pingu - Solar</a>
+            <a href="teamview.html" class="back-btn">← Back to Dashboard</a>
         </div>
+        <h1>📦 Inventory Check</h1>
+        <p class="subtitle">Only surveys with additional materials shown. Click any job to expand. Cable run totals include all jobs.</p>
+    </header>
 
-        <!-- STATS -->
-        <div class="stats-bar" id="stats-bar">
-            <div class="stat-card">
-                <div class="stat-label">Total Surveys</div>
-                <div class="stat-value orange" id="stat-surveys">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Surveys with Materials</div>
-                <div class="stat-value cyan" id="stat-with-mats">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Total Line Items</div>
-                <div class="stat-value purple" id="stat-line-items">—</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Unique Surveyors</div>
-                <div class="stat-value green" id="stat-surveyors">—</div>
-            </div>
+    <div class="controls-bar">
+        <div class="ctrl-group">
+            <span class="ctrl-label">Surveyor</span>
+            <select class="ctrl-select" id="filter-surveyor"><option value="">All Surveyors</option></select>
         </div>
-
-        <!-- EXPORT -->
-        <div class="export-row">
-            <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
-            <button class="export-btn" onclick="window.print()">🖨 Print</button>
+        <div class="ctrl-group">
+            <span class="ctrl-label">Type</span>
+            <select class="ctrl-select" id="filter-type">
+                <option value="">All Types</option>
+                <option value="battery-only">Battery Only</option>
+                <option value="battery-and-solar">Battery & Solar</option>
+            </select>
         </div>
-
-        <!-- LOADING STATE -->
-        <div class="state-msg" id="loading-state">
-            <div class="icon">⏳</div>
-            Loading survey data from Firebase…
+        <div class="ctrl-group">
+            <span class="ctrl-label">Search</span>
+            <input type="text" class="ctrl-input" id="search-input" placeholder="Job number, material…" />
         </div>
-
-        <!-- EMPTY STATE -->
-        <div class="state-msg" id="empty-state">
-            <div class="icon">📭</div>
-            No surveys found matching your filters.
-        </div>
-
-        <!-- MAIN CONTENT -->
-        <div id="content"></div>
-
+        <button class="refresh-btn" id="refresh-btn" onclick="loadSurveys()">
+            <span id="refresh-icon">↻</span> Refresh
+        </button>
     </div>
 
-    <!-- BACK TO TOP -->
-    <button id="back-top" title="Back to top">↑</button>
+    <div class="stats-bar">
+        <div class="stat-card"><div class="stat-label">Surveys with Materials</div><div class="stat-value c-orange" id="stat-surveys">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total Material Lines</div><div class="stat-value c-purple" id="stat-lines">—</div></div>
+        <div class="stat-card"><div class="stat-label">Surveyors</div><div class="stat-value c-cyan" id="stat-surveyors">—</div></div>
+        <div class="stat-card"><div class="stat-label">Total Cable Run</div><div class="stat-value c-green" id="stat-cable">—</div></div>
+    </div>
 
-    <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, orderBy, query }
-            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    <div class="export-row">
+        <button class="export-btn" onclick="exportCSV()">⬇ Export CSV</button>
+        <button class="export-btn" onclick="window.print()">🖨 Print</button>
+    </div>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
-            authDomain: "pingu-solar.firebaseapp.com",
-            projectId: "pingu-solar",
-            storageBucket: "pingu-solar.firebasestorage.app",
-            messagingSenderId: "232764952866",
-            appId: "1:232764952866:web:5923b7f419de6355d6157b",
-            measurementId: "G-PFH059DZ64"
-        };
+    <div class="state-msg" id="loading-state"><div class="icon">⏳</div>Loading survey data…</div>
+    <div class="state-msg" id="empty-state"><div class="icon">📭</div>No surveys with additional materials found.</div>
+    <div id="content"></div>
+</div>
 
-        const app = initializeApp(firebaseConfig);
-        const db  = getFirestore(app);
+<button id="back-top">↑</button>
 
-        window._allSurveys = [];
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, query, orderBy }
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        window.loadSurveys = async function() {
-            const btn = document.getElementById('refresh-btn');
-            const icon = document.getElementById('refresh-icon');
-            const loadingEl = document.getElementById('loading-state');
-            const emptyEl   = document.getElementById('empty-state');
-            const content   = document.getElementById('content');
+    const app = initializeApp({
+        apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain: "pingu-solar.firebaseapp.com",
+        projectId: "pingu-solar",
+        storageBucket: "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId: "1:232764952866:web:5923b7f419de6355d6157b"
+    });
+    const db = getFirestore(app);
+    window._allSurveys = [];
 
-            btn.disabled = true;
-            icon.style.animation = 'spin 0.8s linear infinite';
-            loadingEl.classList.add('show');
-            emptyEl.classList.remove('show');
-            content.innerHTML = '';
+    function esc(t) { const d=document.createElement('div'); d.textContent=String(t||''); return d.innerHTML; }
+    function initials(n) { return n.trim().split(/\s+/).map(w=>w[0]).join('').toUpperCase().substring(0,2)||'?'; }
+    function getSurveyor(s) { return s.sections?.surveyDetails?.surveyor?.trim() || 'Unknown Surveyor'; }
+    function getSurveyType(s) { return s.surveyType || ''; }
+    function getCable(s) {
+        const v = s.sections?.electricalSystem?.cableRunLength;
+        return (v === undefined || v === null || v === '') ? 0 : parseFloat(v) || 0;
+    }
+    function getDisplayDate(s) {
+        const raw = s.sections?.surveyDetails?.conductedOn || s.submittedAt || '';
+        if (!raw) return '—';
+        const d = new Date(raw);
+        return isNaN(d) ? raw : d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    }
+    function getMaterials(s) {
+        const raw = s.sections?.additionalMaterials;
+        if (!Array.isArray(raw) || !raw.length) return [];
+        return raw.map(line => {
+            const m = line.match(/^•\s*(Electrical|Roof|KF):\s*(.+)\s*×\s*(\d+)$/i);
+            if (m) return { category: m[1].toLowerCase(), desc: m[2].trim(), qty: parseInt(m[3]) };
+            return { category: 'other', desc: line.replace(/^•\s*/,''), qty: null };
+        }).filter(i => i.desc && (i.qty === null || i.qty > 0));
+    }
 
-            try {
-                const snap = await getDocs(query(collection(db, 'site-surveys'), orderBy('submittedAt', 'desc')));
-                window._allSurveys = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                populateSurveyorFilter(window._allSurveys);
-                renderAll();
-            } catch(e) {
-                console.error(e);
-                content.innerHTML = `<div class="state-msg show"><div class="icon">⚠️</div>Error loading data: ${e.message}</div>`;
-            } finally {
-                loadingEl.classList.remove('show');
-                btn.disabled = false;
-                icon.style.animation = '';
-            }
-        };
-
-        function populateSurveyorFilter(surveys) {
+    window.loadSurveys = async function() {
+        const btn  = document.getElementById('refresh-btn');
+        const icon = document.getElementById('refresh-icon');
+        document.getElementById('loading-state').classList.add('show');
+        document.getElementById('empty-state').classList.remove('show');
+        document.getElementById('content').innerHTML = '';
+        btn.disabled = true;
+        icon.style.animation = 'spin 0.8s linear infinite';
+        try {
+            const snap = await getDocs(query(collection(db,'site-surveys'), orderBy('submittedAt','desc')));
+            window._allSurveys = snap.docs.map(d => ({id:d.id,...d.data()}));
+            const surveyors = [...new Set(window._allSurveys.map(getSurveyor))].sort();
             const sel = document.getElementById('filter-surveyor');
-            const current = sel.value;
-            const names = [...new Set(surveys.map(s => getSurveyor(s)).filter(Boolean))].sort();
+            const prev = sel.value;
             sel.innerHTML = '<option value="">All Surveyors</option>' +
-                names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
-            if (current) sel.value = current;
+                surveyors.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+            if (prev) sel.value = prev;
+            renderAll();
+        } catch(e) {
+            document.getElementById('content').innerHTML =
+                `<div class="state-msg show"><div class="icon">⚠️</div>Error: ${esc(e.message)}</div>`;
+        } finally {
+            document.getElementById('loading-state').classList.remove('show');
+            btn.disabled = false;
+            icon.style.animation = '';
         }
+    };
 
-        function getSurveyor(s) {
-            return s.sections?.surveyDetails?.surveyor || '';
-        }
+    window.renderAll = function() {
+        const fSurveyor = document.getElementById('filter-surveyor').value;
+        const fType     = document.getElementById('filter-type').value;
+        const search    = document.getElementById('search-input').value.toLowerCase();
 
-        function getCableRunLength(s) {
-            const el = s.sections?.electricalSystem;
-            if (!el) return null;
-            const v = el.cableRunLength;
-            if (v === undefined || v === null || v === '') return null;
-            return parseFloat(v);
-        }
-
-        function getSurveyType(s) {
-            return s.surveyType || '';
-        }
-
-        function getInstallDate(s) {
-            return s.sections?.surveyDetails?.conductedOn ||
-                   s.submittedAt || '';
-        }
-
-        function formatDate(str) {
-            if (!str) return '—';
-            const d = new Date(str);
-            if (isNaN(d)) return str;
-            return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
-        }
-
-        function getMaterials(s) {
-            const raw = s.sections?.additionalMaterials;
-            if (!Array.isArray(raw) || !raw.length) return [];
-            // Parse lines like "• Electrical: Desc × qty"
-            return raw.map(line => {
-                const m = line.match(/^•\s*(Electrical|Roof|KF):\s*(.+)\s*×\s*(\d+)$/i);
-                if (m) return { category: m[1].toLowerCase(), desc: m[2].trim(), qty: parseInt(m[3]) };
-                // fallback — strip bullet
-                return { category: 'other', desc: line.replace(/^•\s*/, ''), qty: null };
-            }).filter(i => i.desc);
-        }
-
-        function esc(t) {
-            const d = document.createElement('div');
-            d.textContent = String(t || '');
-            return d.innerHTML;
-        }
-
-        function initials(name) {
-            return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().substring(0,2) || '?';
-        }
-
-        window.renderAll = function() {
-            const filterSurveyor = document.getElementById('filter-surveyor').value.toLowerCase();
-            const filterType     = document.getElementById('filter-type').value;
-            const searchTerm     = document.getElementById('search-input').value.toLowerCase();
-            const emptyEl        = document.getElementById('empty-state');
-            const content        = document.getElementById('content');
-
-            let surveys = window._allSurveys.filter(s => {
-                if (filterSurveyor && getSurveyor(s).toLowerCase() !== filterSurveyor) return false;
-                if (filterType     && getSurveyType(s) !== filterType) return false;
-                if (searchTerm) {
-                    const blob = JSON.stringify(s).toLowerCase();
-                    if (!blob.includes(searchTerm)) return false;
-                }
-                return true;
-            });
-
-            // Stats
-            const withMats = surveys.filter(s => getMaterials(s).length > 0);
-            const totalLines = surveys.reduce((acc, s) => acc + getMaterials(s).length, 0);
-            const uniqueSurveyors = [...new Set(surveys.map(s => getSurveyor(s)).filter(Boolean))];
-            document.getElementById('stat-surveys').textContent    = surveys.length;
-            document.getElementById('stat-with-mats').textContent  = withMats.length;
-            document.getElementById('stat-line-items').textContent = totalLines;
-            document.getElementById('stat-surveyors').textContent  = uniqueSurveyors.length;
-
-            if (!surveys.length) {
-                emptyEl.classList.add('show');
-                content.innerHTML = '';
-                return;
-            }
-            emptyEl.classList.remove('show');
-
-            // Group by surveyor
-            const grouped = {};
-            surveys.forEach(s => {
-                const surveyor = getSurveyor(s) || 'Unknown Surveyor';
-                if (!grouped[surveyor]) grouped[surveyor] = [];
-                grouped[surveyor].push(s);
-            });
-
-            content.innerHTML = Object.entries(grouped)
-                .sort(([a],[b]) => a.localeCompare(b))
-                .map(([surveyor, jobs], idx) => buildSurveyorSection(surveyor, jobs, idx))
-                .join('');
-        };
-
-        function buildSurveyorSection(surveyor, jobs, idx) {
-            const cards = jobs.map(job => buildJobCard(job)).join('');
-            return `<div class="surveyor-section" style="animation-delay:${idx * 0.07}s">
-                <div class="surveyor-header">
-                    <div class="surveyor-avatar">${esc(initials(surveyor))}</div>
-                    <div>
-                        <div class="surveyor-name">${esc(surveyor)}</div>
-                    </div>
-                    <div class="surveyor-count">${jobs.length} survey${jobs.length !== 1 ? 's' : ''}</div>
-                </div>
-                <div class="jobs-grid">${cards}</div>
-            </div>`;
-        }
-
-        function buildJobCard(s) {
-            const jobNum     = s.jobNumber || s['Job Number'] || s.id || '—';
-            const customer   = s.sections?.surveyDetails?.customerName || '—';
-            const surveyType = getSurveyType(s);
-            const conductedOn = s.sections?.surveyDetails?.conductedOn;
-            const submittedAt = s.submittedAt;
-            const cableLen   = getCableRunLength(s);
-            const materials  = getMaterials(s);
-
-            const badgeClass = surveyType === 'battery-and-solar' ? 'badge-bas' : 'badge-bo';
-            const badgeLabel = surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only';
-
-            // Display date — prefer conductedOn, fallback to submittedAt
-            const displayDate = conductedOn
-                ? formatDate(conductedOn)
-                : (submittedAt ? formatDate(submittedAt) : '—');
-
-            // Cable run
-            const cableHtml = cableLen !== null
-                ? `<div class="info-pill"><div class="info-pill-label">Cable Run</div><div class="info-pill-value cable">${cableLen}m</div></div>`
-                : '';
-
-            // Materials grouped
-            const matsByCategory = { electrical: [], roof: [], kf: [], other: [] };
-            materials.forEach(m => {
-                const cat = m.category in matsByCategory ? m.category : 'other';
-                matsByCategory[cat].push(m);
-            });
-
-            let matsHtml = '';
-            if (!materials.length) {
-                matsHtml = '<div class="no-materials">No additional materials requested.</div>';
-            } else {
-                Object.entries(matsByCategory).forEach(([cat, items]) => {
-                    if (!items.length) return;
-                    const catLabel = cat === 'electrical' ? 'Electrical' : cat === 'roof' ? 'Roof' : cat === 'kf' ? 'KF Picklist' : 'Other';
-                    const itemsHtml = items.map(item =>
-                        `<div class="mat-item">
-                            <div class="mat-desc">${esc(item.desc)}</div>
-                            ${item.qty !== null ? `<div class="mat-qty-badge">×${item.qty}</div>` : ''}
-                        </div>`
-                    ).join('');
-                    matsHtml += `<div class="material-category-group">
-                        <div class="mat-cat-label ${cat}">${catLabel}</div>
-                        ${itemsHtml}
-                    </div>`;
-                });
-            }
-
-            return `<div class="job-card">
-                <div class="job-card-header">
-                    <div class="job-meta">
-                        <div class="job-num">${esc(jobNum)}</div>
-                        <div class="job-customer">${esc(customer)}</div>
-                    </div>
-                    <div class="survey-type-badge ${badgeClass}">${badgeLabel}</div>
-                </div>
-                <div class="job-card-info">
-                    <div class="info-pill">
-                        <div class="info-pill-label">Survey Date</div>
-                        <div class="info-pill-value highlight">${displayDate}</div>
-                    </div>
-                    ${cableHtml}
-                    <div class="info-pill">
-                        <div class="info-pill-label">Submitted</div>
-                        <div class="info-pill-value"><span class="date-chip">${submittedAt ? formatDate(submittedAt) : '—'}</span></div>
-                    </div>
-                </div>
-                <div class="materials-section">
-                    <div class="materials-section-title">🛠 Additional Materials</div>
-                    ${matsHtml}
-                </div>
-            </div>`;
-        }
-
-        // ── CSV EXPORT ──
-        window.exportCSV = function() {
-            const surveys = window._allSurveys;
-            const rows = [['Surveyor','Job Number','Survey Date','Survey Type','Cable Run (m)','Category','Material','Qty']];
-            surveys.forEach(s => {
-                const surveyor  = getSurveyor(s) || 'Unknown';
-                const jobNum    = s.jobNumber || s.id || '—';
-                const date      = formatDate(s.sections?.surveyDetails?.conductedOn || s.submittedAt);
-                const type      = getSurveyType(s);
-                const cable     = getCableRunLength(s) ?? '';
-                const materials = getMaterials(s);
-                if (!materials.length) {
-                    rows.push([surveyor, jobNum, date, type, cable, '', 'No materials requested', '']);
-                } else {
-                    materials.forEach(m => {
-                        rows.push([surveyor, jobNum, date, type, cable, m.category, m.desc, m.qty ?? '']);
-                    });
-                }
-            });
-            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `inventory-check-${new Date().toISOString().slice(0,10)}.csv`;
-            a.click();
-        };
-
-        // ── INIT ──
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSurveys();
-
-            document.getElementById('filter-surveyor').addEventListener('change', renderAll);
-            document.getElementById('filter-type').addEventListener('change', renderAll);
-            document.getElementById('search-input').addEventListener('input', renderAll);
-
-            // back to top
-            window.addEventListener('scroll', () => {
-                document.getElementById('back-top').classList.toggle('show', window.scrollY > 400);
-            });
-            document.getElementById('back-top').addEventListener('click', () => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            });
+        // All surveys matching surveyor/type filters (for cable totals)
+        const allFiltered = window._allSurveys.filter(s => {
+            if (fSurveyor && getSurveyor(s) !== fSurveyor) return false;
+            if (fType     && getSurveyType(s) !== fType)   return false;
+            return true;
         });
-    </script>
 
-    <style>
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #refresh-icon { display: inline-block; }
-        @media print {
-            .controls-bar, .export-row, #back-top, .back-btn, .refresh-btn { display: none !important; }
-            body { background: white; color: black; }
-            .job-card, .surveyor-header, .jobs-grid { border-color: #ccc !important; }
-            .job-num, .surveyor-name { color: #000 !important; -webkit-text-fill-color: #000 !important; }
-        }
-    </style>
+        // Only those with materials (+ optional search)
+        const withMats = allFiltered.filter(s => {
+            const mats = getMaterials(s);
+            if (!mats.length) return false;
+            if (search) {
+                const blob = (s.jobNumber||'') + ' ' + mats.map(m=>m.desc).join(' ');
+                return blob.toLowerCase().includes(search);
+            }
+            return true;
+        });
+
+        // Stats (cable from ALL filtered surveys)
+        const totalCable = allFiltered.reduce((a,s) => a + getCable(s), 0);
+        const totalLines = withMats.reduce((a,s) => a + getMaterials(s).length, 0);
+        const uniqueSurveyors = [...new Set(withMats.map(getSurveyor))];
+        document.getElementById('stat-surveys').textContent   = withMats.length;
+        document.getElementById('stat-lines').textContent     = totalLines;
+        document.getElementById('stat-surveyors').textContent = uniqueSurveyors.length;
+        document.getElementById('stat-cable').textContent     = totalCable > 0 ? totalCable.toFixed(1)+'m' : '—';
+
+        const emptyEl = document.getElementById('empty-state');
+        const content = document.getElementById('content');
+        if (!withMats.length) { emptyEl.classList.add('show'); content.innerHTML=''; return; }
+        emptyEl.classList.remove('show');
+
+        // Cable totals per surveyor (from ALL surveys, not just mat-filtered)
+        const cablePerSurveyor = {};
+        const jobsPerSurveyor  = {};
+        allFiltered.forEach(s => {
+            const sv = getSurveyor(s);
+            cablePerSurveyor[sv] = (cablePerSurveyor[sv]||0) + getCable(s);
+            jobsPerSurveyor[sv]  = (jobsPerSurveyor[sv] ||0) + 1;
+        });
+
+        // Group mat-filtered surveys by surveyor
+        const grouped = {};
+        withMats.forEach(s => {
+            const sv = getSurveyor(s);
+            if (!grouped[sv]) grouped[sv] = [];
+            grouped[sv].push(s);
+        });
+
+        content.innerHTML = Object.entries(grouped)
+            .sort(([a],[b]) => a.localeCompare(b))
+            .map(([sv, jobs], idx) => buildSurveyorBlock(
+                sv, jobs,
+                cablePerSurveyor[sv]||0,
+                jobsPerSurveyor[sv]||0,
+                idx
+            )).join('');
+    };
+
+    function buildSurveyorBlock(sv, jobs, totalCable, totalJobs, idx) {
+        const totalMatLines = jobs.reduce((a,s) => a + getMaterials(s).length, 0);
+        const cableStr = totalCable > 0
+            ? `${totalCable.toFixed(1)}m total cable · ${totalJobs} job${totalJobs!==1?'s':''}`
+            : `${totalJobs} job${totalJobs!==1?'s':''}`;
+
+        return `<div class="surveyor-block" style="animation-delay:${idx*0.06}s">
+            <div class="surveyor-header">
+                <div class="surveyor-avatar">${esc(initials(sv))}</div>
+                <div class="surveyor-name">${esc(sv)}</div>
+                <div class="surveyor-pills">
+                    <span class="pill pill-cable">📐 ${cableStr}</span>
+                    <span class="pill pill-mats">🛠 ${totalMatLines} item${totalMatLines!==1?'s':''}</span>
+                </div>
+            </div>
+            <div class="jobs-list">${jobs.map(s => buildJobRow(s)).join('')}</div>
+        </div>`;
+    }
+
+    function buildJobRow(s) {
+        const jobNum = s.jobNumber || s.id || '—';
+        const date   = getDisplayDate(s);
+        const cable  = getCable(s);
+        const type   = getSurveyType(s);
+        const mats   = getMaterials(s);
+
+        const badgeClass = type==='battery-and-solar' ? 'badge-bas' : 'badge-bo';
+        const badgeLabel = type==='battery-and-solar' ? 'B+S' : 'BO';
+        const cableHtml  = cable > 0 ? `<span class="job-cable">${cable}m</span>` : '';
+
+        const cats = { electrical:[], roof:[], kf:[], other:[] };
+        mats.forEach(m => (cats[m.category]!==undefined ? cats[m.category] : cats.other).push(m));
+
+        let detailHtml = '';
+        const catLabels = { electrical:'Electrical', roof:'Roof', kf:'KF Picklist', other:'Other' };
+        Object.entries(cats).forEach(([cat, items]) => {
+            if (!items.length) return;
+            detailHtml += `<div class="mat-cat-block">
+                <div class="mat-cat-label ${cat}">${catLabels[cat]}</div>
+                ${items.map(i=>`<div class="mat-item">
+                    <div class="mat-desc">${esc(i.desc)}</div>
+                    ${i.qty!==null?`<div class="mat-qty">×${i.qty}</div>`:''}
+                </div>`).join('')}
+            </div>`;
+        });
+
+        return `<div class="job-row" onclick="toggleRow(this)">
+            <div class="job-summary">
+                <span class="job-chevron">▶</span>
+                <span class="job-num">${esc(jobNum)}</span>
+                <span class="job-date">${esc(date)}</span>
+                <span class="job-type-badge ${badgeClass}">${badgeLabel}</span>
+                ${cableHtml}
+                <span class="job-mat-count">${mats.length} item${mats.length!==1?'s':''}</span>
+            </div>
+            <div class="job-detail">${detailHtml}</div>
+        </div>`;
+    }
+
+    window.toggleRow = function(row) { row.classList.toggle('open'); };
+
+    window.exportCSV = function() {
+        const rows = [['Surveyor','Job Number','Survey Date','Survey Type','Cable Run (m)','Category','Material','Qty']];
+        window._allSurveys.forEach(s => {
+            const mats = getMaterials(s);
+            if (!mats.length) return;
+            const sv   = getSurveyor(s);
+            const job  = s.jobNumber || s.id || '';
+            const date = getDisplayDate(s);
+            const type = getSurveyType(s);
+            const cable= getCable(s) || '';
+            mats.forEach(m => rows.push([sv, job, date, type, cable, m.category, m.desc, m.qty??'']));
+        });
+        const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+        a.download = `inventory-check-${new Date().toISOString().slice(0,10)}.csv`;
+        a.click();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSurveys();
+        ['filter-surveyor','filter-type'].forEach(id =>
+            document.getElementById(id).addEventListener('change', renderAll));
+        document.getElementById('search-input').addEventListener('input', renderAll);
+        window.addEventListener('scroll', () =>
+            document.getElementById('back-top').classList.toggle('show', window.scrollY > 400));
+        document.getElementById('back-top').addEventListener('click', () =>
+            window.scrollTo({top:0,behavior:'smooth'}));
+    });
+</script>
 </body>
 </html>
