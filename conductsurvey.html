@@ -1225,7 +1225,6 @@
 
         // ── Additional Materials Data ──────────────────────────────────────────
         const electricalItems = [
-            {desc:"Octobox",min:null,max:null},
             {desc:"25mm Double Insulated Stranded Blue (per meter)",min:null,max:null},
             {desc:"25mm Double Insulated Stranded Brown (per meter)",min:null,max:null},
             {desc:"10mm² 3 Core CAT5 EV Cable Black 50m",min:null,max:null},
@@ -1718,20 +1717,49 @@
                 if(upload){radios.forEach(radio=>{radio.addEventListener('change',()=>{upload.classList.toggle('show',radio.value===field.value);});});}
             });
 
+            // ── BAS meter work ──
+            // Email sends exactly once: when the user fills in the NEXT field
+            // (fuse rating) after having written meter work details.
             const meterWorkInput=document.getElementById('meter-work-needed');
             const meterSection=document.getElementById('meter-installation');
             const meterWorkDetails=document.getElementById('meter-work-details');
+            const fuseRatingInput=document.getElementById('fuse-rating');
+            let basMeterEmailSent=false;
             if(meterWorkInput&&meterSection){
-                meterWorkInput.addEventListener('input',function(e){meterSection.style.display=e.target.value.trim().toLowerCase()==='yes'?'block':'none';});
-                if(meterWorkDetails){meterWorkDetails.addEventListener('blur',async function(){if(meterWorkInput.value.trim().toLowerCase()==='yes'&&this.value.trim())setTimeout(()=>sendMeterWorkEmail(this.value,'meter-installation-files'),2000);});}
+                meterWorkInput.addEventListener('input',function(e){
+                    meterSection.style.display=e.target.value.trim().toLowerCase()==='yes'?'block':'none';
+                    // Reset sent flag if they change their answer back
+                    if(e.target.value.trim().toLowerCase()!=='yes') basMeterEmailSent=false;
+                });
+                if(fuseRatingInput&&meterWorkDetails){
+                    fuseRatingInput.addEventListener('blur',function(){
+                        if(!basMeterEmailSent && meterWorkInput.value.trim().toLowerCase()==='yes' && meterWorkDetails.value.trim()){
+                            basMeterEmailSent=true;
+                            sendMeterWorkEmail(meterWorkDetails.value,'meter-installation-files');
+                        }
+                    });
+                }
             }
 
+            // ── BO meter work ──
             const boMeterWorkInput=document.getElementById('bo-meter-work-needed');
             const boMeterSection=document.getElementById('bo-meter-installation');
             const boMeterWorkDetails=document.getElementById('bo-meter-work-details');
+            const boFuseRatingInput=document.getElementById('bo-fuse-rating');
+            let boMeterEmailSent=false;
             if(boMeterWorkInput&&boMeterSection){
-                boMeterWorkInput.addEventListener('input',function(e){boMeterSection.style.display=e.target.value.trim().toLowerCase()==='yes'?'block':'none';});
-                if(boMeterWorkDetails){boMeterWorkDetails.addEventListener('blur',async function(){if(boMeterWorkInput.value.trim().toLowerCase()==='yes'&&this.value.trim())setTimeout(()=>sendMeterWorkEmail(this.value,'bo-meter-installation-files'),2000);});}
+                boMeterWorkInput.addEventListener('input',function(e){
+                    boMeterSection.style.display=e.target.value.trim().toLowerCase()==='yes'?'block':'none';
+                    if(e.target.value.trim().toLowerCase()!=='yes') boMeterEmailSent=false;
+                });
+                if(boFuseRatingInput&&boMeterWorkDetails){
+                    boFuseRatingInput.addEventListener('blur',function(){
+                        if(!boMeterEmailSent && boMeterWorkInput.value.trim().toLowerCase()==='yes' && boMeterWorkDetails.value.trim()){
+                            boMeterEmailSent=true;
+                            sendMeterWorkEmail(boMeterWorkDetails.value,'bo-meter-installation-files');
+                        }
+                    });
+                }
             }
         }
 
