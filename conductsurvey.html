@@ -554,11 +554,9 @@
                     <div class="section-header">🛠️ Additional Materials</div>
                     <div class="materials-section">
                         <div class="material-category">
-                            <details>
+                            <details id="kf-details-bo">
                                 <summary>KF Picklist</summary>
-                                <div class="material-items-wrap" style="padding:1rem; background:rgba(0,0,0,0.2); border-radius:8px; margin-top:0.5rem;">
-                                    <p style="color:var(--text-dim); font-style:italic; font-size:0.88rem;">Same KF Picklist as shown above after job verification.</p>
-                                </div>
+                                <div class="material-items-wrap" id="kf-embed-bo" style="margin-top:0.8rem;"></div>
                             </details>
                         </div>
                         <div class="material-category">
@@ -1148,11 +1146,9 @@
                     <div class="section-header">🛠️ Additional Materials</div>
                     <div class="materials-section">
                         <div class="material-category">
-                            <details>
+                            <details id="kf-details-bas">
                                 <summary>KF Picklist</summary>
-                                <div class="material-items-wrap" style="padding:1rem; background:rgba(0,0,0,0.2); border-radius:8px; margin-top:0.5rem;">
-                                    <p style="color:var(--text-dim); font-style:italic; font-size:0.88rem;">Same KF Picklist as shown above after job verification.</p>
-                                </div>
+                                <div class="material-items-wrap" id="kf-embed-bas" style="margin-top:0.8rem;"></div>
                             </details>
                         </div>
                         <div class="material-category">
@@ -1315,10 +1311,7 @@
             {desc:"MCG 400x400x200 steel enclosure with mounting plate",min:null,max:null},
             {desc:"CT Clamp fox accessories",min:null,max:null},
             {desc:"Proteus XL DP Bi Directional B curve 25Amp RCBO type A",min:null,max:null},
-            {desc:"Proteus XL DP Bi Directional B curve 40Amp RCBO type A",min:null,max:null},
-            {desc:"25mm SWA 3core with CAT5 - Enter Quanity in Meters Req",min:null,max:null},
-            {desc:"16mm SWA 3 core with CAT5 - Enter Quanity in Meters Req",min:null,max:null},
-            {desc:"10mm SWA 3 core with CAT5 - Enter Quanity in Meters Req",min:null,max:null}
+            {desc:"Proteus XL DP Bi Directional B curve 40Amp RCBO type A",min:null,max:null}
         ];
 
         const roofItems = [
@@ -1374,11 +1367,29 @@
             });
         }
 
+        function embedPicklistInMaterials() {
+            const source = document.getElementById('picklist-panel-body');
+            if (!source) return;
+            const noData = '<div class="pl-no-picklist" style="font-size:0.85rem;">No picklist loaded yet.</div>';
+            const content = source.innerHTML.trim();
+            const isEmpty = !content || content.includes('pl-loading') || content.includes('pl-no-picklist');
+            ['kf-embed-bo', 'kf-embed-bas'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.innerHTML = isEmpty ? noData : content;
+            });
+        }
+
         function initAdditionalMaterials() {
             renderMaterials('electrical-items-bo', electricalItems, true);
             renderMaterials('roof-items-bo', roofItems, false);
             renderMaterials('electrical-items-bas', electricalItems, true);
             renderMaterials('roof-items-bas', roofItems, false);
+            embedPicklistInMaterials();
+            ['kf-details-bo', 'kf-details-bas'].forEach(id => {
+                const det = document.getElementById(id);
+                if (det) det.addEventListener('toggle', () => { if (det.open) embedPicklistInMaterials(); });
+            });
         }
 
         function collectMaterialsSummary() {
