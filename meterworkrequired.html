@@ -179,7 +179,7 @@
         .done-val  { font-size:0.82rem; color:var(--success); font-weight:600; }
 
         .card-expand { overflow:hidden; max-height:0; transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
-        .card-expand.open { max-height:460px; }
+        .card-expand.open { max-height:520px; }
         .expand-inner { padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:0.85rem; }
 
         .field-lbl {
@@ -357,11 +357,10 @@ window.loadData = async function () {
 
     try {
         const snap = await getDocs(
-            query(collection(db, 'site-surveys'), orderBy('submittedAt', 'desc'))
+            query(collection(db, 'meter-work-required'), orderBy('submittedAt', 'desc'))
         );
         window._jobs = snap.docs
-            .map(d => ({ _docId: d.id, ...d.data() }))
-            .filter(meterNeeded);
+            .map(d => ({ _docId: d.id, ...d.data() }));
         renderAll();
     } catch (e) {
         document.getElementById('cards-grid').innerHTML =
@@ -428,7 +427,8 @@ function buildCard(s, idx) {
             ${compAt  ? `<div class="done-item"><div class="done-lbl">Completed</div><div class="done-val">${compAt}</div></div>` : ''}
             ${compBy  ? `<div class="done-item"><div class="done-lbl">By</div><div class="done-val">${compBy}</div></div>` : ''}
             ${mDate   ? `<div class="done-item"><div class="done-lbl">Was Booked</div><div class="done-val">${fmtDate(mDate)}</div></div>` : ''}
-            ${engName ? `<div class="done-item"><div class="done-lbl">Engineer</div><div class="done-val">${esc(engName)}</div></div>` : ''}
+            ${engName            ? `<div class="done-item"><div class="done-lbl">Engineer</div><div class="done-val">${esc(engName)}</div></div>` : ''}
+            ${s.meterJobNumber  ? `<div class="done-item"><div class="done-lbl">Meter Job #</div><div class="done-val">${esc(s.meterJobNumber)}</div></div>` : ''}
         </div>` : '';
 
     const reopenBtn = status === 'completed'
@@ -463,6 +463,11 @@ function buildCard(s, idx) {
                 <div class="meta-lbl">Work Booked</div>
                 <div class="meta-val ${mDate ? 'ok' : 'unset'}">${mDate ? fmtDate(mDate) : 'Not scheduled'}</div>
             </div>
+            ${s.meterJobNumber ? `
+            <div class="meta-item">
+                <div class="meta-lbl">Meter Job #</div>
+                <div class="meta-val ok">${esc(s.meterJobNumber)}</div>
+            </div>` : ''}
         </div>
 
         ${details ? `
@@ -483,6 +488,11 @@ function buildCard(s, idx) {
                     <div class="field-lbl">Assigned Engineer</div>
                     <input type="text" class="expand-input" id="eng-${id}"
                         value="${esc(engName)}" placeholder="Enter engineer name…" />
+                </div>
+                <div>
+                    <div class="field-lbl">Meter Work Job Number</div>
+                    <input type="text" class="expand-input" id="mjob-${id}"
+                        value="${esc(s.meterJobNumber || '')}" placeholder="Enter meter work job number…" />
                 </div>
                 <div class="action-row">
                     <button class="btn-save" id="save-${id}" onclick="saveDetails('${id}')">💾 Save</button>
@@ -511,17 +521,18 @@ window.toggleCard = function (id) {
 };
 
 window.saveDetails = async function (id) {
-    const dateVal = document.getElementById('date-' + id).value;
-    const engVal  = document.getElementById('eng-'  + id).value.trim();
-    const btn     = document.getElementById('save-' + id);
+    const dateVal = document.getElementById('date-'  + id).value;
+    const engVal  = document.getElementById('eng-'   + id).value.trim();
+    const mjobVal = document.getElementById('mjob-'  + id).value.trim();
+    const btn     = document.getElementById('save-'  + id);
     btn.disabled  = true;
     btn.textContent = 'Saving…';
     try {
-        await updateDoc(doc(db, 'site-surveys', id), {
-            meterDate: dateVal, meterEngineer: engVal
+        await updateDoc(doc(db, 'meter-work-required', id), {
+            meterDate: dateVal, meterEngineer: engVal, meterJobNumber: mjobVal
         });
         const job = window._jobs.find(s => s._docId === id);
-        if (job) { job.meterDate = dateVal; job.meterEngineer = engVal; }
+        if (job) { job.meterDate = dateVal; job.meterEngineer = engVal; job.meterJobNumber = mjobVal; }
         renderAll();
         setTimeout(() => toggleCard(id), 40);
     } catch (e) {
@@ -532,17 +543,19 @@ window.saveDetails = async function (id) {
 };
 
 window.markComplete = async function (id) {
-    const engVal  = document.getElementById('eng-'  + id)?.value?.trim() || '';
-    const dateVal = document.getElementById('date-' + id)?.value || '';
-    const btn     = document.getElementById('cmp-'  + id);
+    const engVal  = document.getElementById('eng-'   + id)?.value?.trim() || '';
+    const dateVal = document.getElementById('date-'  + id)?.value || '';
+    const mjobVal = document.getElementById('mjob-'  + id)?.value?.trim() || '';
+    const btn     = document.getElementById('cmp-'   + id);
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-        await updateDoc(doc(db, 'site-surveys', id), {
+        await updateDoc(doc(db, 'meter-work-required', id), {
             meterCompleted:   true,
             meterCompletedAt: new Date().toISOString(),
             meterCompletedBy: engVal,
             meterEngineer:    engVal,
-            meterDate:        dateVal
+            meterDate:        dateVal,
+            meterJobNumber:   mjobVal
         });
         const job = window._jobs.find(s => s._docId === id);
         if (job) {
@@ -551,6 +564,7 @@ window.markComplete = async function (id) {
             job.meterCompletedBy = engVal;
             job.meterEngineer    = engVal;
             job.meterDate        = dateVal;
+            job.meterJobNumber   = mjobVal;
         }
         renderAll();
     } catch (e) {
@@ -562,7 +576,7 @@ window.markComplete = async function (id) {
 window.reopenJob = async function (id) {
     if (!confirm('Re-open this job as pending?')) return;
     try {
-        await updateDoc(doc(db, 'site-surveys', id), {
+        await updateDoc(doc(db, 'meter-work-required', id), {
             meterCompleted:   false,
             meterCompletedAt: null,
             meterCompletedBy: ''
