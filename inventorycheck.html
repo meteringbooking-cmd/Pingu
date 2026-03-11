@@ -36,7 +36,55 @@
             pointer-events: none; z-index: 0;
         }
         @keyframes bgFloat { 0%,100% { transform:translate(0,0); } 50% { transform:translate(20px,-20px); } }
-        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+        .container { max-width: 1380px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+        /* TWO-COLUMN LAYOUT */
+        .page-body { display: grid; grid-template-columns: 260px 1fr; gap: 1.8rem; align-items: start; }
+
+        /* RANKINGS PANEL */
+        .rankings-panel {
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            border-radius: 12px; overflow: hidden; position: sticky; top: 1.5rem;
+            animation: fadeUp 0.6s ease-out 0.3s both;
+        }
+        .rankings-title {
+            font-family: 'Syne', sans-serif; font-size: 0.82rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim);
+            padding: 0.9rem 1.1rem 0.7rem;
+            border-bottom: 1px solid var(--dark-lighter);
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .rankings-note { font-size: 0.65rem; color: var(--text-dim); opacity: 0.6; margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 400; }
+        .ranking-row {
+            display: grid; grid-template-columns: 18px 1fr; gap: 0.6rem;
+            padding: 0.65rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,0.04);
+            align-items: start; transition: background 0.15s;
+        }
+        .ranking-row:last-child { border-bottom: none; }
+        .ranking-row:hover { background: rgba(255,255,255,0.03); }
+        .rank-num {
+            font-family: 'Syne', sans-serif; font-size: 0.72rem; font-weight: 800;
+            color: var(--text-dim); padding-top: 0.1rem;
+        }
+        .rank-num.gold   { color: #FFD700; }
+        .rank-num.silver { color: #C0C0C0; }
+        .rank-num.bronze { color: #CD7F32; }
+        .rank-body {}
+        .rank-name { font-size: 0.82rem; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 0.3rem; }
+        .rank-stats { display: flex; flex-direction: column; gap: 0.15rem; }
+        .rank-stat { display: flex; justify-content: space-between; align-items: center; }
+        .rank-stat-label { font-size: 0.64rem; color: var(--text-dim); }
+        .rank-stat-value { font-size: 0.72rem; font-weight: 600; }
+        .rank-stat-value.avg { color: var(--secondary); }
+        .rank-stat-value.total { color: var(--success); }
+        .rank-stat-value.jobs { color: var(--text-dim); }
+        .rank-bar-wrap { margin-top: 0.35rem; height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; }
+        .rank-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--secondary), var(--primary)); transition: width 0.6s ease; }
+
+        @media (max-width: 900px) {
+            .page-body { grid-template-columns: 1fr; }
+            .rankings-panel { position: static; }
+        }
 
         header { margin-bottom: 2rem; animation: slideDown 0.6s ease-out; }
         @keyframes slideDown { from { opacity:0; transform:translateY(-20px); } to { opacity:1; transform:translateY(0); } }
@@ -274,8 +322,15 @@
     </div>
 
     <div class="state-msg" id="loading-state"><div class="icon">⏳</div>Loading survey data…</div>
-    <div class="state-msg" id="empty-state"><div class="icon">📭</div>No surveys with additional materials found.</div>
-    <div id="content"></div>
+    <div class="state-msg" id="empty-state"><div class="icon">📭</div>No surveys found.</div>
+
+    <div class="page-body">
+        <div class="rankings-panel" id="rankings-panel">
+            <div class="rankings-title">📊 Cable Rankings <span class="rankings-note">avg/job</span></div>
+            <div id="rankings-body"><div style="padding:1rem;color:var(--text-dim);font-size:0.8rem;">Loading…</div></div>
+        </div>
+        <div id="content"></div>
+    </div>
 </div>
 
 <button id="back-top">↑</button>
@@ -371,10 +426,10 @@
             return true;
         });
 
-        // Stats (cable from ALL filtered surveys)
-        const totalCable = allFiltered.reduce((a,s) => a + getCable(s), 0);
+        // Stats — cable from ALL surveys (no filter on materials)
+        const totalCable = window._allSurveys.reduce((a,s) => a + getCable(s), 0);
         const totalLines = withMats.reduce((a,s) => a + getMaterials(s).length, 0);
-        const uniqueSurveyors = [...new Set(withMats.map(getSurveyor))];
+        const uniqueSurveyors = [...new Set(allFiltered.map(getSurveyor))];
         document.getElementById('stat-surveys').textContent   = withMats.length;
         document.getElementById('stat-lines').textContent     = totalLines;
         document.getElementById('stat-surveyors').textContent = uniqueSurveyors.length;
@@ -385,22 +440,38 @@
         if (!allFiltered.length) { emptyEl.classList.add('show'); content.innerHTML=''; return; }
         emptyEl.classList.remove('show');
 
-        // Cable totals + mat-filtered jobs per surveyor (from ALL filtered surveys)
-        const cablePerSurveyor = {};
-        const jobsPerSurveyor  = {};
-        const matsPerSurveyor  = {};
-        allFiltered.forEach(s => {
+        // Cable totals per surveyor — ALL surveys (no filter), only jobs with cable > 0 counted for avg
+        const cablePerSurveyor   = {};
+        const jobsWithCable      = {};  // jobs that have a cable value (for avg)
+        const jobsTotalPerSurveyor = {};
+        const matsPerSurveyor    = {};
+
+        window._allSurveys.forEach(s => {
             const sv = getSurveyor(s);
-            cablePerSurveyor[sv] = (cablePerSurveyor[sv]||0) + getCable(s);
-            jobsPerSurveyor[sv]  = (jobsPerSurveyor[sv] ||0) + 1;
+            const c  = getCable(s);
+            if (c > 0) {
+                cablePerSurveyor[sv]   = (cablePerSurveyor[sv]||0) + c;
+                jobsWithCable[sv]      = (jobsWithCable[sv]||0) + 1;
+            }
+            jobsTotalPerSurveyor[sv]   = (jobsTotalPerSurveyor[sv]||0) + 1;
             if (!matsPerSurveyor[sv]) matsPerSurveyor[sv] = [];
         });
         withMats.forEach(s => {
             const sv = getSurveyor(s);
+            if (!matsPerSurveyor[sv]) matsPerSurveyor[sv] = [];
             matsPerSurveyor[sv].push(s);
         });
 
-        // All unique surveyors from allFiltered
+        // Rankings: all surveyors with at least one cable job, sorted by avg desc
+        const rankData = Object.keys(cablePerSurveyor).map(sv => ({
+            name: sv,
+            total: cablePerSurveyor[sv],
+            jobsWithCable: jobsWithCable[sv]||0,
+            avg: jobsWithCable[sv] ? cablePerSurveyor[sv] / jobsWithCable[sv] : 0
+        })).sort((a,b) => b.avg - a.avg);
+        renderRankings(rankData);
+
+        // All unique surveyors from allFiltered for main list
         const allSurveyors = [...new Set(allFiltered.map(getSurveyor))].sort();
 
         content.innerHTML = allSurveyors
@@ -408,7 +479,7 @@
                 sv,
                 matsPerSurveyor[sv] || [],
                 cablePerSurveyor[sv]||0,
-                jobsPerSurveyor[sv] ||0,
+                jobsWithCable[sv]||0,
                 idx
             )).join('');
     };
@@ -417,8 +488,8 @@
         const totalMatLines = jobs.reduce((a,s) => a + getMaterials(s).length, 0);
         const hasMats = jobs.length > 0;
         const cableStr = totalCable > 0
-            ? `📐 ${totalCable.toFixed(1)}m · ${totalJobs} job${totalJobs!==1?'s':''}`
-            : `${totalJobs} job${totalJobs!==1?'s':''}`;
+            ? `📐 ${totalCable.toFixed(1)}m · ${totalJobs} job${totalJobs!==1?'s':''} w/ cable`
+            : `No cable data`;
         const jobsHtml = hasMats
             ? `<div class="jobs-list">${jobs.map(s => buildJobRow(s)).join('')}</div>`
             : `<div class="no-mats-bar">✓ No additional materials requested</div>`;
@@ -479,6 +550,38 @@
     }
 
     window.toggleRow = function(row) { row.classList.toggle('open'); };
+
+    function renderRankings(data) {
+        const body = document.getElementById('rankings-body');
+        if (!data.length) { body.innerHTML = '<div style="padding:1rem;color:var(--text-dim);font-size:0.8rem;">No cable data yet.</div>'; return; }
+        const maxAvg = data[0].avg || 1;
+        body.innerHTML = data.map((row, i) => {
+            const pct = Math.round((row.avg / maxAvg) * 100);
+            const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+            const rankLabel = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i+1);
+            return `<div class="ranking-row">
+                <div class="rank-num ${rankClass}">${rankLabel}</div>
+                <div class="rank-body">
+                    <div class="rank-name">${esc(row.name)}</div>
+                    <div class="rank-stats">
+                        <div class="rank-stat">
+                            <span class="rank-stat-label">Avg/job</span>
+                            <span class="rank-stat-value avg">${row.avg.toFixed(1)}m</span>
+                        </div>
+                        <div class="rank-stat">
+                            <span class="rank-stat-label">Total</span>
+                            <span class="rank-stat-value total">${row.total.toFixed(1)}m</span>
+                        </div>
+                        <div class="rank-stat">
+                            <span class="rank-stat-label">Jobs (w/ cable)</span>
+                            <span class="rank-stat-value jobs">${row.jobsWithCable}</span>
+                        </div>
+                    </div>
+                    <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
+                </div>
+            </div>`;
+        }).join('');
+    }
 
     window.exportCSV = function() {
         const rows = [['Surveyor','Job Number','Survey Date','Survey Type','Cable Run (m)','Category','Material','Qty']];
