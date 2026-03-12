@@ -440,25 +440,25 @@
                 const p1 = await pdf.getPage(1);
                 rawPage1Lines = await getPageLines(p1);
 
-                // Grab lines directly after "ADDRESS" label
-                // Stop at QUOTE / # / known section headers
-                const addrStops  = ['quote', 'valid', 'surveyor', 'date', 'signature',
-                                    'job number', 'customer', 'solar panels', 'inverter', 'battery',
-                                    'your proposed layout', 'prepared by', 'i confirm'];
+                // Find the line after ADDRESS that looks like a street address
+                // A street address contains a number and/or postcode pattern
                 const addrLabels = ['address', 'site address', 'installation address', 'property address'];
-
                 for (const lbl of addrLabels) {
-                    const raw = extractAfterLabel(rawPage1Lines, lbl, addrStops, 6);
-                    if (raw) {
-                        // Strip lines that start with # or look like section-header tokens
-                        const cleaned = raw.split('\n')
-                            .filter(l => {
-                                const t = l.trim();
-                                return t && !t.startsWith('#') && !/^[A-Z][A-Z\s]{2,}$/.test(t);
-                            })
-                            .join('\n');
-                        if (cleaned) { address = cleaned; break; }
+                    for (let i = 0; i < rawPage1Lines.length; i++) {
+                        if (rawPage1Lines[i].toLowerCase().includes(lbl)) {
+                            // Look ahead up to 5 lines for something that looks like an address
+                            for (let j = i + 1; j < Math.min(i + 6, rawPage1Lines.length); j++) {
+                                const l = rawPage1Lines[j].trim();
+                                // Must contain a digit and not be a section header or #
+                                if (l && /\d/.test(l) && !l.startsWith('#') && l.length > 5 && l.length < 80) {
+                                    address = l;
+                                    break;
+                                }
+                            }
+                            if (address !== 'Not found') break;
+                        }
                     }
+                    if (address !== 'Not found') break;
                 }
             }
             setStep('step-address', 'done');
@@ -485,43 +485,30 @@
                 const p4 = await pdf.getPage(4);
                 rawPage4Lines = await getPageLines(p4);
 
-                // In this PDF the box header line contains the label + inline summary value
-                // e.g. "Solar Panels 9 x 450 Watt Panels" - so we grab the header line itself
-                // PLUS all content lines until the next box header starts.
-                const BOX_DEFS = [
-                    { key: 'solar',    patterns: ['solar panels'] },
-                    { key: 'inverter', patterns: ['inverter'] },
-                    { key: 'battery',  patterns: ['battery'] },
-                    { key: 'bird',     patterns: ['bird deterrent mesh', 'bird deterrent', 'bird mesh'] },
-                ];
+                // Grab all text from page 4, find from "Solar Panels" up to "Product warranties"
+                // This avoids column-ordering issues with two-column layouts
+                const allP4 = rawPage4Lines.join(' ');
 
-                function findLabelIdx(lines, patterns) {
-                    for (let i = 0; i < lines.length; i++) {
-                        const lower = lines[i].toLowerCase();
-                        if (patterns.some(p => lower.includes(p))) return i;
-                    }
-                    return -1;
+                // Find start: first occurrence of Solar Panels
+                const startMarker = rawPage4Lines.findIndex(l => /solar panels/i.test(l));
+                // Find end: stop at "Product warranties" or "Your solar system" header or similar
+                const stopMarkers = ['product warranties', 'trusted installers', 'your solar system'];
+                let endMarker = rawPage4Lines.length;
+                for (const sm of stopMarkers) {
+                    const idx = rawPage4Lines.findIndex(l => l.toLowerCase().includes(sm));
+                    if (idx !== -1 && idx > startMarker) { endMarker = idx; break; }
                 }
 
-                const found = BOX_DEFS
-                    .map(b => ({ key: b.key, idx: findLabelIdx(rawPage4Lines, b.patterns) }))
-                    .filter(b => b.idx !== -1)
-                    .sort((a, b) => a.idx - b.idx);
-
-                for (let i = 0; i < found.length; i++) {
-                    const start   = found[i].idx;
-                    const end     = found[i + 1] ? found[i + 1].idx : start + 20;
-                    const slice   = rawPage4Lines.slice(start, Math.min(end, start + 20));
-                    const content = slice.filter(l => l.trim()).join('\n') || null;
-                    if (found[i].key === 'solar')    boxSolar    = content;
-                    if (found[i].key === 'inverter') boxInverter = content;
-                    if (found[i].key === 'battery')  boxBattery  = content;
-                    if (found[i].key === 'bird')     boxBird     = content;
+                if (startMarker !== -1) {
+                    boxSolar = rawPage4Lines
+                        .slice(startMarker, endMarker)
+                        .filter(l => l.trim())
+                        .join(' ');
                 }
             }
             setStep('step-boxes', 'done');
 
-            populateResults(address, layoutDataUrl, boxSolar, boxInverter, boxBattery, boxBird);
+            populateResults(address, layoutDataUrl, boxSolar, null, null, null);
 
         } catch (err) {
             console.error(err);
@@ -549,11 +536,8 @@
         else { ph.textContent = 'No page 3 found in this PDF.'; }
 
         // Boxes
-        // Combine all four boxes into one
-        const combined = [solar, inverter, battery, bird]
-            .filter(b => b && b.trim())
-            .join('\n\n');
-        setBox('box-all', combined);
+        // solar already contains the full combined page 4 text
+        setBox('box-all', solar);
 
         // Raw debug panels
         const fmt = lines => lines.length
