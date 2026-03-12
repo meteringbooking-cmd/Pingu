@@ -6,7 +6,7 @@
     <title>Job Timeline | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <!-- Google Identity Services (replaces MSAL) -->
+    <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -28,6 +28,12 @@
             --aborted: #FF6B6B;
             --cancelled: #9A9AB0;
             --short-notice: #90ee90;
+
+            /* Survey status colours */
+            --survey-none-bg: rgba(47, 47, 74, 0.55);      /* grey transparent — no survey */
+            --survey-none-border: rgba(154, 154, 176, 0.4);
+            --survey-urgent-bg: rgba(255, 107, 107, 0.22);  /* red — urgent, no survey */
+            --survey-urgent-border: rgba(255, 107, 107, 0.7);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -130,6 +136,10 @@
         .engineer-icon { font-size: 1.3rem; }
         .timeline-grid { display: grid; gap: 1px; position: relative; }
         .day-column { background: var(--dark); border-radius: 4px; position: relative; transition: all 0.2s ease; }
+
+        /* ─────────────────────────────────────────────────────
+           JOB CARD — base style (normal: orange gradient)
+        ───────────────────────────────────────────────────── */
         .job-card {
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             padding: 0.4rem 0.3rem; border-radius: 6px; font-size: 0.75rem;
@@ -139,27 +149,106 @@
         }
         .job-card.dragging { opacity: 0.4; cursor: grabbing; }
         .job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow); border-color: white; z-index: 2; }
+
+        /* Standard status overrides */
         .job-card.status-in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
-        .job-card.status-complete { background: linear-gradient(135deg, var(--complete), #3DB88E); }
-        .job-card.status-aborted { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
-        .job-card.status-cancelled { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); }
+        .job-card.status-complete     { background: linear-gradient(135deg, var(--complete), #3DB88E); }
+        .job-card.status-aborted      { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
+        .job-card.status-cancelled    { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); }
         .job-card.status-short-notice-cancellation { background: linear-gradient(135deg, var(--short-notice), #90ee90); }
+
+        /* ─────────────────────────────────────────────────────
+           SURVEY STATUS OVERRIDES
+           Only applied to jobs with install >= 16 Mar 2026.
+           These override the status colour classes above
+           (except 'complete' and 'cancelled' — those stay as-is).
+        ───────────────────────────────────────────────────── */
+
+        /* No survey yet — grey transparent */
+        .job-card.survey-none {
+            background: var(--survey-none-bg) !important;
+            border: 2px dashed var(--survey-none-border) !important;
+            box-shadow: none;
+        }
+        .job-card.survey-none .job-number,
+        .job-card.survey-none .job-type,
+        .job-card.survey-none .job-postcode,
+        .job-card.survey-none .job-days { color: var(--text-dim) !important; opacity: 0.75; }
+
+        /* No survey + within 10 days — flashing red */
+        .job-card.survey-urgent {
+            background: var(--survey-urgent-bg) !important;
+            border: 2px solid var(--survey-urgent-border) !important;
+            animation: urgentCardFlash 1.1s ease-in-out infinite;
+        }
+        .job-card.survey-urgent .job-number { color: #ffaaaa !important; }
+        .job-card.survey-urgent .job-type,
+        .job-card.survey-urgent .job-postcode,
+        .job-card.survey-urgent .job-days { color: #ff9090 !important; opacity: 0.9; }
+
+        @keyframes urgentCardFlash {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+                background: rgba(255, 107, 107, 0.18) !important;
+            }
+            50% {
+                box-shadow: 0 0 12px 4px rgba(255, 107, 107, 0.55);
+                background: rgba(255, 107, 107, 0.38) !important;
+            }
+        }
+
+        /* Survey complete — return to normal orange gradient */
+        /* (handled by NOT applying survey-none / survey-urgent classes) */
+
         .job-card .completion-overlay {
             position: absolute; top: 0; left: 0; height: 100%;
             background: linear-gradient(135deg, var(--complete), #3DB88E);
             pointer-events: none; transition: width 0.3s ease;
         }
-        .job-number { font-weight: 800; color: var(--dark); font-size: 0.85rem; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-type { font-size: 0.7rem; color: var(--dark); opacity: 0.95; font-weight: 600; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-postcode { font-size: 0.7rem; color: var(--dark); opacity: 0.9; line-height: 1.2; font-weight: 600; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-days { font-size: 0.6rem; color: var(--dark); opacity: 0.95; font-weight: 700; line-height: 1; pointer-events: none; position: absolute; bottom: 0.3rem; right: 0.3rem; z-index: 1; background: rgba(255,255,255,0.3); padding: 0.15rem 0.3rem; border-radius: 3px; }
+
+        .job-number  { font-weight: 800; color: var(--dark); font-size: 0.85rem; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-type    { font-size: 0.7rem; color: var(--dark); opacity: 0.95; font-weight: 600; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-postcode{ font-size: 0.7rem; color: var(--dark); opacity: 0.9; line-height: 1.2; font-weight: 600; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-days    { font-size: 0.6rem; color: var(--dark); opacity: 0.95; font-weight: 700; line-height: 1; pointer-events: none; position: absolute; bottom: 0.3rem; right: 0.3rem; z-index: 1; background: rgba(255,255,255,0.3); padding: 0.15rem 0.3rem; border-radius: 3px; }
+
+        /* Survey indicator icon — small dot in top-left of card */
+        .survey-dot {
+            position: absolute; top: 0.3rem; left: 0.3rem; z-index: 2;
+            width: 8px; height: 8px; border-radius: 50%;
+            pointer-events: none;
+        }
+        .survey-dot.done    { background: var(--success); box-shadow: 0 0 4px var(--success); }
+        .survey-dot.pending { background: var(--text-dim); opacity: 0.6; }
+        .survey-dot.urgent  { background: var(--error); box-shadow: 0 0 6px var(--error); animation: dotPulse 1.1s ease-in-out infinite; }
+        @keyframes dotPulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
         .job-card.multi-day { grid-column: span var(--span-days); }
         .job-arrow { position: relative; height: 4px; background: linear-gradient(90deg, var(--accent), var(--primary)); pointer-events: none; z-index: 3; display: flex; align-items: center; justify-content: flex-end; box-shadow: 0 2px 12px rgba(0, 217, 255, 0.6); }
         .job-arrow::after { content: '→'; color: var(--primary); font-size: 1.5rem; font-weight: 900; margin-right: -10px; text-shadow: 0 0 10px rgba(255, 107, 53, 1); animation: arrowPulse 2s ease-in-out infinite; }
         @keyframes arrowPulse { 0%, 100% { transform: translateX(0) scale(1); opacity: 1; } 50% { transform: translateX(8px) scale(1.1); opacity: 0.8; } }
+
         .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
         .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
 
+        /* Survey legend strip */
+        .survey-legend {
+            display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center;
+            padding: 0.7rem 1rem; background: var(--dark-lighter);
+            border-radius: 8px; margin-bottom: 1rem;
+            font-size: 0.78rem; color: var(--text-dim); border: 1px solid rgba(255,255,255,0.06);
+        }
+        .survey-legend strong { color: var(--text); margin-right: 0.3rem; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .legend-dot.done    { background: var(--success); }
+        .legend-dot.grey    { background: var(--text-dim); opacity: 0.5; }
+        .legend-dot.urgent  { background: var(--error); animation: dotPulse 1.1s ease-in-out infinite; }
+        .legend-swatch { width: 24px; height: 16px; border-radius: 3px; flex-shrink: 0; }
+        .legend-swatch.orange { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+        .legend-swatch.grey   { background: var(--survey-none-bg); border: 1px dashed var(--survey-none-border); }
+        .legend-swatch.red    { background: var(--survey-urgent-bg); border: 1px solid var(--survey-urgent-border); }
+        .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+
+        /* Stats */
         .stats-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -169,12 +258,9 @@
             border-top: 1px solid var(--dark-lighter);
         }
         .stat-item {
-            text-align: center;
-            background: var(--dark-lighter);
-            border-radius: 10px;
-            padding: 0.75rem 0.5rem;
-            border: 2px solid transparent;
-            transition: border-color 0.2s ease;
+            text-align: center; background: var(--dark-lighter);
+            border-radius: 10px; padding: 0.75rem 0.5rem;
+            border: 2px solid transparent; transition: border-color 0.2s ease;
         }
         .stat-item:hover { border-color: var(--primary); }
         .stat-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
@@ -184,7 +270,9 @@
         .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);   -webkit-background-clip: text; background-clip: text; }
         .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); -webkit-background-clip: text; background-clip: text; }
         .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);          -webkit-background-clip: text; background-clip: text; }
+        .stat-value.survey-urgent-val { background: linear-gradient(135deg, var(--error), #E55A5A); -webkit-background-clip: text; background-clip: text; }
 
+        /* Modals */
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
         .modal.show { display: flex; }
         .modal-content { background: var(--dark-light); border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; border: 2px solid var(--primary); max-height: 80vh; overflow-y: auto; }
@@ -196,13 +284,24 @@
         .detail-row { display: grid; grid-template-columns: 120px 1fr; gap: 1rem; padding: 0.8rem; background: var(--dark-lighter); border-radius: 8px; }
         .detail-label { color: var(--text-dim); font-size: 0.85rem; }
         .detail-value { color: var(--text); font-weight: 500; }
+
+        /* Survey info row inside modal */
+        .survey-info-row {
+            padding: 0.8rem 1rem; border-radius: 8px; font-size: 0.85rem;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .survey-info-row.done    { background: rgba(78,204,163,0.12); border: 1px solid rgba(78,204,163,0.35); color: var(--success); }
+        .survey-info-row.pending { background: rgba(154,154,176,0.12); border: 1px dashed rgba(154,154,176,0.3); color: var(--text-dim); }
+        .survey-info-row.urgent  { background: rgba(255,107,107,0.15); border: 1px solid rgba(255,107,107,0.5); color: var(--error); animation: urgentCardFlash 1.1s ease-in-out infinite; }
+        .survey-info-row.na      { background: rgba(154,154,176,0.06); border: 1px dashed rgba(154,154,176,0.15); color: rgba(154,154,176,0.45); font-size: 0.78rem; }
+
         .status-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
         .status-btn { padding: 1rem; border: 2px solid transparent; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: white; }
         .status-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .status-btn.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
-        .status-btn.complete { background: linear-gradient(135deg, var(--complete), #3DB88E); }
-        .status-btn.aborted { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
-        .status-btn.cancelled { background: linear-gradient(135deg, #FF3B3B, #C92A2A); border: 2px solid #FF6B6B; }
+        .status-btn.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
+        .status-btn.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
+        .status-btn.cancelled   { background: linear-gradient(135deg, #FF3B3B, #C92A2A); border: 2px solid #FF6B6B; }
         .status-btn.short-notice { background: linear-gradient(135deg, var(--short-notice), #90ee90); border: 2px solid #C77DFF; }
         .completion-selector { margin-top: 1.5rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 8px; }
         .completion-title { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-align: center; }
@@ -212,7 +311,7 @@
         .day-btn.selected { background: linear-gradient(135deg, var(--primary), var(--accent)); border-color: white; color: white; font-weight: 700; }
         .completion-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
         .action-btn { padding: 0.8rem; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .action-btn.cancel { background: var(--dark); color: var(--text); border: 2px solid var(--dark-lighter); }
+        .action-btn.cancel  { background: var(--dark); color: var(--text); border: 2px solid var(--dark-lighter); }
         .action-btn.confirm { background: linear-gradient(135deg, var(--success), #3DB88E); color: white; }
         .notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter); }
         .notes-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; display: block; }
@@ -230,6 +329,7 @@
         .invoice-section.short-notice-style { background: linear-gradient(135deg, rgba(199,125,255,0.1), rgba(182,94,255,0.1)); border: 2px solid var(--short-notice); }
         .invoice-section.short-notice-style .invoice-title { color: var(--short-notice); }
         .invoice-title { color: var(--success); margin: 0 0 1rem 0; font-family: 'Syne', sans-serif; font-size: 1.2rem; }
+
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .timeline-wrapper { min-width: 800px; }
@@ -247,7 +347,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule with connected segments - Click jobs to update status</p>
+            <p class="subtitle">Visual schedule — Click jobs to update status</p>
         </header>
 
         <div class="controls-card">
@@ -268,38 +368,15 @@
             </div>
 
             <div class="stats-row">
-                <div class="stat-item">
-                    <div class="stat-label">Total Jobs</div>
-                    <div class="stat-value" id="total-jobs">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Engineers</div>
-                    <div class="stat-value" id="total-engineers">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Days Shown</div>
-                    <div class="stat-value" id="date-range">14</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">✅ Complete</div>
-                    <div class="stat-value complete" id="total-complete">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">🔄 In-Progress</div>
-                    <div class="stat-value in-progress" id="total-in-progress">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">⚠️ Aborted</div>
-                    <div class="stat-value aborted" id="total-aborted">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">❌ Cancelled</div>
-                    <div class="stat-value cancelled" id="total-cancelled">0</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">🔔 SNC</div>
-                    <div class="stat-value snc" id="total-snc">0</div>
-                </div>
+                <div class="stat-item"><div class="stat-label">Total Jobs</div><div class="stat-value" id="total-jobs">0</div></div>
+                <div class="stat-item"><div class="stat-label">Engineers</div><div class="stat-value" id="total-engineers">0</div></div>
+                <div class="stat-item"><div class="stat-label">Days Shown</div><div class="stat-value" id="date-range">14</div></div>
+                <div class="stat-item"><div class="stat-label">✅ Complete</div><div class="stat-value complete" id="total-complete">0</div></div>
+                <div class="stat-item"><div class="stat-label">🔄 In-Progress</div><div class="stat-value in-progress" id="total-in-progress">0</div></div>
+                <div class="stat-item"><div class="stat-label">⚠️ Aborted</div><div class="stat-value aborted" id="total-aborted">0</div></div>
+                <div class="stat-item"><div class="stat-label">❌ Cancelled</div><div class="stat-value cancelled" id="total-cancelled">0</div></div>
+                <div class="stat-item"><div class="stat-label">🔔 SNC</div><div class="stat-value snc" id="total-snc">0</div></div>
+                <div class="stat-item"><div class="stat-label">🚨 No Survey</div><div class="stat-value survey-urgent-val" id="total-survey-urgent">0</div></div>
             </div>
 
             <div class="debug-info" id="debug-info" style="display: none;"></div>
@@ -309,11 +386,21 @@
             </div>
             <div class="debug-info" id="sheets-status" style="display: block; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(255,200,87,0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
                 <strong>📊 Google Sheets Integration Active</strong><br>
-                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet. You'll be asked to sign in with your Google account on first use.</span>
+                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet.</span>
             </div>
         </div>
 
         <div class="timeline-container">
+            <!-- Survey legend -->
+            <div class="survey-legend">
+                <strong>Survey status (installs from 16 Mar 2026):</strong>
+                <div class="legend-item"><div class="legend-swatch orange"></div><span>Normal — survey complete (or pre-cutoff)</span></div>
+                <div class="legend-item"><div class="legend-swatch grey"></div><span>No survey yet, &gt;10 days to install</span></div>
+                <div class="legend-item"><div class="legend-swatch red"></div><span>🚨 No survey, install within 10 days</span></div>
+                <div class="legend-item"><div class="legend-dot done"></div><span>● Survey done</span></div>
+                <div class="legend-item"><div class="legend-dot urgent"></div><span>● Urgent</span></div>
+            </div>
+
             <div id="timeline-content">
                 <div class="loading">Loading timeline from Firebase...</div>
             </div>
@@ -339,11 +426,14 @@
                 <div class="detail-row"><div class="detail-label">Panel Number</div><div class="detail-value" id="status-panel"></div></div>
                 <div class="detail-row"><div class="detail-label">Current Status</div><div class="detail-value" id="status-current"></div></div>
 
+                <!-- Survey info row — injected dynamically -->
+                <div id="modal-survey-row"></div>
+
                 <div class="status-buttons">
                     <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">🔄 In-Progress</button>
-                    <button class="status-btn complete" onclick="updateJobStatus('Complete')">✅ Complete</button>
-                    <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">⚠️ Aborted</button>
-                    <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">❌ Cancelled</button>
+                    <button class="status-btn complete"    onclick="updateJobStatus('Complete')">✅ Complete</button>
+                    <button class="status-btn aborted"     onclick="updateJobStatus('Aborted')">⚠️ Aborted</button>
+                    <button class="status-btn cancelled"   onclick="updateJobStatus('Cancelled')">❌ Cancelled</button>
                     <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')" style="grid-column: 1 / -1;">🔔 Short Notice Cancellation</button>
                 </div>
 
@@ -351,7 +441,7 @@
                     <div class="completion-title">Which day(s) are complete?</div>
                     <div class="day-buttons" id="day-buttons"></div>
                     <div class="completion-actions">
-                        <button class="action-btn cancel" onclick="hideCompletionSelector()">Cancel</button>
+                        <button class="action-btn cancel"  onclick="hideCompletionSelector()">Cancel</button>
                         <button class="action-btn confirm" onclick="confirmPartialCompletion()">Confirm</button>
                     </div>
                 </div>
@@ -361,8 +451,8 @@
                     <div style="margin-bottom: 1.5rem;">
                         <label class="notes-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <button class="day-btn" id="slate-yes-btn" onclick="selectSlateOption(true)" style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
-                            <button class="day-btn" id="slate-no-btn" onclick="selectSlateOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
+                            <button class="day-btn" id="slate-yes-btn" onclick="selectSlateOption(true)"  style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
+                            <button class="day-btn" id="slate-no-btn"  onclick="selectSlateOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
                         </div>
                     </div>
                     <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
@@ -408,14 +498,14 @@
                 </div>
                 <div style="margin-top: 1.5rem;">
                     <label class="notes-label" for="materials-cost">Materials (£)</label>
-                    <input type="number" id="materials-cost" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                    <input type="number" id="materials-cost" class="notes-textarea" placeholder="0.00" step="0.01" min="0" style="min-height:auto;padding:0.8rem;">
                 </div>
                 <div style="margin-top: 1rem;">
                     <label class="notes-label" for="materials-notes">Materials Notes (Optional)</label>
-                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px;"></textarea>
                 </div>
                 <div class="completion-actions" style="margin-top: 2rem;">
-                    <button class="action-btn cancel" onclick="closeAdditionalCostsModal()">Cancel</button>
+                    <button class="action-btn cancel"  onclick="closeAdditionalCostsModal()">Cancel</button>
                     <button class="action-btn confirm" onclick="submitAdditionalCosts()">💾 Save Costs</button>
                 </div>
             </div>
@@ -424,9 +514,11 @@
 
     <div class="toast" id="toast"></div>
 
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -453,49 +545,48 @@
     </script>
 
     <script>
-        let allJobs = [];
-        let currentJob = null;
-        let timelineDates = [];
+        /* ═══════════════════════════════════════════
+           GLOBALS
+        ═══════════════════════════════════════════ */
+        let allJobs        = [];
+        let currentJob     = null;
+        let timelineDates  = [];
         let selectedCompletionDays = [];
-        let pendingStatusChange = null;
+        let pendingStatusChange    = null;
         let slateRoof = null;
 
-        // ── GOOGLE SHEETS CONFIG (replaces SharePoint) ──
+        // surveyMap: jobNumber → true  (loaded from site-surveys collection)
+        let surveyMap = {};
+
+        // Only jobs with an install date on or after this date get survey tracking
+        const SURVEY_CUTOFF = new Date('2026-03-16');
+        SURVEY_CUTOFF.setHours(0, 0, 0, 0);
+
+        /* ═══════════════════════════════════════════
+           GOOGLE SHEETS CONFIG
+        ═══════════════════════════════════════════ */
         const GOOGLE_SHEETS_CONFIG = {
             clientId: '278178669501-0n0jq9cl6vk8uhfq05dbb64p4bnqsoss.apps.googleusercontent.com',
             spreadsheetId: '1JuPikuR5vFNo_BPRZKAxTcFjUNHWVldeji7qaJp3Ng0',
             sheetName: 'Delays and Postponements',
             scope: 'https://www.googleapis.com/auth/spreadsheets'
         };
-
         let googleAccessToken = null;
-        let tokenExpiryTime = null;
+        let tokenExpiryTime   = null;
 
-        // ── Get Google OAuth token via popup ──
         async function getGoogleAccessToken() {
-            // Return cached token if still valid (with 60s buffer)
-            if (googleAccessToken && tokenExpiryTime && Date.now() < tokenExpiryTime - 60000) {
-                return googleAccessToken;
-            }
+            if (googleAccessToken && tokenExpiryTime && Date.now() < tokenExpiryTime - 60000) return googleAccessToken;
             return new Promise((resolve, reject) => {
-                // Wait for GSI library to be ready
                 if (typeof google === 'undefined' || !google.accounts) {
-                    reject(new Error('Google Identity Services not loaded yet. Please try again in a moment.'));
-                    return;
+                    reject(new Error('Google Identity Services not loaded yet. Please try again in a moment.')); return;
                 }
                 const client = google.accounts.oauth2.initTokenClient({
                     client_id: GOOGLE_SHEETS_CONFIG.clientId,
                     scope: GOOGLE_SHEETS_CONFIG.scope,
                     callback: (response) => {
-                        if (response.error) {
-                            console.error('Google auth error:', response);
-                            reject(new Error(response.error));
-                            return;
-                        }
+                        if (response.error) { reject(new Error(response.error)); return; }
                         googleAccessToken = response.access_token;
-                        // expires_in is in seconds
                         tokenExpiryTime = Date.now() + (response.expires_in * 1000);
-                        console.log('✅ Google access token obtained');
                         resolve(googleAccessToken);
                     }
                 });
@@ -503,62 +594,27 @@
             });
         }
 
-        // ── Write a row to Google Sheets ──
         async function updateGoogleSheet(jobData) {
             try {
                 const accessToken = await getGoogleAccessToken();
                 if (!accessToken) return false;
-
                 const { spreadsheetId, sheetName } = GOOGLE_SHEETS_CONFIG;
                 const encodedSheet = encodeURIComponent(sheetName);
-
-                // Find next empty row by reading column A
                 const readRes = await fetch(
                     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:A`,
                     { headers: { 'Authorization': `Bearer ${accessToken}` } }
                 );
-
-                if (!readRes.ok) {
-                    const errText = await readRes.text();
-                    throw new Error(`Read failed ${readRes.status}: ${errText}`);
-                }
-
+                if (!readRes.ok) throw new Error(`Read failed ${readRes.status}`);
                 const readData = await readRes.json();
-                const existingRows = readData.values ? readData.values.length : 0;
-                const nextRow = existingRows + 1;
-                console.log(`📊 Next empty row: ${nextRow}`);
-
-                const today = new Date().toLocaleDateString('en-GB');
-
-                const values = [[
-                    today,           // A - Today's date
-                    jobData.jobNumber, // B - Job Number
-                    jobData.postcode,  // C - Postcode
-                    '',              // D - empty
-                    '',              // E - empty
-                    jobData.delays   // F - Delays
-                ]];
-
+                const nextRow  = (readData.values ? readData.values.length : 0) + 1;
+                const today    = new Date().toLocaleDateString('en-GB');
+                const values   = [[ today, jobData.jobNumber, jobData.postcode, '', '', jobData.delays ]];
                 const writeRes = await fetch(
                     `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A${nextRow}:F${nextRow}?valueInputOption=USER_ENTERED`,
-                    {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `Bearer ${accessToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ values })
-                    }
+                    { method: 'PUT', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ values }) }
                 );
-
-                if (!writeRes.ok) {
-                    const errText = await writeRes.text();
-                    throw new Error(`Write failed ${writeRes.status}: ${errText}`);
-                }
-
-                console.log(`✅ Row written to Google Sheets row ${nextRow}`);
+                if (!writeRes.ok) throw new Error(`Write failed ${writeRes.status}`);
                 return true;
-
             } catch (error) {
                 console.error('❌ Google Sheets error:', error);
                 showToast('Google Sheets sync failed: ' + error.message, 'error');
@@ -566,57 +622,97 @@
             }
         }
 
-        // ── Save delays to Firebase + sync to Google Sheets ──
-        window.saveJobDelays = async function() {
+        window.saveJobDelays = async function () {
             if (!currentJob) return;
             const delays = document.getElementById('job-delays').value.trim();
             if (!delays) { showToast('Please enter a delay reason before saving', 'error'); return; }
             const jobNumber = currentJob['Job Number'] || 'N/A';
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', currentJob.id);
-                await updateDoc(jobRef, { delays, delaysUpdatedAt: new Date().toISOString() });
+                await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), { delays, delaysUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) job.delays = delays;
                 showToast('Saving to Google Sheets...', 'success');
-
-                const shareData = {
-                    jobNumber,
-                    postcode: currentJob['Postcode'] || 'N/A',
-                    startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
-                    finishDate: currentJob['Projected Completion Date'] || '',
-                    delays
-                };
-
-                const success = await updateGoogleSheet(shareData);
+                const success = await updateGoogleSheet({ jobNumber, postcode: currentJob['Postcode'] || 'N/A', delays });
                 if (success) showToast('✅ Delays saved & synced to Google Sheets!', 'success');
-                else showToast('⚠️ Saved to Firebase — Google Sheets sync failed (check popup blocker)', 'error');
+                else showToast('⚠️ Saved to Firebase — Google Sheets sync failed', 'error');
             } catch (error) {
-                console.error('Error saving delays:', error);
                 showToast('Failed to save delays: ' + error.message, 'error');
             }
+        };
+
+        /* ═══════════════════════════════════════════
+           SURVEY STATUS HELPERS
+        ═══════════════════════════════════════════ */
+
+        /**
+         * Returns: 'na' | 'done' | 'urgent' | 'pending'
+         * 'na'      — install before cutoff, or no date
+         * 'done'    — survey exists in surveyMap
+         * 'urgent'  — no survey, install within 10 days (or past)
+         * 'pending' — no survey, install > 10 days away
+         */
+        function getSurveyStatus(job) {
+            const installDate = job.parsedDate;
+            if (!installDate || installDate < SURVEY_CUTOFF) return 'na';
+            if (surveyMap[job['Job Number']]) return 'done';
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const days  = Math.ceil((installDate - today) / (1000 * 60 * 60 * 24));
+            return days <= 10 ? 'urgent' : 'pending';
         }
 
-        window.initializeTimeline = function() {
-            const today = new Date();
-            const dayOfWeek = today.getDay();
-            const daysFromMonday = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
-            const previousMonday = new Date(today);
-            previousMonday.setDate(today.getDate() - daysFromMonday - 7);
-            previousMonday.setHours(0, 0, 0, 0);
-            document.getElementById('start-date').valueAsDate = previousMonday;
-            loadJobs();
+        /**
+         * Returns the CSS class(es) to add to the job-card div for survey styling.
+         * Returns empty string when the job should render normally (survey done / pre-cutoff).
+         */
+        function getSurveyCardClass(job) {
+            const s = getSurveyStatus(job);
+            if (s === 'urgent')  return 'survey-urgent';
+            if (s === 'pending') return 'survey-none';
+            return ''; // 'done' or 'na' → normal orange styling
         }
+
+        function getSurveyDotHtml(job) {
+            const s = getSurveyStatus(job);
+            if (s === 'na')      return '';
+            if (s === 'done')    return '<div class="survey-dot done"  title="Survey complete"></div>';
+            if (s === 'urgent')  return '<div class="survey-dot urgent" title="No survey — install within 10 days!"></div>';
+            return '<div class="survey-dot pending" title="No survey yet"></div>';
+        }
+
+        function getSurveyModalHtml(job) {
+            const s = getSurveyStatus(job);
+            if (s === 'na')     return '<div class="survey-info-row na">📅 Survey tracking not applicable (pre 16 Mar 2026)</div>';
+            if (s === 'done')   return '<div class="survey-info-row done">✅ Site survey has been submitted for this job</div>';
+            if (s === 'urgent') {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const days  = Math.ceil((job.parsedDate - today) / (1000*60*60*24));
+                const txt   = days <= 0 ? 'Install date has passed' : `Install in ${days} day${days === 1 ? '' : 's'}`;
+                return `<div class="survey-info-row urgent">🚨 No survey submitted — ${txt}! Survey needed urgently.</div>`;
+            }
+            return '<div class="survey-info-row pending">⏳ No survey submitted yet — install is more than 10 days away</div>';
+        }
+
+        /* ═══════════════════════════════════════════
+           INIT & LOAD
+        ═══════════════════════════════════════════ */
+        window.initializeTimeline = function () {
+            const today      = new Date();
+            const dayOfWeek  = today.getDay();
+            const daysFromMon = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+            const prevMonday = new Date(today);
+            prevMonday.setDate(today.getDate() - daysFromMon - 7);
+            prevMonday.setHours(0, 0, 0, 0);
+            document.getElementById('start-date').valueAsDate = prevMonday;
+            loadJobs();
+        };
 
         function parseDate(dateStr) {
             if (!dateStr) return null;
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
-                    const day = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1;
-                    const year = parseInt(parts[2], 10);
-                    const parsed = new Date(year, month, day);
+                    const parsed = new Date(+parts[2], +parts[1] - 1, +parts[0]);
                     if (!isNaN(parsed.getTime())) { parsed.setHours(0,0,0,0); return parsed; }
                 }
             }
@@ -626,26 +722,30 @@
         }
 
         function formatDate(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
+            return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
         }
 
         function formatTimestamp(isoString) {
             if (!isoString) return '';
             const d = new Date(isoString);
             if (isNaN(d.getTime())) return '';
-            return d.toLocaleString('en-GB', {
-                day: '2-digit', month: 'short', year: 'numeric',
-                hour: '2-digit', minute: '2-digit'
-            });
+            return d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
         }
 
         async function loadJobs() {
             try {
                 const { collection, getDocs, query, orderBy: orderByFn } = window.firebaseModules;
-                const jobsQuery = query(collection(window.db, 'Solar-jobs'), orderByFn('uploadDate', 'desc'));
+
+                // Load survey map first
+                const surveySnap = await getDocs(collection(window.db, 'site-surveys'));
+                surveyMap = {};
+                surveySnap.forEach(d => {
+                    const jn = d.data().jobNumber;
+                    if (jn) surveyMap[jn] = true;
+                });
+
+                // Load Solar-jobs
+                const jobsQuery   = query(collection(window.db, 'Solar-jobs'), orderByFn('uploadDate', 'desc'));
                 const querySnapshot = await getDocs(jobsQuery);
                 allJobs = [];
                 let debugInfo = [];
@@ -654,32 +754,25 @@
                     const data = docSnap.data();
                     const dateFields = ['Booked Date','Projected Completion Date','Install Date','installedDate','bookingDate'];
                     let jobDate = null, usedDateField = null;
-
                     for (const field of dateFields) {
-                        if (data[field]) {
-                            jobDate = parseDate(data[field]);
-                            if (jobDate) { usedDateField = field; break; }
-                        }
+                        if (data[field]) { jobDate = parseDate(data[field]); if (jobDate) { usedDateField = field; break; } }
                     }
 
                     if (jobDate) {
                         let jobLength = 1;
-                        const durationFields = ['Days','Job Length (days)','Job Length','jobLength','Duration','duration'];
-                        for (const field of durationFields) {
+                        for (const field of ['Days','Job Length (days)','Job Length','jobLength','Duration','duration']) {
                             if (data[field] !== undefined && data[field] !== '') {
-                                const parsed = parseInt(data[field], 10);
-                                if (!isNaN(parsed) && parsed > 0) { jobLength = parsed; break; }
+                                const p = parseInt(data[field], 10);
+                                if (!isNaN(p) && p > 0) { jobLength = p; break; }
                             }
                         }
-
-                        const engineerFields = ['Lead','Lead Engineer','Engineer','engineer'];
                         let engineer = 'Unassigned';
-                        for (const field of engineerFields) {
-                            if (data[field] && data[field].trim()) { engineer = data[field]; break; }
+                        for (const field of ['Lead','Lead Engineer','Engineer','engineer']) {
+                            if (data[field]?.trim()) { engineer = data[field]; break; }
                         }
 
-                        const jobType = data['Job Type'] || 'Standard';
-                        const status = data['Status Update'] || data['status'] || 'Scheduled';
+                        const jobType      = data['Job Type'] || 'Standard';
+                        const status       = data['Status Update'] || data['status'] || 'Scheduled';
                         const completedDays = data['completedDays'] || [];
                         let projectedCompletionDate = null;
                         if (data['Projected Completion Date']) projectedCompletionDate = parseDate(data['Projected Completion Date']);
@@ -689,16 +782,15 @@
                             parsedDate: jobDate, projectedCompletionDate,
                             usedDateField, jobLength, engineer, jobType, status, completedDays
                         });
-                        debugInfo.push(`Job ${data['Job Number'] || docSnap.id}: ${jobType}, Date = ${formatDate(jobDate)}, Duration = ${jobLength} days`);
+                        debugInfo.push(`Job ${data['Job Number'] || docSnap.id}: ${jobType}, ${formatDate(jobDate)}, ${jobLength}d`);
                     }
                 });
 
-                console.log(`✅ Loaded ${allJobs.length} jobs`);
+                console.log(`✅ Loaded ${allJobs.length} jobs, ${Object.keys(surveyMap).length} surveys`);
                 const debugEl = document.getElementById('debug-info');
                 if (allJobs.length > 0) {
                     debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs:</strong><br>` +
-                        debugInfo.slice(0, 5).join('<br>') +
-                        (debugInfo.length > 5 ? `<br>... and ${debugInfo.length - 5} more` : '');
+                        debugInfo.slice(0,5).join('<br>') + (debugInfo.length > 5 ? `<br>… and ${debugInfo.length-5} more` : '');
                     debugEl.style.display = 'block';
                     setTimeout(() => { debugEl.style.display = 'none'; }, 10000);
                 }
@@ -710,6 +802,9 @@
             }
         }
 
+        /* ═══════════════════════════════════════════
+           STATUS UPDATE
+        ═══════════════════════════════════════════ */
         async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
             try {
                 const { doc, updateDoc } = window.firebaseModules;
@@ -721,190 +816,160 @@
 
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
-                    const previousStatus = job.status;
-                    job.status = newStatus;
-                    job['Status Update'] = newStatus;
+                    const prev = job.status;
+                    job.status = newStatus; job['Status Update'] = newStatus;
                     if (completedDays !== null) job.completedDays = completedDays;
                     if (newStatus === 'Complete') job.completedTimestamp = new Date().toISOString();
-                    if (newStatus === 'Complete' && previousStatus !== 'Complete') await sendJobCompletionEmail(job);
+                    if (newStatus === 'Complete' && prev !== 'Complete') await sendJobCompletionEmail(job);
                 }
                 showToast(`Job status updated to: ${newStatus}`, 'success');
             } catch (error) {
-                console.error('Error updating job status:', error);
                 showToast('Failed to update job status', 'error');
             }
         }
 
         async function sendJobCompletionEmail(job) {
             try {
-                const jobNumber = job['Job Number'] || 'N/A';
-                const postcode = job['Postcode'] || 'N/A';
-                const engineer = job.engineer || 'Unassigned';
-                const jobType = job.jobType || 'Standard';
-                const completionDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><div style="text-align:center;margin-bottom:30px;"><h1 style="color:#4ECCA3;margin:0;font-size:2rem;">✅ Job Completed</h1></div><div style="background:#f9f9f9;padding:20px;border-radius:8px;margin-bottom:20px;"><h2 style="color:#FF6B35;margin-top:0;margin-bottom:20px;font-size:1.3rem;">Job Details</h2><table style="width:100%;border-collapse:collapse;"><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Number:</td><td style="padding:10px 0;color:#333;font-weight:bold;">${jobNumber}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Postcode:</td><td style="padding:10px 0;color:#333;">${postcode}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Lead Engineer:</td><td style="padding:10px 0;color:#333;">${engineer}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Job Type:</td><td style="padding:10px 0;color:#333;">${jobType}</td></tr><tr><td style="padding:10px 0;color:#666;font-weight:600;">Completion Date:</td><td style="padding:10px 0;color:#333;">${completionDate}</td></tr></table></div></div></div>`;
+                const jobNumber  = job['Job Number'] || 'N/A';
+                const postcode   = job['Postcode']   || 'N/A';
+                const engineer   = job.engineer      || 'Unassigned';
+                const jobType    = job.jobType       || 'Standard';
+                const completionDate = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
                 await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
                     to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
                     job_number: jobNumber, postcode, engineer, job_type: jobType,
-                    completion_date: completionDate, message_html: emailHTML
+                    completion_date: completionDate
                 });
                 showToast(`Completion email sent for job #${jobNumber}`, 'success');
             } catch (error) {
-                console.error('❌ Email failed:', error);
                 showToast('Email notification failed: ' + error.message, 'error');
             }
         }
 
-        window.selectSlateOption = function(isSlate) {
-            slateRoof = isSlate;
-            document.getElementById('slate-yes-btn').classList.toggle('selected', isSlate);
-            document.getElementById('slate-no-btn').classList.toggle('selected', !isSlate);
-        }
-
-        window.showInlineInvoiceSection = function(isShortNotice = false) {
-            if (!currentJob) return;
-            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
-            document.getElementById('completion-selector').style.display = 'none';
-            slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
-            const invoiceSection = document.getElementById('invoice-section');
-            const invoiceTitle = document.getElementById('invoice-title');
-            const submitBtn = document.getElementById('submit-invoice-btn');
-            if (isShortNotice) {
-                invoiceSection.classList.add('short-notice-style');
-                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
-                submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
-                submitBtn.textContent = '💾 Submit & Mark as Short Notice Cancellation';
-            } else {
-                invoiceSection.classList.remove('short-notice-style');
-                invoiceTitle.textContent = '🏠 Job Completion Details';
-                submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
-                submitBtn.textContent = '💾 Submit & Mark Complete';
-            }
-            if (slateRoof === true) { document.getElementById('slate-yes-btn').classList.add('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
-            else if (slateRoof === false) { document.getElementById('slate-no-btn').classList.add('selected'); document.getElementById('slate-yes-btn').classList.remove('selected'); }
-            else { document.getElementById('slate-yes-btn').classList.remove('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
-            invoiceSection.style.display = 'block';
-            setTimeout(() => { invoiceSection.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
-        }
-
-        window.submitInlineInvoice = async function() {
-            if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
-            if (slateRoof === null) { showToast('Please select whether the roof type was slate', 'error'); return; }
-            const jobId = currentJob.id;
-            const jobNumber = currentJob['Job Number'] || 'N/A';
-            const jobLength = currentJob.jobLength || 1;
-            const finalStatus = pendingStatusChange || 'Complete';
-            try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const jobRef = doc(window.db, 'Solar-jobs', jobId);
-                let completedDays;
-                if (currentJob._pendingCompletedDays && currentJob._pendingCompletedDays.length > 0) completedDays = [...currentJob._pendingCompletedDays];
-                else if (selectedCompletionDays.length > 0) completedDays = [...selectedCompletionDays];
-                else if (jobLength > 1) completedDays = Array.from({length: jobLength}, (_, i) => i + 1);
-                else completedDays = [1];
-                await updateDoc(jobRef, { 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof });
-                const job = allJobs.find(j => j.id === jobId);
-                if (job) {
-                    Object.assign(job, { status: finalStatus, 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), slateRoof, completedDays });
-                    if (finalStatus === 'Complete') await sendJobCompletionEmail(job);
-                }
-                const roofType = slateRoof ? 'Slate' : 'Non-slate';
-                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Roof: ${roofType}`, 'success');
-                pendingStatusChange = null; slateRoof = null;
-                closeStatusModal();
-                setTimeout(() => { buildTimeline(); }, 300);
-            } catch (error) {
-                console.error('❌ Error saving:', error);
-                showToast('Failed to save: ' + error.message, 'error');
-            }
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            toast.textContent = message;
-            toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
-            setTimeout(() => { toast.classList.remove('show'); }, 3000);
-        }
+        /* ═══════════════════════════════════════════
+           TIMELINE BUILD
+        ═══════════════════════════════════════════ */
+        window.initializeTimeline = function () {
+            const today      = new Date();
+            const dayOfWeek  = today.getDay();
+            const daysFromMon = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+            const prevMonday = new Date(today);
+            prevMonday.setDate(today.getDate() - daysFromMon - 7);
+            prevMonday.setHours(0, 0, 0, 0);
+            document.getElementById('start-date').valueAsDate = prevMonday;
+            loadJobs();
+        };
 
         function buildTimeline() {
             const startDateInput = document.getElementById('start-date').value;
             const startDate = startDateInput ? new Date(startDateInput) : new Date();
             startDate.setHours(0, 0, 0, 0);
             const daysCount = parseInt(document.getElementById('days-count').value) || 14;
+
             timelineDates = [];
             for (let i = 0; i < daysCount; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                timelineDates.push(date);
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                timelineDates.push(d);
             }
             const endDate = new Date(timelineDates[timelineDates.length - 1]);
             endDate.setHours(23, 59, 59, 999);
 
             const filteredJobs = allJobs.filter(job => {
-                const jobStart = new Date(job.parsedDate); jobStart.setHours(0,0,0,0);
-                const jobEnd = new Date(jobStart); jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1)); jobEnd.setHours(23,59,59,999);
-                return jobStart <= endDate && jobEnd >= startDate;
+                const s = new Date(job.parsedDate); s.setHours(0,0,0,0);
+                const e = new Date(s); e.setDate(e.getDate() + (job.jobLength - 1)); e.setHours(23,59,59,999);
+                return s <= endDate && e >= startDate;
             });
 
             const engineerJobs = {};
             filteredJobs.forEach(job => {
-                const engineer = job.engineer || 'Unassigned';
-                if (!engineerJobs[engineer]) engineerJobs[engineer] = [];
-                engineerJobs[engineer].push(job);
+                const eng = job.engineer || 'Unassigned';
+                if (!engineerJobs[eng]) engineerJobs[eng] = [];
+                engineerJobs[eng].push(job);
             });
 
-            let countComplete = 0, countInProgress = 0, countAborted = 0, countCancelled = 0, countSNC = 0;
+            let cComplete=0, cInProgress=0, cAborted=0, cCancelled=0, cSNC=0, cSurveyUrgent=0;
             filteredJobs.forEach(job => {
                 const s = job.status || 'Scheduled';
-                if (s === 'Complete') countComplete++;
-                else if (s === 'In-Progress') countInProgress++;
-                else if (s === 'Aborted') countAborted++;
-                else if (s === 'Cancelled') countCancelled++;
-                else if (s === 'Short Notice Cancellation') countSNC++;
+                if (s === 'Complete')                    cComplete++;
+                else if (s === 'In-Progress')            cInProgress++;
+                else if (s === 'Aborted')                cAborted++;
+                else if (s === 'Cancelled')              cCancelled++;
+                else if (s === 'Short Notice Cancellation') cSNC++;
+                if (getSurveyStatus(job) === 'urgent')   cSurveyUrgent++;
             });
 
-            document.getElementById('total-jobs').textContent = filteredJobs.length;
-            document.getElementById('total-engineers').textContent = Object.keys(engineerJobs).length;
-            document.getElementById('date-range').textContent = daysCount;
-            document.getElementById('total-complete').textContent = countComplete;
-            document.getElementById('total-in-progress').textContent = countInProgress;
-            document.getElementById('total-aborted').textContent = countAborted;
-            document.getElementById('total-cancelled').textContent = countCancelled;
-            document.getElementById('total-snc').textContent = countSNC;
+            document.getElementById('total-jobs').textContent       = filteredJobs.length;
+            document.getElementById('total-engineers').textContent   = Object.keys(engineerJobs).length;
+            document.getElementById('date-range').textContent        = daysCount;
+            document.getElementById('total-complete').textContent    = cComplete;
+            document.getElementById('total-in-progress').textContent = cInProgress;
+            document.getElementById('total-aborted').textContent     = cAborted;
+            document.getElementById('total-cancelled').textContent   = cCancelled;
+            document.getElementById('total-snc').textContent         = cSNC;
+            document.getElementById('total-survey-urgent').textContent = cSurveyUrgent;
 
             if (Object.keys(engineerJobs).length === 0) {
-                document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><div style="font-size:3rem;margin-bottom:1rem;">📅</div><h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:0.5rem;">No Jobs Scheduled</h3><p>No jobs found in this date range</p></div>`;
+                document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><div style="font-size:3rem;margin-bottom:1rem;">📅</div><h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:.5rem;">No Jobs Scheduled</h3><p>No jobs found in this date range</p></div>`;
                 return;
             }
 
-            const html = `<div class="timeline-wrapper"><div class="timeline-header"><div class="engineer-header">👷 Engineer</div><div class="dates-header">${timelineDates.map(date => { const isToday = date.toDateString() === new Date().toDateString(); return `<div class="date-cell ${isToday ? 'today' : ''}"><div class="date-day">${formatDay(date)}</div><div class="date-number">${date.getDate()}</div><div class="date-month">${formatMonth(date)}</div></div>`; }).join('')}</div></div><div class="timeline-body">${Object.keys(engineerJobs).sort().map(engineer => `<div class="engineer-row"><div class="engineer-name"><span class="engineer-icon">👤</span><span>${escapeHtml(engineer)}</span></div><div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div></div>`).join('')}</div></div>`;
+            const html = `<div class="timeline-wrapper">
+                <div class="timeline-header">
+                    <div class="engineer-header">👷 Engineer</div>
+                    <div class="dates-header">${timelineDates.map(date => {
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        return `<div class="date-cell ${isToday ? 'today' : ''}">
+                            <div class="date-day">${formatDay(date)}</div>
+                            <div class="date-number">${date.getDate()}</div>
+                            <div class="date-month">${formatMonth(date)}</div>
+                        </div>`;
+                    }).join('')}</div>
+                </div>
+                <div class="timeline-body">
+                    ${Object.keys(engineerJobs).sort().map(engineer =>
+                        `<div class="engineer-row">
+                            <div class="engineer-name"><span class="engineer-icon">👤</span><span>${escapeHtml(engineer)}</span></div>
+                            <div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div>
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>`;
+
             document.getElementById('timeline-content').innerHTML = html;
             setTimeout(initializeJobCards, 100);
         }
 
         function renderEngineerJobs(jobs, dates, startDate) {
-            const numCols = dates.length;
+            const numCols    = dates.length;
             const sortedJobs = [...jobs].sort((a, b) => a.parsedDate.getTime() - b.parsedDate.getTime());
             const gridOccupancy = [];
             const jobPlacements = [];
-            const arrows = [];
+            const arrows        = [];
 
             sortedJobs.forEach(job => {
                 const jobStart = new Date(job.parsedDate); jobStart.setHours(0,0,0,0);
                 let startCol = -1;
-                for (let i = 0; i < dates.length; i++) { if (dates[i].toDateString() === jobStart.toDateString()) { startCol = i; break; } }
+                for (let i = 0; i < dates.length; i++) {
+                    if (dates[i].toDateString() === jobStart.toDateString()) { startCol = i; break; }
+                }
                 if (startCol === -1) return;
+
                 const jobLength = job.jobLength || 1;
                 let segments = [];
+
                 if (job.projectedCompletionDate && jobLength > 1) {
-                    const projectedEnd = new Date(job.projectedCompletionDate); projectedEnd.setHours(0,0,0,0);
-                    const daysBetween = Math.floor((projectedEnd - jobStart) / (1000*60*60*24));
+                    const projEnd = new Date(job.projectedCompletionDate); projEnd.setHours(0,0,0,0);
+                    const daysBetween = Math.floor((projEnd - jobStart) / (1000*60*60*24));
                     if (daysBetween >= jobLength) {
-                        const daysPerSegment = Math.ceil(jobLength / 2);
-                        segments.push({ startCol, span: daysPerSegment, isFirst: true });
-                        let projectedCol = -1;
-                        for (let i = 0; i < dates.length; i++) { if (dates[i].toDateString() === projectedEnd.toDateString()) { projectedCol = i; break; } }
-                        if (projectedCol !== -1 && projectedCol < dates.length) segments.push({ startCol: projectedCol, span: jobLength - daysPerSegment, isLast: true });
+                        const dps = Math.ceil(jobLength / 2);
+                        segments.push({ startCol, span: dps, isFirst: true });
+                        let projCol = -1;
+                        for (let i = 0; i < dates.length; i++) {
+                            if (dates[i].toDateString() === projEnd.toDateString()) { projCol = i; break; }
+                        }
+                        if (projCol !== -1 && projCol < dates.length)
+                            segments.push({ startCol: projCol, span: jobLength - dps, isLast: true });
                     } else {
                         segments.push({ startCol, span: Math.min(jobLength, dates.length - startCol), isFirst: true, isLast: true });
                     }
@@ -912,33 +977,31 @@
                     segments.push({ startCol, span: Math.min(jobLength, dates.length - startCol), isFirst: true, isLast: true });
                 }
 
-                let targetRow = null;
-                let rowIndex = 0;
-                let foundRow = false;
-                while (!foundRow) {
+                let targetRow = null, rowIndex = 0;
+                while (targetRow === null) {
                     if (!gridOccupancy[rowIndex]) gridOccupancy[rowIndex] = new Array(numCols).fill(false);
-                    let allFit = true;
-                    for (const segment of segments) {
-                        for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
-                            if (col < numCols && gridOccupancy[rowIndex][col]) { allFit = false; break; }
+                    let fits = true;
+                    for (const seg of segments) {
+                        for (let col = seg.startCol; col < seg.startCol + seg.span; col++) {
+                            if (col < numCols && gridOccupancy[rowIndex][col]) { fits = false; break; }
                         }
-                        if (!allFit) break;
+                        if (!fits) break;
                     }
-                    if (allFit) {
-                        targetRow = rowIndex; foundRow = true;
-                        for (const segment of segments) {
-                            for (let col = segment.startCol; col < segment.startCol + segment.span; col++) {
+                    if (fits) {
+                        targetRow = rowIndex;
+                        for (const seg of segments) {
+                            for (let col = seg.startCol; col < seg.startCol + seg.span; col++) {
                                 if (col < numCols) gridOccupancy[rowIndex][col] = true;
                             }
                         }
                     } else { rowIndex++; }
                 }
 
-                segments.forEach((segment, segmentIndex) => {
-                    jobPlacements.push({ job, row: targetRow, col: segment.startCol, span: segment.span, isFirst: segment.isFirst, isLast: segment.isLast, segmentIndex });
-                    if (!segment.isLast && segmentIndex < segments.length - 1) {
-                        const nextSegment = segments[segmentIndex + 1];
-                        arrows.push({ fromCol: segment.startCol + segment.span, toCol: nextSegment.startCol, row: targetRow, jobId: job.id });
+                segments.forEach((seg, si) => {
+                    jobPlacements.push({ job, row: targetRow, col: seg.startCol, span: seg.span, isFirst: seg.isFirst, isLast: seg.isLast, segmentIndex: si });
+                    if (!seg.isLast && si < segments.length - 1) {
+                        const next = segments[si + 1];
+                        arrows.push({ fromCol: seg.startCol + seg.span, toCol: next.startCol, row: targetRow });
                     }
                 });
             });
@@ -946,20 +1009,44 @@
             const totalRows = gridOccupancy.length || 1;
             let html = `<div class="timeline-grid" style="grid-template-columns: repeat(${numCols}, minmax(120px, 1fr)); grid-template-rows: repeat(${totalRows}, 70px);">`;
 
-            jobPlacements.forEach(placement => {
-                const { job, row, col, span } = placement;
-                const status = job.status || 'Scheduled';
+            jobPlacements.forEach(({ job, row, col, span }) => {
+                const status      = job.status || 'Scheduled';
+                const surveyClass = getSurveyCardClass(job);
+                const surveyDot   = getSurveyDotHtml(job);
+
+                // Determine status class.
+                // If survey styling is active (grey or urgent) we don't apply
+                // complete/cancelled overrides since those jobs are done anyway —
+                // but for safety, keep complete and cancelled visible.
                 let statusClass = '';
-                if (status === 'In-Progress') statusClass = 'status-in-progress';
-                else if (status === 'Complete') statusClass = 'status-complete';
-                else if (status === 'Aborted') statusClass = 'status-aborted';
-                else if (status === 'Cancelled') statusClass = 'status-cancelled';
-                else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
-                const completedDays = job.completedDays || [];
-                const jobLength = job.jobLength || 1;
+                if (surveyClass) {
+                    // Survey styling takes over — only keep complete / cancelled / snc colours
+                    if (status === 'Complete')                     statusClass = 'status-complete';
+                    else if (status === 'Cancelled')               statusClass = 'status-cancelled';
+                    else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
+                    // else leave blank — survey class handles appearance
+                } else {
+                    if (status === 'In-Progress')                  statusClass = 'status-in-progress';
+                    else if (status === 'Complete')                statusClass = 'status-complete';
+                    else if (status === 'Aborted')                 statusClass = 'status-aborted';
+                    else if (status === 'Cancelled')               statusClass = 'status-cancelled';
+                    else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
+                }
+
+                const completedDays     = job.completedDays || [];
+                const jobLength         = job.jobLength || 1;
                 const completionPercent = jobLength > 1 && completedDays.length > 0 ? (completedDays.length / jobLength) * 100 : 0;
-                const textStyle = span > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
-                html += `<div class="job-card ${statusClass}" data-job-id="${job.id}" style="grid-column: ${col + 1} / span ${span}; grid-row: ${row + 1};">${completionPercent > 0 && completionPercent < 100 ? `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}<div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div><div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div><div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}</div>`;
+                const textStyle         = span > 1 ? 'white-space: normal; word-wrap: break-word;' : '';
+
+                html += `<div class="job-card ${statusClass} ${surveyClass}" data-job-id="${job.id}"
+                            style="grid-column: ${col + 1} / span ${span}; grid-row: ${row + 1};">
+                    ${surveyDot}
+                    ${completionPercent > 0 && completionPercent < 100 ? `<div class="completion-overlay" style="width: ${completionPercent}%;"></div>` : ''}
+                    <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                    <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
+                    <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
+                    ${jobLength > 1 ? `<div class="job-days">${completedDays.length > 0 ? `${completedDays.length}/` : ''}${jobLength}d</div>` : ''}
+                </div>`;
             });
 
             arrows.forEach(arrow => {
@@ -976,33 +1063,38 @@
             });
         }
 
+        /* ═══════════════════════════════════════════
+           STATUS MODAL
+        ═══════════════════════════════════════════ */
         function showStatusModal(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
             currentJob = job;
             selectedCompletionDays = [...(job.completedDays || [])];
             pendingStatusChange = null; slateRoof = null;
-            document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
-            document.getElementById('status-address').textContent = job['Address'] || 'N/A';
-            document.getElementById('status-postcode').textContent = job['Postcode'] || 'N/A';
-            document.getElementById('status-job-type').textContent = job.jobType || 'Standard';
-            document.getElementById('status-booked-date').textContent = formatDate(job.parsedDate) || 'N/A';
-            document.getElementById('status-days').textContent = job.jobLength || '1';
-            document.getElementById('status-lead').textContent = job.engineer || 'Unassigned';
-            document.getElementById('status-team').textContent = job['Team Number'] || job['Team'] || 'N/A';
-            document.getElementById('status-panel').textContent = job['Panel No.'] || job['Panel Number'] || 'N/A';
-            document.getElementById('status-current').textContent = job.status || 'Scheduled';
-            document.getElementById('job-notes').value = job.notes || '';
-            document.getElementById('po-numbers').value = job.poNumbers || '';
-            document.getElementById('job-delays').value = job.delays || '';
 
-            const poTimestampEl = document.getElementById('po-timestamp');
-            poTimestampEl.textContent = job.poNumbersUpdatedAt
-                ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}`
-                : '';
+            document.getElementById('status-job-number').textContent = job['Job Number'] || 'N/A';
+            document.getElementById('status-address').textContent    = job['Address']    || 'N/A';
+            document.getElementById('status-postcode').textContent   = job['Postcode']   || 'N/A';
+            document.getElementById('status-job-type').textContent   = job.jobType       || 'Standard';
+            document.getElementById('status-booked-date').textContent = formatDate(job.parsedDate) || 'N/A';
+            document.getElementById('status-days').textContent        = job.jobLength || '1';
+            document.getElementById('status-lead').textContent        = job.engineer  || 'Unassigned';
+            document.getElementById('status-team').textContent        = job['Team Number'] || job['Team'] || 'N/A';
+            document.getElementById('status-panel').textContent       = job['Panel No.'] || job['Panel Number'] || 'N/A';
+            document.getElementById('status-current').textContent     = job.status    || 'Scheduled';
+            document.getElementById('job-notes').value    = job.notes     || '';
+            document.getElementById('po-numbers').value  = job.poNumbers || '';
+            document.getElementById('job-delays').value  = job.delays    || '';
+
+            const poTs = document.getElementById('po-timestamp');
+            poTs.textContent = job.poNumbersUpdatedAt ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}` : '';
+
+            // Survey info row
+            document.getElementById('modal-survey-row').innerHTML = getSurveyModalHtml(job);
 
             document.getElementById('completion-selector').style.display = 'none';
-            document.getElementById('invoice-section').style.display = 'none';
+            document.getElementById('invoice-section').style.display     = 'none';
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
             document.getElementById('status-modal').classList.add('show');
         }
@@ -1015,7 +1107,7 @@
             currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; slateRoof = null;
         }
 
-        window.updateJobStatus = async function(newStatus) {
+        window.updateJobStatus = async function (newStatus) {
             if (!currentJob) return;
             pendingStatusChange = newStatus;
             if (newStatus === 'Complete' && currentJob.jobLength > 1) { showCompletionSelector(); return; }
@@ -1025,75 +1117,134 @@
             closeStatusModal();
             await updateJobStatusInDB(jobId, newStatus, null);
             buildTimeline();
-        }
+        };
 
-        window.showCompletionSelector = function() {
+        window.selectSlateOption = function (isSlate) {
+            slateRoof = isSlate;
+            document.getElementById('slate-yes-btn').classList.toggle('selected',  isSlate);
+            document.getElementById('slate-no-btn').classList.toggle('selected', !isSlate);
+        };
+
+        window.showInlineInvoiceSection = function (isShortNotice = false) {
+            if (!currentJob) return;
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
+            document.getElementById('completion-selector').style.display = 'none';
+            slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
+            const inv      = document.getElementById('invoice-section');
+            const title    = document.getElementById('invoice-title');
+            const submitBtn = document.getElementById('submit-invoice-btn');
+            if (isShortNotice) {
+                inv.classList.add('short-notice-style');
+                title.textContent    = '🔔 Short Notice Cancellation - Details';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
+                submitBtn.textContent = '💾 Submit & Mark as Short Notice Cancellation';
+            } else {
+                inv.classList.remove('short-notice-style');
+                title.textContent    = '🏠 Job Completion Details';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
+                submitBtn.textContent = '💾 Submit & Mark Complete';
+            }
+            if (slateRoof === true)  { document.getElementById('slate-yes-btn').classList.add('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
+            else if (slateRoof === false) { document.getElementById('slate-no-btn').classList.add('selected'); document.getElementById('slate-yes-btn').classList.remove('selected'); }
+            else { document.getElementById('slate-yes-btn').classList.remove('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
+            inv.style.display = 'block';
+            setTimeout(() => { inv.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 100);
+        };
+
+        window.submitInlineInvoice = async function () {
+            if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
+            if (slateRoof === null) { showToast('Please select whether the roof type was slate', 'error'); return; }
+            const jobId       = currentJob.id;
+            const jobNumber   = currentJob['Job Number'] || 'N/A';
+            const jobLength   = currentJob.jobLength || 1;
+            const finalStatus = pendingStatusChange || 'Complete';
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                let completedDays;
+                if (currentJob._pendingCompletedDays?.length > 0) completedDays = [...currentJob._pendingCompletedDays];
+                else if (selectedCompletionDays.length > 0)        completedDays = [...selectedCompletionDays];
+                else if (jobLength > 1)                            completedDays = Array.from({ length: jobLength }, (_, i) => i + 1);
+                else                                               completedDays = [1];
+                await updateDoc(doc(window.db, 'Solar-jobs', jobId), {
+                    'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof
+                });
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    Object.assign(job, { status: finalStatus, 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), slateRoof, completedDays });
+                    if (finalStatus === 'Complete') await sendJobCompletionEmail(job);
+                }
+                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Roof: ${slateRoof ? 'Slate' : 'Non-slate'}`, 'success');
+                pendingStatusChange = null; slateRoof = null;
+                closeStatusModal();
+                setTimeout(() => buildTimeline(), 300);
+            } catch (error) {
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        };
+
+        window.showCompletionSelector = function () {
             if (!currentJob) return;
             const jobLength = currentJob.jobLength || 1;
             if (jobLength === 1) { showInlineInvoiceSection(false); return; }
-            const dayButtonsHtml = Array.from({length: jobLength}, (_, i) => {
-                const dayNum = i + 1;
-                const isSelected = selectedCompletionDays.includes(dayNum);
-                return `<button class="day-btn ${isSelected ? 'selected' : ''}" onclick="toggleCompletionDay(${dayNum})">Day ${dayNum}</button>`;
+            document.getElementById('day-buttons').innerHTML = Array.from({ length: jobLength }, (_, i) => {
+                const d = i + 1, sel = selectedCompletionDays.includes(d);
+                return `<button class="day-btn ${sel ? 'selected' : ''}" onclick="toggleCompletionDay(${d})">Day ${d}</button>`;
             }).join('');
-            document.getElementById('day-buttons').innerHTML = dayButtonsHtml;
             document.getElementById('completion-selector').style.display = 'block';
-        }
+        };
 
-        window.hideCompletionSelector = function() { document.getElementById('completion-selector').style.display = 'none'; }
+        window.hideCompletionSelector = function () { document.getElementById('completion-selector').style.display = 'none'; };
 
-        window.toggleCompletionDay = function(dayNum) {
-            const index = selectedCompletionDays.indexOf(dayNum);
-            if (index > -1) selectedCompletionDays.splice(index, 1);
+        window.toggleCompletionDay = function (dayNum) {
+            const idx = selectedCompletionDays.indexOf(dayNum);
+            if (idx > -1) selectedCompletionDays.splice(idx, 1);
             else selectedCompletionDays.push(dayNum);
             selectedCompletionDays.sort((a, b) => a - b);
             document.querySelectorAll('.day-btn').forEach(btn => {
-                const num = parseInt(btn.textContent.replace('Day ', ''));
-                btn.classList.toggle('selected', selectedCompletionDays.includes(num));
+                const n = parseInt(btn.textContent.replace('Day ', ''));
+                btn.classList.toggle('selected', selectedCompletionDays.includes(n));
             });
-        }
+        };
 
-        window.confirmPartialCompletion = async function() {
+        window.confirmPartialCompletion = async function () {
             if (!currentJob) return;
             const jobLength = currentJob.jobLength || 1;
-            const jobNumber = currentJob['Job Number'] || 'N/A';
-            if (selectedCompletionDays.length === 0) { showToast('Please select at least one day to complete', 'error'); return; }
+            if (selectedCompletionDays.length === 0) { showToast('Please select at least one day', 'error'); return; }
             currentJob._pendingCompletedDays = [...selectedCompletionDays];
-            if (selectedCompletionDays.length === jobLength) { document.getElementById('completion-selector').style.display = 'none'; showInlineInvoiceSection(false); return; }
+            if (selectedCompletionDays.length === jobLength) {
+                document.getElementById('completion-selector').style.display = 'none';
+                showInlineInvoiceSection(false); return;
+            }
             const jobId = currentJob.id;
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 await updateDoc(doc(window.db, 'Solar-jobs', jobId), { 'Status Update': 'In-Progress', completedDays: selectedCompletionDays });
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) { job.status = 'In-Progress'; job['Status Update'] = 'In-Progress'; job.completedDays = selectedCompletionDays; }
-                showToast(`✓ Job #${jobNumber}: Day${selectedCompletionDays.length > 1 ? 's' : ''} ${selectedCompletionDays.join(', ')} completed (${selectedCompletionDays.length}/${jobLength})`, 'success');
+                showToast(`✓ Day${selectedCompletionDays.length > 1 ? 's' : ''} ${selectedCompletionDays.join(', ')} completed (${selectedCompletionDays.length}/${jobLength})`, 'success');
                 closeStatusModal();
                 buildTimeline();
             } catch (error) {
-                console.error('Error:', error);
                 showToast('Failed to update job completion', 'error');
             }
-        }
+        };
 
-        window.savePONumbers = async function() {
+        window.savePONumbers = async function () {
             if (!currentJob) return;
             const poNumbers = document.getElementById('po-numbers').value;
             const now = new Date().toISOString();
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), {
-                    poNumbers,
-                    poNumbersUpdatedAt: now
-                });
+                await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), { poNumbers, poNumbersUpdatedAt: now });
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) { job.poNumbers = poNumbers; job.poNumbersUpdatedAt = now; }
                 if (currentJob) { currentJob.poNumbers = poNumbers; currentJob.poNumbersUpdatedAt = now; }
                 document.getElementById('po-timestamp').textContent = `Last saved: ${formatTimestamp(now)}`;
                 showToast('PO Numbers saved successfully', 'success');
             } catch (error) { showToast('Failed to save PO numbers', 'error'); }
-        }
+        };
 
-        window.saveJobNotes = async function() {
+        window.saveJobNotes = async function () {
             if (!currentJob) return;
             try {
                 const { doc, updateDoc } = window.firebaseModules;
@@ -1102,43 +1253,48 @@
                 if (job) job.notes = document.getElementById('job-notes').value;
                 showToast('Notes saved successfully', 'success');
             } catch (error) { showToast('Failed to save notes', 'error'); }
-        }
+        };
 
-        window.showAdditionalCostsModal = function() {
+        window.showAdditionalCostsModal = function () {
             if (!currentJob) return;
             document.getElementById('additional-costs-job-number').textContent = currentJob['Job Number'] || 'N/A';
-            document.getElementById('materials-cost').value = currentJob.materialsCost || '';
+            document.getElementById('materials-cost').value  = currentJob.materialsCost || '';
             document.getElementById('materials-notes').value = currentJob.materialsNotes || '';
             document.getElementById('additional-costs-modal').classList.add('show');
-        }
+        };
 
-        window.closeAdditionalCostsModal = function() {
-            document.getElementById('additional-costs-modal').classList.remove('show');
-        }
+        window.closeAdditionalCostsModal = function () { document.getElementById('additional-costs-modal').classList.remove('show'); };
 
-        window.submitAdditionalCosts = async function() {
+        window.submitAdditionalCosts = async function () {
             if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
-            const materialsCost = parseFloat(document.getElementById('materials-cost').value) || 0;
+            const materialsCost  = parseFloat(document.getElementById('materials-cost').value) || 0;
             const materialsNotes = document.getElementById('materials-notes').value.trim();
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 await updateDoc(doc(window.db, 'Solar-jobs', currentJob.id), { materialsCost, materialsNotes, additionalCostsUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j => j.id === currentJob.id);
                 if (job) { job.materialsCost = materialsCost; job.materialsNotes = materialsNotes; }
-                showToast(`Additional costs saved: £${materialsCost.toFixed(2)} (Materials)`, 'success');
+                showToast(`Additional costs saved: £${materialsCost.toFixed(2)}`, 'success');
                 closeAdditionalCostsModal();
             } catch (error) { showToast('Failed to save additional costs', 'error'); }
+        };
+
+        function showToast(message, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = message;
+            t.className = `toast show ${type === 'error' ? 'error' : ''}`;
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
 
         function updateTimeline() { buildTimeline(); }
-        function formatDay(date) { return date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase(); }
+        function formatDay(date)   { return date.toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase(); }
         function formatMonth(date) { return date.toLocaleDateString('en-GB', { month: 'short' }); }
-        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        function escapeHtml(text)  { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
 
         document.getElementById('status-modal').addEventListener('click', e => { if (e.target.id === 'status-modal') closeStatusModal(); });
         document.getElementById('additional-costs-modal').addEventListener('click', e => { if (e.target.id === 'additional-costs-modal') closeAdditionalCostsModal(); });
 
-        window.updateTimeline = updateTimeline;
+        window.updateTimeline   = updateTimeline;
         window.closeStatusModal = closeStatusModal;
     </script>
 </body>
