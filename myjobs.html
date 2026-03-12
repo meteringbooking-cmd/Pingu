@@ -728,7 +728,7 @@
                 + '<div class="job-details">'
                 + '<div class="job-detail"><span class="job-detail-icon">&#x1F4CD;</span>' + escapeHtml(job['Postcode'] || 'N/A') + '</div>'
                 + '<div class="job-detail"><span class="job-detail-icon">&#x1F4C5;</span>' + escapeHtml(job['Install Date'] || 'Not scheduled') + '</div>'
-                + '<div class="job-detail"><span class="job-detail-icon">&#x1F477;</span>' + escapeHtml(job['Lead Engineer'] || 'Unassigned') + '</div>'
+                + '<div class="job-detail"><span class="job-detail-icon">&#x1F477;</span>' + escapeHtml(getDisplayLeadName(job)) + '</div>'
                 + '</div>'
                 + '<div class="job-card-footer">' + footerHtml + '</div>'
                 + '</div>';
@@ -763,7 +763,7 @@
             + '<div class="detail-group"><div class="detail-label">Address</div><div class="detail-value">' + escapeHtml(job['1st line of address']||'N/A') + '</div></div>'
             + '<div class="detail-group"><div class="detail-label">Postcode</div><div class="detail-value">' + escapeHtml(job['Postcode']||'N/A') + '</div></div>'
             + '<div class="detail-group"><div class="detail-label">Install Date</div><div class="detail-value">' + escapeHtml(job['Install Date']||'Not scheduled') + '</div></div>'
-            + '<div class="detail-group"><div class="detail-label">Lead Engineer</div><div class="detail-value">' + escapeHtml(job['Lead Engineer']||'Unassigned') + '</div></div>'
+            + '<div class="detail-group"><div class="detail-label">Lead Engineer</div><div class="detail-value">' + escapeHtml(getDisplayLeadName(job)) + '</div></div>'
             + (surveyDone ? '<div class="survey-completed-notice">&#x2705; A completed survey has been submitted for this job.</div>' : '')
             + '<div class="status-update-section"><div class="status-update-header">&#x1F504; Update Job Status</div>'
             + '<div class="status-buttons">'
@@ -867,6 +867,23 @@
     }
 
     window.closeJobModal = function() { document.getElementById('job-modal').classList.remove('show'); };
+
+    // Returns the team lead's name for display purposes.
+    // If the logged-in user is a lead, all jobs show the lead's own name.
+    // If the logged-in user is a member, show their lead's name.
+    // Otherwise fall back to whatever is stored on the job.
+    function getDisplayLeadName(job) {
+        if (userIsLeadOf) {
+            // User is a lead — always show their own name
+            return currentUser.name || job['Lead Engineer'] || 'Unassigned';
+        }
+        if (userTeamLeadName) {
+            // User is a team member — show the lead's name
+            return userTeamLeadName;
+        }
+        // No team relationship — show whatever is on the job
+        return job['Lead Engineer'] || 'Unassigned';
+    }
 
     function escapeHtml(text) {
         var div = document.createElement('div');
