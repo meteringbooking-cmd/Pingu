@@ -160,13 +160,7 @@
         .job-card:hover::before { transform: scaleX(1); }
         .job-card.survey-done::before { background: linear-gradient(90deg, var(--success), var(--accent)); transform: scaleX(1); }
         .job-card.survey-done { border-color: rgba(78,204,163,0.3); }
-        .team-job-indicator {
-            position: absolute; top: 12px; right: 12px;
-            background: rgba(255,200,87,0.15); border: 1px solid rgba(255,200,87,0.4);
-            color: var(--secondary); font-size: 0.65rem; font-weight: 700;
-            padding: 0.2rem 0.5rem; border-radius: 4px;
-            text-transform: uppercase; letter-spacing: 0.05em;
-        }
+
         .job-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; }
         .job-number { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .job-status { font-size: 0.75rem; padding: 0.3rem 0.7rem; border-radius: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -709,20 +703,15 @@
             var surveyDone = hasSurveyCompleted(jobNumber);
             var leadEngineer = (job['Lead Engineer'] || '').trim().toLowerCase();
 
-            // A "team job" is one not directly assigned to the logged-in user.
-            var isTeamJob = leadEngineer !== userName;
-
             var statusText = 'Upcoming', statusClass = 'upcoming';
             if (surveyDone || jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
             else if (jobStatus === 'install-started') { statusText = 'Install Started'; statusClass = 'install-started'; }
 
-            var teamIndicator = isTeamJob ? '<div class="team-job-indicator">Team Job</div>' : '';
             var footerHtml = surveyDone
                 ? '<div class="survey-done-badge">&#x2705; Survey Completed</div>'
                 : '<button class="commence-survey-btn" onclick="commenceSurvey(\'' + escapeHtml(jobNumber) + '\',event)">&#x1F50D; Commence Survey</button>';
 
             return '<div class="job-card' + (surveyDone ? ' survey-done' : '') + '" onclick="showJobDetails(\'' + job.id + '\')">'
-                + teamIndicator
                 + '<div class="job-header"><div class="job-number">' + escapeHtml(jobNumber) + '</div><div class="job-status ' + statusClass + '">' + statusText + '</div></div>'
                 + '<div class="job-customer">' + escapeHtml(job['Name'] || 'Unknown Customer') + '</div>'
                 + '<div class="job-details">'
