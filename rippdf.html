@@ -258,11 +258,8 @@
                 <span class="result-header-badge">Page 4</span>
             </div>
             <div class="result-body">
-                <div class="boxes-grid">
-                    <div class="box-card"><div class="box-label">☀️ Solar Panels</div><div class="box-text" id="box-solar">—</div></div>
-                    <div class="box-card"><div class="box-label">⚡ Inverter</div><div class="box-text" id="box-inverter">—</div></div>
-                    <div class="box-card"><div class="box-label">🔋 Battery</div><div class="box-text" id="box-battery">—</div></div>
-                    <div class="box-card"><div class="box-label">🐦 Bird Deterrent Mesh</div><div class="box-text" id="box-bird">—</div></div>
+                <div class="box-card" style="grid-column:1/-1">
+                    <div class="box-text" id="box-all" style="font-size:0.9rem;">—</div>
                 </div>
                 <div class="copy-row">
                     <button class="copy-btn" id="copy-boxes-btn" onclick="copyAllBoxes()">📋 Copy All Boxes</button>
@@ -385,6 +382,22 @@
         return canvas.toDataURL('image/jpeg', 0.92);
     }
 
+    // ── Crop an image data URL to its bottom half ─────────────────────────────
+    function cropBottomHalf(dataUrl) {
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const cropY  = Math.floor(img.height * 0.45); // start at 45% down
+                const canvas = document.createElement('canvas');
+                canvas.width  = img.width;
+                canvas.height = img.height - cropY;
+                canvas.getContext('2d').drawImage(img, 0, cropY, img.width, img.height - cropY, 0, 0, img.width, img.height - cropY);
+                resolve(canvas.toDataURL('image/jpeg', 0.92));
+            };
+            img.src = dataUrl;
+        });
+    }
+
     // ── Step progress helpers ─────────────────────────────────────────────────
     function setStep(id, state) {
         const el   = document.getElementById(id);
@@ -427,17 +440,25 @@
                 const p1 = await pdf.getPage(1);
                 rawPage1Lines = await getPageLines(p1);
 
-                // The address label variants to look for
-                // Stop collecting when we hit the next obvious section
-                const addrStops = [
-                    'your proposed layout', 'surveyor', 'date', 'signature',
-                    'job number', 'customer', 'solar panels', 'inverter', 'battery'
-                ];
+                // Grab lines directly after "ADDRESS" label
+                // Stop at QUOTE / # / known section headers
+                const addrStops  = ['quote', 'valid', 'surveyor', 'date', 'signature',
+                                    'job number', 'customer', 'solar panels', 'inverter', 'battery',
+                                    'your proposed layout', 'prepared by', 'i confirm'];
                 const addrLabels = ['address', 'site address', 'installation address', 'property address'];
 
                 for (const lbl of addrLabels) {
-                    const found = extractAfterLabel(rawPage1Lines, lbl, addrStops, 8);
-                    if (found) { address = found; break; }
+                    const raw = extractAfterLabel(rawPage1Lines, lbl, addrStops, 6);
+                    if (raw) {
+                        // Strip lines that start with # or look like section-header tokens
+                        const cleaned = raw.split('\n')
+                            .filter(l => {
+                                const t = l.trim();
+                                return t && !t.startsWith('#') && !/^[A-Z][A-Z\s]{2,}$/.test(t);
+                            })
+                            .join('\n');
+                        if (cleaned) { address = cleaned; break; }
+                    }
                 }
             }
             setStep('step-address', 'done');
@@ -447,7 +468,9 @@
             layoutDataUrl = '';
             if (totalPages >= 3) {
                 const p3 = await pdf.getPage(3);
-                layoutDataUrl = await renderPage(p3, 2.5);
+                // Render full page then crop to bottom half (where the aerial image lives)
+                const fullDataUrl = await renderPage(p3, 2.5);
+                layoutDataUrl = await cropBottomHalf(fullDataUrl);
             }
             setStep('step-layout', 'done');
 
@@ -526,10 +549,11 @@
         else { ph.textContent = 'No page 3 found in this PDF.'; }
 
         // Boxes
-        setBox('box-solar',    solar);
-        setBox('box-inverter', inverter);
-        setBox('box-battery',  battery);
-        setBox('box-bird',     bird);
+        // Combine all four boxes into one
+        const combined = [solar, inverter, battery, bird]
+            .filter(b => b && b.trim())
+            .join('\n\n');
+        setBox('box-all', combined);
 
         // Raw debug panels
         const fmt = lines => lines.length
@@ -564,13 +588,7 @@
     }
 
     function copyAllBoxes() {
-        const parts = [
-            { label: 'Solar Panels',        id: 'box-solar'    },
-            { label: 'Inverter',            id: 'box-inverter' },
-            { label: 'Battery',             id: 'box-battery'  },
-            { label: 'Bird Deterrent Mesh', id: 'box-bird'     },
-        ];
-        const text = parts.map(p => `${p.label}:\n${document.getElementById(p.id).textContent}`).join('\n\n');
+        const text = document.getElementById('box-all').textContent;
         navigator.clipboard.writeText(text).then(() => {
             const btn = document.getElementById('copy-boxes-btn');
             btn.classList.add('copied'); btn.textContent = '✅ Copied!';
