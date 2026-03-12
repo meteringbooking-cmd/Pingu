@@ -500,7 +500,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc }
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, setDoc }
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
@@ -516,7 +516,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, setDoc };
             console.log('✅ Firebase initialized');
             emailjs.init("ziLnha91scpGjFABh");
             console.log('✅ EmailJS initialized');
@@ -548,7 +548,43 @@
         let surveyMap = {};
 
         /* ══════════════════════════════════════════════
-           GOOGLE SHEETS CONFIG
+           WRITE HELPER — always targets Solar-jobs
+           For jobs-only entries (source='jobs') we use setDoc
+           with merge:true so a new Solar-jobs doc is created if
+           one doesn't already exist, then we tag source as 'both'.
+        ══════════════════════════════════════════════ */
+        async function writeSolarJob(job, updateData) {
+            const { doc, updateDoc, setDoc } = window.firebaseModules;
+
+            if (job.source === 'jobs') {
+                // job exists only in 'jobs' collection — upsert into Solar-jobs
+                // Use the same doc ID so future merges still work
+                const solarRef = doc(window.db, 'Solar-jobs', job.id);
+                // Build a full seed object from the job for first-time creation,
+                // merged with the specific fields being updated
+                const seedData = {
+                    'Job Number':   job['Job Number'] || job.jobNumber || '',
+                    'Postcode':     job['Postcode']   || '',
+                    'Job Type':     job.jobType       || '',
+                    'Lead':         job.engineer      || '',
+                    'Lead Engineer':job.engineer      || '',
+                    'Team':         job.team          || job['Team'] || '',
+                    'Booked Date':  job['Booked Date'] || '',
+                    'Days':         job.jobLength      || 1,
+                    uploadDate:     job.uploadDate     || new Date().toISOString(),
+                    _migratedFromJobs: true,
+                    _migratedAt: new Date().toISOString(),
+                    ...updateData
+                };
+                await setDoc(solarRef, seedData, { merge: true });
+                // Update local cache: promote source to 'both'
+                job.source = 'both';
+            } else {
+                // Already in Solar-jobs (source = 'solar' or 'both')
+                const solarRef = doc(window.db, 'Solar-jobs', job.id);
+                await updateDoc(solarRef, updateData);
+            }
+        }
         ══════════════════════════════════════════════ */
         const GOOGLE_SHEETS_CONFIG = {
             clientId: '278178669501-0n0jq9cl6vk8uhfq05dbb64p4bnqsoss.apps.googleusercontent.com',
@@ -794,13 +830,10 @@
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const job = allJobs.find(j => j.id === jobId);
-                // Write to the correct collection based on source
-                const collName = (job && job.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                const jobRef   = doc(window.db, collName, jobId);
                 const updateData = { 'Status Update': newStatus };
                 if (completedDays !== null) updateData.completedDays = completedDays;
                 if (newStatus === 'Complete') updateData.completedTimestamp = new Date().toISOString();
-                await updateDoc(jobRef, updateData);
+                await writeSolarJob(job, updateData);
 
                 if (job) {
                     const prevStatus = job.status;
@@ -876,14 +909,12 @@
             const finalStatus = pendingStatusChange || 'Complete';
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                const jobRef   = doc(window.db, collName, jobId);
                 let completedDays;
                 if      (currentJob._pendingCompletedDays?.length) completedDays = [...currentJob._pendingCompletedDays];
                 else if (selectedCompletionDays.length)            completedDays = [...selectedCompletionDays];
                 else if (jobLength > 1)                            completedDays = Array.from({length:jobLength}, (_,i) => i+1);
                 else                                               completedDays = [1];
-                await updateDoc(jobRef, { 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof });
+                await writeSolarJob(currentJob, { 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof });
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
                     Object.assign(job, { status: finalStatus, 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), slateRoof, completedDays });
@@ -1203,9 +1234,7 @@
             if (selectedCompletionDays.length === jobLength) { document.getElementById('completion-selector').style.display='none'; showInlineInvoiceSection(false); return; }
             const jobId = currentJob.id;
             try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                await updateDoc(doc(window.db, collName, jobId), { 'Status Update':'In-Progress', completedDays: selectedCompletionDays });
+                await writeSolarJob(currentJob, { 'Status Update':'In-Progress', completedDays: selectedCompletionDays });
                 const job = allJobs.find(j=>j.id===jobId);
                 if (job) { job.status='In-Progress'; job['Status Update']='In-Progress'; job.completedDays=selectedCompletionDays; }
                 showToast(`✓ Job #${jobNumber}: Day${selectedCompletionDays.length>1?'s':''} ${selectedCompletionDays.join(', ')} completed`, 'success');
@@ -1220,9 +1249,7 @@
             const poNumbers = document.getElementById('po-numbers').value;
             const now       = new Date().toISOString();
             try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                await updateDoc(doc(window.db, collName, currentJob.id), { poNumbers, poNumbersUpdatedAt: now });
+                await writeSolarJob(currentJob, { poNumbers, poNumbersUpdatedAt: now });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) { job.poNumbers=poNumbers; job.poNumbersUpdatedAt=now; }
                 if (currentJob) { currentJob.poNumbers=poNumbers; currentJob.poNumbersUpdatedAt=now; }
@@ -1234,9 +1261,7 @@
         window.saveJobNotes = async function() {
             if (!currentJob) return;
             try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                await updateDoc(doc(window.db, collName, currentJob.id), { notes: document.getElementById('job-notes').value });
+                await writeSolarJob(currentJob, { notes: document.getElementById('job-notes').value });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) job.notes = document.getElementById('job-notes').value;
                 showToast('Notes saved successfully', 'success');
@@ -1249,9 +1274,7 @@
             if (!delays) { showToast('Please enter a delay reason before saving', 'error'); return; }
             const jobNumber = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
             try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                await updateDoc(doc(window.db, collName, currentJob.id), { delays, delaysUpdatedAt: new Date().toISOString() });
+                await writeSolarJob(currentJob, { delays, delaysUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) job.delays = delays;
                 showToast('Saving to Google Sheets...', 'success');
@@ -1287,9 +1310,7 @@
             const materialsCost  = parseFloat(document.getElementById('materials-cost').value) || 0;
             const materialsNotes = document.getElementById('materials-notes').value.trim();
             try {
-                const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-                await updateDoc(doc(window.db, collName, currentJob.id), { materialsCost, materialsNotes, additionalCostsUpdatedAt: new Date().toISOString() });
+                await writeSolarJob(currentJob, { materialsCost, materialsNotes, additionalCostsUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) { job.materialsCost=materialsCost; job.materialsNotes=materialsNotes; }
                 showToast(`Additional costs saved: £${materialsCost.toFixed(2)}`, 'success');
