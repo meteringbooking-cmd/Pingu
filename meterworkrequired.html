@@ -216,6 +216,14 @@
         .btn-complete:disabled { opacity:0.55; cursor:not-allowed; }
         .btn-complete.is-done { background:var(--success); color:var(--dark); border-color:var(--success); }
 
+        .btn-other {
+            width:100%; background:rgba(181,123,255,0.1); border:1px solid rgba(181,123,255,0.3);
+            color:var(--kf); padding:0.5rem 1rem; border-radius:9px;
+            font-family:'JetBrains Mono',monospace; font-size:0.78rem;
+            cursor:pointer; transition:all 0.2s; margin-top:0;
+        }
+        .btn-other:hover { background:rgba(181,123,255,0.2); border-color:var(--kf); }
+
         .btn-reopen {
             width:100%; background:none; border:1px solid rgba(255,107,53,0.25);
             color:var(--text-dim); padding:0.5rem 1rem; border-radius:9px;
@@ -299,7 +307,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import {
-    getFirestore, collection, getDocs, doc, updateDoc
+    getFirestore, collection, getDocs, doc, updateDoc, setDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const app = initializeApp({
@@ -545,6 +553,7 @@ function buildCard(s, idx) {
                         ${status === 'completed' ? '✅ Done' : '✓ Mark Complete'}
                     </button>
                 </div>
+                ${status !== 'completed' ? `<button class="btn-other" onclick="markCompleteByOther('${id}')">✓ Completed by Other</button>` : ''}
                 ${reopenBtn}
             </div>
         </div>
@@ -572,11 +581,13 @@ window.saveDetails = async function (id) {
     btn.disabled  = true;
     btn.textContent = 'Saving…';
     try {
-        await updateDoc(doc(db, 'meter-work-required', id), {
+        await updateDoc(doc(db, 'site-surveys', id), {
             meterDate: dateVal, meterEngineer: engVal, meterJobNumber: mjobVal
         });
         const job = window._jobs.find(s => s._docId === id);
         if (job) { job.meterDate = dateVal; job.meterEngineer = engVal; job.meterJobNumber = mjobVal; }
+        // Mirror to meterworkrequired collection
+        try { await setDoc(doc(db, 'meterworkrequired', id), { ...job, meterDate: dateVal, meterEngineer: engVal, meterJobNumber: mjobVal }); } catch(_) {}
         renderAll();
         setTimeout(() => toggleCard(id), 40);
     } catch (e) {
@@ -593,7 +604,7 @@ window.markComplete = async function (id) {
     const btn     = document.getElementById('cmp-'   + id);
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-        await updateDoc(doc(db, 'meter-work-required', id), {
+        await updateDoc(doc(db, 'site-surveys', id), {
             meterCompleted:   true,
             meterCompletedAt: new Date().toISOString(),
             meterCompletedBy: engVal,
@@ -610,6 +621,8 @@ window.markComplete = async function (id) {
             job.meterDate        = dateVal;
             job.meterJobNumber   = mjobVal;
         }
+        // Mirror to meterworkrequired collection
+        try { await setDoc(doc(db, 'meterworkrequired', id), { ...job }); } catch(_) {}
         renderAll();
     } catch (e) {
         alert('Could not mark complete: ' + e.message);
@@ -620,7 +633,7 @@ window.markComplete = async function (id) {
 window.reopenJob = async function (id) {
     if (!confirm('Re-open this job as pending?')) return;
     try {
-        await updateDoc(doc(db, 'meter-work-required', id), {
+        await updateDoc(doc(db, 'site-surveys', id), {
             meterCompleted:   false,
             meterCompletedAt: null,
             meterCompletedBy: ''
@@ -630,6 +643,28 @@ window.reopenJob = async function (id) {
         renderAll();
     } catch (e) {
         alert('Could not re-open: ' + e.message);
+    }
+};
+
+window.markCompleteByOther = async function (id) {
+    if (!confirm('Mark as completed by another party? No engineer details will be saved.')) return;
+    try {
+        await updateDoc(doc(db, 'site-surveys', id), {
+            meterCompleted:   true,
+            meterCompletedAt: new Date().toISOString(),
+            meterCompletedBy: 'Other'
+        });
+        const job = window._jobs.find(s => s._docId === id);
+        if (job) {
+            job.meterCompleted   = true;
+            job.meterCompletedAt = new Date().toISOString();
+            job.meterCompletedBy = 'Other';
+        }
+        // Mirror to meterworkrequired collection
+        try { await setDoc(doc(db, 'meterworkrequired', id), { ...job }); } catch(_) {}
+        renderAll();
+    } catch (e) {
+        alert('Could not mark complete: ' + e.message);
     }
 };
 
