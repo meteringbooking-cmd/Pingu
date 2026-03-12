@@ -140,6 +140,7 @@
         }
         .card-job   { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:800; color:var(--accent); }
         .card-cust  { font-size:0.8rem; color:var(--text-dim); margin-top:0.1rem; }
+        .card-addr  { font-size:0.78rem; color:var(--accent); margin-top:0.25rem; opacity:0.85; }
 
         .badge {
             padding:0.2rem 0.65rem; border-radius:20px;
@@ -179,7 +180,7 @@
         .done-val  { font-size:0.82rem; color:var(--success); font-weight:600; }
 
         .card-expand { overflow:hidden; max-height:0; transition:max-height 0.35s cubic-bezier(0.4,0,0.2,1); }
-        .card-expand.open { max-height:620px; }
+        .card-expand.open { max-height:520px; }
         .expand-inner { padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:0.85rem; }
 
         .field-lbl {
@@ -298,7 +299,7 @@
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import {
-    getFirestore, collection, getDocs, query, orderBy, doc, updateDoc
+    getFirestore, collection, getDocs, doc, updateDoc
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const app = initializeApp({
@@ -314,7 +315,7 @@ const db = getFirestore(app);
 window._jobs   = [];
 window._filter = 'all';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
 function esc(t) {
     const d = document.createElement('div');
     d.textContent = String(t || '');
@@ -327,19 +328,17 @@ function fmtDate(str) {
     return isNaN(d) ? str : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 }
 
-// Check if meter work was needed — handles both battery-only and battery-and-solar
-// The survey stores meterWorkNeeded as a freetext "yes"/"no" string
-function meterWorkNeeded(s) {
-    const v = (s.sections?.electricalSystem?.meterWorkNeeded || '').trim().toLowerCase();
-    return v === 'yes';
+// meterWorkNeeded is saved as a freetext "yes"/"no" field in the survey
+function meterNeeded(s) {
+    const v = s.sections?.electricalSystem?.meterWorkNeeded || '';
+    return v.trim().toLowerCase() === 'yes';
 }
 
-function getDetails(s)    { return (s.sections?.electricalSystem?.meterWorkDetails || '').trim(); }
-function getSurveyor(s)   { return (s.sections?.surveyDetails?.surveyor || '—'); }
-function getCustomer(s)   { return (s.sections?.customerSignOff?.name || ''); }
-function getAddress(s)    { return (s.jobAddress || s.sections?.jobInfo?.address || ''); }
-function getSurveyDate(s) { return fmtDate(s.sections?.surveyDetails?.conductedOn || s.submittedAt); }
-function getTypeLabel(s)  { return s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only'; }
+function getDetails(s)   { return (s.sections?.electricalSystem?.meterWorkDetails || '').trim(); }
+function getSurveyor(s)  { return s.sections?.surveyDetails?.surveyor || '—'; }
+function getCustomer(s)  { return s.sections?.customerSignOff?.name || ''; }
+function getSurveyDate(s){ return fmtDate(s.sections?.surveyDetails?.conductedOn || s.submittedAt); }
+function getTypeLabel(s) { return s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only'; }
 
 function getStatus(s) {
     if (s.meterCompleted)               return 'completed';
@@ -347,7 +346,7 @@ function getStatus(s) {
     return 'pending';
 }
 
-// ── load from site-surveys, filter for meter work needed ──────────────────────
+// ── load ─────────────────────────────────────────────────────────────────────
 window.loadData = async function () {
     const btn  = document.getElementById('refresh-btn');
     const icon = document.getElementById('refresh-icon');
@@ -358,16 +357,41 @@ window.loadData = async function () {
     icon.style.animation = 'spin 0.8s linear infinite';
 
     try {
-        // Read from site-surveys — the collection the survey form actually writes to
-        const snap = await getDocs(
-            query(collection(db, 'site-surveys'), orderBy('submittedAt', 'desc'))
-        );
+        // Fetch both site-surveys and jobs collections in parallel
+        const [surveysSnap, jobsSnap] = await Promise.all([
+            getDocs(collection(db, 'site-surveys')),
+            getDocs(collection(db, 'jobs'))
+        ]);
 
-        // Filter to only surveys where meter work was flagged as needed
-        window._jobs = snap.docs
+        // Build job number -> address/postcode/customer lookup from jobs collection
+        const jobMap = {};
+        jobsSnap.forEach(d => {
+            const jd = d.data();
+            const num = String(jd['Job Number'] || '').trim();
+            if (num) jobMap[num] = jd;
+        });
+
+        // Filter surveys to only those flagged for meter work
+        const meterJobs = surveysSnap.docs
             .map(d => ({ _docId: d.id, ...d.data() }))
-            .filter(s => meterWorkNeeded(s));
+            .filter(s => (s.sections?.electricalSystem?.meterWorkNeeded || '').trim().toLowerCase() === 'yes')
+            .sort((a, b) => {
+                const ta = a.submittedAt || a.sections?.surveyDetails?.conductedOn || a._docId;
+                const tb = b.submittedAt || b.sections?.surveyDetails?.conductedOn || b._docId;
+                return String(tb).localeCompare(String(ta));
+            });
 
+        // Attach address, postcode & customer name from jobs collection by matching job number
+        window._jobs = meterJobs.map(j => {
+            const num = String(j.jobNumber || '').trim();
+            const jd  = jobMap[num] || {};
+            return {
+                ...j,
+                _address:  jd['1st line of address'] || '',
+                _postcode: jd['Postcode'] || '',
+                _custName: jd['Name'] || '',
+            };
+        });
         renderAll();
     } catch (e) {
         document.getElementById('cards-grid').innerHTML =
@@ -379,23 +403,26 @@ window.loadData = async function () {
     }
 };
 
-// ── filter ─────────────────────────────────────────────────────────────────────
+// ── filter ────────────────────────────────────────────────────────────────────
 window.setFilter = function (f) {
     window._filter = f;
-    document.querySelectorAll('.ftab').forEach(b => { b.className = 'ftab'; });
+    // reset all tabs
+    document.querySelectorAll('.ftab').forEach(b => {
+        b.className = 'ftab';
+    });
     const tab = document.getElementById('ftab-' + f);
     const cls = f === 'completed' ? 'f-completed' : f === 'scheduled' ? 'f-scheduled' : 'f-all';
     tab.classList.add(cls);
     renderAll();
 };
 
-// ── render ─────────────────────────────────────────────────────────────────────
+// ── render ────────────────────────────────────────────────────────────────────
 window.renderAll = function () {
     const f     = window._filter;
     const all   = window._jobs;
     const shown = all.filter(s => f === 'all' || getStatus(s) === f);
 
-    document.getElementById('stat-total').textContent    = all.length;
+    document.getElementById('stat-total').textContent   = all.length;
     document.getElementById('stat-pending').textContent  = all.filter(s => getStatus(s) === 'pending').length;
     document.getElementById('stat-sched').textContent    = all.filter(s => getStatus(s) === 'scheduled').length;
     document.getElementById('stat-done').textContent     = all.filter(s => getStatus(s) === 'completed').length;
@@ -408,17 +435,18 @@ window.renderAll = function () {
     grid.innerHTML = shown.map((s, i) => buildCard(s, i)).join('');
 };
 
-// ── card HTML ──────────────────────────────────────────────────────────────────
+// ── card HTML ─────────────────────────────────────────────────────────────────
 function buildCard(s, idx) {
     const id       = s._docId;
     const status   = getStatus(s);
-    const jobNum   = esc(s.jobNumber || '—');
-    const customer = esc(getCustomer(s));
+    const jobNum   = esc(s.jobNumber || id);
+    const customer = esc(s._custName || getCustomer(s));
     const surveyor = esc(getSurveyor(s));
+    const address  = esc(s._address || '');
+    const postcode = esc(s._postcode || '');
     const details  = esc(getDetails(s));
-    const mDate    = s.meterDate     || '';
+    const mDate    = s.meterDate || '';
     const engName  = s.meterEngineer || '';
-    const mjobNum  = s.meterJobNumber || '';
     const compAt   = s.meterCompletedAt ? fmtDate(s.meterCompletedAt) : '';
     const compBy   = esc(s.meterCompletedBy || '');
 
@@ -429,29 +457,40 @@ function buildCard(s, idx) {
 
     const doneStrip = status === 'completed' ? `
         <div class="card-done-info">
-            ${compAt   ? `<div class="done-item"><div class="done-lbl">Completed</div><div class="done-val">${compAt}</div></div>` : ''}
-            ${compBy   ? `<div class="done-item"><div class="done-lbl">By</div><div class="done-val">${compBy}</div></div>` : ''}
-            ${mDate    ? `<div class="done-item"><div class="done-lbl">Was Booked</div><div class="done-val">${fmtDate(mDate)}</div></div>` : ''}
-            ${engName  ? `<div class="done-item"><div class="done-lbl">Engineer</div><div class="done-val">${esc(engName)}</div></div>` : ''}
-            ${mjobNum  ? `<div class="done-item"><div class="done-lbl">Meter Job #</div><div class="done-val">${esc(mjobNum)}</div></div>` : ''}
+            ${compAt  ? `<div class="done-item"><div class="done-lbl">Completed</div><div class="done-val">${compAt}</div></div>` : ''}
+            ${compBy  ? `<div class="done-item"><div class="done-lbl">By</div><div class="done-val">${compBy}</div></div>` : ''}
+            ${mDate   ? `<div class="done-item"><div class="done-lbl">Was Booked</div><div class="done-val">${fmtDate(mDate)}</div></div>` : ''}
+            ${engName            ? `<div class="done-item"><div class="done-lbl">Engineer</div><div class="done-val">${esc(engName)}</div></div>` : ''}
+            ${s.meterJobNumber  ? `<div class="done-item"><div class="done-lbl">Meter Job #</div><div class="done-val">${esc(s.meterJobNumber)}</div></div>` : ''}
         </div>` : '';
 
     const reopenBtn = status === 'completed'
         ? `<button class="btn-reopen" onclick="reopenJob('${id}')">↩ Re-open job</button>` : '';
 
     return `
-    <div class="job-card${status === 'completed' ? ' is-completed' : ''}" id="card-${id}" style="animation-delay:${idx * 0.045}s">
+    <div class="job-card${status==='completed'?' is-completed':''}" id="card-${id}" style="animation-delay:${idx*0.045}s">
         <div class="card-stripe ${stripeClass}"></div>
 
         <div class="card-head">
             <div>
                 <div class="card-job">#${jobNum}</div>
                 <div class="card-cust">${customer || surveyor}</div>
+                ${address || postcode ? `<div class="card-addr">📍 ${address}${address && postcode ? ', ' : ''}${postcode}</div>` : ''}
             </div>
             <span class="badge ${badgeClass}">${badgeLabel}</span>
         </div>
 
         <div class="card-meta">
+            ${s._address ? `
+            <div class="meta-item">
+                <div class="meta-lbl">Address</div>
+                <div class="meta-val">${esc(s._address)}</div>
+            </div>` : ''}
+            ${s._postcode ? `
+            <div class="meta-item">
+                <div class="meta-lbl">Postcode</div>
+                <div class="meta-val">${esc(s._postcode)}</div>
+            </div>` : ''}
             <div class="meta-item">
                 <div class="meta-lbl">Survey Date</div>
                 <div class="meta-val">${getSurveyDate(s)}</div>
@@ -468,10 +507,10 @@ function buildCard(s, idx) {
                 <div class="meta-lbl">Work Booked</div>
                 <div class="meta-val ${mDate ? 'ok' : 'unset'}">${mDate ? fmtDate(mDate) : 'Not scheduled'}</div>
             </div>
-            ${mjobNum ? `
+            ${s.meterJobNumber ? `
             <div class="meta-item">
                 <div class="meta-lbl">Meter Job #</div>
-                <div class="meta-val ok">${esc(mjobNum)}</div>
+                <div class="meta-val ok">${esc(s.meterJobNumber)}</div>
             </div>` : ''}
         </div>
 
@@ -497,11 +536,11 @@ function buildCard(s, idx) {
                 <div>
                     <div class="field-lbl">Meter Work Job Number</div>
                     <input type="text" class="expand-input" id="mjob-${id}"
-                        value="${esc(mjobNum)}" placeholder="Enter meter work job number…" />
+                        value="${esc(s.meterJobNumber || '')}" placeholder="Enter meter work job number…" />
                 </div>
                 <div class="action-row">
                     <button class="btn-save" id="save-${id}" onclick="saveDetails('${id}')">💾 Save</button>
-                    <button class="btn-complete${status === 'completed' ? ' is-done' : ''}"
+                    <button class="btn-complete${status==='completed'?' is-done':''}"
                         id="cmp-${id}" onclick="markComplete('${id}')">
                         ${status === 'completed' ? '✅ Done' : '✓ Mark Complete'}
                     </button>
@@ -517,7 +556,7 @@ function buildCard(s, idx) {
     </div>`;
 }
 
-// ── interactions ───────────────────────────────────────────────────────────────
+// ── interactions ──────────────────────────────────────────────────────────────
 window.toggleCard = function (id) {
     const exp  = document.getElementById('exp-' + id);
     const chv  = document.getElementById('chv-' + id);
@@ -526,18 +565,15 @@ window.toggleCard = function (id) {
 };
 
 window.saveDetails = async function (id) {
-    const dateVal = document.getElementById('date-' + id).value;
-    const engVal  = document.getElementById('eng-'  + id).value.trim();
-    const mjobVal = document.getElementById('mjob-' + id).value.trim();
-    const btn     = document.getElementById('save-' + id);
+    const dateVal = document.getElementById('date-'  + id).value;
+    const engVal  = document.getElementById('eng-'   + id).value.trim();
+    const mjobVal = document.getElementById('mjob-'  + id).value.trim();
+    const btn     = document.getElementById('save-'  + id);
     btn.disabled  = true;
     btn.textContent = 'Saving…';
     try {
-        // Save scheduling details back onto the site-surveys document
-        await updateDoc(doc(db, 'site-surveys', id), {
-            meterDate:      dateVal,
-            meterEngineer:  engVal,
-            meterJobNumber: mjobVal
+        await updateDoc(doc(db, 'meter-work-required', id), {
+            meterDate: dateVal, meterEngineer: engVal, meterJobNumber: mjobVal
         });
         const job = window._jobs.find(s => s._docId === id);
         if (job) { job.meterDate = dateVal; job.meterEngineer = engVal; job.meterJobNumber = mjobVal; }
@@ -551,13 +587,13 @@ window.saveDetails = async function (id) {
 };
 
 window.markComplete = async function (id) {
-    const engVal  = document.getElementById('eng-'  + id)?.value?.trim() || '';
-    const dateVal = document.getElementById('date-' + id)?.value || '';
-    const mjobVal = document.getElementById('mjob-' + id)?.value?.trim() || '';
-    const btn     = document.getElementById('cmp-'  + id);
+    const engVal  = document.getElementById('eng-'   + id)?.value?.trim() || '';
+    const dateVal = document.getElementById('date-'  + id)?.value || '';
+    const mjobVal = document.getElementById('mjob-'  + id)?.value?.trim() || '';
+    const btn     = document.getElementById('cmp-'   + id);
     if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
     try {
-        await updateDoc(doc(db, 'site-surveys', id), {
+        await updateDoc(doc(db, 'meter-work-required', id), {
             meterCompleted:   true,
             meterCompletedAt: new Date().toISOString(),
             meterCompletedBy: engVal,
@@ -584,7 +620,7 @@ window.markComplete = async function (id) {
 window.reopenJob = async function (id) {
     if (!confirm('Re-open this job as pending?')) return;
     try {
-        await updateDoc(doc(db, 'site-surveys', id), {
+        await updateDoc(doc(db, 'meter-work-required', id), {
             meterCompleted:   false,
             meterCompletedAt: null,
             meterCompletedBy: ''
@@ -597,7 +633,7 @@ window.reopenJob = async function (id) {
     }
 };
 
-// ── init ───────────────────────────────────────────────────────────────────────
+// ── init ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     window.addEventListener('scroll', () =>
