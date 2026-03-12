@@ -171,6 +171,18 @@
             border-radius: 8px; border: 2px solid var(--dark-lighter);
             display: flex; align-items: center; gap: 0.7rem;
         }
+
+        .team-badge {
+            background: rgba(255, 200, 87, 0.15);
+            border: 1px solid rgba(255, 200, 87, 0.3);
+            color: var(--secondary);
+            padding: 0.35rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: none;
+        }
+        .team-badge.show { display: inline-block; }
         
         .user-name { color: var(--text); font-weight: 600; }
         
@@ -311,6 +323,17 @@
             transform: scaleX(1);
         }
         .job-card.survey-done { border-color: rgba(78, 204, 163, 0.3); }
+
+        /* Team job indicator */
+        .team-job-indicator {
+            position: absolute; top: 12px; right: 12px;
+            background: rgba(255, 200, 87, 0.15);
+            border: 1px solid rgba(255, 200, 87, 0.4);
+            color: var(--secondary);
+            font-size: 0.65rem; font-weight: 700;
+            padding: 0.2rem 0.5rem; border-radius: 4px;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
         
         .job-header {
             display: flex; justify-content: space-between;
@@ -555,12 +578,13 @@
                             <span>👷</span>
                             <span class="user-name" id="logged-in-user"></span>
                         </div>
+                        <span class="team-badge" id="team-badge"></span>
                         <a href="teamview.html" class="back-btn">← Dashboard</a>
                         <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
                     </div>
                 </div>
                 <h1>My Upcoming Jobs</h1>
-                <p class="subtitle">All jobs that haven't been completed yet</p>
+                <p class="subtitle" id="page-subtitle">All jobs that haven't been completed yet</p>
             </header>
             
             <main>
@@ -667,10 +691,11 @@
         let currentView = 'grid';
         let teamMembers = [];
         let pendingStatusUpdate = null;
-        let completedSurveyJobNumbers = new Set(); // job numbers that have a completed survey
+        let completedSurveyJobNumbers = new Set();
         let showIncompleteOnly = false;
+        let userTeamLeadName = null; // lead engineer of the team this user belongs to
 
-        // Collections to check for completed surveys (matching viewsurvey.html)
+        // Collections to check for completed surveys
         const SURVEY_COLLECTIONS = ['site-surveys', 'battery-surveys', 'solar-surveys', 'inspections', 'jobs', 'installations'];
         
         function parseInstallDate(dateStr) {
@@ -708,6 +733,7 @@
                 document.getElementById('main-dashboard').classList.add('active');
                 document.getElementById('logged-in-user').textContent = engineer.name;
                 await loadCompletedSurveys();
+                await loadUserTeam();
                 await loadAllJobs();
             } catch (error) {
                 localStorage.removeItem('loggedInEngineer');
@@ -733,6 +759,42 @@
                     });
             } catch (error) {
                 console.error('Error loading team members:', error);
+            }
+        }
+
+        // Load the team that this user belongs to (as an engineer member),
+        // and store the lead engineer's name so we can also show their jobs.
+        async function loadUserTeam() {
+            try {
+                userTeamLeadName = null;
+                const { collection, getDocs } = window.firebaseModules;
+                const snap = await getDocs(collection(window.db, 'team-database'));
+                snap.forEach(teamDoc => {
+                    const team = teamDoc.data();
+                    const engineers = team.engineers || [];
+                    const isInTeam = engineers.some(eng =>
+                        (eng.name || '').trim().toLowerCase() === (currentUser.name || '').trim().toLowerCase()
+                    );
+                    if (isInTeam && team.lead?.name) {
+                        userTeamLeadName = team.lead.name.trim();
+                    }
+                });
+
+                // Update the UI to show team membership
+                const badge = document.getElementById('team-badge');
+                const subtitle = document.getElementById('page-subtitle');
+                if (userTeamLeadName) {
+                    badge.textContent = `👥 ${userTeamLeadName}'s Team`;
+                    badge.classList.add('show');
+                    subtitle.textContent = `Jobs assigned to you and your team lead: ${userTeamLeadName}`;
+                } else {
+                    badge.classList.remove('show');
+                    subtitle.textContent = "All jobs that haven't been completed yet";
+                }
+
+                console.log('User team lead:', userTeamLeadName);
+            } catch (error) {
+                console.error('Error loading user team:', error);
             }
         }
 
@@ -785,6 +847,7 @@
                 document.getElementById('main-dashboard').classList.add('active');
                 document.getElementById('logged-in-user').textContent = engineer.name;
                 await loadCompletedSurveys();
+                await loadUserTeam();
                 await loadAllJobs();
             } catch (error) {
                 errorDiv.textContent = error.message || 'Login failed. Please try again.';
@@ -795,10 +858,14 @@
         
         function handleLogout() {
             localStorage.removeItem('loggedInEngineer');
-            currentUser = null; upcomingJobs = []; allJobs = [];
+            currentUser = null;
+            upcomingJobs = [];
+            allJobs = [];
+            userTeamLeadName = null;
             completedSurveyJobNumbers = new Set();
             showIncompleteOnly = false;
             document.getElementById('incomplete-filter-btn').classList.remove('active');
+            document.getElementById('team-badge').classList.remove('show');
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('main-dashboard').classList.remove('active');
             document.getElementById('password-input').value = '';
@@ -827,10 +894,19 @@
         function filterUpcomingJobs() {
             if (!currentUser) { upcomingJobs = []; return; }
             const now = new Date();
+            const userName = (currentUser.name || '').trim().toLowerCase();
+
             upcomingJobs = allJobs.filter(job => {
-                const leadEngineer = (job['Lead Engineer'] || '').trim();
-                const userName = (currentUser.name || '').trim();
-                if (leadEngineer.toLowerCase() !== userName.toLowerCase()) return false;
+                const leadEngineer = (job['Lead Engineer'] || '').trim().toLowerCase();
+
+                // Match if: this user IS the lead engineer,
+                // OR they are a team member and the lead engineer is their team's lead
+                const isMatch =
+                    leadEngineer === userName ||
+                    (userTeamLeadName && leadEngineer === userTeamLeadName.trim().toLowerCase());
+
+                if (!isMatch) return false;
+
                 const installDate = parseInstallDate(job['Install Date']);
                 const jobStatus = job.status || 'upcoming';
                 const isNotCompleted = jobStatus !== 'install-complete' && jobStatus !== 'completed';
@@ -891,17 +967,18 @@
         function displayJobs() {
             const container = document.getElementById('jobs-container');
             const count = document.getElementById('results-count');
+            const userName = (currentUser?.name || '').trim().toLowerCase();
 
             // Apply incomplete filter if active
-            let displayJobs = upcomingJobs;
+            let displayList = upcomingJobs;
             if (showIncompleteOnly) {
-                displayJobs = upcomingJobs.filter(job => !hasSurveyCompleted(job['Job Number']));
+                displayList = upcomingJobs.filter(job => !hasSurveyCompleted(job['Job Number']));
             }
             
             const filterNote = showIncompleteOnly ? ' (incomplete surveys only)' : '';
-            count.textContent = `${displayJobs.length} upcoming job${displayJobs.length !== 1 ? 's' : ''}${filterNote}`;
+            count.textContent = `${displayList.length} upcoming job${displayList.length !== 1 ? 's' : ''}${filterNote}`;
             
-            if (displayJobs.length === 0) {
+            if (displayList.length === 0) {
                 container.innerHTML = showIncompleteOnly
                     ? `<div class="empty-state"><div class="empty-icon">✅</div><h3>All Surveys Complete!</h3><p>Every upcoming job has a completed survey.</p></div>`
                     : `<div class="empty-state"><div class="empty-icon">✅</div><h3>No Upcoming Jobs</h3><p>All your jobs are completed!</p></div>`;
@@ -910,12 +987,15 @@
             
             const html = `
                 <div class="results-grid">
-                    ${displayJobs.map(job => {
+                    ${displayList.map(job => {
                         const jobStatus = job.status || 'upcoming';
                         const jobNumber = job['Job Number'] || 'N/A';
                         const surveyDone = hasSurveyCompleted(jobNumber);
+                        const leadEngineer = (job['Lead Engineer'] || '').trim().toLowerCase();
+                        // Is this a team job (lead's job visible to a team member)?
+                        const isTeamJob = userTeamLeadName && leadEngineer === userTeamLeadName.trim().toLowerCase() && leadEngineer !== userName;
 
-                        // Determine displayed status — survey complete overrides if survey is done
+                        // Determine displayed status
                         let statusText = 'Upcoming';
                         let statusClass = 'upcoming';
                         if (surveyDone || jobStatus === 'survey-complete') {
@@ -928,6 +1008,7 @@
                         
                         return `
                             <div class="job-card ${surveyDone ? 'survey-done' : ''}" onclick="showJobDetails('${job.id}')">
+                                ${isTeamJob ? `<div class="team-job-indicator">👥 Team Job</div>` : ''}
                                 <div class="job-header">
                                     <div class="job-number">${escapeHtml(jobNumber)}</div>
                                     <div class="job-status ${statusClass}">${statusText}</div>
@@ -984,7 +1065,6 @@
             modalTitle.textContent = `Job ${jobNumber}`;
             
             const jobStatus = job.status || 'upcoming';
-            // If survey is done in the DB, treat display status as survey-complete
             const effectiveStatus = surveyDone ? 'survey-complete' : jobStatus;
             
             modalBody.innerHTML = `
