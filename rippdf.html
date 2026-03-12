@@ -485,25 +485,26 @@
                 const p4 = await pdf.getPage(4);
                 rawPage4Lines = await getPageLines(p4);
 
-                // Grab all text from page 4, find from "Solar Panels" up to "Product warranties"
-                // This avoids column-ordering issues with two-column layouts
-                const allP4 = rawPage4Lines.join(' ');
+                // Grab all text from page 4 as one block using pdf.js text content
+                // Then slice from "Solar Panels" up to (not including) "Product warranties"
+                const p4full = await pdf.getPage(4);
+                const p4content = await p4full.getTextContent();
+                // Join all text items in order into one string
+                const p4raw = p4content.items
+                    .map(i => i.str)
+                    .join(' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
 
-                // Find start: first occurrence of Solar Panels
-                const startMarker = rawPage4Lines.findIndex(l => /solar panels/i.test(l));
-                // Find end: stop at "Product warranties" or "Your solar system" header or similar
-                const stopMarkers = ['product warranties', 'trusted installers', 'your solar system'];
-                let endMarker = rawPage4Lines.length;
-                for (const sm of stopMarkers) {
-                    const idx = rawPage4Lines.findIndex(l => l.toLowerCase().includes(sm));
-                    if (idx !== -1 && idx > startMarker) { endMarker = idx; break; }
-                }
+                // Find slice boundaries
+                const startIdx = p4raw.search(/Solar Panels/i);
+                const stopIdx  = p4raw.search(/Product warranties/i);
 
-                if (startMarker !== -1) {
-                    boxSolar = rawPage4Lines
-                        .slice(startMarker, endMarker)
-                        .filter(l => l.trim())
-                        .join(' ');
+                if (startIdx !== -1) {
+                    const slice = stopIdx !== -1 && stopIdx > startIdx
+                        ? p4raw.slice(startIdx, stopIdx)
+                        : p4raw.slice(startIdx);
+                    boxSolar = slice.trim();
                 }
             }
             setStep('step-boxes', 'done');
