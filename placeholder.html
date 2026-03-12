@@ -318,7 +318,7 @@
             <a href="admin.html" class="back-btn">← Back to Admin</a>
         </div>
         <h1>View All Jobs</h1>
-        <p class="subtitle">All jobs from Solar-jobs &amp; Jobs collections · Survey tracking from site-surveys</p>
+        <p class="subtitle">All jobs from Solar-jobs &amp; Jobs collections · Survey tracking from site-surveys · All edits write to Solar-jobs</p>
     </header>
 
     <div class="filters-card">
@@ -544,7 +544,7 @@
 
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc }
+    import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, setDoc }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
     const firebaseConfig = {
@@ -560,7 +560,7 @@
     try {
         const app = initializeApp(firebaseConfig);
         window.db = getFirestore(app);
-        window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+        window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, setDoc };
         console.log('✅ Firebase initialized');
         window.addEventListener('DOMContentLoaded', () => { window.loadJobs(); });
     } catch (error) {
@@ -578,14 +578,45 @@
     let currentEditJob = null;
     let selectedLeads  = new Set();
 
-    // Jobs on/after this date qualify for survey tracking
     const SURVEY_CUTOFF = new Date('2026-03-16');
     SURVEY_CUTOFF.setHours(0,0,0,0);
 
-    // jobsSet   → job numbers present in the 'jobs' collection (survey required)
-    // surveyMap → job numbers that have a submitted site-survey
     let jobsSet   = new Set();
     let surveyMap = {};
+
+    /* ═══════════════════════════════════════════════
+       WRITE HELPER — always targets Solar-jobs
+       For jobs-only entries (source='jobs') we upsert
+       into Solar-jobs with setDoc+merge, seeding the
+       core fields on first write.
+    ═══════════════════════════════════════════════ */
+    async function writeSolarJob(job, updateData) {
+        const { doc, updateDoc, setDoc } = window.firebaseModules;
+
+        if (job.source === 'jobs') {
+            const solarRef = doc(window.db, 'Solar-jobs', job.id);
+            const seedData = {
+                'Job Number':    job['Job Number'] || job.jobNumber || '',
+                'Postcode':      job['Postcode']   || '',
+                'Job Type':      job.jobType       || '',
+                'Lead':          job.lead          || '',
+                'Lead Engineer': job.lead          || '',
+                'Team':          job.team          || job['Team'] || '',
+                'Booked Date':   job['Booked Date'] || '',
+                'Days':          job.days           || 1,
+                uploadDate:      job.uploadDate     || new Date().toISOString(),
+                _migratedFromJobs: true,
+                _migratedAt: new Date().toISOString(),
+                ...updateData
+            };
+            await setDoc(solarRef, seedData, { merge: true });
+            // Promote source in local cache
+            job.source = 'both';
+        } else {
+            const solarRef = doc(window.db, 'Solar-jobs', job.id);
+            await updateDoc(solarRef, updateData);
+        }
+    }
 
     /* ═══════════════════════════════════════════════
        MULTI-SELECT HELPERS
@@ -713,13 +744,6 @@
     }
     function escapeId(t) { return String(t).replace(/[^a-zA-Z0-9-_]/g,'-'); }
 
-    /* ── Survey helpers ─────────────────────────────
-       Rules:
-         'na'       → job number NOT in jobsSet, OR no install date, OR date < SURVEY_CUTOFF
-         'complete' → in jobsSet + in surveyMap
-         'urgent'   → in jobsSet, not in surveyMap, install ≤10 days (or past)
-         'pending'  → in jobsSet, not in surveyMap, install >10 days away
-    ─────────────────────────────────────────────── */
     function getSurveyStatus(job) {
         if (!jobsSet.has(job.jobNumber)) return 'na';
         const install = job.bookedDate;
@@ -741,19 +765,11 @@
 
     /* ═══════════════════════════════════════════════
        FIREBASE LOAD
-       ─ Solar-jobs : source of truth for job data + STATUS
-       ─ jobs       : also shows jobs; presence = survey required
-       ─ site-surveys : presence = survey complete
-       Merge:
-         Both collections → one row per job number
-         Status always taken from Solar-jobs if available
-         surveyRequired determined solely by presence in 'jobs'
     ═══════════════════════════════════════════════ */
     window.loadJobs = async function() {
         try {
             const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
 
-            /* 1. site-surveys → surveyMap */
             const surveySnap = await getDocs(collection(window.db, 'site-surveys'));
             surveyMap = {};
             surveySnap.forEach(d => {
@@ -761,16 +777,12 @@
                 if (jn) surveyMap[String(jn).trim()] = true;
             });
 
-            /* 2. Solar-jobs */
             const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
-
-            /* 3. jobs collection */
             const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
 
             const leads = new Set();
             const teams = new Set();
 
-            // Helper: turn a Firestore doc into a normalised job object
             const processDoc = (docSnap, source) => {
                 const data = docSnap.data();
 
@@ -794,8 +806,6 @@
 
                 const team      = (data['Team'] || data['team'] || 'N/A');
                 const jobNumber = String(data['Job Number'] || 'N/A').trim();
-
-                // Status: Solar-jobs uses 'Status Update'; jobs collection may use 'Status Update' or 'status'
                 const rawStatus    = data['Status Update'] ?? data['status'] ?? '';
                 const statusUpdate = normaliseStatus(rawStatus);
 
@@ -822,7 +832,6 @@
                 };
             };
 
-            // Build per-collection maps (first occurrence wins if dupes within same collection)
             const solarMap = new Map();
             solarSnap.forEach(d => {
                 const job = processDoc(d, 'solar');
@@ -832,14 +841,10 @@
             const jobsMap = new Map();
             jobsSnap.forEach(d => {
                 const job = processDoc(d, 'jobs');
-                jobsSet.add(job.jobNumber);   // mark job number as survey-required
+                jobsSet.add(job.jobNumber);
                 if (!jobsMap.has(job.jobNumber)) jobsMap.set(job.jobNumber, job);
             });
 
-            /* Merge:
-               - In Solar-jobs only  → source='solar'
-               - In jobs only        → source='jobs'
-               - In both             → use Solar-jobs data (status truth), source='both'   */
             allJobs = [];
 
             solarMap.forEach((solarJob, jn) => {
@@ -856,7 +861,6 @@
                 }
             });
 
-            // Sort by booked date descending, nulls last
             allJobs.sort((a,b) => {
                 if (!a.bookedDate && !b.bookedDate) return 0;
                 if (!a.bookedDate) return 1;
@@ -922,10 +926,7 @@
             }
 
             if (survey && getSurveyStatus(job) !== survey) return false;
-
-            if (source) {
-                if (job.source !== source) return false;
-            }
+            if (source && job.source !== source) return false;
 
             return true;
         });
@@ -989,7 +990,7 @@
                             <td>${formatDate(job.projectedCompletionDate)}</td>
                             <td>${job.days}</td>
                             <td class="notes-cell" title="${escapeHtml(job.notes)}">${escapeHtml(job.notes)||'-'}</td>
-                            <td><button class="edit-btn" onclick="openEditModal('${escapeHtml(job.id)}','${escapeHtml(job.source)}')">✏️ Edit</button></td>
+                            <td><button class="edit-btn" onclick="openEditModal('${escapeHtml(job.id)}')">✏️ Edit</button></td>
                         </tr>`;
                     }).join('')}
                 </tbody>
@@ -1019,10 +1020,9 @@
 
     /* ═══════════════════════════════════════════════
        EDIT MODAL
-       source 'solar' or 'both' → write to Solar-jobs (status truth)
-       source 'jobs'            → write to jobs
+       All writes go to Solar-jobs via writeSolarJob()
     ═══════════════════════════════════════════════ */
-    window.openEditModal = function(jobId, source) {
+    window.openEditModal = function(jobId) {
         const job = allJobs.find(j => j.id === jobId);
         if (!job) return;
         currentEditJob = job;
@@ -1052,13 +1052,6 @@
     window.saveJob = async function() {
         if (!currentEditJob) return;
         try {
-            const { doc, updateDoc } = window.firebaseModules;
-
-            // Write status changes to Solar-jobs when job exists there ('both' or 'solar')
-            // For jobs-only entries write to the jobs collection
-            const collectionName = (currentEditJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-            const jobRef = doc(window.db, collectionName, currentEditJob.id);
-
             const bookedInput    = document.getElementById('edit-booked-date').value;
             const projectedInput = document.getElementById('edit-projected-date').value;
             const statusValue    = document.getElementById('edit-status').value;
@@ -1083,11 +1076,11 @@
 
             if ((poChanged || !currentEditJob.poNumbersUpdatedAt) && newPO.trim())
                 updateData['poNumbersUpdatedAt'] = now;
-
             if (bookedDate)    updateData['Booked Date'] = bookedDate;
             if (projectedDate) updateData['Projected Completion Date'] = projectedDate;
 
-            await updateDoc(jobRef, updateData);
+            // Always write to Solar-jobs
+            await writeSolarJob(currentEditJob, updateData);
 
             // Update local cache
             const job = allJobs.find(j => j.id === currentEditJob.id);
@@ -1102,7 +1095,7 @@
                 if (currentEditJob) currentEditJob.poNumbersUpdatedAt = updateData['poNumbersUpdatedAt'];
             }
 
-            showToast(`Job updated in ${collectionName}!`, 'success');
+            showToast('Job saved to Solar-jobs!', 'success');
             closeEditModal();
             await loadJobs();
             applyFilters();
@@ -1135,15 +1128,11 @@
         const materialsCost = parseFloat(document.getElementById('materials-cost').value) || 0;
         const materialNotes = document.getElementById('materials-notes').value.trim();
         try {
-            const { doc, updateDoc } = window.firebaseModules;
-            const collectionName = (currentEditJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
-            await updateDoc(
-                doc(window.db, collectionName, currentEditJob.id),
-                { materialsCost, materialNotes, additionalCostsUpdatedAt: new Date().toISOString() }
-            );
+            // Always write to Solar-jobs
+            await writeSolarJob(currentEditJob, { materialsCost, materialNotes, additionalCostsUpdatedAt: new Date().toISOString() });
             const job = allJobs.find(j => j.id === currentEditJob.id);
             if (job) { job.materialsCost = materialsCost; job.materialNotes = materialNotes; }
-            showToast(`Additional costs saved: £${materialsCost.toFixed(2)}`, 'success');
+            showToast(`Additional costs saved to Solar-jobs: £${materialsCost.toFixed(2)}`, 'success');
             closeAdditionalCostsModal();
         } catch (err) {
             console.error(err);
