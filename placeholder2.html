@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Timeline | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --shadow: rgba(255, 107, 53, 0.3);
+            --in-progress: #00D9FF;
+            --complete: #4ECCA3;
+            --aborted: #FF6B6B;
+            --cancelled: #9A9AB0;
+            --short-notice: #90ee90;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        .container { max-width: 100%; margin: 0 auto; padding: 2rem; }
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
+            max-width: 1600px;
+            margin-left: auto; margin-right: auto;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .header-content { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-decoration: none;
+        }
+        .back-btn {
+            background: var(--dark-light); color: var(--text); text-decoration: none;
+            padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
+            transition: all 0.3s ease; border: 2px solid transparent;
+        }
+        .back-btn:hover { background: var(--dark-lighter); border-color: var(--primary); transform: translateX(-5px); }
+        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--text); }
+        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
+        .controls-card {
+            background: var(--dark-light); border-radius: 16px; padding: 2rem;
+            border: 2px solid transparent; animation: fadeInUp 0.6s ease-out;
+            max-width: 1600px; margin-left: auto; margin-right: auto; margin-bottom: 2rem;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .controls-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .control-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        .control-input {
+            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
+            color: var(--text); padding: 0.8rem 1rem; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; transition: all 0.3s ease;
+        }
+        .control-input:focus { outline: none; border-color: var(--primary); }
+
+        /* ── Survey legend ── */
+        .survey-legend {
+            display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center;
+            padding: 0.8rem 1rem; background: var(--dark-lighter); border-radius: 8px;
+            margin-top: 1rem; font-size: 0.78rem; color: var(--text-dim);
+        }
+        .survey-legend strong { color: var(--text); margin-right: 0.3rem; }
+        .legend-swatch {
+            display: inline-flex; align-items: center; gap: 0.45rem;
+        }
+        .swatch {
+            width: 22px; height: 14px; border-radius: 4px; flex-shrink: 0;
+            border: 2px solid transparent;
+        }
+        .swatch-urgent { background: rgba(255,107,107,0.3); border-color: rgba(255,107,107,0.9); box-shadow: 0 0 6px rgba(255,107,107,0.7); }
+        .swatch-pending { background: rgba(154,154,176,0.12); border-color: rgba(154,154,176,0.35); }
+        .swatch-ok { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
+
+        .timeline-container {
+            background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
+            border: 2px solid var(--dark-lighter); animation: fadeInUp 0.8s ease-out;
+            overflow-x: auto; max-width: 100%;
+        }
+        .timeline-wrapper { min-width: 1200px; position: relative; }
+        .timeline-header {
+            display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1rem;
+            position: sticky; top: 0; background: var(--dark-light); z-index: 10;
+            padding-bottom: 1rem; border-bottom: 2px solid var(--primary);
+        }
+        .engineer-header { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; }
+        .dates-header { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); gap: 1px; }
+        .date-cell { background: var(--dark-lighter); padding: 0.8rem; text-align: center; border-radius: 8px; display: flex; flex-direction: column; gap: 0.2rem; }
+        .date-day { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
+        .date-number { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text); }
+        .date-month { font-size: 0.75rem; color: var(--text-dim); }
+        .date-cell.today { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+        .date-cell.today .date-day, .date-cell.today .date-number, .date-cell.today .date-month { color: white; }
+        .timeline-body { display: flex; flex-direction: column; gap: 0.5rem; }
+        .engineer-row { display: grid; grid-template-columns: 200px 1fr; gap: 1rem; min-height: 80px; }
+        .engineer-name {
+            background: var(--dark-lighter); padding: 1rem; border-radius: 8px;
+            font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 0.5rem;
+            position: sticky; left: 0; z-index: 5;
+        }
+        .engineer-icon { font-size: 1.3rem; }
+        .timeline-grid { display: grid; gap: 1px; position: relative; }
+        .day-column { background: var(--dark); border-radius: 4px; position: relative; transition: all 0.2s ease; }
+
+        /* ── Job cards ── */
+        .job-card {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            padding: 0.4rem 0.3rem; border-radius: 6px; font-size: 0.75rem;
+            cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent;
+            display: flex; flex-direction: column; justify-content: center; gap: 0.25rem;
+            user-select: none; overflow: hidden; position: relative; height: 100%; width: 100%;
+        }
+        .job-card.dragging { opacity: 0.4; cursor: grabbing; }
+        .job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow); border-color: white; z-index: 2; }
+        .job-card.status-in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
+        .job-card.status-complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
+        .job-card.status-aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
+        .job-card.status-cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); }
+        .job-card.status-short-notice-cancellation { background: linear-gradient(135deg, var(--short-notice), #90ee90); }
+
+        /* ── Survey overlays ── */
+        /* Urgent: flashing red border + glow, semi-transparent red tint on top */
+        .job-card.survey-urgent {
+            border-color: rgba(255,107,107,0.9) !important;
+            box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5);
+            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
+        }
+        .job-card.survey-urgent::after {
+            content: '🚨';
+            position: absolute; top: 2px; right: 3px;
+            font-size: 0.7rem; z-index: 10; pointer-events: none;
+            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
+        }
+        @keyframes surveyUrgentPulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5); }
+            50%       { opacity: 0.75; box-shadow: 0 0 0 3px rgba(255,107,107,0.9), 0 0 22px 8px rgba(255,107,107,0.7); }
+        }
+
+        /* Pending: desaturated / ghost appearance */
+        .job-card.survey-pending {
+            opacity: 0.38;
+            filter: saturate(0.15) brightness(0.85);
+            border: 2px dashed rgba(154,154,176,0.5) !important;
+        }
+        .job-card.survey-pending::after {
+            content: '⏳';
+            position: absolute; top: 2px; right: 3px;
+            font-size: 0.65rem; z-index: 10; pointer-events: none;
+            opacity: 1; filter: none;
+        }
+        /* Restore hover to full opacity for pending cards so they're readable on hover */
+        .job-card.survey-pending:hover {
+            opacity: 1;
+            filter: none;
+        }
+
+        .job-card .completion-overlay {
+            position: absolute; top: 0; left: 0; height: 100%;
+            background: linear-gradient(135deg, var(--complete), #3DB88E);
+            pointer-events: none; transition: width 0.3s ease;
+        }
+        .job-number  { font-weight: 800; color: var(--dark); font-size: 0.85rem; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-type    { font-size: 0.7rem; color: var(--dark); opacity: 0.95; font-weight: 600; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-postcode{ font-size: 0.7rem; color: var(--dark); opacity: 0.9; line-height: 1.2; font-weight: 600; pointer-events: none; position: relative; z-index: 1; text-align: center; }
+        .job-days    { font-size: 0.6rem; color: var(--dark); opacity: 0.95; font-weight: 700; line-height: 1; pointer-events: none; position: absolute; bottom: 0.3rem; right: 0.3rem; z-index: 1; background: rgba(255,255,255,0.3); padding: 0.15rem 0.3rem; border-radius: 3px; }
+        .job-source-badge {
+            position: absolute; top: 2px; left: 3px; z-index: 1;
+            font-size: 0.55rem; font-weight: 700; padding: 0.1rem 0.3rem;
+            border-radius: 3px; pointer-events: none; text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .source-jobs  { background: rgba(0,217,255,0.3);  color: #fff; }
+        .source-solar { background: rgba(255,107,53,0.35); color: #fff; }
+        .source-both  { background: rgba(78,204,163,0.3);  color: #fff; }
+
+        .job-card.multi-day { grid-column: span var(--span-days); }
+        .job-arrow { position: relative; height: 4px; background: linear-gradient(90deg, var(--accent), var(--primary)); pointer-events: none; z-index: 3; display: flex; align-items: center; justify-content: flex-end; box-shadow: 0 2px 12px rgba(0, 217, 255, 0.6); }
+        .job-arrow::after { content: '→'; color: var(--primary); font-size: 1.5rem; font-weight: 900; margin-right: -10px; text-shadow: 0 0 10px rgba(255, 107, 53, 1); animation: arrowPulse 2s ease-in-out infinite; }
+        @keyframes arrowPulse { 0%, 100% { transform: translateX(0) scale(1); opacity: 1; } 50% { transform: translateX(8px) scale(1.1); opacity: 0.8; } }
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
+        .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--dark-lighter);
+        }
+        .stat-item {
+            text-align: center; background: var(--dark-lighter); border-radius: 10px;
+            padding: 0.75rem 0.5rem; border: 2px solid transparent; transition: border-color 0.2s ease;
+        }
+        .stat-item:hover { border-color: var(--primary); }
+        .stat-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
+        .stat-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .stat-value.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E);     -webkit-background-clip: text; background-clip: text; }
+        .stat-value.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); -webkit-background-clip: text; background-clip: text; }
+        .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);     -webkit-background-clip: text; background-clip: text; }
+        .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F);   -webkit-background-clip: text; background-clip: text; }
+        .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);            -webkit-background-clip: text; background-clip: text; }
+        .stat-value.urgent      { background: linear-gradient(135deg, var(--error), #E55A5A);       -webkit-background-clip: text; background-clip: text; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--dark-light); border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; border: 2px solid var(--primary); max-height: 80vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--dark-lighter); }
+        .modal-title { font-family: 'Syne', sans-serif; font-size: 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .close-btn { background: none; border: none; color: var(--text-dim); font-size: 2rem; cursor: pointer; transition: color 0.3s ease; line-height: 1; }
+        .close-btn:hover { color: var(--error); }
+        .modal-body { display: grid; gap: 1rem; }
+        .detail-row { display: grid; grid-template-columns: 120px 1fr; gap: 1rem; padding: 0.8rem; background: var(--dark-lighter); border-radius: 8px; }
+        .detail-label { color: var(--text-dim); font-size: 0.85rem; }
+        .detail-value { color: var(--text); font-weight: 500; }
+        .status-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
+        .status-btn { padding: 1rem; border: 2px solid transparent; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: white; }
+        .status-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .status-btn.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
+        .status-btn.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
+        .status-btn.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
+        .status-btn.cancelled   { background: linear-gradient(135deg, #FF3B3B, #C92A2A); border: 2px solid #FF6B6B; }
+        .status-btn.short-notice{ background: linear-gradient(135deg, var(--short-notice), #90ee90); border: 2px solid #C77DFF; }
+        .completion-selector { margin-top: 1.5rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 8px; }
+        .completion-title { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-align: center; }
+        .day-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 0.5rem; }
+        .day-btn { padding: 0.8rem; background: var(--dark); border: 2px solid var(--dark-lighter); border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; }
+        .day-btn:hover { border-color: var(--primary); }
+        .day-btn.selected { background: linear-gradient(135deg, var(--primary), var(--accent)); border-color: white; color: white; font-weight: 700; }
+        .completion-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+        .action-btn { padding: 0.8rem; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .action-btn.cancel  { background: var(--dark); color: var(--text); border: 2px solid var(--dark-lighter); }
+        .action-btn.confirm { background: linear-gradient(135deg, var(--success), #3DB88E); color: white; }
+        .notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter); }
+        .notes-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; display: block; }
+        .notes-textarea { width: 100%; background: var(--dark-lighter); border: 2px solid var(--dark-lighter); color: var(--text); padding: 0.8rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; min-height: 100px; resize: vertical; transition: all 0.3s ease; }
+        .notes-textarea:focus { outline: none; border-color: var(--primary); }
+        .save-notes-btn { margin-top: 0.5rem; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
+        .save-notes-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
+        .po-timestamp { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.3rem; font-style: italic; min-height: 1.1em; letter-spacing: 0.02em; }
+        .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light); color: var(--text); padding: 1rem 1.5rem; border-radius: 8px; border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; animation: slideIn 0.3s ease-out; display: none; }
+        .toast.show { display: block; }
+        .toast.error { border-color: var(--error); }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .debug-info { background: var(--dark-lighter); border-radius: 8px; padding: 1rem; margin-top: 1rem; font-size: 0.85rem; color: var(--text-dim); }
+        .invoice-section { margin-top: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(78,236,163,0.1), rgba(0,217,255,0.1)); border-radius: 8px; border: 2px solid var(--success); }
+        .invoice-section.short-notice-style { background: linear-gradient(135deg, rgba(199,125,255,0.1), rgba(182,94,255,0.1)); border: 2px solid var(--short-notice); }
+        .invoice-section.short-notice-style .invoice-title { color: var(--short-notice); }
+        .invoice-title { color: var(--success); margin: 0 0 1rem 0; font-family: 'Syne', sans-serif; font-size: 1.2rem; }
+
+        /* Survey info row in modal */
+        .survey-alert-row {
+            padding: 0.8rem 1rem; border-radius: 8px; font-size: 0.85rem;
+            font-weight: 600; display: flex; align-items: center; gap: 0.6rem;
+        }
+        .survey-alert-urgent {
+            background: rgba(255,107,107,0.15); border: 2px solid rgba(255,107,107,0.7);
+            color: var(--error);
+            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
+        }
+        .survey-alert-pending {
+            background: rgba(154,154,176,0.12); border: 1px dashed rgba(154,154,176,0.4);
+            color: var(--text-dim);
+        }
+        .survey-alert-done {
+            background: rgba(78,204,163,0.12); border: 1px solid rgba(78,204,163,0.4);
+            color: var(--success);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .timeline-wrapper { min-width: 800px; }
+            .engineer-row { grid-template-columns: 150px 1fr; }
+            .timeline-header { grid-template-columns: 150px 1fr; }
+            .status-buttons { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <a href="admin.html" class="back-btn">← Back to Admin</a>
+            </div>
+            <h1>Job Timeline</h1>
+            <p class="subtitle">Visual schedule — Solar-jobs &amp; Jobs collections merged · Survey alerts from 16 Mar 2026</p>
+        </header>
+
+        <div class="controls-card">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label class="control-label" for="start-date">Start Date</label>
+                    <input type="date" id="start-date" class="control-input">
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="days-count">Days to Show</label>
+                    <input type="number" id="days-count" class="control-input" value="14" min="7" max="60">
+                </div>
+                <div class="control-group" style="display: flex; align-items: flex-end;">
+                    <button onclick="updateTimeline()" class="control-input" style="cursor: pointer; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; font-weight: 700; border: none;">
+                        Update Timeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- Survey status legend -->
+            <div class="survey-legend">
+                <strong>Survey Key (jobs-collection entries, installs from 16 Mar 2026):</strong>
+                <div class="legend-swatch"><span class="swatch swatch-urgent"></span> 🚨 Urgent — no survey, install ≤10 days</div>
+                <div class="legend-swatch"><span class="swatch swatch-pending"></span> ⏳ Awaiting — no survey, install &gt;10 days</div>
+                <div class="legend-swatch"><span class="swatch swatch-ok"></span> Normal — survey done or not applicable</div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-item"><div class="stat-label">Total Jobs</div><div class="stat-value" id="total-jobs">0</div></div>
+                <div class="stat-item"><div class="stat-label">Engineers</div><div class="stat-value" id="total-engineers">0</div></div>
+                <div class="stat-item"><div class="stat-label">Days Shown</div><div class="stat-value" id="date-range">14</div></div>
+                <div class="stat-item"><div class="stat-label">✅ Complete</div><div class="stat-value complete" id="total-complete">0</div></div>
+                <div class="stat-item"><div class="stat-label">🔄 In-Progress</div><div class="stat-value in-progress" id="total-in-progress">0</div></div>
+                <div class="stat-item"><div class="stat-label">⚠️ Aborted</div><div class="stat-value aborted" id="total-aborted">0</div></div>
+                <div class="stat-item"><div class="stat-label">❌ Cancelled</div><div class="stat-value cancelled" id="total-cancelled">0</div></div>
+                <div class="stat-item"><div class="stat-label">🔔 SNC</div><div class="stat-value snc" id="total-snc">0</div></div>
+                <div class="stat-item"><div class="stat-label">🚨 Urgent</div><div class="stat-value urgent" id="total-urgent">0</div></div>
+            </div>
+
+            <div class="debug-info" id="debug-info" style="display: none;"></div>
+            <div class="debug-info" id="email-notifications" style="display: block; background: linear-gradient(135deg, rgba(78,236,163,0.1), rgba(0,217,255,0.1)); border: 2px solid var(--success);">
+                <strong>📧 Email Notifications Active</strong><br>
+                <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete.</span>
+            </div>
+            <div class="debug-info" id="sheets-status" style="display: block; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(255,200,87,0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
+                <strong>📊 Google Sheets Integration Active</strong><br>
+                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet. You'll be asked to sign in with your Google account on first use.</span>
+            </div>
+        </div>
+
+        <div class="timeline-container">
+            <div id="timeline-content">
+                <div class="loading">Loading timeline from Firebase...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="status-modal-title">Update Job Status</h2>
+                <button class="close-btn" onclick="closeStatusModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <!-- Survey alert banner — shown conditionally -->
+                <div id="survey-alert" style="display:none;"></div>
+
+                <div class="detail-row"><div class="detail-label">Job Number</div><div class="detail-value" id="status-job-number"></div></div>
+                <div class="detail-row"><div class="detail-label">Source</div><div class="detail-value" id="status-source"></div></div>
+                <div class="detail-row"><div class="detail-label">Address</div><div class="detail-value" id="status-address"></div></div>
+                <div class="detail-row"><div class="detail-label">Postcode</div><div class="detail-value" id="status-postcode"></div></div>
+                <div class="detail-row"><div class="detail-label">Job Type</div><div class="detail-value" id="status-job-type"></div></div>
+                <div class="detail-row"><div class="detail-label">Booked Date</div><div class="detail-value" id="status-booked-date"></div></div>
+                <div class="detail-row"><div class="detail-label">Days</div><div class="detail-value" id="status-days"></div></div>
+                <div class="detail-row"><div class="detail-label">Lead Engineer</div><div class="detail-value" id="status-lead"></div></div>
+                <div class="detail-row"><div class="detail-label">Team Number</div><div class="detail-value" id="status-team"></div></div>
+                <div class="detail-row"><div class="detail-label">Panel Number</div><div class="detail-value" id="status-panel"></div></div>
+                <div class="detail-row"><div class="detail-label">Current Status</div><div class="detail-value" id="status-current"></div></div>
+
+                <div class="status-buttons">
+                    <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">🔄 In-Progress</button>
+                    <button class="status-btn complete" onclick="updateJobStatus('Complete')">✅ Complete</button>
+                    <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">⚠️ Aborted</button>
+                    <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">❌ Cancelled</button>
+                    <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')" style="grid-column: 1 / -1;">🔔 Short Notice Cancellation</button>
+                </div>
+
+                <div class="completion-selector" id="completion-selector" style="display: none;">
+                    <div class="completion-title">Which day(s) are complete?</div>
+                    <div class="day-buttons" id="day-buttons"></div>
+                    <div class="completion-actions">
+                        <button class="action-btn cancel" onclick="hideCompletionSelector()">Cancel</button>
+                        <button class="action-btn confirm" onclick="confirmPartialCompletion()">Confirm</button>
+                    </div>
+                </div>
+
+                <div class="invoice-section" id="invoice-section" style="display: none;">
+                    <h3 class="invoice-title" id="invoice-title">🏠 Job Completion Details</h3>
+                    <div style="margin-bottom: 1.5rem;">
+                        <label class="notes-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <button class="day-btn" id="slate-yes-btn" onclick="selectSlateOption(true)" style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
+                            <button class="day-btn" id="slate-no-btn" onclick="selectSlateOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
+                        </div>
+                    </div>
+                    <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
+                        💾 Submit & Mark Complete
+                    </button>
+                </div>
+
+                <div class="notes-section">
+                    <label class="notes-label" for="po-numbers">PO Numbers</label>
+                    <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 60px;"></textarea>
+                    <div class="po-timestamp" id="po-timestamp"></div>
+                    <button class="save-notes-btn" onclick="savePONumbers()" style="margin-bottom: 1.5rem;">💾 Save PO Numbers</button>
+
+                    <label class="notes-label" for="job-notes">Job Notes</label>
+                    <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
+                    <button class="save-notes-btn" onclick="saveJobNotes()" style="margin-bottom: 1.5rem;">💾 Save Notes</button>
+
+                    <label class="notes-label" for="job-delays">Were there any delays?</label>
+                    <textarea id="job-delays" class="notes-textarea" placeholder="Describe any delays experienced during this job..." style="min-height: 80px;"></textarea>
+                    <button class="save-notes-btn" onclick="saveJobDelays()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">⏰ Save Delays & Sync to Google Sheets</button>
+                </div>
+
+                <div class="additional-costs-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter);">
+                    <button class="save-notes-btn" onclick="showAdditionalCostsModal()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">
+                        💰 Add Additional Costs
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Costs Modal -->
+    <div class="modal" id="additional-costs-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">💰 Additional Costs</h2>
+                <button class="close-btn" onclick="closeAdditionalCostsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="detail-row" style="background: linear-gradient(135deg, rgba(255,200,87,0.1), rgba(255,107,53,0.1)); border: 2px solid var(--warning);">
+                    <div class="detail-label">Job Number</div>
+                    <div class="detail-value" id="additional-costs-job-number"></div>
+                </div>
+                <div style="margin-top: 1.5rem;">
+                    <label class="notes-label" for="materials-cost">Materials (£)</label>
+                    <input type="number" id="materials-cost" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                </div>
+                <div style="margin-top: 1rem;">
+                    <label class="notes-label" for="materials-notes">Materials Notes (Optional)</label>
+                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                </div>
+                <div class="completion-actions" style="margin-top: 2rem;">
+                    <button class="action-btn cancel" onclick="closeAdditionalCostsModal()">Cancel</button>
+                    <button class="action-btn confirm" onclick="submitAdditionalCosts()">💾 Save Costs</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+            console.log('✅ Firebase initialized');
+            emailjs.init("ziLnha91scpGjFABh");
+            console.log('✅ EmailJS initialized');
+            window.addEventListener('DOMContentLoaded', () => { window.initializeTimeline(); });
+        } catch (error) {
+            console.error('❌ Firebase error:', error);
+            document.getElementById('timeline-content').innerHTML = '<div class="empty-state">Firebase connection failed</div>';
+        }
+    </script>
+
+    <script>
+        /* ══════════════════════════════════════════════
+           GLOBALS
+        ══════════════════════════════════════════════ */
+        let allJobs = [];
+        let currentJob = null;
+        let timelineDates = [];
+        let selectedCompletionDays = [];
+        let pendingStatusChange = null;
+        let slateRoof = null;
+
+        // Survey cutoff: only jobs on/after this date need a survey
+        const SURVEY_CUTOFF = new Date('2026-03-16');
+        SURVEY_CUTOFF.setHours(0,0,0,0);
+
+        // jobsSet   → job numbers present in the 'jobs' collection (survey required)
+        // surveyMap → job numbers that have a submitted site-survey
+        let jobsSet   = new Set();
+        let surveyMap = {};
+
+        /* ══════════════════════════════════════════════
+           GOOGLE SHEETS CONFIG
+        ══════════════════════════════════════════════ */
+        const GOOGLE_SHEETS_CONFIG = {
+            clientId: '278178669501-0n0jq9cl6vk8uhfq05dbb64p4bnqsoss.apps.googleusercontent.com',
+            spreadsheetId: '1JuPikuR5vFNo_BPRZKAxTcFjUNHWVldeji7qaJp3Ng0',
+            sheetName: 'Delays and Postponements',
+            scope: 'https://www.googleapis.com/auth/spreadsheets'
+        };
+
+        let googleAccessToken = null;
+        let tokenExpiryTime   = null;
+
+        async function getGoogleAccessToken() {
+            if (googleAccessToken && tokenExpiryTime && Date.now() < tokenExpiryTime - 60000) return googleAccessToken;
+            return new Promise((resolve, reject) => {
+                if (typeof google === 'undefined' || !google.accounts) {
+                    reject(new Error('Google Identity Services not loaded yet. Please try again in a moment.')); return;
+                }
+                const client = google.accounts.oauth2.initTokenClient({
+                    client_id: GOOGLE_SHEETS_CONFIG.clientId,
+                    scope: GOOGLE_SHEETS_CONFIG.scope,
+                    callback: (response) => {
+                        if (response.error) { reject(new Error(response.error)); return; }
+                        googleAccessToken = response.access_token;
+                        tokenExpiryTime   = Date.now() + (response.expires_in * 1000);
+                        resolve(googleAccessToken);
+                    }
+                });
+                client.requestAccessToken();
+            });
+        }
+
+        async function updateGoogleSheet(jobData) {
+            try {
+                const accessToken = await getGoogleAccessToken();
+                if (!accessToken) return false;
+                const { spreadsheetId, sheetName } = GOOGLE_SHEETS_CONFIG;
+                const encodedSheet = encodeURIComponent(sheetName);
+                const readRes = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:A`,
+                    { headers: { 'Authorization': `Bearer ${accessToken}` } }
+                );
+                if (!readRes.ok) throw new Error(`Read failed ${readRes.status}`);
+                const readData  = await readRes.json();
+                const nextRow   = (readData.values ? readData.values.length : 0) + 1;
+                const today     = new Date().toLocaleDateString('en-GB');
+                const values    = [[ today, jobData.jobNumber, jobData.postcode, '', '', jobData.delays ]];
+                const writeRes  = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A${nextRow}:F${nextRow}?valueInputOption=USER_ENTERED`,
+                    { method: 'PUT', headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ values }) }
+                );
+                if (!writeRes.ok) throw new Error(`Write failed ${writeRes.status}`);
+                return true;
+            } catch (error) {
+                showToast('Google Sheets sync failed: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+           SURVEY HELPERS  (mirrors adminviewjobs logic)
+        ══════════════════════════════════════════════ */
+        function getSurveyStatus(job) {
+            if (!jobsSet.has(job.jobNumber)) return 'na';
+            const install = job.parsedDate;
+            if (!install || install < SURVEY_CUTOFF) return 'na';
+            if (surveyMap[job.jobNumber]) return 'complete';
+            const today = new Date(); today.setHours(0,0,0,0);
+            const days  = Math.ceil((install - today) / 86400000);
+            return days <= 10 ? 'urgent' : 'pending';
+        }
+
+        function surveyCardClass(job) {
+            const s = getSurveyStatus(job);
+            if (s === 'urgent')  return 'survey-urgent';
+            if (s === 'pending') return 'survey-pending';
+            return '';
+        }
+
+        /* ══════════════════════════════════════════════
+           DATE UTILITIES
+        ══════════════════════════════════════════════ */
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            if (typeof dateStr === 'string' && dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const d = new Date(+parts[2], +parts[1]-1, +parts[0]);
+                    if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+                }
+            }
+            const d = new Date(dateStr);
+            if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+            return null;
+        }
+
+        function formatDate(date) {
+            if (!date) return 'N/A';
+            return `${String(date.getDate()).padStart(2,'0')}/${String(date.getMonth()+1).padStart(2,'0')}/${date.getFullYear()}`;
+        }
+
+        function formatTimestamp(isoString) {
+            if (!isoString) return '';
+            const d = new Date(isoString);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+        }
+
+        function escapeHtml(text) { const div = document.createElement('div'); div.textContent = String(text ?? ''); return div.innerHTML; }
+
+        /* ══════════════════════════════════════════════
+           INIT
+        ══════════════════════════════════════════════ */
+        window.initializeTimeline = function() {
+            const today        = new Date();
+            const dayOfWeek    = today.getDay();
+            const daysFromMon  = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
+            const prevMonday   = new Date(today);
+            prevMonday.setDate(today.getDate() - daysFromMon - 7);
+            prevMonday.setHours(0,0,0,0);
+            document.getElementById('start-date').valueAsDate = prevMonday;
+            loadJobs();
+        }
+
+        /* ══════════════════════════════════════════════
+           FIREBASE LOAD  — mirrors adminviewjobs merge logic
+           1. site-surveys → surveyMap
+           2. Solar-jobs   → solarMap
+           3. jobs         → jobsMap + jobsSet
+           Merge: solar+both from solarMap, jobs-only from jobsMap
+        ══════════════════════════════════════════════ */
+        async function loadJobs() {
+            try {
+                const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
+
+                /* 1. site-surveys */
+                const surveySnap = await getDocs(collection(window.db, 'site-surveys'));
+                surveyMap = {};
+                surveySnap.forEach(d => {
+                    const jn = d.data().jobNumber;
+                    if (jn) surveyMap[String(jn).trim()] = true;
+                });
+
+                /* 2. Solar-jobs */
+                const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
+
+                /* 3. jobs collection */
+                const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
+
+                jobsSet = new Set();
+
+                const processDoc = (docSnap, source) => {
+                    const data = docSnap.data();
+
+                    let parsedDate = null;
+                    for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
+                        if (data[f]) { parsedDate = parseDate(data[f]); if (parsedDate) break; }
+                    }
+
+                    let jobLength = 1;
+                    for (const f of ['Days','Job Length (days)','Job Length','jobLength','Duration','duration']) {
+                        if (data[f] != null && data[f] !== '') {
+                            const p = parseInt(data[f],10); if (!isNaN(p) && p > 0) { jobLength = p; break; }
+                        }
+                    }
+
+                    let engineer = 'Unassigned';
+                    for (const f of ['Lead','Lead Engineer','Engineer','engineer']) {
+                        if (data[f]?.trim()) { engineer = data[f].trim(); break; }
+                    }
+
+                    const jobType   = data['Job Type'] || 'Standard';
+                    const status    = data['Status Update'] || data['status'] || 'Scheduled';
+                    const jobNumber = String(data['Job Number'] || 'N/A').trim();
+                    const completedDays          = data['completedDays'] || [];
+                    const projectedCompletionDate = parseDate(data['Projected Completion Date']);
+
+                    return {
+                        id: docSnap.id, source, ...data,
+                        jobNumber, parsedDate, projectedCompletionDate,
+                        jobLength, engineer, jobType, status, completedDays,
+                        notes:              data['notes']              || '',
+                        poNumbers:          data['poNumbers']          || '',
+                        poNumbersUpdatedAt: data['poNumbersUpdatedAt'] || '',
+                        delays:             data['delays']             || '',
+                        materialsCost:      data['materialsCost']      ?? '',
+                        materialsNotes:     data['materialsNotes']     ?? '',
+                    };
+                };
+
+                const solarMap = new Map();
+                solarSnap.forEach(d => {
+                    const job = processDoc(d, 'solar');
+                    if (!solarMap.has(job.jobNumber)) solarMap.set(job.jobNumber, job);
+                });
+
+                const jobsMapLocal = new Map();
+                jobsSnap.forEach(d => {
+                    const job = processDoc(d, 'jobs');
+                    jobsSet.add(job.jobNumber);
+                    if (!jobsMapLocal.has(job.jobNumber)) jobsMapLocal.set(job.jobNumber, job);
+                });
+
+                allJobs = [];
+
+                solarMap.forEach((solarJob, jn) => {
+                    if (jobsMapLocal.has(jn)) {
+                        allJobs.push({ ...solarJob, source: 'both' });
+                    } else {
+                        allJobs.push(solarJob);
+                    }
+                });
+
+                jobsMapLocal.forEach((jobsJob, jn) => {
+                    if (!solarMap.has(jn)) {
+                        allJobs.push(jobsJob);
+                    }
+                });
+
+                // Filter to jobs that have a date
+                allJobs = allJobs.filter(j => j.parsedDate != null);
+
+                console.log(`✅ Loaded ${allJobs.length} jobs (solar+jobs merged), surveyMap keys: ${Object.keys(surveyMap).length}`);
+
+                const debugEl = document.getElementById('debug-info');
+                debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs from Solar-jobs + jobs collections. jobsSet: ${jobsSet.size} entries. Surveys done: ${Object.keys(surveyMap).length}.</strong>`;
+                debugEl.style.display = 'block';
+                setTimeout(() => { debugEl.style.display = 'none'; }, 8000);
+
+                buildTimeline();
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                document.getElementById('timeline-content').innerHTML =
+                    `<div class="empty-state">Error loading jobs: ${escapeHtml(error.message)}</div>`;
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+           STATUS DB UPDATE
+        ══════════════════════════════════════════════ */
+        async function updateJobStatusInDB(jobId, newStatus, completedDays = null) {
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const job = allJobs.find(j => j.id === jobId);
+                // Write to the correct collection based on source
+                const collName = (job && job.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const jobRef   = doc(window.db, collName, jobId);
+                const updateData = { 'Status Update': newStatus };
+                if (completedDays !== null) updateData.completedDays = completedDays;
+                if (newStatus === 'Complete') updateData.completedTimestamp = new Date().toISOString();
+                await updateDoc(jobRef, updateData);
+
+                if (job) {
+                    const prevStatus = job.status;
+                    job.status = newStatus; job['Status Update'] = newStatus;
+                    if (completedDays !== null) job.completedDays = completedDays;
+                    if (newStatus === 'Complete') job.completedTimestamp = new Date().toISOString();
+                    if (newStatus === 'Complete' && prevStatus !== 'Complete') await sendJobCompletionEmail(job);
+                }
+                showToast(`Job status updated to: ${newStatus}`, 'success');
+            } catch (error) {
+                console.error('Error updating job status:', error);
+                showToast('Failed to update job status', 'error');
+            }
+        }
+
+        async function sendJobCompletionEmail(job) {
+            try {
+                const jobNumber      = job['Job Number'] || job.jobNumber || 'N/A';
+                const postcode       = job['Postcode'] || 'N/A';
+                const engineer       = job.engineer || 'Unassigned';
+                const jobType        = job.jobType  || 'Standard';
+                const completionDate = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#4ECCA3;">✅ Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Lead Engineer:</td><td>${engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
+                await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
+                    to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
+                    job_number: jobNumber, postcode, engineer, job_type: jobType,
+                    completion_date: completionDate, message_html: emailHTML
+                });
+                showToast(`Completion email sent for job #${jobNumber}`, 'success');
+            } catch (error) {
+                showToast('Email notification failed: ' + error.message, 'error');
+            }
+        }
+
+        window.selectSlateOption = function(isSlate) {
+            slateRoof = isSlate;
+            document.getElementById('slate-yes-btn').classList.toggle('selected',  isSlate);
+            document.getElementById('slate-no-btn').classList.toggle('selected',  !isSlate);
+        }
+
+        window.showInlineInvoiceSection = function(isShortNotice = false) {
+            if (!currentJob) return;
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
+            document.getElementById('completion-selector').style.display = 'none';
+            slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
+            const invoiceSection = document.getElementById('invoice-section');
+            const invoiceTitle   = document.getElementById('invoice-title');
+            const submitBtn      = document.getElementById('submit-invoice-btn');
+            if (isShortNotice) {
+                invoiceSection.classList.add('short-notice-style');
+                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
+                submitBtn.textContent = '💾 Submit & Mark as Short Notice Cancellation';
+            } else {
+                invoiceSection.classList.remove('short-notice-style');
+                invoiceTitle.textContent = '🏠 Job Completion Details';
+                submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
+                submitBtn.textContent = '💾 Submit & Mark Complete';
+            }
+            if      (slateRoof === true)  { document.getElementById('slate-yes-btn').classList.add('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
+            else if (slateRoof === false) { document.getElementById('slate-no-btn').classList.add('selected'); document.getElementById('slate-yes-btn').classList.remove('selected'); }
+            else { document.getElementById('slate-yes-btn').classList.remove('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
+            invoiceSection.style.display = 'block';
+            setTimeout(() => { invoiceSection.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
+        }
+
+        window.submitInlineInvoice = async function() {
+            if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
+            if (slateRoof === null) { showToast('Please select whether the roof type was slate', 'error'); return; }
+            const jobId       = currentJob.id;
+            const jobNumber   = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
+            const jobLength   = currentJob.jobLength || 1;
+            const finalStatus = pendingStatusChange || 'Complete';
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const jobRef   = doc(window.db, collName, jobId);
+                let completedDays;
+                if      (currentJob._pendingCompletedDays?.length) completedDays = [...currentJob._pendingCompletedDays];
+                else if (selectedCompletionDays.length)            completedDays = [...selectedCompletionDays];
+                else if (jobLength > 1)                            completedDays = Array.from({length:jobLength}, (_,i) => i+1);
+                else                                               completedDays = [1];
+                await updateDoc(jobRef, { 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof });
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    Object.assign(job, { status: finalStatus, 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), slateRoof, completedDays });
+                    if (finalStatus === 'Complete') await sendJobCompletionEmail(job);
+                }
+                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Roof: ${slateRoof ? 'Slate' : 'Non-slate'}`, 'success');
+                pendingStatusChange = null; slateRoof = null;
+                closeStatusModal();
+                setTimeout(() => { buildTimeline(); }, 300);
+            } catch (error) {
+                showToast('Failed to save: ' + error.message, 'error');
+            }
+        }
+
+        /* ══════════════════════════════════════════════
+           TIMELINE BUILD
+        ══════════════════════════════════════════════ */
+        function buildTimeline() {
+            const startDateInput = document.getElementById('start-date').value;
+            const startDate = startDateInput ? new Date(startDateInput) : new Date();
+            startDate.setHours(0,0,0,0);
+            const daysCount = parseInt(document.getElementById('days-count').value) || 14;
+            timelineDates   = [];
+            for (let i = 0; i < daysCount; i++) {
+                const d = new Date(startDate); d.setDate(d.getDate() + i); timelineDates.push(d);
+            }
+            const endDate = new Date(timelineDates[timelineDates.length-1]);
+            endDate.setHours(23,59,59,999);
+
+            const filteredJobs = allJobs.filter(job => {
+                const jobStart = new Date(job.parsedDate); jobStart.setHours(0,0,0,0);
+                const jobEnd   = new Date(jobStart); jobEnd.setDate(jobEnd.getDate() + (job.jobLength - 1)); jobEnd.setHours(23,59,59,999);
+                return jobStart <= endDate && jobEnd >= startDate;
+            });
+
+            const engineerJobs = {};
+            filteredJobs.forEach(job => {
+                const eng = job.engineer || 'Unassigned';
+                if (!engineerJobs[eng]) engineerJobs[eng] = [];
+                engineerJobs[eng].push(job);
+            });
+
+            let countComplete=0, countInProgress=0, countAborted=0, countCancelled=0, countSNC=0, countUrgent=0;
+            filteredJobs.forEach(job => {
+                const s  = job.status || 'Scheduled';
+                const ss = getSurveyStatus(job);
+                if (s === 'Complete')                   countComplete++;
+                else if (s === 'In-Progress')           countInProgress++;
+                else if (s === 'Aborted')               countAborted++;
+                else if (s === 'Cancelled')             countCancelled++;
+                else if (s === 'Short Notice Cancellation') countSNC++;
+                if (ss === 'urgent') countUrgent++;
+            });
+
+            document.getElementById('total-jobs').textContent       = filteredJobs.length;
+            document.getElementById('total-engineers').textContent   = Object.keys(engineerJobs).length;
+            document.getElementById('date-range').textContent        = daysCount;
+            document.getElementById('total-complete').textContent    = countComplete;
+            document.getElementById('total-in-progress').textContent = countInProgress;
+            document.getElementById('total-aborted').textContent     = countAborted;
+            document.getElementById('total-cancelled').textContent   = countCancelled;
+            document.getElementById('total-snc').textContent         = countSNC;
+            document.getElementById('total-urgent').textContent      = countUrgent;
+
+            if (Object.keys(engineerJobs).length === 0) {
+                document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><div style="font-size:3rem;margin-bottom:1rem;">📅</div><h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:0.5rem;">No Jobs Scheduled</h3><p>No jobs found in this date range</p></div>`;
+                return;
+            }
+
+            const html = `<div class="timeline-wrapper">
+                <div class="timeline-header">
+                    <div class="engineer-header">👷 Engineer</div>
+                    <div class="dates-header">${timelineDates.map(date => {
+                        const isToday = date.toDateString() === new Date().toDateString();
+                        return `<div class="date-cell ${isToday?'today':''}">
+                            <div class="date-day">${formatDay(date)}</div>
+                            <div class="date-number">${date.getDate()}</div>
+                            <div class="date-month">${formatMonth(date)}</div>
+                        </div>`;
+                    }).join('')}</div>
+                </div>
+                <div class="timeline-body">
+                    ${Object.keys(engineerJobs).sort().map(engineer => `
+                        <div class="engineer-row">
+                            <div class="engineer-name"><span class="engineer-icon">👤</span><span>${escapeHtml(engineer)}</span></div>
+                            <div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+
+            document.getElementById('timeline-content').innerHTML = html;
+            setTimeout(initializeJobCards, 100);
+        }
+
+        function sourceBadgeHtml(src) {
+            const map = { jobs:['source-jobs','Jobs'], solar:['source-solar','Solar'], both:['source-both','Both'] };
+            const [cls, label] = map[src] || ['source-jobs', src];
+            return `<span class="job-source-badge ${cls}">${label}</span>`;
+        }
+
+        function renderEngineerJobs(jobs, dates, startDate) {
+            const numCols   = dates.length;
+            const sortedJobs = [...jobs].sort((a,b) => a.parsedDate - b.parsedDate);
+            const gridOccupancy = [];
+            const jobPlacements = [];
+            const arrows        = [];
+
+            sortedJobs.forEach(job => {
+                const jobStart = new Date(job.parsedDate); jobStart.setHours(0,0,0,0);
+                let startCol = -1;
+                for (let i=0; i<dates.length; i++) { if (dates[i].toDateString() === jobStart.toDateString()) { startCol=i; break; } }
+                if (startCol === -1) return;
+
+                const jobLength = job.jobLength || 1;
+                let segments = [];
+
+                if (job.projectedCompletionDate && jobLength > 1) {
+                    const projEnd = new Date(job.projectedCompletionDate); projEnd.setHours(0,0,0,0);
+                    const daysBetween = Math.floor((projEnd - jobStart) / (1000*60*60*24));
+                    if (daysBetween >= jobLength) {
+                        const daysPerSeg = Math.ceil(jobLength/2);
+                        segments.push({ startCol, span: daysPerSeg, isFirst:true });
+                        let projectedCol = -1;
+                        for (let i=0;i<dates.length;i++) { if (dates[i].toDateString() === projEnd.toDateString()) { projectedCol=i; break; } }
+                        if (projectedCol !== -1 && projectedCol < dates.length) segments.push({ startCol: projectedCol, span: jobLength-daysPerSeg, isLast:true });
+                    } else {
+                        segments.push({ startCol, span: Math.min(jobLength, dates.length-startCol), isFirst:true, isLast:true });
+                    }
+                } else {
+                    segments.push({ startCol, span: Math.min(jobLength, dates.length-startCol), isFirst:true, isLast:true });
+                }
+
+                let rowIndex = 0;
+                let targetRow = null;
+                while (targetRow === null) {
+                    if (!gridOccupancy[rowIndex]) gridOccupancy[rowIndex] = new Array(numCols).fill(false);
+                    let allFit = true;
+                    for (const segment of segments) {
+                        for (let col=segment.startCol; col<segment.startCol+segment.span; col++) {
+                            if (col<numCols && gridOccupancy[rowIndex][col]) { allFit=false; break; }
+                        }
+                        if (!allFit) break;
+                    }
+                    if (allFit) {
+                        targetRow = rowIndex;
+                        for (const segment of segments) {
+                            for (let col=segment.startCol; col<segment.startCol+segment.span; col++) {
+                                if (col<numCols) gridOccupancy[rowIndex][col] = true;
+                            }
+                        }
+                    } else { rowIndex++; }
+                }
+
+                segments.forEach((segment, si) => {
+                    jobPlacements.push({ job, row:targetRow, col:segment.startCol, span:segment.span, isFirst:segment.isFirst, isLast:segment.isLast, si });
+                    if (!segment.isLast && si < segments.length-1) {
+                        const next = segments[si+1];
+                        arrows.push({ fromCol: segment.startCol+segment.span, toCol: next.startCol, row: targetRow, jobId: job.id });
+                    }
+                });
+            });
+
+            const totalRows = gridOccupancy.length || 1;
+            let html = `<div class="timeline-grid" style="grid-template-columns: repeat(${numCols}, minmax(120px, 1fr)); grid-template-rows: repeat(${totalRows}, 70px);">`;
+
+            jobPlacements.forEach(placement => {
+                const { job, row, col, span } = placement;
+                const status = job.status || 'Scheduled';
+                let statusClass = '';
+                if      (status === 'In-Progress')              statusClass = 'status-in-progress';
+                else if (status === 'Complete')                 statusClass = 'status-complete';
+                else if (status === 'Aborted')                  statusClass = 'status-aborted';
+                else if (status === 'Cancelled')                statusClass = 'status-cancelled';
+                else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
+
+                const srvClass = surveyCardClass(job);
+
+                const completedDays     = job.completedDays || [];
+                const jobLength         = job.jobLength || 1;
+                const completionPercent = jobLength>1 && completedDays.length>0 ? (completedDays.length/jobLength)*100 : 0;
+                const textStyle         = span>1 ? 'white-space:normal;word-wrap:break-word;' : '';
+
+                html += `<div class="job-card ${statusClass} ${srvClass}" data-job-id="${job.id}"
+                    style="grid-column:${col+1}/span ${span};grid-row:${row+1};">
+                    ${completionPercent>0 && completionPercent<100 ? `<div class="completion-overlay" style="width:${completionPercent}%;"></div>` : ''}
+                    ${sourceBadgeHtml(job.source)}
+                    <div class="job-number">#${escapeHtml(job['Job Number'] || job.jobNumber || 'N/A')}</div>
+                    <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
+                    <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
+                    ${jobLength>1 ? `<div class="job-days">${completedDays.length>0?`${completedDays.length}/`:''}${jobLength}d</div>` : ''}
+                </div>`;
+            });
+
+            arrows.forEach(arrow => {
+                html += `<div class="job-arrow" style="grid-column:${arrow.fromCol+1}/${arrow.toCol+1};grid-row:${arrow.row+1};align-self:center;margin:0 5px;height:4px;"></div>`;
+            });
+
+            html += '</div>';
+            return html;
+        }
+
+        function initializeJobCards() {
+            document.querySelectorAll('.job-card').forEach(card => {
+                card.addEventListener('click', () => { showStatusModal(card.getAttribute('data-job-id')); });
+            });
+        }
+
+        /* ══════════════════════════════════════════════
+           STATUS MODAL
+        ══════════════════════════════════════════════ */
+        function showStatusModal(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (!job) return;
+            currentJob = job;
+            selectedCompletionDays = [...(job.completedDays || [])];
+            pendingStatusChange = null; slateRoof = null;
+
+            document.getElementById('status-job-number').textContent  = job['Job Number'] || job.jobNumber || 'N/A';
+            document.getElementById('status-source').textContent      = job.source ? job.source.toUpperCase() : 'SOLAR';
+            document.getElementById('status-address').textContent     = job['Address'] || 'N/A';
+            document.getElementById('status-postcode').textContent    = job['Postcode'] || 'N/A';
+            document.getElementById('status-job-type').textContent    = job.jobType  || 'Standard';
+            document.getElementById('status-booked-date').textContent = formatDate(job.parsedDate) || 'N/A';
+            document.getElementById('status-days').textContent        = job.jobLength || '1';
+            document.getElementById('status-lead').textContent        = job.engineer || 'Unassigned';
+            document.getElementById('status-team').textContent        = job['Team Number'] || job['Team'] || 'N/A';
+            document.getElementById('status-panel').textContent       = job['Panel No.'] || job['Panel Number'] || 'N/A';
+            document.getElementById('status-current').textContent     = job.status || 'Scheduled';
+            document.getElementById('job-notes').value   = job.notes   || '';
+            document.getElementById('po-numbers').value  = job.poNumbers || '';
+            document.getElementById('job-delays').value  = job.delays   || '';
+
+            document.getElementById('po-timestamp').textContent = job.poNumbersUpdatedAt
+                ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}` : '';
+
+            // Survey alert banner
+            const alertEl = document.getElementById('survey-alert');
+            const ss       = getSurveyStatus(job);
+            if (ss === 'urgent') {
+                const today   = new Date(); today.setHours(0,0,0,0);
+                const daysOut = Math.ceil((job.parsedDate - today) / 86400000);
+                alertEl.innerHTML = `<div class="survey-alert-row survey-alert-urgent">
+                    🚨 No site survey submitted — install ${daysOut <= 0 ? 'date has passed' : `in ${daysOut} day${daysOut===1?'':'s'}`}!
+                </div>`;
+                alertEl.style.display = 'block';
+            } else if (ss === 'pending') {
+                alertEl.innerHTML = `<div class="survey-alert-row survey-alert-pending">
+                    ⏳ Awaiting site survey — install is more than 10 days away
+                </div>`;
+                alertEl.style.display = 'block';
+            } else if (ss === 'complete') {
+                alertEl.innerHTML = `<div class="survey-alert-row survey-alert-done">
+                    ✓ Site survey submitted
+                </div>`;
+                alertEl.style.display = 'block';
+            } else {
+                alertEl.style.display = 'none';
+            }
+
+            document.getElementById('completion-selector').style.display = 'none';
+            document.getElementById('invoice-section').style.display     = 'none';
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
+            document.getElementById('status-modal').classList.add('show');
+        }
+
+        function closeStatusModal() {
+            document.getElementById('status-modal').classList.remove('show');
+            document.getElementById('invoice-section').style.display = 'none';
+            document.getElementById('invoice-section').classList.remove('short-notice-style');
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
+            document.getElementById('survey-alert').style.display = 'none';
+            currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; slateRoof = null;
+        }
+
+        window.updateJobStatus = async function(newStatus) {
+            if (!currentJob) return;
+            pendingStatusChange = newStatus;
+            if (newStatus === 'Complete' && currentJob.jobLength > 1)  { showCompletionSelector(); return; }
+            if (newStatus === 'Complete' && currentJob.jobLength === 1) { showInlineInvoiceSection(false); return; }
+            if (newStatus === 'Short Notice Cancellation')              { showInlineInvoiceSection(true);  return; }
+            const jobId = currentJob.id;
+            closeStatusModal();
+            await updateJobStatusInDB(jobId, newStatus, null);
+            buildTimeline();
+        }
+
+        window.showCompletionSelector = function() {
+            if (!currentJob) return;
+            const jobLength = currentJob.jobLength || 1;
+            if (jobLength === 1) { showInlineInvoiceSection(false); return; }
+            document.getElementById('day-buttons').innerHTML = Array.from({length:jobLength}, (_,i) => {
+                const n = i+1;
+                return `<button class="day-btn ${selectedCompletionDays.includes(n)?'selected':''}" onclick="toggleCompletionDay(${n})">Day ${n}</button>`;
+            }).join('');
+            document.getElementById('completion-selector').style.display = 'block';
+        }
+
+        window.hideCompletionSelector = function() { document.getElementById('completion-selector').style.display = 'none'; }
+
+        window.toggleCompletionDay = function(dayNum) {
+            const idx = selectedCompletionDays.indexOf(dayNum);
+            if (idx > -1) selectedCompletionDays.splice(idx,1); else selectedCompletionDays.push(dayNum);
+            selectedCompletionDays.sort((a,b)=>a-b);
+            document.querySelectorAll('.day-btn').forEach(btn => {
+                const n = parseInt(btn.textContent.replace('Day ',''));
+                btn.classList.toggle('selected', selectedCompletionDays.includes(n));
+            });
+        }
+
+        window.confirmPartialCompletion = async function() {
+            if (!currentJob) return;
+            if (selectedCompletionDays.length === 0) { showToast('Please select at least one day', 'error'); return; }
+            const jobLength = currentJob.jobLength || 1;
+            const jobNumber = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
+            currentJob._pendingCompletedDays = [...selectedCompletionDays];
+            if (selectedCompletionDays.length === jobLength) { document.getElementById('completion-selector').style.display='none'; showInlineInvoiceSection(false); return; }
+            const jobId = currentJob.id;
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, jobId), { 'Status Update':'In-Progress', completedDays: selectedCompletionDays });
+                const job = allJobs.find(j=>j.id===jobId);
+                if (job) { job.status='In-Progress'; job['Status Update']='In-Progress'; job.completedDays=selectedCompletionDays; }
+                showToast(`✓ Job #${jobNumber}: Day${selectedCompletionDays.length>1?'s':''} ${selectedCompletionDays.join(', ')} completed`, 'success');
+                closeStatusModal(); buildTimeline();
+            } catch (error) {
+                showToast('Failed to update job completion', 'error');
+            }
+        }
+
+        window.savePONumbers = async function() {
+            if (!currentJob) return;
+            const poNumbers = document.getElementById('po-numbers').value;
+            const now       = new Date().toISOString();
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, currentJob.id), { poNumbers, poNumbersUpdatedAt: now });
+                const job = allJobs.find(j=>j.id===currentJob.id);
+                if (job) { job.poNumbers=poNumbers; job.poNumbersUpdatedAt=now; }
+                if (currentJob) { currentJob.poNumbers=poNumbers; currentJob.poNumbersUpdatedAt=now; }
+                document.getElementById('po-timestamp').textContent = `Last saved: ${formatTimestamp(now)}`;
+                showToast('PO Numbers saved successfully', 'success');
+            } catch (error) { showToast('Failed to save PO numbers', 'error'); }
+        }
+
+        window.saveJobNotes = async function() {
+            if (!currentJob) return;
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, currentJob.id), { notes: document.getElementById('job-notes').value });
+                const job = allJobs.find(j=>j.id===currentJob.id);
+                if (job) job.notes = document.getElementById('job-notes').value;
+                showToast('Notes saved successfully', 'success');
+            } catch (error) { showToast('Failed to save notes', 'error'); }
+        }
+
+        window.saveJobDelays = async function() {
+            if (!currentJob) return;
+            const delays = document.getElementById('job-delays').value.trim();
+            if (!delays) { showToast('Please enter a delay reason before saving', 'error'); return; }
+            const jobNumber = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, currentJob.id), { delays, delaysUpdatedAt: new Date().toISOString() });
+                const job = allJobs.find(j=>j.id===currentJob.id);
+                if (job) job.delays = delays;
+                showToast('Saving to Google Sheets...', 'success');
+                const shareData = {
+                    jobNumber,
+                    postcode:  currentJob['Postcode'] || 'N/A',
+                    startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
+                    finishDate:currentJob['Projected Completion Date'] || '',
+                    delays
+                };
+                const success = await updateGoogleSheet(shareData);
+                if (success) showToast('✅ Delays saved & synced to Google Sheets!', 'success');
+                else showToast('⚠️ Saved to Firebase — Google Sheets sync failed (check popup blocker)', 'error');
+            } catch (error) {
+                showToast('Failed to save delays: ' + error.message, 'error');
+            }
+        }
+
+        window.showAdditionalCostsModal = function() {
+            if (!currentJob) return;
+            document.getElementById('additional-costs-job-number').textContent = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
+            document.getElementById('materials-cost').value  = currentJob.materialsCost  || '';
+            document.getElementById('materials-notes').value = currentJob.materialsNotes || '';
+            document.getElementById('additional-costs-modal').classList.add('show');
+        }
+
+        window.closeAdditionalCostsModal = function() {
+            document.getElementById('additional-costs-modal').classList.remove('show');
+        }
+
+        window.submitAdditionalCosts = async function() {
+            if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
+            const materialsCost  = parseFloat(document.getElementById('materials-cost').value) || 0;
+            const materialsNotes = document.getElementById('materials-notes').value.trim();
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, currentJob.id), { materialsCost, materialsNotes, additionalCostsUpdatedAt: new Date().toISOString() });
+                const job = allJobs.find(j=>j.id===currentJob.id);
+                if (job) { job.materialsCost=materialsCost; job.materialsNotes=materialsNotes; }
+                showToast(`Additional costs saved: £${materialsCost.toFixed(2)}`, 'success');
+                closeAdditionalCostsModal();
+            } catch (error) { showToast('Failed to save additional costs', 'error'); }
+        }
+
+        function showToast(message, type='success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast show ${type==='error'?'error':''}`;
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function updateTimeline()  { buildTimeline(); }
+        function formatDay(date)   { return date.toLocaleDateString('en-GB', { weekday:'short' }).toUpperCase(); }
+        function formatMonth(date) { return date.toLocaleDateString('en-GB', { month:'short' }); }
+
+        document.getElementById('status-modal').addEventListener('click', e => { if (e.target.id==='status-modal') closeStatusModal(); });
+        document.getElementById('additional-costs-modal').addEventListener('click', e => { if (e.target.id==='additional-costs-modal') closeAdditionalCostsModal(); });
+
+        window.updateTimeline  = updateTimeline;
+        window.closeStatusModal = closeStatusModal;
+    </script>
+</body>
+</html>
