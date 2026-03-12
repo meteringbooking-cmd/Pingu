@@ -382,12 +382,12 @@
         return canvas.toDataURL('image/jpeg', 0.92);
     }
 
-    // ── Crop an image data URL to its top half ──────────────────────────────────
-    function cropTopHalf(dataUrl) {
+    // ── Crop an image data URL to a specific Y pixel (or 55% if not found) ─────
+    function cropToY(dataUrl, pixelY) {
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
-                const cropH  = Math.floor(img.height * 0.52);
+                const cropH  = pixelY ? Math.floor(pixelY) : Math.floor(img.height * 0.55);
                 const canvas = document.createElement('canvas');
                 canvas.width  = img.width;
                 canvas.height = cropH;
@@ -503,8 +503,21 @@
 
                 // Render page 4 as image and display it directly — no text parsing
                 const p4page = await pdf.getPage(4);
+                // Find exact Y position of "Product warranties" text on page 4
+                // then crop the rendered image just above that line
+                const p4viewport = p4page.getViewport({ scale: 2.0 });
+                const p4textContent = await p4page.getTextContent();
+                let cutY = null;
+                for (const item of p4textContent.items) {
+                    if (item.str && item.str.toLowerCase().includes('product')) {
+                        // tx[5] is Y from bottom in PDF coords — flip to top-down pixels
+                        const tx = pdfjsLib.Util.transform(p4viewport.transform, item.transform);
+                        const yFromTop = p4viewport.height - tx[5];
+                        if (cutY === null || yFromTop < cutY) cutY = yFromTop;
+                    }
+                }
                 const p4full2 = await renderPage(p4page, 2.0);
-                boxSolar = await cropTopHalf(p4full2);
+                boxSolar = await cropToY(p4full2, cutY ? Math.max(0, cutY - 20) : null);
             }
             setStep('step-boxes', 'done');
 
