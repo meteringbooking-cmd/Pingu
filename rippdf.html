@@ -485,27 +485,9 @@
                 const p4 = await pdf.getPage(4);
                 rawPage4Lines = await getPageLines(p4);
 
-                // Grab all text from page 4 as one block using pdf.js text content
-                // Then slice from "Solar Panels" up to (not including) "Product warranties"
-                const p4full = await pdf.getPage(4);
-                const p4content = await p4full.getTextContent();
-                // Join all text items in order into one string
-                const p4raw = p4content.items
-                    .map(i => i.str)
-                    .join(' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-
-                // Find slice boundaries
-                const startIdx = p4raw.search(/Solar Panels/i);
-                const stopIdx  = p4raw.search(/Product warranties/i);
-
-                if (startIdx !== -1) {
-                    const slice = stopIdx !== -1 && stopIdx > startIdx
-                        ? p4raw.slice(startIdx, stopIdx)
-                        : p4raw.slice(startIdx);
-                    boxSolar = slice.trim();
-                }
+                // Render page 4 as image and display it directly — no text parsing
+                const p4page = await pdf.getPage(4);
+                boxSolar = await renderPage(p4page, 2.0);  // reuse render fn, store dataUrl in boxSolar
             }
             setStep('step-boxes', 'done');
 
@@ -550,12 +532,15 @@
         document.getElementById('results-area').classList.add('show');
     }
 
-    function setBox(id, text) {
+    function setBox(id, value) {
         const el = document.getElementById(id);
-        if (!text || !text.trim()) {
+        if (!value || !value.trim()) {
             el.innerHTML = '<span class="box-empty">Not found — expand raw text below to troubleshoot</span>';
+        } else if (value.startsWith('data:image')) {
+            // It's a rendered page image — show it
+            el.innerHTML = '<img src="' + value + '" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />';
         } else {
-            el.textContent = text;
+            el.textContent = value;
         }
     }
 
