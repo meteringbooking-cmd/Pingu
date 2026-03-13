@@ -314,24 +314,13 @@ const db = getFirestore(app);
 function getSessionName() {
     // teamview.html stores session in localStorage under 'engineerSession' or similar.
     // Try several common keys used across the Pingu app.
-    const keys = ['engineerSession', 'teamSession', 'userSession', 'session'];
-    for (const key of keys) {
-        try {
-            const raw = localStorage.getItem(key);
-            if (!raw) continue;
+    try {
+        const raw = localStorage.getItem('loggedInEngineer');
+        if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.name) return parsed.name.trim();
-        } catch {}
-    }
-    // Fallback: check sessionStorage
-    for (const key of keys) {
-        try {
-            const raw = sessionStorage.getItem(key);
-            if (!raw) continue;
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.name) return parsed.name.trim();
-        } catch {}
-    }
+        }
+    } catch {}
     return null;
 }
 
