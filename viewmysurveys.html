@@ -236,6 +236,58 @@
         }
         .toast.show { transform:translateX(-50%) translateY(0); }
 
+        /* ── FORWARD BUTTON ── */
+        .forward-btn {
+            background:rgba(255,200,87,0.12); border:1px solid rgba(255,200,87,0.35);
+            color:var(--secondary); padding:0.3rem 0.75rem; border-radius:7px;
+            font-family:'JetBrains Mono',monospace; font-size:0.75rem; font-weight:600;
+            cursor:pointer; transition:all 0.2s; white-space:nowrap;
+            display:inline-flex; align-items:center; gap:0.3rem;
+        }
+        .forward-btn:hover { background:rgba(255,200,87,0.22); border-color:var(--secondary); }
+
+        /* ── FORWARD MODAL ── */
+        .fwd-modal {
+            position:fixed; inset:0; background:rgba(0,0,0,0.82);
+            backdrop-filter:blur(8px); z-index:8000;
+            display:none; align-items:center; justify-content:center; padding:1.5rem;
+        }
+        .fwd-modal.show { display:flex; }
+        .fwd-modal-box {
+            background:var(--dark-light); border:2px solid var(--secondary);
+            border-radius:16px; padding:2rem; width:100%; max-width:440px;
+            animation:slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from{opacity:0;transform:translateY(30px);}to{opacity:1;transform:translateY(0);} }
+        .fwd-title {
+            font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800;
+            color:var(--secondary); margin-bottom:0.3rem;
+        }
+        .fwd-sub { font-size:0.8rem; color:var(--text-dim); margin-bottom:1.3rem; }
+        .fwd-input {
+            width:100%; background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.75rem 1rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+            transition:border-color 0.2s; margin-bottom:1rem;
+        }
+        .fwd-input:focus { outline:none; border-color:var(--secondary); }
+        .fwd-input::placeholder { color:var(--text-dim); }
+        .fwd-actions { display:flex; gap:0.7rem; }
+        .fwd-send {
+            flex:1; background:linear-gradient(135deg,var(--secondary),var(--primary));
+            color:var(--dark); border:none; padding:0.75rem; border-radius:8px;
+            font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:700;
+            cursor:pointer; transition:all 0.2s;
+        }
+        .fwd-send:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 6px 18px rgba(255,200,87,0.3); }
+        .fwd-send:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+        .fwd-cancel {
+            background:var(--dark-lighter); color:var(--text-dim); border:none;
+            padding:0.75rem 1.2rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.85rem; cursor:pointer; transition:all 0.2s;
+        }
+        .fwd-cancel:hover { color:var(--text); }
+
         @media(max-width:650px) {
             .page-title { font-size:1.75rem; }
             .fields-grid { grid-template-columns:1fr 1fr; }
@@ -426,6 +478,7 @@ function buildCard(s, i) {
             </div>
             <div class="card-header-right">
                 <span class="type-badge ${badgeCls}">${typeLabel}</span>
+                <button class="forward-btn" onclick="openFwdModal(${i}, event)" title="Forward this survey by email">📤 Forward</button>
                 <span class="chevron">▼</span>
             </div>
         </div>
@@ -628,6 +681,175 @@ window.closeLightbox = function() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', init);
+</script>
+
+<!-- Forward Survey Modal -->
+<div class="fwd-modal" id="fwd-modal">
+    <div class="fwd-modal-box">
+        <div class="fwd-title">📤 Forward Survey</div>
+        <div class="fwd-sub" id="fwd-sub">Job #<span id="fwd-job-ref">—</span></div>
+        <input type="email" class="fwd-input" id="fwd-email" placeholder="Enter recipient email address…">
+        <div class="fwd-actions">
+            <button class="fwd-cancel" onclick="closeFwdModal()">Cancel</button>
+            <button class="fwd-send" id="fwd-send-btn" onclick="sendForward()">✉️ Send</button>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script type="text/javascript">
+(function(){ emailjs.init('ziLnha91scpGjFABh'); })();
+
+let _fwdSurvey = null;
+
+function openFwdModal(idx, event) {
+    event.stopPropagation(); // don't toggle the card
+    _fwdSurvey = window._allSurveys[idx];
+    document.getElementById('fwd-job-ref').textContent = _fwdSurvey.jobNumber || '—';
+    document.getElementById('fwd-email').value = '';
+    document.getElementById('fwd-send-btn').disabled = false;
+    document.getElementById('fwd-send-btn').textContent = '✉️ Send';
+    document.getElementById('fwd-modal').classList.add('show');
+    setTimeout(() => document.getElementById('fwd-email').focus(), 120);
+}
+
+function closeFwdModal() {
+    document.getElementById('fwd-modal').classList.remove('show');
+    _fwdSurvey = null;
+}
+
+document.getElementById('fwd-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeFwdModal();
+});
+
+document.getElementById('fwd-email').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') sendForward();
+});
+
+function buildSurveySummary(s) {
+    const sec = s.sections || {};
+    const sd  = sec.surveyDetails || {};
+    const el  = sec.electricalSystem || {};
+    const am  = sec.additionalMaterials || [];
+    const type = s.surveyType === 'battery-only' ? 'Battery Only' : s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : s.surveyType || 'Unknown';
+
+    const lines = [
+        '=== SURVEY SUMMARY ===',
+        'Survey Type: ' + type,
+        'Job Number: ' + (s.jobNumber || '—'),
+        'Submitted: ' + (s.submittedAt ? new Date(s.submittedAt).toLocaleString('en-GB') : '—'),
+        '',
+        '--- Survey Details ---',
+        'Conducted On: ' + (sd.conductedOn || '—'),
+        'Surveyor: ' + (sd.surveyor || '—'),
+        'Customer Present: ' + (sd.customerPresent || '—'),
+        '',
+        '--- Electrical System ---',
+        'Meter Position: ' + (el.meterPosition || '—'),
+        'Meter Work Needed: ' + (el.meterWorkNeeded || '—'),
+        el.meterWorkDetails ? 'Meter Work Details: ' + el.meterWorkDetails : '',
+        'Fuse Rating: ' + (el.fuseRating || '—'),
+        'Earthing System: ' + (el.earthingSystem || '—'),
+        'Gas Bonded: ' + (el.gasBonded || '—'),
+        el.gasBondingEquipment ? 'Gas Bonding Equipment: ' + el.gasBondingEquipment : '',
+        'Water Bonded: ' + (el.waterBonded || '—'),
+        el.waterBondingEquipment ? 'Water Bonding Equipment: ' + el.waterBondingEquipment : '',
+        'Cable Run: ' + (el.cableRun || '—'),
+        'Cable Run Length: ' + (el.cableRunLength != null ? el.cableRunLength + ' m' : '—'),
+        'Battery Location: ' + (el.batteryLocation || '—'),
+        'Surface Type: ' + (el.surfaceType || '—'),
+        'Dimensions (W/D/L mm): ' + (el.batteryWidth||0) + ' / ' + (el.batteryDepth||0) + ' / ' + (el.batteryLength||0),
+        'Render / Cladding: ' + (el.renderCladding || '—'),
+        'WiFi Signal: ' + (el.wifiSignal || '—'),
+    ];
+
+    if (s.surveyType === 'battery-and-solar') {
+        const pi = sec.propertyInternal || {};
+        const pe = sec.propertyExternal || {};
+        const sc = sec.scaffolding || {};
+        lines.push('', '--- Property (Internal) ---',
+            'Loft Accessible: ' + (pi.loftAccessible || '—'),
+            'Loft Ladder: ' + (pi.loftLadder || '—'),
+            'Loft Boarded: ' + (pi.loftBoarded || '—'),
+            'Asbestos: ' + (pi.asbestos || '—'),
+            'Rafter W/D mm: ' + (pi.rafterWidth||0) + ' / ' + (pi.rafterDepth||0),
+            'Truss Spacing mm: ' + (pi.trussSpacing||0),
+            'Deflection: ' + (pi.deflection || '—'),
+            'Rot/Damage: ' + (pi.rotDamage || '—'),
+            'Roof Concern: ' + (pi.roofConcern || '—'),
+            '', '--- Property (External) ---',
+            'Proposed Design Fits: ' + (pe.proposedDesignFit || '—'),
+            pe.proposedDesignReasonWhyNot ? 'Design Reason: ' + pe.proposedDesignReasonWhyNot : '',
+            'Roof Covering: ' + (pe.roofCovering || '—'),
+            'No. of Stories: ' + (pe.numberStories || '—'),
+            'Roof Condition: ' + (pe.roofCondition || '—'),
+            'Roof Obstructions: ' + (pe.roofObstructions || '—'),
+            'Shading: ' + (pe.roofShading || '—'),
+            '', '--- Scaffolding ---',
+            'Access Type: ' + (sc.accessType || '—'),
+            'Parking Available: ' + (sc.parkingAvailable || '—'),
+            'Ground Type: ' + (sc.groundType || '—'),
+            'Access Issues: ' + (sc.accessIssues || '—'),
+            'Gutter Obstacles: ' + (sc.gutterObstacles || '—'),
+        );
+    }
+
+    if (am.length) {
+        lines.push('', '--- Additional Materials ---');
+        am.forEach(m => lines.push(m));
+    }
+
+    const signoff = sec.customerSignOff || {};
+    if (signoff.name || signoff.date) {
+        lines.push('', '--- Customer Sign-off ---',
+            'Name: ' + (signoff.name || '—'),
+            'Date: ' + (signoff.date || '—'));
+    }
+
+    return lines.filter(l => l !== undefined).join('\n');
+}
+
+async function sendForward() {
+    const email = document.getElementById('fwd-email').value.trim();
+    if (!email || !email.includes('@')) {
+        document.getElementById('fwd-email').focus();
+        document.getElementById('fwd-email').style.borderColor = 'var(--error)';
+        setTimeout(() => document.getElementById('fwd-email').style.borderColor = '', 1200);
+        return;
+    }
+    const btn = document.getElementById('fwd-send-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    try {
+        await emailjs.send('service_jovorbh', 'template_jvydnxi', {
+            to_email:       email,
+            job_number:     _fwdSurvey.jobNumber || '—',
+            survey_type:    _fwdSurvey.surveyType === 'battery-only' ? 'Battery Only' : 'Battery & Solar',
+            submitted_at:   _fwdSurvey.submittedAt ? new Date(_fwdSurvey.submittedAt).toLocaleString('en-GB') : '—',
+            surveyor:       (_fwdSurvey.sections?.surveyDetails?.surveyor || '—'),
+            survey_summary: buildSurveySummary(_fwdSurvey),
+        });
+
+        btn.textContent = '✅ Sent!';
+        showToast('Survey forwarded to ' + email);
+        setTimeout(closeFwdModal, 1200);
+    } catch(err) {
+        console.error('EmailJS error:', err);
+        btn.disabled = false;
+        btn.textContent = '✉️ Send';
+        showToast('Failed to send — check email address', true);
+    }
+}
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.borderColor = isError ? 'var(--error)' : 'var(--success)';
+    t.style.color = isError ? 'var(--error)' : 'var(--success)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+}
 </script>
 </body>
 </html>
