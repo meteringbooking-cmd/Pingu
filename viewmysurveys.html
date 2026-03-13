@@ -726,6 +726,13 @@ document.getElementById('fwd-email').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') sendForward();
 });
 
+function photoLinks(label, urls) {
+    if (!Array.isArray(urls) || !urls.length) return [];
+    const out = ['  📸 ' + label + ':'];
+    urls.forEach((u, i) => out.push('     Photo ' + (i+1) + ': ' + u));
+    return out;
+}
+
 function buildSurveySummary(s) {
     const sec = s.sections || {};
     const sd  = sec.surveyDetails || {};
@@ -746,18 +753,26 @@ function buildSurveySummary(s) {
         '',
         '--- Electrical System ---',
         'Meter Position: ' + (el.meterPosition || '—'),
+        ...photoLinks('Meter Position Photos', el.meterPositionPhotos),
         'Meter Work Needed: ' + (el.meterWorkNeeded || '—'),
         el.meterWorkDetails ? 'Meter Work Details: ' + el.meterWorkDetails : '',
+        ...photoLinks('Meter Work Photos', el.meterWorkPhotos),
         'Fuse Rating: ' + (el.fuseRating || '—'),
         'Earthing System: ' + (el.earthingSystem || '—'),
+        ...photoLinks('Earthing System Photos', el.earthingSystemPhotos),
         'Gas Bonded: ' + (el.gasBonded || '—'),
         el.gasBondingEquipment ? 'Gas Bonding Equipment: ' + el.gasBondingEquipment : '',
+        ...photoLinks('Gas Bonded Photos', el.gasBondedPhotos),
         'Water Bonded: ' + (el.waterBonded || '—'),
         el.waterBondingEquipment ? 'Water Bonding Equipment: ' + el.waterBondingEquipment : '',
+        ...photoLinks('Water Bonded Photos', el.waterBondedPhotos),
         'Cable Run: ' + (el.cableRun || '—'),
         'Cable Run Length: ' + (el.cableRunLength != null ? el.cableRunLength + ' m' : '—'),
+        ...photoLinks('Cable Run Photos', el.cableRunPhotos),
         'Battery Location: ' + (el.batteryLocation || '—'),
+        ...photoLinks('Battery Location Photos', el.batteryLocationPhotos),
         'Surface Type: ' + (el.surfaceType || '—'),
+        ...photoLinks('Surface Photos', el.surfacePhotos),
         'Dimensions (W/D/L mm): ' + (el.batteryWidth||0) + ' / ' + (el.batteryDepth||0) + ' / ' + (el.batteryLength||0),
         'Render / Cladding: ' + (el.renderCladding || '—'),
         'WiFi Signal: ' + (el.wifiSignal || '—'),
@@ -769,28 +784,44 @@ function buildSurveySummary(s) {
         const sc = sec.scaffolding || {};
         lines.push('', '--- Property (Internal) ---',
             'Loft Accessible: ' + (pi.loftAccessible || '—'),
+            ...photoLinks('Loft Access Photos', pi.loftAccessiblePhotos),
             'Loft Ladder: ' + (pi.loftLadder || '—'),
             'Loft Boarded: ' + (pi.loftBoarded || '—'),
             'Asbestos: ' + (pi.asbestos || '—'),
+            ...photoLinks('Asbestos Photos', pi.asbestosPhotos),
+            ...photoLinks('Loft Space Photos', pi.loftSpacePhotos),
             'Rafter W/D mm: ' + (pi.rafterWidth||0) + ' / ' + (pi.rafterDepth||0),
             'Truss Spacing mm: ' + (pi.trussSpacing||0),
             'Deflection: ' + (pi.deflection || '—'),
+            ...photoLinks('Deflection Photos', pi.deflectionPhotos),
             'Rot/Damage: ' + (pi.rotDamage || '—'),
+            ...photoLinks('Rot/Damage Photos', pi.rotDamagePhotos),
             'Roof Concern: ' + (pi.roofConcern || '—'),
+            ...photoLinks('Roof Concern Photos', pi.roofConcernPhotos),
             '', '--- Property (External) ---',
             'Proposed Design Fits: ' + (pe.proposedDesignFit || '—'),
             pe.proposedDesignReasonWhyNot ? 'Design Reason: ' + pe.proposedDesignReasonWhyNot : '',
+            ...photoLinks('Property Photos', pe.propertyPhotos),
             'Roof Covering: ' + (pe.roofCovering || '—'),
+            ...photoLinks('Roof Covering Photos', pe.roofCoveringPhotos),
             'No. of Stories: ' + (pe.numberStories || '—'),
             'Roof Condition: ' + (pe.roofCondition || '—'),
+            ...photoLinks('Roof Condition Photos', pe.roofConditionPhotos),
             'Roof Obstructions: ' + (pe.roofObstructions || '—'),
+            pe.obstructionsDescription ? 'Obstruction Detail: ' + pe.obstructionsDescription : '',
+            ...photoLinks('Obstruction Photos', pe.obstructionsPhotos),
             'Shading: ' + (pe.roofShading || '—'),
+            ...photoLinks('Shading Photos', pe.shadingPhotos),
             '', '--- Scaffolding ---',
             'Access Type: ' + (sc.accessType || '—'),
             'Parking Available: ' + (sc.parkingAvailable || '—'),
             'Ground Type: ' + (sc.groundType || '—'),
+            ...photoLinks('Ground Type Photos', sc.groundTypePhotos),
             'Access Issues: ' + (sc.accessIssues || '—'),
             'Gutter Obstacles: ' + (sc.gutterObstacles || '—'),
+            sc.gutterObstaclesDescription ? 'Obstacle Detail: ' + sc.gutterObstaclesDescription : '',
+            ...photoLinks('Gutter Obstacle Photos', sc.gutterObstaclesPhotos),
+            ...photoLinks('Lower Roof Photos', sc.lowerRoofsPhotos),
         );
     }
 
@@ -806,7 +837,7 @@ function buildSurveySummary(s) {
             'Date: ' + (signoff.date || '—'));
     }
 
-    return lines.filter(l => l !== undefined).join('\n');
+    return lines.filter(l => l !== undefined && l !== '').join('\n');
 }
 
 async function sendForward() {
@@ -822,7 +853,7 @@ async function sendForward() {
     btn.textContent = 'Sending…';
 
     try {
-        await emailjs.send('service_jovorbh', 'template_jvydnxi', {
+        await emailjs.send('service_jovorbh', 'template_cd4n87j', {
             to_email:       email,
             job_number:     _fwdSurvey.jobNumber || '—',
             survey_type:    _fwdSurvey.surveyType === 'battery-only' ? 'Battery Only' : 'Battery & Solar',
