@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stocktake Review | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --kf: #B57BFF;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 15% 35%, rgba(255,107,53,0.07) 0%, transparent 50%),
+                radial-gradient(circle at 85% 65%, rgba(0,217,255,0.06) 0%, transparent 50%),
+                radial-gradient(circle at 50% 5%, rgba(255,200,87,0.05) 0%, transparent 50%);
+            animation: bgDrift 28s ease-in-out infinite;
+            pointer-events: none; z-index: 0;
+        }
+        @keyframes bgDrift { 0%,100%{transform:translate(0,0);}50%{transform:translate(20px,-18px);} }
+
+        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+        header { margin-bottom: 2.5rem; animation: slideDown 0.6s ease-out; }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:translateY(0);} }
+
+        .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+        .logo {
+            font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+            background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none;
+        }
+        .back-btn {
+            background:var(--dark-light); color:var(--text); text-decoration:none;
+            padding:0.65rem 1.3rem; border-radius:8px; font-size:0.85rem;
+            border:2px solid transparent; transition:all 0.2s;
+        }
+        .back-btn:hover { border-color:var(--accent); }
+
+        h1 { font-family:'Syne',sans-serif; font-size:2.3rem; font-weight:800; }
+        .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
+
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
+
+        /* ── CONTROLS ── */
+        .controls-bar {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:12px; padding:1rem 1.3rem; margin-bottom:1.6rem;
+            display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;
+            animation: fadeUp 0.5s ease-out 0.1s both;
+        }
+        .ctrl-label { font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.08em; white-space:nowrap; }
+        .month-select {
+            background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.5rem 0.9rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.88rem; transition:border-color 0.2s;
+            cursor:pointer;
+        }
+        .month-select:focus { outline:none; border-color:var(--accent); }
+        .month-select option { background:var(--dark-lighter); }
+
+        .search-input {
+            flex:1; min-width:180px; background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.5rem 0.9rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.85rem; transition:border-color 0.2s;
+        }
+        .search-input:focus { outline:none; border-color:var(--accent); }
+        .search-input::placeholder { color:var(--text-dim); }
+
+        .ctrl-sep { width:1px; height:28px; background:var(--dark-lighter); flex-shrink:0; }
+
+        .refresh-btn {
+            margin-left:auto; background:linear-gradient(135deg,var(--primary),var(--accent));
+            color:white; border:none; padding:0.5rem 1.2rem; border-radius:8px;
+            font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:700;
+            cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.4rem;
+        }
+        .refresh-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 5px 18px var(--shadow); }
+        .refresh-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+        /* ── STATS ── */
+        .stats-bar {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+            gap:0.9rem; margin-bottom:1.8rem;
+            animation: fadeUp 0.5s ease-out 0.15s both;
+        }
+        .stat-card {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:10px; padding:0.9rem 1.1rem;
+        }
+        .stat-lbl { font-size:0.67rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.25rem; }
+        .stat-val { font-family:'Syne',sans-serif; font-size:1.6rem; font-weight:800; }
+        .c-cyan   { color:var(--accent); }
+        .c-green  { color:var(--success); }
+        .c-kf     { color:var(--kf); }
+        .c-orange { color:var(--secondary); }
+
+        /* ── STATES ── */
+        .state-msg { text-align:center; padding:4rem 2rem; color:var(--text-dim); display:none; }
+        .state-msg.show { display:block; }
+        .state-msg .icon { font-size:3rem; margin-bottom:1rem; }
+
+        /* ── PERSON GROUPS ── */
+        .groups-list { display:flex; flex-direction:column; gap:1.2rem; }
+
+        .person-group {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:14px; overflow:hidden;
+            animation: fadeUp 0.4s ease-out both;
+            transition:border-color 0.2s;
+        }
+        .person-group:hover { border-color:rgba(0,217,255,0.25); }
+
+        /* ── GROUP HEADER (clickable) ── */
+        .group-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1.1rem 1.4rem; cursor:pointer; user-select:none;
+            gap:1rem; flex-wrap:wrap;
+        }
+        .group-header:hover { background:rgba(255,255,255,0.02); }
+
+        .group-header-left { display:flex; align-items:center; gap:0.9rem; flex:1; min-width:0; }
+        .group-avatar {
+            width:38px; height:38px; border-radius:50%;
+            background:linear-gradient(135deg,var(--primary),var(--kf));
+            display:flex; align-items:center; justify-content:center;
+            font-family:'Syne',sans-serif; font-size:1rem; font-weight:800;
+            color:white; flex-shrink:0;
+        }
+        .group-name { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; color:var(--text); }
+        .group-sub  { font-size:0.75rem; color:var(--text-dim); margin-top:0.1rem; }
+
+        .group-header-right { display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; }
+        .sub-count-badge {
+            background:rgba(0,217,255,0.1); border:1px solid rgba(0,217,255,0.3);
+            color:var(--accent); padding:0.2rem 0.7rem; border-radius:20px;
+            font-size:0.75rem; font-weight:700; white-space:nowrap;
+        }
+        .latest-badge {
+            background:rgba(78,204,163,0.1); border:1px solid rgba(78,204,163,0.3);
+            color:var(--success); padding:0.2rem 0.7rem; border-radius:20px;
+            font-size:0.72rem; white-space:nowrap;
+        }
+        .chevron {
+            color:var(--text-dim); font-size:0.8rem; transition:transform 0.25s ease; flex-shrink:0;
+        }
+        .person-group.open .chevron { transform:rotate(180deg); }
+
+        /* ── SUBMISSIONS LIST ── */
+        .submissions-wrap {
+            max-height:0; overflow:hidden;
+            transition:max-height 0.35s ease;
+            border-top:0px solid var(--dark-lighter);
+        }
+        .person-group.open .submissions-wrap {
+            max-height:9999px;
+            border-top-width:1px;
+        }
+
+        .submission-card {
+            border-bottom:1px solid rgba(255,255,255,0.05);
+            overflow:hidden;
+        }
+        .submission-card:last-child { border-bottom:none; }
+
+        /* submission header row */
+        .submission-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:0.85rem 1.4rem; cursor:pointer; gap:1rem; flex-wrap:wrap;
+            background:rgba(0,0,0,0.12);
+            transition:background 0.15s;
+        }
+        .submission-header:hover { background:rgba(0,0,0,0.22); }
+
+        .sub-header-left { display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap; }
+        .sub-date {
+            font-family:'Syne',sans-serif; font-size:0.95rem; font-weight:700; color:var(--secondary);
+        }
+        .sub-time { font-size:0.75rem; color:var(--text-dim); }
+        .sub-items-summary { font-size:0.78rem; color:var(--text-dim); }
+
+        .sub-chevron { color:var(--text-dim); font-size:0.75rem; transition:transform 0.2s; flex-shrink:0; }
+        .submission-card.open .sub-chevron { transform:rotate(180deg); }
+
+        /* items table inside submission */
+        .submission-body {
+            max-height:0; overflow:hidden;
+            transition:max-height 0.3s ease;
+        }
+        .submission-card.open .submission-body { max-height:9999px; }
+
+        .items-table {
+            width:100%; border-collapse:collapse;
+        }
+        .items-table thead th {
+            background:var(--dark-lighter); padding:0.5rem 1rem;
+            text-align:left; font-size:0.68rem; text-transform:uppercase;
+            letter-spacing:0.06em; color:var(--text-dim); font-weight:600;
+        }
+        .items-table thead th:first-child { border-radius:0; }
+        .items-table tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
+        .items-table tbody tr:last-child { border-bottom:none; }
+        .items-table td { padding:0.55rem 1rem; font-size:0.84rem; color:var(--text); }
+        .items-table td.qty {
+            text-align:center; font-weight:700;
+            color:var(--secondary);
+        }
+        .items-table td.qty.zero { color:var(--text-dim); font-weight:400; }
+        .items-table tbody tr:hover { background:rgba(255,255,255,0.02); }
+
+        /* ── TOAST ── */
+        .toast {
+            position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(80px);
+            background:var(--dark-light); border:2px solid var(--success); color:var(--success);
+            padding:0.8rem 1.5rem; border-radius:10px; font-size:0.88rem; font-weight:600;
+            z-index:200; transition:transform 0.3s ease; pointer-events:none;
+        }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+        .toast.error { border-color:var(--error); color:var(--error); }
+
+        @keyframes spin { to{transform:rotate(360deg);} }
+        #refresh-icon { display:inline-block; }
+
+        @media(max-width:650px) {
+            h1 { font-size:1.8rem; }
+            .group-header { flex-direction:column; align-items:flex-start; }
+            .group-header-right { width:100%; justify-content:flex-start; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="header-row">
+            <a href="admin.html" class="logo">Pingu - Solar</a>
+            <a href="admin.html" class="back-btn">← Back to Admin</a>
+        </div>
+        <h1>📊 Stocktake Review</h1>
+        <p class="subtitle">Browse all stocktake submissions, grouped by person.</p>
+    </header>
+
+    <!-- Controls -->
+    <div class="controls-bar">
+        <span class="ctrl-label">Month</span>
+        <select class="month-select" id="month-select" onchange="renderAll()">
+            <option value="">All Time</option>
+        </select>
+        <div class="ctrl-sep"></div>
+        <input type="text" class="search-input" id="search-input"
+            placeholder="Search by name…" oninput="renderAll()">
+        <div class="ctrl-sep"></div>
+        <button class="refresh-btn" id="refresh-btn" onclick="loadData()">
+            <span id="refresh-icon">↻</span> Refresh
+        </button>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card"><div class="stat-lbl">Total Submissions</div><div class="stat-val c-cyan" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">This Month</div><div class="stat-val c-green" id="stat-month">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">People</div><div class="stat-val c-kf" id="stat-people">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">Items per Count</div><div class="stat-val c-orange" id="stat-items">—</div></div>
+    </div>
+
+    <!-- Content -->
+    <div class="state-msg" id="loading-state"><div class="icon">⏳</div>Loading submissions…</div>
+    <div class="state-msg" id="empty-state"><div class="icon">📭</div>No submissions match this filter.</div>
+    <div class="groups-list" id="groups-list"></div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, getDocs, orderBy, query }
+    from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const app = initializeApp({
+    apiKey:            'AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0',
+    authDomain:        'pingu-solar.firebaseapp.com',
+    projectId:         'pingu-solar',
+    storageBucket:     'pingu-solar.firebasestorage.app',
+    messagingSenderId: '232764952866',
+    appId:             '1:232764952866:web:5923b7f419de6355d6157b'
+});
+const db = getFirestore(app);
+
+window._allSubmissions = [];
+
+window.loadData = async function() {
+    const btn  = document.getElementById('refresh-btn');
+    const icon = document.getElementById('refresh-icon');
+    btn.disabled = true;
+    icon.style.animation = 'spin 0.8s linear infinite';
+    document.getElementById('loading-state').classList.add('show');
+    document.getElementById('empty-state').classList.remove('show');
+    document.getElementById('groups-list').innerHTML = '';
+
+    try {
+        const snap = await getDocs(query(collection(db, 'stocktake'), orderBy('submittedAt', 'desc')));
+        window._allSubmissions = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+        buildMonthFilter();
+        renderAll();
+    } catch(e) {
+        document.getElementById('groups-list').innerHTML =
+            `<div class="state-msg show"><div class="icon">⚠️</div>Error: ${esc(e.message)}</div>`;
+    } finally {
+        btn.disabled = false;
+        icon.style.animation = '';
+        document.getElementById('loading-state').classList.remove('show');
+    }
+};
+
+function buildMonthFilter() {
+    const months = new Set();
+    window._allSubmissions.forEach(s => {
+        const d = s.date || s.submittedAt?.slice(0,10) || '';
+        if (d) months.add(d.slice(0,7)); // YYYY-MM
+    });
+    const sel = document.getElementById('month-select');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All Time</option>';
+    Array.from(months).sort().reverse().forEach(m => {
+        const [y,mo] = m.split('-');
+        const label = new Date(+y, +mo-1, 1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+        const opt = document.createElement('option');
+        opt.value = m; opt.textContent = label;
+        if (m === cur) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
+window.renderAll = function() {
+    const monthFilter  = document.getElementById('month-select').value;
+    const searchFilter = document.getElementById('search-input').value.trim().toLowerCase();
+    const now          = new Date();
+    const curMonth     = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    // Filter submissions
+    let filtered = window._allSubmissions.filter(s => {
+        const d = s.date || s.submittedAt?.slice(0,10) || '';
+        if (monthFilter && !d.startsWith(monthFilter)) return false;
+        const name = (s.countedBy || '').toLowerCase();
+        if (searchFilter && !name.includes(searchFilter)) return false;
+        return true;
+    });
+
+    // Stats
+    const thisMonthCount = window._allSubmissions.filter(s => {
+        const d = s.date || s.submittedAt?.slice(0,10) || '';
+        return d.startsWith(curMonth);
+    }).length;
+    const allPeople = new Set(window._allSubmissions.map(s => (s.countedBy||'Unknown').trim()));
+    const avgItems  = filtered.length
+        ? Math.round(filtered.reduce((a,s) => a + (s.items?.length||0), 0) / filtered.length)
+        : 0;
+
+    document.getElementById('stat-total').textContent  = window._allSubmissions.length;
+    document.getElementById('stat-month').textContent  = thisMonthCount;
+    document.getElementById('stat-people').textContent = allPeople.size;
+    document.getElementById('stat-items').textContent  = avgItems || '—';
+
+    const listEl  = document.getElementById('groups-list');
+    const emptyEl = document.getElementById('empty-state');
+
+    if (!filtered.length) {
+        emptyEl.classList.add('show');
+        listEl.innerHTML = '';
+        return;
+    }
+    emptyEl.classList.remove('show');
+
+    // Group by person
+    const groups = {};
+    filtered.forEach(s => {
+        const name = (s.countedBy || 'Unknown').trim();
+        if (!groups[name]) groups[name] = [];
+        groups[name].push(s);
+    });
+
+    // Sort groups by most recent submission
+    const sortedGroups = Object.entries(groups).sort((a,b) => {
+        const da = a[1][0].submittedAt || a[1][0].date || '';
+        const db2 = b[1][0].submittedAt || b[1][0].date || '';
+        return db2.localeCompare(da);
+    });
+
+    listEl.innerHTML = sortedGroups.map(([name, subs], gi) => buildGroup(name, subs, gi)).join('');
+};
+
+function buildGroup(name, subs, gi) {
+    const initials = name.split(' ').map(w=>w[0]||'').join('').slice(0,2).toUpperCase();
+    const latest   = subs[0];
+    const latestDate = fmtDate(latest.date || latest.submittedAt?.slice(0,10));
+
+    const subsHtml = subs.map((s,si) => buildSubmission(s, si, name, gi)).join('');
+
+    return `
+    <div class="person-group" id="group-${gi}" style="animation-delay:${gi*0.07}s">
+        <div class="group-header" onclick="toggleGroup(${gi})">
+            <div class="group-header-left">
+                <div class="group-avatar">${esc(initials)}</div>
+                <div>
+                    <div class="group-name">${esc(name)}</div>
+                    <div class="group-sub">${subs.length} submission${subs.length!==1?'s':''}</div>
+                </div>
+            </div>
+            <div class="group-header-right">
+                <span class="sub-count-badge">${subs.length} count${subs.length!==1?'s':''}</span>
+                <span class="latest-badge">Latest: ${latestDate}</span>
+                <span class="chevron">▼</span>
+            </div>
+        </div>
+        <div class="submissions-wrap" id="wrap-${gi}">
+            ${subsHtml}
+        </div>
+    </div>`;
+}
+
+function buildSubmission(s, si, personName, gi) {
+    const date     = fmtDate(s.date || s.submittedAt?.slice(0,10));
+    const timeStr  = s.submittedAt ? fmtTime(s.submittedAt) : '';
+    const items    = Array.isArray(s.items) ? s.items : [];
+    const nonZero  = items.filter(i => i.quantity > 0).length;
+    const total    = items.length;
+
+    const rowsHtml = items.map(item => `
+        <tr>
+            <td>${esc(item.description)}</td>
+            <td class="qty ${item.quantity === 0 ? 'zero' : ''}">${item.quantity ?? 0}</td>
+        </tr>`).join('');
+
+    const id = `sub-${gi}-${si}`;
+
+    return `
+    <div class="submission-card" id="${id}">
+        <div class="submission-header" onclick="toggleSubmission('${id}')">
+            <div class="sub-header-left">
+                <span class="sub-date">📅 ${date}</span>
+                ${timeStr ? `<span class="sub-time">${timeStr}</span>` : ''}
+                <span class="sub-items-summary">${nonZero} / ${total} items with stock</span>
+            </div>
+            <span class="sub-chevron">▼</span>
+        </div>
+        <div class="submission-body">
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th style="text-align:center;width:90px">Quantity</th>
+                    </tr>
+                </thead>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+window.toggleGroup = function(gi) {
+    const group = document.getElementById(`group-${gi}`);
+    group.classList.toggle('open');
+};
+
+window.toggleSubmission = function(id) {
+    document.getElementById(id).classList.toggle('open');
+};
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(t) {
+    const d = document.createElement('div');
+    d.textContent = String(t ?? '');
+    return d.innerHTML;
+}
+
+function fmtDate(str) {
+    if (!str) return '—';
+    const d = new Date(str + (str.length === 10 ? 'T00:00:00' : ''));
+    return isNaN(d) ? str : d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+function fmtTime(iso) {
+    const d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => window.loadData());
+</script>
+</body>
+</html>
