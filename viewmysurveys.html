@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Surveys | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --kf: #B57BFF;
+            --shadow: rgba(255,107,53,0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.07) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0,217,255,0.07) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255,200,87,0.05) 0%, transparent 50%);
+            animation: bgFloat 22s ease-in-out infinite;
+            pointer-events: none; z-index: 0;
+        }
+        @keyframes bgFloat { 0%,100%{transform:translate(0,0);} 50%{transform:translate(25px,-20px);} }
+
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+        /* ── HEADER ── */
+        header { margin-bottom: 2.5rem; animation: slideDown 0.6s ease-out; }
+        @keyframes slideDown { from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:translateY(0);} }
+
+        .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+        .logo {
+            font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+            background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent));
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none;
+        }
+        .back-btn {
+            background:var(--dark-light); color:var(--text); text-decoration:none;
+            padding:0.65rem 1.3rem; border-radius:8px; font-size:0.85rem;
+            border:2px solid transparent; transition:all 0.2s;
+        }
+        .back-btn:hover { border-color:var(--accent); }
+
+        .page-title { font-family:'Syne',sans-serif; font-size:2.2rem; font-weight:800; }
+        .page-subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
+
+        /* ── WELCOME PILL ── */
+        .welcome-pill {
+            display:inline-flex; align-items:center; gap:0.6rem;
+            background:rgba(78,204,163,0.1); border:1px solid rgba(78,204,163,0.3);
+            color:var(--success); padding:0.45rem 1rem; border-radius:99px;
+            font-size:0.8rem; font-weight:600; margin-bottom:1.5rem;
+        }
+        .welcome-dot { width:7px; height:7px; border-radius:50%; background:var(--success); animation:pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.4;transform:scale(0.8);} }
+
+        /* ── STATS ── */
+        .stats-bar {
+            display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+            gap:0.9rem; margin-bottom:1.8rem;
+            animation: fadeUp 0.5s ease-out 0.1s both;
+        }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
+        .stat-card { background:var(--dark-light); border:2px solid var(--dark-lighter); border-radius:10px; padding:0.9rem 1.1rem; }
+        .stat-lbl { font-size:0.67rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:0.25rem; }
+        .stat-val { font-family:'Syne',sans-serif; font-size:1.7rem; font-weight:800; }
+        .c-cyan   { color:var(--accent); }
+        .c-green  { color:var(--success); }
+        .c-kf     { color:var(--kf); }
+        .c-orange { color:var(--secondary); }
+
+        /* ── FILTER BAR ── */
+        .filter-bar {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:12px; padding:0.9rem 1.2rem; margin-bottom:1.5rem;
+            display:flex; flex-wrap:wrap; gap:0.8rem; align-items:center;
+            animation: fadeUp 0.5s ease-out 0.15s both;
+        }
+        .filter-label { font-size:0.75rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
+        .filter-select, .filter-input {
+            background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+            color:var(--text); padding:0.45rem 0.85rem; border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.85rem; transition:border-color 0.2s;
+        }
+        .filter-select:focus, .filter-input:focus { outline:none; border-color:var(--accent); }
+        .filter-select option { background:var(--dark-lighter); }
+        .filter-input { flex:1; min-width:160px; }
+        .filter-input::placeholder { color:var(--text-dim); }
+        .filter-sep { width:1px; height:28px; background:var(--dark-lighter); flex-shrink:0; }
+
+        /* ── STATES ── */
+        .state-msg { text-align:center; padding:4rem 2rem; color:var(--text-dim); display:none; }
+        .state-msg.show { display:block; }
+        .state-msg .icon { font-size:3rem; margin-bottom:1rem; }
+
+        /* ── SURVEY CARDS ── */
+        .survey-list { display:flex; flex-direction:column; gap:1.1rem; }
+
+        .survey-card {
+            background:var(--dark-light); border:2px solid var(--dark-lighter);
+            border-radius:14px; overflow:hidden;
+            animation: fadeUp 0.4s ease-out both;
+            transition:border-color 0.2s;
+        }
+        .survey-card:hover { border-color:rgba(0,217,255,0.3); }
+
+        /* Card header — clickable */
+        .card-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:1.1rem 1.4rem; cursor:pointer; user-select:none;
+            gap:1rem; flex-wrap:wrap;
+            transition:background 0.15s;
+        }
+        .card-header:hover { background:rgba(255,255,255,0.02); }
+
+        .card-header-left { display:flex; align-items:center; gap:0.9rem; flex-wrap:wrap; }
+        .type-icon {
+            width:40px; height:40px; border-radius:10px; flex-shrink:0;
+            display:flex; align-items:center; justify-content:center; font-size:1.3rem;
+        }
+        .type-icon.battery-only     { background:rgba(0,217,255,0.12); }
+        .type-icon.battery-and-solar { background:rgba(255,200,87,0.12); }
+        .type-icon.unknown           { background:rgba(255,107,53,0.12); }
+
+        .card-meta { display:flex; flex-direction:column; gap:0.15rem; }
+        .card-job { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text); }
+        .card-date { font-size:0.78rem; color:var(--text-dim); }
+
+        .card-header-right { display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap; }
+
+        .type-badge {
+            padding:0.22rem 0.7rem; border-radius:20px; font-size:0.72rem; font-weight:700; white-space:nowrap;
+        }
+        .badge-battery-only      { background:rgba(0,217,255,0.12); color:var(--accent); border:1px solid rgba(0,217,255,0.3); }
+        .badge-battery-and-solar { background:rgba(255,200,87,0.12); color:var(--secondary); border:1px solid rgba(255,200,87,0.3); }
+
+        .chevron { color:var(--text-dim); font-size:0.8rem; transition:transform 0.25s ease; flex-shrink:0; }
+        .survey-card.open .chevron { transform:rotate(180deg); }
+
+        /* ── EXPANDABLE BODY ── */
+        .card-body {
+            max-height:0; overflow:hidden;
+            transition:max-height 0.35s ease;
+            border-top:0px solid var(--dark-lighter);
+        }
+        .survey-card.open .card-body {
+            max-height:9999px;
+            border-top-width:1px;
+        }
+
+        /* ── SECTIONS INSIDE CARD ── */
+        .section-block { padding:1.2rem 1.4rem; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .section-block:last-child { border-bottom:none; }
+
+        .section-title {
+            font-family:'Syne',sans-serif; font-size:0.78rem; font-weight:700;
+            color:var(--accent); text-transform:uppercase; letter-spacing:0.08em;
+            margin-bottom:0.9rem; display:flex; align-items:center; gap:0.4rem;
+        }
+
+        .fields-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:0.7rem; }
+        .field-item { display:flex; flex-direction:column; gap:0.2rem; }
+        .field-lbl { font-size:0.67rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.05em; }
+        .field-val { font-size:0.88rem; color:var(--text); }
+        .field-val.missing { color:var(--text-dim); font-style:italic; font-size:0.8rem; }
+
+        /* radio value colours */
+        .val-yes   { color:var(--success); font-weight:600; }
+        .val-no    { color:var(--error);   font-weight:600; }
+        .val-na    { color:var(--text-dim);}
+
+        /* materials list */
+        .materials-list { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.4rem; }
+        .material-item {
+            background:var(--dark-lighter); border-radius:6px;
+            padding:0.4rem 0.75rem; font-size:0.82rem; color:var(--kf);
+            border-left:3px solid var(--kf);
+        }
+        .no-materials { color:var(--text-dim); font-style:italic; font-size:0.82rem; }
+
+        /* photos grid */
+        .photos-grid { display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.4rem; }
+        .photo-thumb {
+            width:72px; height:72px; border-radius:6px; object-fit:cover;
+            border:2px solid var(--dark-lighter); transition:all 0.2s;
+            cursor:pointer;
+        }
+        .photo-thumb:hover { border-color:var(--accent); transform:scale(1.06); }
+        .photo-count { font-size:0.78rem; color:var(--text-dim); margin-top:0.25rem; }
+
+        /* ── LIGHTBOX ── */
+        .lightbox {
+            position:fixed; inset:0; background:rgba(0,0,0,0.92);
+            z-index:9000; display:none; align-items:center; justify-content:center;
+            padding:1rem; cursor:zoom-out;
+        }
+        .lightbox.show { display:flex; }
+        .lightbox img { max-width:92vw; max-height:88vh; border-radius:10px; object-fit:contain; }
+        .lightbox-close {
+            position:absolute; top:1.2rem; right:1.5rem;
+            background:none; border:none; color:white; font-size:2.5rem;
+            cursor:pointer; line-height:1; opacity:0.7;
+        }
+        .lightbox-close:hover { opacity:1; }
+
+        /* ── TOAST ── */
+        .toast {
+            position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(80px);
+            background:var(--dark-light); border:2px solid var(--success); color:var(--success);
+            padding:0.8rem 1.5rem; border-radius:10px; font-size:0.88rem; font-weight:600;
+            z-index:200; transition:transform 0.3s ease; pointer-events:none;
+        }
+        .toast.show { transform:translateX(-50%) translateY(0); }
+
+        @media(max-width:650px) {
+            .page-title { font-size:1.75rem; }
+            .fields-grid { grid-template-columns:1fr 1fr; }
+            .card-header { flex-direction:column; align-items:flex-start; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div class="header-row">
+            <a href="teamview.html" class="logo">Pingu - Solar</a>
+            <a href="teamview.html" class="back-btn">← Back to Dashboard</a>
+        </div>
+        <h1 class="page-title">📋 My Surveys</h1>
+        <p class="page-subtitle">All site surveys submitted under your name.</p>
+    </header>
+
+    <div class="welcome-pill">
+        <div class="welcome-dot"></div>
+        <span id="welcome-name">Loading…</span>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card"><div class="stat-lbl">Total</div><div class="stat-val c-cyan" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">Battery Only</div><div class="stat-val c-green" id="stat-bo">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">Battery & Solar</div><div class="stat-val c-orange" id="stat-bas">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">This Month</div><div class="stat-val c-kf" id="stat-month">—</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <span class="filter-label">Type</span>
+        <select class="filter-select" id="type-filter" onchange="renderSurveys()">
+            <option value="">All Types</option>
+            <option value="battery-only">Battery Only</option>
+            <option value="battery-and-solar">Battery &amp; Solar</option>
+        </select>
+        <div class="filter-sep"></div>
+        <span class="filter-label">Job</span>
+        <input type="text" class="filter-input" id="job-filter" placeholder="Filter by job number…" oninput="renderSurveys()">
+    </div>
+
+    <!-- Content -->
+    <div class="state-msg" id="loading-state"><div class="icon">⏳</div>Loading your surveys…</div>
+    <div class="state-msg" id="empty-state"><div class="icon">📭</div>No surveys match this filter.</div>
+    <div class="survey-list" id="survey-list"></div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightbox-img" src="" alt="Photo">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, collection, getDocs, query, where, orderBy }
+    from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const app = initializeApp({
+    apiKey:            'AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0',
+    authDomain:        'pingu-solar.firebaseapp.com',
+    projectId:         'pingu-solar',
+    storageBucket:     'pingu-solar.firebasestorage.app',
+    messagingSenderId: '232764952866',
+    appId:             '1:232764952866:web:5923b7f419de6355d6157b'
+});
+const db = getFirestore(app);
+
+// ── Resolve logged-in name from session ─────────────────────────────────────
+function getSessionName() {
+    // teamview.html stores session in localStorage under 'engineerSession' or similar.
+    // Try several common keys used across the Pingu app.
+    const keys = ['engineerSession', 'teamSession', 'userSession', 'session'];
+    for (const key of keys) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.name) return parsed.name.trim();
+        } catch {}
+    }
+    // Fallback: check sessionStorage
+    for (const key of keys) {
+        try {
+            const raw = sessionStorage.getItem(key);
+            if (!raw) continue;
+            const parsed = JSON.parse(raw);
+            if (parsed && parsed.name) return parsed.name.trim();
+        } catch {}
+    }
+    return null;
+}
+
+window._allSurveys = [];
+
+async function init() {
+    const name = getSessionName();
+
+    if (!name) {
+        // Not logged in — redirect to team login
+        window.location.replace('teamlogin.html');
+        return;
+    }
+
+    document.getElementById('welcome-name').textContent = `Signed in as ${name}`;
+    document.getElementById('loading-state').classList.add('show');
+
+    try {
+        // Query site-surveys where surveyor matches the logged-in name (case-insensitive via two passes)
+        const snap = await getDocs(
+            query(collection(db, 'site-surveys'), orderBy('submittedAt', 'desc'))
+        );
+
+        const nameLower = name.toLowerCase();
+        window._allSurveys = snap.docs
+            .map(d => ({ _id: d.id, ...d.data() }))
+            .filter(s => {
+                // surveyor field lives directly or inside sections.surveyDetails
+                const sv =
+                    (s.surveyor ||
+                     s.sections?.surveyDetails?.surveyor ||
+                     s.sections?.surveyDetails?.conductedBy ||
+                     '').trim().toLowerCase();
+                return sv === nameLower;
+            });
+
+        updateStats();
+        renderSurveys();
+    } catch(e) {
+        document.getElementById('survey-list').innerHTML =
+            `<div class="state-msg show"><div class="icon">⚠️</div>Error loading surveys: ${esc(e.message)}</div>`;
+    } finally {
+        document.getElementById('loading-state').classList.remove('show');
+    }
+}
+
+function updateStats() {
+    const s = window._allSurveys;
+    const now = new Date();
+    const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    const thisMonth = s.filter(x => (x.submittedAt||'').startsWith(curMonth)).length;
+
+    document.getElementById('stat-total').textContent  = s.length;
+    document.getElementById('stat-bo').textContent     = s.filter(x=>x.surveyType==='battery-only').length;
+    document.getElementById('stat-bas').textContent    = s.filter(x=>x.surveyType==='battery-and-solar').length;
+    document.getElementById('stat-month').textContent  = thisMonth;
+}
+
+window.renderSurveys = function() {
+    const typeFilter = document.getElementById('type-filter').value;
+    const jobFilter  = document.getElementById('job-filter').value.trim().toLowerCase();
+
+    let filtered = window._allSurveys.filter(s => {
+        if (typeFilter && s.surveyType !== typeFilter) return false;
+        if (jobFilter && !(s.jobNumber||'').toLowerCase().includes(jobFilter)) return false;
+        return true;
+    });
+
+    const listEl  = document.getElementById('survey-list');
+    const emptyEl = document.getElementById('empty-state');
+
+    if (!filtered.length) {
+        emptyEl.classList.add('show');
+        listEl.innerHTML = '';
+        return;
+    }
+    emptyEl.classList.remove('show');
+    listEl.innerHTML = filtered.map((s, i) => buildCard(s, i)).join('');
+};
+
+// ── Card builder ─────────────────────────────────────────────────────────────
+function buildCard(s, i) {
+    const type      = s.surveyType || 'unknown';
+    const typeLabel = type === 'battery-only' ? 'Battery Only' : type === 'battery-and-solar' ? 'Battery & Solar' : 'Unknown';
+    const typeIcon  = type === 'battery-only' ? '🔋' : type === 'battery-and-solar' ? '☀️' : '📋';
+    const badgeCls  = type === 'battery-only' ? 'badge-battery-only' : type === 'battery-and-solar' ? 'badge-battery-and-solar' : '';
+    const submitted = s.submittedAt ? fmtDatetime(s.submittedAt) : '—';
+    const sec       = s.sections || {};
+
+    const id = `card-${i}`;
+
+    return `
+    <div class="survey-card" id="${id}" style="animation-delay:${i*0.06}s">
+        <div class="card-header" onclick="toggleCard('${id}')">
+            <div class="card-header-left">
+                <div class="type-icon ${type}">
+                    ${typeIcon}
+                </div>
+                <div class="card-meta">
+                    <div class="card-job">Job #${esc(s.jobNumber || '—')}</div>
+                    <div class="card-date">📅 ${submitted}</div>
+                </div>
+            </div>
+            <div class="card-header-right">
+                <span class="type-badge ${badgeCls}">${typeLabel}</span>
+                <span class="chevron">▼</span>
+            </div>
+        </div>
+        <div class="card-body">
+            ${buildCardBody(s, sec, type)}
+        </div>
+    </div>`;
+}
+
+function buildCardBody(s, sec, type) {
+    const sd = sec.surveyDetails || {};
+    const el = sec.electricalSystem || {};
+    const am = sec.additionalMaterials || [];
+    let html = '';
+
+    // ── Survey Details ─────────────────────────────────────
+    html += `<div class="section-block">
+        <div class="section-title">📅 Survey Details</div>
+        <div class="fields-grid">
+            ${field('Conducted On', fmtDatetime(sd.conductedOn || sd.conducted_on || ''))}
+            ${field('Customer Present', radioVal(sd.customerPresent))}
+            ${field('Risk Assessment', radioVal(sec.riskAssessment?.riskAssessmentDone))}
+        </div>
+    </div>`;
+
+    // ── Electrical System ──────────────────────────────────
+    html += `<div class="section-block">
+        <div class="section-title">⚡ Electrical System</div>
+        <div class="fields-grid">
+            ${field('Meter Position',   el.meterPosition)}
+            ${field('Meter Work Needed',el.meterWorkNeeded)}
+            ${el.meterWorkDetails ? field('Meter Work Details', el.meterWorkDetails) : ''}
+            ${field('Fuse Rating',       el.fuseRating)}
+            ${field('Earthing System',   el.earthingSystem)}
+            ${field('Gas Bonded',        radioVal(el.gasBonded))}
+            ${el.gasBondingEquipment ? field('Gas Bonding Equip.',el.gasBondingEquipment) : ''}
+            ${field('Water Bonded',      radioVal(el.waterBonded))}
+            ${el.waterBondingEquipment ? field('Water Bonding Equip.',el.waterBondingEquipment) : ''}
+            ${field('Cable Run',         el.cableRun)}
+            ${field('Cable Run Length',  el.cableRunLength != null ? el.cableRunLength + ' m' : null)}
+            ${field('Battery Location',  el.batteryLocation)}
+            ${field('Surface Type',      el.surfaceType)}
+            ${(el.batteryWidth || el.batteryDepth || el.batteryLength)
+                ? field('Dimensions (W/D/L)',`${el.batteryWidth||0} / ${el.batteryDepth||0} / ${el.batteryLength||0} mm`)
+                : ''}
+            ${field('Render / Cladding', el.renderCladding)}
+            ${field('WiFi Signal',       el.wifiSignal)}
+        </div>
+        ${photoRow('Meter Position Photos',  el.meterPositionPhotos)}
+        ${photoRow('Earthing System Photos', el.earthingSystemPhotos)}
+        ${photoRow('Cable Run Photos',       el.cableRunPhotos)}
+        ${photoRow('Battery Location Photos',el.batteryLocationPhotos)}
+        ${photoRow('Surface Photos',         el.surfacePhotos)}
+    </div>`;
+
+    // ── Battery & Solar extra sections ─────────────────────
+    if (type === 'battery-and-solar') {
+        const pi = sec.propertyInternal || {};
+        const pe = sec.propertyExternal || {};
+        const sc = sec.scaffolding || {};
+
+        html += `<div class="section-block">
+            <div class="section-title">🏠 Property (Internal)</div>
+            <div class="fields-grid">
+                ${field('Loft Accessible', radioVal(pi.loftAccessible))}
+                ${field('Loft Ladder',     radioVal(pi.loftLadder))}
+                ${field('Loft Boarded',    radioVal(pi.loftBoarded))}
+                ${field('Asbestos',        radioVal(pi.asbestos))}
+                ${field('Rafter W/D',      pi.rafterWidth!=null ? `${pi.rafterWidth} / ${pi.rafterDepth} mm` : null)}
+                ${field('Web W/D/L',       pi.webWidth!=null ? `${pi.webWidth} / ${pi.webDepth} / ${pi.webLength} mm` : null)}
+                ${field('Truss Spacing',   pi.trussSpacing!=null ? pi.trussSpacing+' mm' : null)}
+                ${field('Deflection',      radioVal(pi.deflection))}
+                ${field('Rot / Damage',    radioVal(pi.rotDamage))}
+                ${field('Roof Concern',    radioVal(pi.roofConcern))}
+                ${field('Dwarf Walls',     radioVal(pi.dwarfWalls))}
+                ${field('Structural Work', radioVal(pi.structuralWork))}
+            </div>
+            ${photoRow('Loft Space Photos', pi.loftSpacePhotos)}
+        </div>`;
+
+        html += `<div class="section-block">
+            <div class="section-title">🏗️ Property (External)</div>
+            <div class="fields-grid">
+                ${field('Proposed Design Fits', radioVal(pe.proposedDesignFit))}
+                ${pe.proposedDesignReasonWhyNot ? field('Design Reason', pe.proposedDesignReasonWhyNot) : ''}
+                ${field('Roof Covering',   pe.roofCovering)}
+                ${field('No. of Stories',  pe.numberStories)}
+                ${field('Roof Condition',  pe.roofCondition)}
+                ${field('Roof Work Age',   pe.roofWorkAge != null ? pe.roofWorkAge+' yrs ago' : null)}
+                ${field('Roof Obstructions', radioVal(pe.roofObstructions))}
+                ${pe.obstructionsDescription ? field('Obstruction Detail', pe.obstructionsDescription) : ''}
+                ${field('Shading',         radioVal(pe.roofShading))}
+            </div>
+            ${photoRow('Property Photos',       pe.propertyPhotos)}
+            ${photoRow('Roof Covering Photos',  pe.roofCoveringPhotos)}
+            ${photoRow('Roof Condition Photos', pe.roofConditionPhotos)}
+        </div>`;
+
+        html += `<div class="section-block">
+            <div class="section-title">🔧 Scaffolding</div>
+            <div class="fields-grid">
+                ${field('Access Type',         sc.accessType)}
+                ${field('Parking Available',   radioVal(sc.parkingAvailable))}
+                ${field('Overhead Powerlines', radioVal(sc.overheadPowerlines))}
+                ${field('On Pavement/Highway', radioVal(sc.propertyOnPavement))}
+                ${field('Ground Type',         sc.groundType)}
+                ${field('Access Issues',       sc.accessIssues)}
+                ${field('Gutter Obstacles',    radioVal(sc.gutterObstacles))}
+                ${sc.gutterObstaclesDescription ? field('Obstacle Detail', sc.gutterObstaclesDescription) : ''}
+                ${sc.lowerRoofs ? field('Lower Roofs', sc.lowerRoofs) : ''}
+            </div>
+            ${photoRow('Ground Type Photos', sc.groundTypePhotos)}
+        </div>`;
+    }
+
+    // ── Additional Materials ───────────────────────────────
+    html += `<div class="section-block">
+        <div class="section-title">🛠️ Additional Materials Requested</div>
+        ${am.length
+            ? `<div class="materials-list">${am.map(m => `<div class="material-item">${esc(m)}</div>`).join('')}</div>`
+            : `<div class="no-materials">None requested</div>`}
+    </div>`;
+
+    // ── Customer Sign-off ──────────────────────────────────
+    const signoff = sec.customerSignOff || {};
+    if (signoff.name || signoff.date) {
+        html += `<div class="section-block">
+            <div class="section-title">✍️ Customer Sign-off</div>
+            <div class="fields-grid">
+                ${field('Customer Name', signoff.name)}
+                ${field('Sign-off Date', fmtDate(signoff.date))}
+            </div>
+        </div>`;
+    }
+
+    return html;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function field(label, value) {
+    const hasVal = value !== null && value !== undefined && value !== '';
+    return `<div class="field-item">
+        <div class="field-lbl">${label}</div>
+        <div class="field-val ${hasVal?'':' missing'}">${hasVal ? esc(String(value)) : 'Not recorded'}</div>
+    </div>`;
+}
+
+function radioVal(v) {
+    if (!v) return null;
+    const map = { Yes:'<span class="val-yes">Yes</span>', No:'<span class="val-no">No</span>', 'N/A':'<span class="val-na">N/A</span>' };
+    return map[v] || v;
+}
+
+// override field to allow raw HTML for radioVal
+function field(label, value) {
+    const hasVal = value !== null && value !== undefined && value !== '';
+    // value might already contain HTML (from radioVal)
+    const display = hasVal
+        ? (typeof value === 'string' && value.includes('<') ? value : esc(String(value)))
+        : 'Not recorded';
+    return `<div class="field-item">
+        <div class="field-lbl">${label}</div>
+        <div class="field-val${hasVal?'':' missing'}">${display}</div>
+    </div>`;
+}
+
+function photoRow(label, urls) {
+    if (!Array.isArray(urls) || !urls.length) return '';
+    const thumbs = urls.map(u =>
+        `<img class="photo-thumb" src="${esc(u)}" alt="Photo" onclick="openLightbox('${esc(u)}')" loading="lazy">`
+    ).join('');
+    return `<div style="margin-top:0.8rem">
+        <div class="field-lbl" style="margin-bottom:0.4rem">${label}</div>
+        <div class="photos-grid">${thumbs}</div>
+        <div class="photo-count">${urls.length} photo${urls.length!==1?'s':''}</div>
+    </div>`;
+}
+
+function esc(t) {
+    const d = document.createElement('div');
+    d.textContent = String(t ?? '');
+    return d.innerHTML;
+}
+
+function fmtDatetime(str) {
+    if (!str) return '—';
+    const d = new Date(str);
+    return isNaN(d) ? str : d.toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function fmtDate(str) {
+    if (!str) return '—';
+    const d = new Date(str + (str.length===10?'T00:00:00':''));
+    return isNaN(d) ? str : d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+
+// ── Interactions ──────────────────────────────────────────────────────────────
+window.toggleCard = function(id) {
+    document.getElementById(id).classList.toggle('open');
+};
+
+window.openLightbox = function(url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox').classList.add('show');
+};
+window.closeLightbox = function() {
+    document.getElementById('lightbox').classList.remove('show');
+    document.getElementById('lightbox-img').src = '';
+};
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
