@@ -784,28 +784,31 @@ window.submitApproval = async function (id) {
     }
 
     // ── EmailJS ───────────────────────────────────────────────────────────────
-    const approvedListText = approvedMats.length
-        ? approvedMats.map(m => `• ${m.category}: ${m.name} × ${m.qty}`).join('\n')
-        : 'None approved.';
-    const deniedListText = deniedMats.length
-        ? deniedMats.map(m => `• ${m.name}`).join('\n')
-        : 'None denied.';
+    // Skip email entirely if every item was denied
+    if (approvedMats.length === 0) {
+        showToast('All items denied — saved to Firestore, no email sent.');
+    } else {
+        const approvedListText = approvedMats.map(m => `• ${m.category}: ${m.name} × ${m.qty}`).join('\n');
+        const deniedListText = deniedMats.length
+            ? deniedMats.map(m => `• ${m.name}`).join('\n')
+            : 'None denied.';
 
-    try {
-        await emailjs.send('service_jovorbh', 'template_0uhapew', {
-            job_number:        jobNum,
-            customer_name:     custName,
-            address:           address,
-            install_date:      install,
-            approved_materials: approvedListText,
-            denied_materials:   deniedListText,
-            surveyor:          survey.sections?.surveyDetails?.surveyor || '—',
-            survey_type:       survey.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only',
-        });
-        showToast('Approval submitted & email sent!');
-    } catch (e) {
-        // Email failed but Firestore saved — still mark approved
-        showToast('Saved to Firestore, but email failed: ' + e.message, true);
+        try {
+            await emailjs.send('service_jovorbh', 'template_0uhapew', {
+                job_number:         jobNum,
+                customer_name:      custName,
+                address:            address,
+                install_date:       install,
+                approved_materials: approvedListText,
+                denied_materials:   deniedListText,
+                surveyor:           survey.sections?.surveyDetails?.surveyor || '—',
+                survey_type:        survey.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only',
+            });
+            showToast('Approval submitted & email sent!');
+        } catch (e) {
+            // Email failed but Firestore saved — still mark approved
+            showToast('Saved to Firestore, but email failed: ' + e.message, true);
+        }
     }
 
     // Update local state so card flips to approved
