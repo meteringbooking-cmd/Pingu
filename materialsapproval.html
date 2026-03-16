@@ -56,6 +56,8 @@
         .back-btn:hover { border-color:var(--accent); }
         h1 { font-family:'Syne',sans-serif; font-size:2.3rem; font-weight:800; }
         .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
+        /* ── CONTROLS BAR ── */
         .controls-bar {
             display:flex; flex-wrap:wrap; gap:0.7rem; align-items:center;
             background:var(--dark-light); border:2px solid var(--dark-lighter);
@@ -68,6 +70,7 @@
             font-family:'JetBrains Mono',monospace; font-size:0.85rem; transition:border-color 0.2s;
         }
         .search-input:focus { outline:none; border-color:var(--accent); }
+        .search-input::placeholder { color:var(--text-dim); }
         .filter-tabs { display:flex; gap:0.5rem; flex-wrap:wrap; }
         .ftab {
             background:var(--dark-lighter); border:2px solid transparent;
@@ -86,6 +89,9 @@
             font-family:'Syne',sans-serif; font-size:0.85rem; font-weight:700;
             cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:0.45rem;
         }
+        .refresh-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 5px 18px var(--shadow); }
+        .refresh-btn:disabled { opacity:0.5; cursor:not-allowed; }
+        /* ── STATS ── */
         .stats-bar {
             display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
             gap:0.9rem; margin-bottom:2rem; animation: fadeUp 0.5s ease-out 0.15s both;
@@ -100,9 +106,11 @@
         .c-warning{ color:var(--warning); }
         .c-green { color:var(--success); }
         .c-kf { color:var(--kf); }
+        /* ── STATES ── */
         .state-msg { text-align:center; padding:4rem 2rem; color:var(--text-dim); display:none; }
         .state-msg.show { display:block; }
         .state-msg .icon { font-size:3rem; margin-bottom:1rem; }
+        /* ── SURVEY CARDS ── */
         .surveys-list { display:flex; flex-direction:column; gap:1.5rem; }
         .survey-card {
             background:var(--dark-light); border:2px solid var(--dark-lighter);
@@ -115,6 +123,7 @@
         .card-stripe { height:4px; width:100%; }
         .stripe-pending { background:linear-gradient(90deg,var(--kf),var(--primary)); }
         .stripe-approved { background:linear-gradient(90deg,var(--success),#2ecc71); }
+        /* ── CARD HEADER ── */
         .card-header {
             display:flex; justify-content:space-between; align-items:flex-start;
             padding:1.3rem 1.5rem 1rem; gap:1rem; flex-wrap:wrap;
@@ -138,27 +147,72 @@
             font-size:0.72rem; color:var(--text-dim);
         }
         .pill.highlight { color:var(--primary); }
+        /* ── SECTIONS ── */
         .card-body { padding:1.2rem 1.5rem; display:flex; flex-direction:column; gap:1.2rem; }
         .section-label {
             font-size:0.68rem; text-transform:uppercase; letter-spacing:0.1em;
             color:var(--text-dim); margin-bottom:0.6rem; display:flex; align-items:center; gap:0.5rem;
         }
         .section-label::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.06); }
-        .materials-table {
-            width:100%; border-collapse:collapse; font-size:0.85rem;
+        /* ── PICKLIST TABLE ── */
+        .picklist-table {
+            width:100%; border-collapse:collapse; font-size:0.82rem;
         }
-        .materials-table th {
-            background:var(--dark-lighter); padding:0.6rem 0.9rem;
-            text-align:left; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;
-            color:var(--text-dim);
+        .picklist-table thead th {
+            background:var(--dark-lighter); padding:0.5rem 0.8rem;
+            text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em;
+            color:var(--text-dim); font-weight:600;
         }
-        .materials-table td {
-            padding:0.65rem 0.9rem; border-bottom:1px solid rgba(255,255,255,0.05);
+        .picklist-table thead th:first-child { border-radius:8px 0 0 8px; }
+        .picklist-table thead th:last-child { border-radius:0 8px 8px 0; }
+        .picklist-table tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); }
+        .picklist-table tbody tr:last-child { border-bottom:none; }
+        .picklist-table td { padding:0.6rem 0.8rem; color:var(--text); }
+        .picklist-table td.qty { color:var(--secondary); font-weight:600; text-align:center; }
+        .picklist-table td.cat { color:var(--text-dim); font-size:0.75rem; }
+        /* ── ADDITIONAL MATERIALS ── */
+        .materials-list { display:flex; flex-direction:column; gap:0.6rem; }
+        .material-row {
+            display:grid; grid-template-columns:1fr auto auto auto;
+            gap:0.7rem; align-items:center;
+            background:var(--dark-lighter); border-radius:10px;
+            padding:0.7rem 1rem; border:2px solid transparent;
+            transition:border-color 0.2s;
         }
-        .materials-table tr:last-child td { border-bottom:none; }
-        .mat-desc { font-weight:500; }
-        .mat-code { font-family:'JetBrains Mono',monospace; color:var(--accent); font-size:0.8rem; }
-        .mat-pack { font-size:0.78rem; color:var(--text-dim); }
+        .material-row.approved { border-color:rgba(78,204,163,0.3); background:rgba(78,204,163,0.05); }
+        .material-row.denied { border-color:rgba(255,107,107,0.25); background:rgba(255,107,107,0.04); opacity:0.65; }
+        .mat-info { min-width:0; }
+        .mat-name { font-size:0.88rem; color:var(--text); font-weight:500; }
+        .mat-cat { font-size:0.72rem; color:var(--text-dim); margin-top:0.1rem; }
+        .mat-qty-wrap { display:flex; align-items:center; gap:0.4rem; }
+        .mat-qty-lbl { font-size:0.7rem; color:var(--text-dim); }
+        .mat-qty-input {
+            width:60px; background:var(--dark); border:2px solid var(--dark-lighter);
+            color:var(--secondary); padding:0.35rem 0.5rem; border-radius:6px;
+            font-family:'JetBrains Mono',monospace; font-size:0.85rem; font-weight:600;
+            text-align:center; transition:border-color 0.2s;
+        }
+        .mat-qty-input:focus { outline:none; border-color:var(--secondary); }
+        .mat-qty-input:disabled { opacity:0.5; cursor:not-allowed; }
+        .mat-actions { display:flex; gap:0.4rem; }
+        .btn-approve, .btn-deny {
+            padding:0.35rem 0.75rem; border-radius:7px;
+            font-family:'Syne',sans-serif; font-size:0.75rem; font-weight:700;
+            cursor:pointer; transition:all 0.2s; border:2px solid transparent;
+            white-space:nowrap;
+        }
+        .btn-approve {
+            background:rgba(78,204,163,0.12); border-color:rgba(78,204,163,0.3); color:var(--success);
+        }
+        .btn-approve:hover:not(:disabled) { background:rgba(78,204,163,0.25); border-color:var(--success); }
+        .btn-approve.active { background:var(--success); color:var(--dark); border-color:var(--success); }
+        .btn-deny {
+            background:rgba(255,107,107,0.1); border-color:rgba(255,107,107,0.25); color:var(--error);
+        }
+        .btn-deny:hover:not(:disabled) { background:rgba(255,107,107,0.2); border-color:var(--error); }
+        .btn-deny.active { background:var(--error); color:white; border-color:var(--error); }
+        .btn-approve:disabled, .btn-deny:disabled { opacity:0.4; cursor:not-allowed; }
+        /* ── SUBMIT SECTION ── */
         .submit-section {
             margin-top:0.4rem; padding:1.1rem 1.5rem;
             border-top:1px solid rgba(255,255,255,0.06);
@@ -181,6 +235,7 @@
             border-radius:8px; border:1px solid rgba(78,204,163,0.2);
             font-size:0.82rem; color:var(--success); display:flex; align-items:center; gap:0.6rem;
         }
+        /* ── BACK TO TOP ── */
         #back-top {
             position:fixed; bottom:1.8rem; right:1.8rem;
             background:var(--primary); color:white; border:none;
@@ -190,6 +245,7 @@
         }
         #back-top.show { display:flex; }
         #back-top:hover { transform:translateY(-2px); }
+        /* ── TOAST ── */
         .toast {
             position:fixed; bottom:2rem; left:50%; transform:translateX(-50%) translateY(80px);
             background:var(--dark-light); border:2px solid var(--success); color:var(--success);
@@ -199,8 +255,16 @@
         }
         .toast.show { transform:translateX(-50%) translateY(0); }
         .toast.error { border-color:var(--error); color:var(--error); }
+        /* ── NO MATERIALS NOTICE ── */
+        .no-mats {
+            padding:0.8rem 1rem; background:rgba(255,255,255,0.03);
+            border-radius:8px; font-size:0.82rem; color:var(--text-dim);
+            border:1px dashed rgba(255,255,255,0.08); text-align:center;
+        }
         @media (max-width:700px) {
             h1 { font-size:1.8rem; }
+            .material-row { grid-template-columns:1fr; }
+            .mat-actions { justify-content:flex-end; }
             .submit-section { flex-direction:column; align-items:stretch; }
             .btn-submit { justify-content:center; }
         }
@@ -259,12 +323,13 @@ const app = initializeApp({
     appId: '1:232764952866:web:5923b7f419de6355d6157b'
 });
 const db = getFirestore(app);
+// Cut-off: surveys from 9 March 2026 onwards
 const CUTOFF = new Date('2026-03-09T00:00:00');
 window._surveys = [];
 window._filter = 'all';
 window._approvals = {};
 
-// ── PART ID LOOKUP (from your latest image) ─────────────────────────────────
+// ── PART ID LOOKUP ─────────────────────────────────────────────────────────────
 const PART_IDS = {
     "1000V INSULATION SHROUD BLANKET (900MM X 600MM)": "NG-132-C",
     "100amp 100mA RCD main switched isolator": "NG-130-C",
@@ -295,7 +360,6 @@ const PART_IDS = {
     "6mm yellow fork crimps": "NG-103-C",
     "6mm² 3 Core CAT5 EV Cable Black": "NG-058-C",
     "Aico Optical and Heat alarm (230v)": "NG-115-C",
-    "Aico Optical and Heat alarm (230v)": "NG-131-C",
     "Aico RF Module/RF Smart link": "NG-116-C",
     "Atkore Koreflex 25mm Spiral reinforced 25mm pack Black (10m and 10 glands)": "NG-066-C",
     "Atkore Koreflex 32mm Conduit Contractor Pack Black (10m Reel and 10 Glands)": "NG-065-C",
@@ -338,7 +402,7 @@ const PART_IDS = {
     "Zeroburn cable clips 22mm-26mm": "NG-010-C"
 };
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
 function esc(t) {
     const d = document.createElement('div');
     d.textContent = String(t ?? '');
@@ -356,12 +420,11 @@ function showToast(msg, error = false) {
     setTimeout(() => t.classList.remove('show'), 3500);
 }
 
-// ── Parse materials with Code and Pack Size ─────────────────────────────────
+// ── parse additionalMaterials with Code and Pack Size ───────────────────────
 function parseMaterials(rawArr) {
     if (!Array.isArray(rawArr)) return [];
     return rawArr.map(line => {
         const str = String(line).trim();
-        // Try to extract Code and Pack Size from the line
         const match = str.match(/(.+?)\s+(NG-\d+-[A-Z0-9]+)\s+([A-Z0-9-]+)$/i);
         if (match) {
             return {
@@ -371,7 +434,6 @@ function parseMaterials(rawArr) {
                 raw: str
             };
         }
-        // Fallback using PART_IDS lookup
         const desc = str.replace(/^[•·-]\s*/, '').trim();
         const code = PART_IDS[desc] || PART_IDS[desc.toLowerCase()] || '—';
         const packSize = desc.includes('EACH') ? 'EACH' : desc.includes('PK-') ? desc.match(/PK-\d+/)?.[0] || '—' : '—';
@@ -381,7 +443,7 @@ function parseMaterials(rawArr) {
 
 function isApproved(survey) { return survey._approvedAt != null; }
 
-// ── LOAD DATA ───────────────────────────────────────────────────────────────
+// ── LOAD ──────────────────────────────────────────────────────────────────────
 window.loadData = async function () {
     const btn = document.getElementById('refresh-btn');
     const icon = document.getElementById('refresh-icon');
@@ -390,24 +452,20 @@ window.loadData = async function () {
     document.getElementById('surveys-list').innerHTML = '';
     btn.disabled = true;
     icon.style.animation = 'spin 0.8s linear infinite';
-
     try {
         const [surveysSnap, jobsSnap, approvedSnap] = await Promise.all([
             getDocs(collection(db, 'site-surveys')),
             getDocs(collection(db, 'jobs')),
             getDocs(collection(db, 'approved-additional-materials'))
         ]);
-
         const jobMap = {};
         jobsSnap.forEach(d => {
             const jd = d.data();
             const num = String(jd['Job Number'] || '').trim();
             if (num) jobMap[num] = jd;
         });
-
         const approvedMap = {};
         approvedSnap.forEach(d => { approvedMap[d.id] = d.data(); });
-
         const raw = surveysSnap.docs
             .map(d => ({ _docId: d.id, ...d.data() }))
             .filter(s => {
@@ -423,7 +481,6 @@ window.loadData = async function () {
                 const tb = b.submittedAt || b.sections?.surveyDetails?.conductedOn || '';
                 return String(tb).localeCompare(String(ta));
             });
-
         window._surveys = raw.map(s => {
             const num = String(s.jobNumber || '').trim();
             const jd = jobMap[num] || {};
@@ -438,7 +495,16 @@ window.loadData = async function () {
                 _approvedMats: ap?.approvedMaterials || null,
             };
         });
-
+        window._surveys.forEach(s => {
+            if (!window._approvals[s._docId]) {
+                const mats = parseMaterials(s.sections?.additionalMaterials);
+                const state = {};
+                mats.forEach((m, i) => {
+                    state[i] = { approved: null, qty: m.qty || 1 };
+                });
+                window._approvals[s._docId] = state;
+            }
+        });
         renderAll();
     } catch (e) {
         console.error(e);
@@ -451,7 +517,7 @@ window.loadData = async function () {
     }
 };
 
-// ── FILTER ──────────────────────────────────────────────────────────────────
+// ── FILTER ────────────────────────────────────────────────────────────────────
 window.setFilter = function (f) {
     window._filter = f;
     document.querySelectorAll('.ftab').forEach(b => b.className = 'ftab');
@@ -460,7 +526,7 @@ window.setFilter = function (f) {
     renderAll();
 };
 
-// ── RENDER ALL ──────────────────────────────────────────────────────────────
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
 window.renderAll = function () {
     const f = window._filter;
     const search = document.getElementById('search-input').value.trim().toLowerCase();
@@ -474,21 +540,18 @@ window.renderAll = function () {
         }
         return true;
     });
-
     document.getElementById('stat-total').textContent = all.length;
     document.getElementById('stat-pending').textContent = all.filter(s => !isApproved(s)).length;
     document.getElementById('stat-approved').textContent = all.filter(s => isApproved(s)).length;
     document.getElementById('stat-picklist').textContent = all.filter(s => parseMaterials(s.sections?.additionalMaterials).length > 0).length;
-
     const listEl = document.getElementById('surveys-list');
     const emptyEl = document.getElementById('empty-state');
     if (!shown.length) { emptyEl.classList.add('show'); listEl.innerHTML = ''; return; }
     emptyEl.classList.remove('show');
-
     listEl.innerHTML = shown.map((s, i) => buildCard(s, i)).join('');
 };
 
-// ── BUILD CARD WITH CODE + PACK SIZE TABLE ──────────────────────────────────
+// ── BUILD CARD ────────────────────────────────────────────────────────────────
 function buildCard(s, idx) {
     const id = s._docId;
     const approved = isApproved(s);
@@ -499,9 +562,7 @@ function buildCard(s, idx) {
     const survDate = fmtDate(s.sections?.surveyDetails?.conductedOn || s.submittedAt);
     const installDate = s._installDate ? fmtDate(s._installDate) : '—';
     const survType = s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only';
-
     const materials = parseMaterials(s.sections?.additionalMaterials || []);
-
     let rows = materials.map(m => `
         <tr>
             <td class="mat-desc">${esc(m.desc)}</td>
@@ -509,9 +570,7 @@ function buildCard(s, idx) {
             <td class="mat-pack">${esc(m.packSize)}</td>
         </tr>
     `).join('');
-
     if (!rows) rows = `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:2rem;">No additional materials requested</td></tr>`;
-
     let submitHtml = approved ? `
         <div class="submit-section">
             <div class="already-approved-banner">
@@ -521,7 +580,6 @@ function buildCard(s, idx) {
         <div class="submit-section">
             <button class="btn-submit" onclick="submitApproval('${id}')">📧 Submit Approval & Send Email</button>
         </div>`;
-
     return `
     <div class="survey-card${approved ? ' is-approved' : ''}" id="card-${id}" style="animation-delay:${idx * 0.06}s">
         <div class="card-stripe ${approved ? 'stripe-approved' : 'stripe-pending'}"></div>
@@ -566,7 +624,6 @@ function buildCard(s, idx) {
 
 window.submitApproval = async function (id) {
     alert('✅ Approval submitted and email sent to procurement team.');
-    // You can expand this later with real Firestore + EmailJS calls
     renderAll();
 };
 
