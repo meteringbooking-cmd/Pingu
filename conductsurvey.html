@@ -263,6 +263,51 @@
         }
         .pl-loading { padding: 1rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
 
+        /* ── PDF RIPPER PANEL ─────────────────────────────── */
+        .ripper-panel {
+            display: none; margin-bottom: 2rem; padding: 1.8rem;
+            background: var(--dark-lighter); border-radius: 14px;
+            border: 2px solid rgba(0,217,255,0.25); animation: fadeInUp 0.6s ease-out;
+        }
+        .ripper-panel.show { display: block; }
+        .ripper-panel-header {
+            font-family: 'Syne', sans-serif; font-size: 1.3rem; color: var(--accent);
+            margin-bottom: 1.5rem; padding-bottom: 0.5rem;
+            border-bottom: 2px solid rgba(0,217,255,0.2);
+            display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+        }
+        .ripper-panel-header .rp-saved-at {
+            font-size: 0.8rem; color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace; margin-left: auto;
+        }
+        .ripper-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+        .ripper-tab {
+            padding: 0.45rem 1rem; border-radius: 8px; border: 2px solid var(--dark);
+            background: var(--dark); color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .ripper-tab:hover { border-color: var(--accent); color: var(--accent); }
+        .ripper-tab.active { border-color: var(--accent); color: var(--accent); background: rgba(0,217,255,0.08); }
+        .ripper-tab-content { display: none; }
+        .ripper-tab-content.active { display: block; animation: fadeInUp 0.3s ease; }
+        .ripper-address-block {
+            font-family: 'Syne', sans-serif; font-size: 1.1rem; line-height: 1.9;
+            color: var(--text); padding: 1rem 1.2rem;
+            background: var(--dark); border-radius: 10px;
+            border-left: 4px solid var(--accent);
+        }
+        .ripper-image-wrap { text-align: center; background: var(--dark); border-radius: 10px; padding: 1rem; }
+        .ripper-image-wrap img { max-width: 100%; border-radius: 8px; border: 1px solid var(--dark-lighter); }
+        .ripper-image-hint { color: var(--text-dim); font-size: 0.75rem; margin-top: 0.6rem; }
+        .ripper-loading { padding: 1rem; text-align: center; color: var(--text-dim); font-size: 0.85rem; }
+        .ripper-none {
+            padding: 1rem 1.2rem; background: var(--dark); border-radius: 9px;
+            color: var(--text-dim); font-size: 0.85rem; border-left: 3px solid var(--text-dim);
+        }
+        .ripper-none a { color: var(--accent); text-decoration: none; }
+        .ripper-none a:hover { text-decoration: underline; }
+
         /* ── ADDITIONAL MATERIALS ── */
         .materials-section {
             background: rgba(181,123,255,0.08);
@@ -293,9 +338,7 @@
         }
         .material-desc { flex: 1; font-size: 0.88rem; line-height: 1.4; cursor: pointer; }
         .material-range { color: var(--text-dim); font-size: 0.78rem; margin-left: 0.4rem; white-space: nowrap; }
-        .quantity-wrapper {
-            display: none; align-items: center; gap: 0.6rem; flex-shrink: 0;
-        }
+        .quantity-wrapper { display: none; align-items: center; gap: 0.6rem; flex-shrink: 0; }
         .quantity-wrapper.show { display: flex; }
         .quantity-input {
             width: 80px; background: var(--dark); border: 1px solid var(--kf);
@@ -354,6 +397,7 @@
                 <div class="job-info-grid" id="job-info-grid"></div>
             </div>
 
+            <!-- Picklist Panel -->
             <div class="picklist-panel" id="picklist-panel">
                 <div class="picklist-panel-header">
                     📦 Picklist
@@ -361,6 +405,17 @@
                 </div>
                 <div id="picklist-panel-body">
                     <div class="pl-loading">Loading picklist data…</div>
+                </div>
+            </div>
+
+            <!-- PDF Ripper Panel -->
+            <div class="ripper-panel" id="ripper-panel">
+                <div class="ripper-panel-header">
+                    📄 PDF Survey Data
+                    <span class="rp-saved-at" id="rp-saved-at"></span>
+                </div>
+                <div id="ripper-panel-body">
+                    <div class="ripper-loading">Loading PDF survey data…</div>
                 </div>
             </div>
 
@@ -550,7 +605,6 @@
                         <input type="text" id="bo-wifi-signal" class="form-input" placeholder="e.g., Yes - strong signal, No - weak signal..." required />
                     </div>
 
-                    <!-- ── ADDITIONAL MATERIALS (Battery Only) ── -->
                     <div class="section-header">🛠️ Additional Materials</div>
                     <div class="materials-section">
                         <div class="material-category">
@@ -739,18 +793,12 @@
                         </div>
                     </div>
                     <div class="form-group">
-    <label class="form-label required">Is a Smoke Alarm Required?</label>
-    <div class="checkbox-group">
-        <label class="checkbox-label">
-            <input type="checkbox" id="smoke-alarm-yes" name="smoke-alarm-required" value="yes" />
-            <span>Yes</span>
-        </label>
-        <label class="checkbox-label">
-            <input type="checkbox" id="smoke-alarm-no" name="smoke-alarm-required" value="no" />
-            <span>No</span>
-        </label>
-    </div>
-</div>
+                        <label class="form-label required">Is a Smoke Alarm Required?</label>
+                        <div class="radio-group">
+                            <div class="radio-option"><input type="radio" id="smoke-alarm-yes" name="smoke-alarm-required" value="Yes" required><label for="smoke-alarm-yes">Yes</label></div>
+                            <div class="radio-option"><input type="radio" id="smoke-alarm-no" name="smoke-alarm-required" value="No"><label for="smoke-alarm-no">No</label></div>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="surface-type" class="form-label required">Type of Surface at Battery Location</label>
                         <input type="text" id="surface-type" class="form-input" placeholder="e.g., Concrete, Wood, Brick..." required />
@@ -1155,7 +1203,6 @@
                         <textarea id="scaffolding-additional-notes" class="form-textarea" placeholder="Any additional information about scaffolding..."></textarea>
                     </div>
 
-                    <!-- ── ADDITIONAL MATERIALS (Battery and Solar) ── -->
                     <div class="section-header">🛠️ Additional Materials</div>
                     <div class="materials-section">
                         <div class="material-category">
@@ -1237,114 +1284,65 @@
         const EMAIL_TEMPLATE_METER = 'template_ijhp8qj';
 
         // ── Additional Materials Data ──────────────────────────────────────────
-const electricalItems = [
-            {desc:"25mm Female Brass Bush",min:null,max:null},
-            {desc:"25mm IP68 Compression Glands Black",min:null,max:null},
-            {desc:"25mm Lockring",min:null,max:null},
-            {desc:"25mm Male Brass Bush",min:null,max:null},
-            {desc:"25mm conduit black plastic",min:null,max:null},
-            {desc:"25mm male/female adaptors black plastic",min:null,max:null},
-            {desc:"32a Rotary Isolator - 3 Pole",min:null,max:null},
-            {desc:"32mm conduit black plastic",min:null,max:null},
-            {desc:"38mm x 25mm trunking",min:null,max:null},
-            {desc:"38MMx25MM External Bend",min:null,max:null},
-            {desc:"38MMx25MM Flat Bend",min:null,max:null},
-            {desc:"38MMx25MM Internal Bend",min:null,max:null},
-            {desc:"40a Rotary Isolator - 3 Pole",min:null,max:null},
-            {desc:"50 x 50 Trunking White PVC",min:null,max:null},
-            {desc:"50x50 end Caps",min:null,max:null},
-            {desc:"100amp 100ma RCD main switched isolator",min:null,max:null},
-            {desc:"1000V INSULATION SHROUD BLANKET (900MM X 600MM)",min:null,max:null},
-            {desc:"10mm² 3 Core CAT5 EV Cable Black 50m",min:null,max:null},
-            {desc:"10mm Earth cable",min:null,max:null},
-            {desc:"4302P2254-02 22awg 2pair FireFighter Cable",min:null,max:null},
-            {desc:"6mm PV ultra cable 2 core PV",min:null,max:null},
-            {desc:"6mm Pv ultra cable 4 core",min:null,max:null},
-            {desc:"6mm earth cable (50M)",min:null,max:null},
-            {desc:"6mm yellow fork crimps",min:null,max:null},
-            {desc:"6mm² 3 Core CAT5 EV Cable Black",min:null,max:null},
-            {desc:"Aico Optical and Heat alarm (230v)",min:null,max:null},
-            {desc:"Aico RF Module/RF Smart link",min:null,max:null},
-            {desc:"Adhesive & Sealant - White 290ml",min:null,max:null},
-            {desc:"Atkore Koreflex 25mm Spiral reinforced (10m and 10 glands)",min:null,max:null},
-            {desc:"Atkore Koreflex 32mm Conduit Contractor Pack Black",min:null,max:null},
-            {desc:"CT Clamp fox accessories",min:null,max:null},
-            {desc:"Disconnection Tool",min:null,max:null},
-            {desc:"double pole isolator",min:null,max:null},
-            {desc:"Engex 5mm yellow ring lug crimp",min:null,max:null},
-            {desc:"enphase IQ cable branch terminator",min:null,max:null},
-            {desc:"Enphase Q Cable Sealing Caps",min:null,max:null},
-            {desc:"Engex 300mm x 4.8mm Cable Ties Black (Pack of 100)",min:null,max:null},
-            {desc:"Fire Clips 50mm trunking",min:null,max:null},
-            {desc:"Fire Resistant Cable Cleat 30.4mm-35mm metal black",min:null,max:null},
-            {desc:"HO7RNF 6MM 3 CORE",min:null,max:null},
-            {desc:"IP65 box 600x400mm and Backplate",min:null,max:null},
-            {desc:"IQ Battery 5P Kit",min:null,max:null},
-            {desc:"KMF switched fused isolator 60amp",min:null,max:null},
-            {desc:"KMF switched fused isolator 80 amp",min:null,max:null},
-            {desc:"M2 63A 4 pole rotary isolator switch IP67",min:null,max:null},
-            {desc:"MCG IP66 Clear Lid Enclosure",min:null,max:null},
-            {desc:"MCG 400x400x200 steel enclosure with mounting plate",min:null,max:null},
-            {desc:"Membrane Kit",min:null,max:null},
-            {desc:"Orbix self tapper (200 PER BOX)",min:null,max:null},
-            {desc:"Projoy DC isolator 32A 4 pole 2 string",min:null,max:null},
-            {desc:"Proteus 1 input 1 output 100x DC SPD",min:null,max:null},
-            {desc:"Proteus 6 way 100A Incomer Metal Clad Consumer With Type 2 SPD",min:null,max:null},
-            {desc:"Proteus B10 Bi Directional RCBO Type A",min:null,max:null},
-            {desc:"Proteus B20 Bi Directional RCBO Type A",min:null,max:null},
-            {desc:"Proteus B25 Single Pole 10ka MCB",min:null,max:null},
-            {desc:"Proteus B40a Single Pole 10ka MCB",min:null,max:null},
-            {desc:"Proteus B40 Bi Directional 40amp RCBO Type A",min:null,max:null},
-            {desc:"Proteus XL DP Bi Directional B curve 25Amp RCBO type A",min:null,max:null},
-            {desc:"Proteus XL DP Bi Directional B curve 40Amp RCBO type A",min:null,max:null},
-            {desc:"Schneider Sarel 241x194x107mm ABS Enclosure IP66",min:null,max:null},
-            {desc:"Termination Plug",min:null,max:null},
-            {desc:"TP Link",min:null,max:null},
-            {desc:"Unicrimp 15.1mm - 17.8mm Cable clip (pack of 10)",min:null,max:null},
-            {desc:"Wiska COMBI 607/5/S 110x110x66mm PVC Adaptable Box Black IP66",min:null,max:null},
-            {desc:"100mm x 50mm Warning SPD Label",min:null,max:null},
-            {desc:"Zeroburn cabl clips 22mm-26mm",min:null,max:null},
-            {desc:"Zeroburn 16-21mm (pack 20)",min:null,max:null},
-            {desc:"Zeroburn black single P clips (pack of 50 x2) 8.7-9MM",min:null,max:null},
-            {desc:"Zeroburn Cable Clips 10 - 15mm Black",min:null,max:null},
-            {desc:"bootlace ferruls 6mm (pack)",min:null,max:null},
+        const electricalItems = [
+            {desc:"25mm Female Brass Bush"},{desc:"25mm IP68 Compression Glands Black"},{desc:"25mm Lockring"},
+            {desc:"25mm Male Brass Bush"},{desc:"25mm conduit black plastic"},{desc:"25mm male/female adaptors black plastic"},
+            {desc:"32a Rotary Isolator - 3 Pole"},{desc:"32mm conduit black plastic"},{desc:"38mm x 25mm trunking"},
+            {desc:"38MMx25MM External Bend"},{desc:"38MMx25MM Flat Bend"},{desc:"38MMx25MM Internal Bend"},
+            {desc:"40a Rotary Isolator - 3 Pole"},{desc:"50 x 50 Trunking White PVC"},{desc:"50x50 end Caps"},
+            {desc:"100amp 100ma RCD main switched isolator"},{desc:"1000V INSULATION SHROUD BLANKET (900MM X 600MM)"},
+            {desc:"10mm² 3 Core CAT5 EV Cable Black 50m"},{desc:"10mm Earth cable"},
+            {desc:"4302P2254-02 22awg 2pair FireFighter Cable"},{desc:"6mm PV ultra cable 2 core PV"},
+            {desc:"6mm Pv ultra cable 4 core"},{desc:"6mm earth cable (50M)"},{desc:"6mm yellow fork crimps"},
+            {desc:"6mm² 3 Core CAT5 EV Cable Black"},{desc:"Aico Optical and Heat alarm (230v)"},
+            {desc:"Aico RF Module/RF Smart link"},{desc:"Adhesive & Sealant - White 290ml"},
+            {desc:"Atkore Koreflex 25mm Spiral reinforced (10m and 10 glands)"},
+            {desc:"Atkore Koreflex 32mm Conduit Contractor Pack Black"},{desc:"CT Clamp fox accessories"},
+            {desc:"Disconnection Tool"},{desc:"double pole isolator"},{desc:"Engex 5mm yellow ring lug crimp"},
+            {desc:"enphase IQ cable branch terminator"},{desc:"Enphase Q Cable Sealing Caps"},
+            {desc:"Engex 300mm x 4.8mm Cable Ties Black (Pack of 100)"},{desc:"Fire Clips 50mm trunking"},
+            {desc:"Fire Resistant Cable Cleat 30.4mm-35mm metal black"},{desc:"HO7RNF 6MM 3 CORE"},
+            {desc:"IP65 box 600x400mm and Backplate"},{desc:"IQ Battery 5P Kit"},
+            {desc:"KMF switched fused isolator 60amp"},{desc:"KMF switched fused isolator 80 amp"},
+            {desc:"M2 63A 4 pole rotary isolator switch IP67"},{desc:"MCG IP66 Clear Lid Enclosure"},
+            {desc:"MCG 400x400x200 steel enclosure with mounting plate"},{desc:"Membrane Kit"},
+            {desc:"Orbix self tapper (200 PER BOX)"},{desc:"Projoy DC isolator 32A 4 pole 2 string"},
+            {desc:"Proteus 1 input 1 output 100x DC SPD"},
+            {desc:"Proteus 6 way 100A Incomer Metal Clad Consumer With Type 2 SPD"},
+            {desc:"Proteus B10 Bi Directional RCBO Type A"},{desc:"Proteus B20 Bi Directional RCBO Type A"},
+            {desc:"Proteus B25 Single Pole 10ka MCB"},{desc:"Proteus B40a Single Pole 10ka MCB"},
+            {desc:"Proteus B40 Bi Directional 40amp RCBO Type A"},
+            {desc:"Proteus XL DP Bi Directional B curve 25Amp RCBO type A"},
+            {desc:"Proteus XL DP Bi Directional B curve 40Amp RCBO type A"},
+            {desc:"Schneider Sarel 241x194x107mm ABS Enclosure IP66"},{desc:"Termination Plug"},{desc:"TP Link"},
+            {desc:"Unicrimp 15.1mm - 17.8mm Cable clip (pack of 10)"},
+            {desc:"Wiska COMBI 607/5/S 110x110x66mm PVC Adaptable Box Black IP66"},
+            {desc:"100mm x 50mm Warning SPD Label"},{desc:"Zeroburn cabl clips 22mm-26mm"},
+            {desc:"Zeroburn 16-21mm (pack 20)"},{desc:"Zeroburn black single P clips (pack of 50 x2) 8.7-9MM"},
+            {desc:"Zeroburn Cable Clips 10 - 15mm Black"},{desc:"bootlace ferruls 6mm (pack)"},
         ];
 
         const roofItems = [
-            {desc:"Roof Hook Rapid 2+Pro 45"},
-            {desc:"Roof hook Universal RapFix attachment for ECO roof hooks"},
-            {desc:"Module Bearing profile Solo light - 3.55m"},
-            {desc:"Connector Solo5, Solo5 light, profiplus, FixZ-7 & Fiz-Z-15"},
-            {desc:"Plastic End Cap Solo Profi05"},
-            {desc:"Black End Clamp Rapid 16 30-40mm"},
-            {desc:"Black Mid Clamp Rapid 16 30-40mm"},
-            {desc:"VA Flat Head TORX 8/80 Wood Screw (Singles)"},
-            {desc:"VA Flat Head TORX 8/100 Wood Screw (Singles)"},
-            {desc:"M8 X 20mm Screw"},
-            {desc:"M8 Nut"},
-            {desc:"KlickIn Component Washer"},
-            {desc:"EricTile - www.solarslateplate.co.uk/shop/eric-tile"},
-            {desc:"Slate / Flat Concrete Roof Hook Genius"},
-            {desc:"Slate Flashing Re-Fit Kit Genius flashing"},
-            {desc:"Pan tile Genius Flashing"},
-            {desc:"flexi flash profile Tile Kit"},
-            {desc:"Bird deterrent 30m"},
-            {desc:"Solar panel bird Exclusion kit (Black Mesh)"},
-            {desc:"Bird mesh clips"}
+            {desc:"Roof Hook Rapid 2+Pro 45"},{desc:"Roof hook Universal RapFix attachment for ECO roof hooks"},
+            {desc:"Module Bearing profile Solo light - 3.55m"},{desc:"Connector Solo5, Solo5 light, profiplus, FixZ-7 & Fiz-Z-15"},
+            {desc:"Plastic End Cap Solo Profi05"},{desc:"Black End Clamp Rapid 16 30-40mm"},
+            {desc:"Black Mid Clamp Rapid 16 30-40mm"},{desc:"VA Flat Head TORX 8/80 Wood Screw (Singles)"},
+            {desc:"VA Flat Head TORX 8/100 Wood Screw (Singles)"},{desc:"M8 X 20mm Screw"},{desc:"M8 Nut"},
+            {desc:"KlickIn Component Washer"},{desc:"EricTile - www.solarslateplate.co.uk/shop/eric-tile"},
+            {desc:"Slate / Flat Concrete Roof Hook Genius"},{desc:"Slate Flashing Re-Fit Kit Genius flashing"},
+            {desc:"Pan tile Genius Flashing"},{desc:"flexi flash profile Tile Kit"},
+            {desc:"Bird deterrent 30m"},{desc:"Solar panel bird Exclusion kit (Black Mesh)"},{desc:"Bird mesh clips"}
         ];
 
-        function renderMaterials(containerId, items, showRange) {
+        function renderMaterials(containerId, items) {
             const container = document.getElementById(containerId);
             if (!container) return;
             let html = '';
             items.forEach((item, i) => {
                 const uid = containerId + '-' + i;
-                const range = (showRange && item.min != null && item.max != null)
-                    ? `<span class="material-range">(min ${item.min} – max ${item.max})</span>`
-                    : '';
                 html += `<div class="material-item">
                     <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}">
-                    <label for="chk-${uid}" class="material-desc">${item.desc}${range}</label>
+                    <label for="chk-${uid}" class="material-desc">${item.desc}</label>
                     <div class="quantity-wrapper" id="qw-${uid}">
                         <span class="quantity-label">Qty:</span>
                         <input type="number" class="quantity-input" id="qty-${uid}" min="0" value="0" step="1">
@@ -1377,10 +1375,10 @@ const electricalItems = [
         }
 
         function initAdditionalMaterials() {
-            renderMaterials('electrical-items-bo', electricalItems, true);
-            renderMaterials('roof-items-bo', roofItems, false);
-            renderMaterials('electrical-items-bas', electricalItems, true);
-            renderMaterials('roof-items-bas', roofItems, false);
+            renderMaterials('electrical-items-bo', electricalItems);
+            renderMaterials('roof-items-bo', roofItems);
+            renderMaterials('electrical-items-bas', electricalItems);
+            renderMaterials('roof-items-bas', roofItems);
             embedPicklistInMaterials();
             ['kf-details-bo', 'kf-details-bas'].forEach(id => {
                 const det = document.getElementById(id);
@@ -1495,12 +1493,101 @@ const electricalItems = [
                 const {collection,query,where,getDocs,orderBy,limit}=window.firebaseModules;
                 const q=query(collection(window.db,'picklists'),where('jobNumber','==',jobNumber),orderBy('savedAt','desc'),limit(1));
                 const snap=await getDocs(q);
-                if(snap.empty){body.innerHTML='<div class="pl-no-picklist">📭 No picklist found for this job. Upload one via the Picklist Generator.</div>';return;}
-                renderPicklistPanel(snap.docs[0].data());
+                if(snap.empty){body.innerHTML='<div class="pl-no-picklist">📭 No picklist found for this job. Upload one via the Picklist Generator.</div>';}
+                else{renderPicklistPanel(snap.docs[0].data());}
             } catch(err){
                 console.error('Picklist load error:',err);
                 body.innerHTML=`<div class="pl-no-picklist" style="border-color:var(--error);color:var(--error)">Failed to load picklist: ${esc(err.message)}</div>`;
             }
+            // Also load PDF Ripper data
+            await loadPdfRipperData(jobNumber);
+        }
+
+        // ── PDF Ripper Panel ──────────────────────────────────────────────────
+        async function loadPdfRipperData(jobNumber) {
+            const panel = document.getElementById('ripper-panel');
+            const body  = document.getElementById('ripper-panel-body');
+            if (!panel || !body) return;
+
+            try {
+                const { collection, query, where, getDocs } = window.firebaseModules;
+                const q = query(collection(window.db, 'jobs'), where('Job Number', '==', jobNumber));
+                const snap = await getDocs(q);
+
+                if (snap.empty) return;
+
+                const jobData = snap.docs[0].data();
+                const rip = jobData.pdfRipper;
+
+                if (!rip) {
+                    body.innerHTML = `<div class="ripper-none">
+                        📭 No PDF survey data saved for this job yet.<br>
+                        Use the <a href="riippdf.html" target="_blank">PDF Ripper</a> and link it to job #${esc(jobNumber)} to populate this panel.
+                    </div>`;
+                    panel.classList.add('show');
+                    return;
+                }
+
+                const savedStr = rip.savedAt
+                    ? new Date(rip.savedAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+                    : '';
+                document.getElementById('rp-saved-at').textContent = savedStr ? `Saved ${savedStr}` : '';
+
+                // Build tabs — only show tabs that have content
+                const haslayout    = !!rip.proposedLayoutUrl;
+                const hasAssessImg = !!rip.siteAssessmentUrl;
+                const hasAssessTxt = !!rip.siteAssessmentText;
+                const hasAssess    = hasAssessImg || hasAssessTxt;
+
+                let html = `<div class="ripper-tabs">
+                    <button class="ripper-tab active" onclick="ripperTab(event,'rp-address')">📍 Address</button>
+                    ${haslayout  ? '<button class="ripper-tab" onclick="ripperTab(event,\'rp-layout\')">🗺️ Proposed Layout</button>' : ''}
+                    ${hasAssess  ? '<button class="ripper-tab" onclick="ripperTab(event,\'rp-assessment\')">📦 Site Assessment</button>' : ''}
+                </div>`;
+
+                // Address tab
+                html += `<div class="ripper-tab-content active" id="rp-address">
+                    <div class="ripper-address-block">${rip.address ? esc(rip.address).replace(/\n/g,'<br>') : '<em style="color:var(--text-dim)">No address extracted</em>'}</div>
+                </div>`;
+
+                // Layout tab
+                if (haslayout) {
+                    html += `<div class="ripper-tab-content" id="rp-layout">
+                        <div class="ripper-image-wrap">
+                            <img src="${rip.proposedLayoutUrl}" alt="Proposed layout" />
+                            <p class="ripper-image-hint">Proposed layout · extracted from page 3 of survey PDF</p>
+                        </div>
+                    </div>`;
+                }
+
+                // Site assessment tab
+                if (hasAssess) {
+                    const assessContent = hasAssessImg
+                        ? `<div class="ripper-image-wrap">
+                            <img src="${rip.siteAssessmentUrl}" alt="Site assessment boxes" />
+                            <p class="ripper-image-hint">Site assessment boxes · extracted from page 4 of survey PDF</p>
+                           </div>`
+                        : `<pre style="white-space:pre-wrap;font-size:0.82rem;color:var(--text);line-height:1.6;background:var(--dark);padding:1rem;border-radius:8px;overflow-x:auto;">${esc(rip.siteAssessmentText)}</pre>`;
+                    html += `<div class="ripper-tab-content" id="rp-assessment">${assessContent}</div>`;
+                }
+
+                body.innerHTML = html;
+                panel.classList.add('show');
+
+            } catch (err) {
+                console.error('PDF ripper data load error:', err);
+                body.innerHTML = `<div class="ripper-none" style="border-color:var(--error);color:var(--error)">Failed to load PDF survey data: ${esc(err.message)}</div>`;
+                panel.classList.add('show');
+            }
+        }
+
+        function ripperTab(event, targetId) {
+            const panel = document.getElementById('ripper-panel');
+            panel.querySelectorAll('.ripper-tab').forEach(t => t.classList.remove('active'));
+            panel.querySelectorAll('.ripper-tab-content').forEach(c => c.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            const target = document.getElementById(targetId);
+            if (target) target.classList.add('active');
         }
 
         // ── Progress save/load ─────────────────────────────────────────────────
@@ -1663,11 +1750,8 @@ const electricalItems = [
                 if(getRadio('water-bonded')==='No'&&waterBondEquip)details.push('Water Bonding Required: '+waterBondEquip);
             }
             const flaggedSection=flags.length?flags.join('\n')+(details.length?'\n\nAdditional Detail:\n'+details.join('\n'):''):'None';
-
-            // Append materials to summary
             const materialLines=collectMaterialsSummary();
             if(materialLines.length>0){summaryLines.push('');summaryLines.push('Additional Materials Requested:');summaryLines.push(...materialLines);}
-
             const emailData={
                 job_number:verifiedJob['Job Number']||'N/A',customer_name:verifiedJob['Name']||'N/A',
                 address:verifiedJob['1st line of address']||'N/A',postcode:verifiedJob['Postcode']||'N/A',
@@ -1680,7 +1764,7 @@ const electricalItems = [
         }
 
         function setupConditionalFields(){
-            const radioFieldsWithPhotos=[
+            const radioFieldsWithUploads=[
                 {name:'roof-obstructions',value:'Yes',upload:'obstructions-upload'},
                 {name:'roof-shading',value:'Yes',upload:'shading-upload'},
                 {name:'loft-accessible',values:['Yes','No'],upload:'loft-accessible-upload'},
@@ -1697,7 +1781,7 @@ const electricalItems = [
                 {name:'gutter-obstacles',value:'Yes',upload:'gutter-obstacles-upload'},
                 {name:'proposed-design',value:'No',upload:'proposed-design-reason'}
             ];
-            radioFieldsWithPhotos.forEach(field=>{
+            radioFieldsWithUploads.forEach(field=>{
                 const radios=document.querySelectorAll('input[name="'+field.name+'"]');
                 const upload=document.getElementById(field.upload);
                 if(upload){radios.forEach(radio=>{radio.addEventListener('change',()=>{const values=Array.isArray(field.values)?field.values:[field.value];upload.classList.toggle('show',values.includes(radio.value));});});}
@@ -1713,9 +1797,7 @@ const electricalItems = [
                 if(upload){radios.forEach(radio=>{radio.addEventListener('change',()=>{upload.classList.toggle('show',radio.value===field.value);});});}
             });
 
-            // ── BAS meter work ──
-            // Email sends exactly once: when the user fills in the NEXT field
-            // (fuse rating) after having written meter work details.
+            // BAS meter work
             const meterWorkInput=document.getElementById('meter-work-needed');
             const meterSection=document.getElementById('meter-installation');
             const meterWorkDetails=document.getElementById('meter-work-details');
@@ -1724,12 +1806,11 @@ const electricalItems = [
             if(meterWorkInput&&meterSection){
                 meterWorkInput.addEventListener('input',function(e){
                     meterSection.style.display=e.target.value.trim().toLowerCase()==='yes'?'block':'none';
-                    // Reset sent flag if they change their answer back
                     if(e.target.value.trim().toLowerCase()!=='yes') basMeterEmailSent=false;
                 });
                 if(fuseRatingInput&&meterWorkDetails){
                     fuseRatingInput.addEventListener('blur',function(){
-                        if(!basMeterEmailSent && meterWorkInput.value.trim().toLowerCase()==='yes' && meterWorkDetails.value.trim()){
+                        if(!basMeterEmailSent&&meterWorkInput.value.trim().toLowerCase()==='yes'&&meterWorkDetails.value.trim()){
                             basMeterEmailSent=true;
                             sendMeterWorkEmail(meterWorkDetails.value,'meter-installation-files');
                         }
@@ -1737,7 +1818,7 @@ const electricalItems = [
                 }
             }
 
-            // ── BO meter work ──
+            // BO meter work
             const boMeterWorkInput=document.getElementById('bo-meter-work-needed');
             const boMeterSection=document.getElementById('bo-meter-installation');
             const boMeterWorkDetails=document.getElementById('bo-meter-work-details');
@@ -1750,7 +1831,7 @@ const electricalItems = [
                 });
                 if(boFuseRatingInput&&boMeterWorkDetails){
                     boFuseRatingInput.addEventListener('blur',function(){
-                        if(!boMeterEmailSent && boMeterWorkInput.value.trim().toLowerCase()==='yes' && boMeterWorkDetails.value.trim()){
+                        if(!boMeterEmailSent&&boMeterWorkInput.value.trim().toLowerCase()==='yes'&&boMeterWorkDetails.value.trim()){
                             boMeterEmailSent=true;
                             sendMeterWorkEmail(boMeterWorkDetails.value,'bo-meter-installation-files');
                         }
@@ -1813,7 +1894,7 @@ const electricalItems = [
                 document.getElementById('survey-type').disabled=true;
                 loadingSpinner.classList.remove('active');
                 loadProgress();
-                showAlert('Job verified successfully! Review the picklist above, then continue the survey.','success');
+                showAlert('Job verified successfully! Review the picklist and PDF survey data above, then complete the survey.','success');
             } catch(error){
                 console.error(error);
                 showAlert('Error verifying job number: '+error.message,'error');
