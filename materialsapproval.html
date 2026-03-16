@@ -193,6 +193,7 @@
         .picklist-table td { padding:0.6rem 0.8rem; color:var(--text); }
         .picklist-table td.qty { color:var(--secondary); font-weight:600; text-align:center; }
         .picklist-table td.cat { color:var(--text-dim); font-size:0.75rem; }
+        .picklist-table td.part-id { color:var(--kf); font-size:0.78rem; font-weight:600; }
 
         /* ── ADDITIONAL MATERIALS ── */
         .materials-list { display:flex; flex-direction:column; gap:0.6rem; }
@@ -210,6 +211,20 @@
         .mat-info { min-width:0; }
         .mat-name { font-size:0.88rem; color:var(--text); font-weight:500; }
         .mat-cat  { font-size:0.72rem; color:var(--text-dim); margin-top:0.1rem; }
+        /* Part ID badge shown inline under mat name */
+        .mat-part-id {
+            display:inline-block; margin-top:0.2rem;
+            font-size:0.7rem; color:var(--kf); font-weight:600;
+            background:rgba(181,123,255,0.1); border:1px solid rgba(181,123,255,0.25);
+            padding:0.1rem 0.5rem; border-radius:5px; letter-spacing:0.04em;
+        }
+        /* Pack size badge */
+        .mat-pack-size {
+            display:inline-block; margin-top:0.2rem; margin-left:0.4rem;
+            font-size:0.7rem; color:var(--secondary); font-weight:600;
+            background:rgba(255,200,87,0.1); border:1px solid rgba(255,200,87,0.28);
+            padding:0.1rem 0.5rem; border-radius:5px; letter-spacing:0.04em;
+        }
 
         .mat-qty-wrap { display:flex; align-items:center; gap:0.4rem; }
         .mat-qty-lbl  { font-size:0.7rem; color:var(--text-dim); }
@@ -360,7 +375,7 @@ import {
     getFirestore, collection, getDocs, doc, setDoc, updateDoc, Timestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-emailjs.init('ziLnha91scpGjFABh'); // public key placeholder — update if needed
+emailjs.init('ziLnha91scpGjFABh');
 
 const app = initializeApp({
     apiKey:            'AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0',
@@ -375,9 +390,167 @@ const db = getFirestore(app);
 // Cut-off: surveys from 9 March 2026 onwards
 const CUTOFF = new Date('2026-03-09T00:00:00');
 
-window._surveys  = [];   // enriched survey records
-window._filter   = 'all';
-// Per-card approval state: { [surveyDocId]: { [matIndex]: { approved: bool|null, qty: number } } }
+// ── PART ID LOOKUP ────────────────────────────────────────────────────────────
+// Normalised key: lowercase, no extra spaces
+const PART_ID_MAP = {
+    '1 inch screws ( box )':                                        'NG-102-C',
+    '1 inch screws (box)':                                          'NG-102-C',
+    '1000v insulation shroud blanket (900mm x 600mm)':              'NG-132-C',
+    '100mm x 50mm warning surge protection device label':           'NG-130-C',
+    '10mm earth cable':                                             'NG-062-C',
+    '10mm2 3 core cat5 ev cable black 50m':                         'NG-057-C-FI',
+    '16mm earth':                                                   'NG-081-C',
+    '2 inch screws ( box )':                                        'NG-101-C',
+    '2 inch screws (box)':                                          'NG-101-C',
+    '25mm double insulated stranded blue (per meter)':              'NG-079-C',
+    '25mm double insulated stranded brown (per meter)':             'NG-080-C',
+    '25mm female brass bush':                                       'NG-017-C',
+    '25mm ip68 compression glands black':                           'NG-019-C',
+    '25mm lockring':                                                'NG-018-C',
+    '25mm male brass bush':                                         'NG-016-C',
+    '32a rotary isolator - 3 pole':                                 'NG-003-C',
+    '32mm copex pack':                                              'NG-120-C',
+    '32mm gland (pack of 10)':                                      'NG-085-C',
+    '32mm p clips metal':                                           'NG-108-C',
+    '38mm x 25mm trunking':                                         'NG-110-C',
+    '38mmx25mm external bend':                                      'NG-113-C',
+    '38mmx25mm flat bend':                                          'NG-111-C',
+    '38mmx25mm internal bend':                                      'NG-112-C',
+    '40a rotary isolator - 3 pole':                                 'NG-122-C',
+    '4302p2254-02 22awg 2pair 430series 600v lszh firefighter iec60332-3 24 black cable': 'NG-082-C',
+    '50 x 50 trunking white pvc':                                   'NG-125-C',
+    '50x50 end caps':                                               'NG-126-C',
+    '6mm earth cable (50m)':                                        'NG-061-C',
+    '6mm pv ultra cable 2 core pv':                                 'NG-059-C',
+    '6mm pv ultra cable 4 core':                                    'NG-060-C',
+    '6mm2 3 core cat5 ev cable black':                              'NG-058-C-FI',
+    'aico optical and heat alarm (230v)':                           'NG-115-C',
+    'aico rf module/rf smart link':                                 'NG-116-C',
+    'atkore koreflex 25mm spiral reinforced 25mm pack black (10m and 10 glands)': 'NG-066-C',
+    'atkore koreflex 32mm conduit contractor pack black (10m reel and 10 glands)': 'NG-065-C',
+    'biohazard label - roof':                                       'NG-078-C',
+    'biohazard label set':                                          'NG-034-C',
+    'bootlace ferruls 6mm ( pack )':                                'NG-103-C',
+    'bootlace ferruls 6mm (pack)':                                  'NG-103-C',
+    'brown plugs ( box )':                                          'NG-100-C',
+    'brown plugs (box)':                                            'NG-100-C',
+    'dc cable labels':                                              'NG-129-C',
+    'disconnection tool':                                           'NG-119-C',
+    'double pole isolator':                                         'NG-114-C',
+    'engex 300mm x 4.8mm cable ties black (pack of 100)':          'NG-068-C',
+    'engex 5mm yellow ring lug crimp':                              'NG-128-C',
+    'enphase iq cable branch terminator':                           'NG-106-C',
+    'enphase q cable sealing caps':                                 'NG-117-C',
+    'fire clips 50mm trunking':                                     'NG-127-C',
+    'fire resistant cable cleat 30.4mm-35mm metal black':          'NG-124-C',
+    'ho7rnf 6mm 3 core':                                            'NG-133-C',
+    'ip65 box 600x400mm and backplate':                             'NG-121-C',
+    'iq battery 5p kit':                                            'NG-026-C',
+    'm2 63a 4 pole rotary isolator switch ip67':                    'NG-041-C',
+    'mcg ip66 clear lid enclosure':                                 'NG-006-C',
+    'membrane kit':                                                 'NG-014-C',
+    'module bearing profile solo light - 3.55m':                   'NG-029-C-FI',
+    'orbix self tapper (200 per box)':                              'NG-063-C',
+    'penny washers 6mm':                                            'NG-105-C',
+    'proteus 6 way 100a incomer metal clad consumer with type 2 spd': 'NG-002-C',
+    'proteus b10 bi directional rcbo type a':                       'NG-050-C',
+    'proteus b20 bi directional rcbo type a':                       'NG-005-C',
+    'proteus b40a single pole 10ka mcb':                            'NG-044-C',
+    'proteus blank module':                                         'NG-009-C',
+    'rapfix attachment for eco roof hooks':                         'NG-052-C-FI',
+    'rcd testing label':                                            'NG-107-C',
+    'roof hook universal':                                          'NG-087-C-FI',
+    'schneider sarel 241mm x 194mm x 107mm abs enclosure with transparent cover ip66': 'NG-004-C',
+    'seals and ferruls':                                            'NG-104-C',
+    'solar array sticker set':                                      'NG-049-C',
+    'terminal block 100a 5 way blue':                               'NG-013-C',
+    'terminal block 100a 5 way brown':                              'NG-012-C',
+    'terminal block 100a 5 way green':                              'NG-015-C',
+    'termination plug':                                             'NG-118-C',
+    'unicrimp 15.1mm - 17.8mm cable clip (pack of 10)':            'NG-084-C',
+    'wago compact 3 way connection max 6mm (box of 30)':            'NG-083-C',
+    'wiska combi 607/5/s 110mm x 110mm x 66mm pvc adaptable box black ip66': 'NG-011-C',
+    'zeroburn 16-21mm (pack 20)':                                   'NG-067-C',
+    'zeroburn black single p clips (pack of 50 x2) 8.7-9mm':       'NG-123-C',
+    'zeroburn cable clips 10 - 15mm black':                         'NG-010-C',
+};
+
+// ── Pack size lookup ──────────────────────────────────────────────────────────
+const PACK_SIZE_MAP = {
+    '1000v insulation shroud blanket (900mm x 600mm)':                           'EACH',
+    '100mm x 50mm warning surge protection device label':                        'PK-10',
+    '10mm earth cable':                                                          'RL-10m',
+    '10mm2 3 core cat5 ev cable black 50m':                                      'RL-50m',
+    '25mm female brass bush':                                                    'PK-100',
+    '25mm ip68 compression glands black':                                        'PK-10',
+    '25mm lockring':                                                             'PK-100',
+    '25mm male brass bush':                                                      'PK-100',
+    '32a rotary isolator - 3 pole':                                              'EACH',
+    '38mm x 25mm trunking':                                                      'PK-3',
+    '38mmx25mm external bend':                                                   'EACH',
+    '38mmx25mm flat bend':                                                       'EACH',
+    '38mmx25mm internal bend':                                                   'EACH',
+    '40a rotary isolator - 3 pole':                                              'EA',
+    '4302p2254-02 22awg 2pair 430series 600v lszh firefighter iec60332-3 24 black cable': 'RL-25m',
+    '50 x 50 trunking white pvc':                                                'EACH',
+    '50x50 end caps':                                                            'EACH',
+    '6mm earth cable (50m)':                                                     'RL-50m',
+    '6mm pv ultra cable 2 core pv':                                              'RL-50m',
+    '6mm pv ultra cable 4 core':                                                 'RL-50m',
+    '6mm2 3 core cat5 ev cable black':                                           'RL-50m',
+    'aico optical and heat alarm (230v)':                                        'EA',
+    'aico rf module/rf smart link':                                              'EA',
+    'atkore koreflex 25mm spiral reinforced 25mm pack black (10m and 10 glands)':'RL-10m',
+    'atkore koreflex 32mm conduit contractor pack black (10m reel and 10 glands)':'RL-10m',
+    'disconnection tool':                                                        'EACH',
+    'double pole isolator':                                                      'EACH',
+    'engex 5mm yellow ring lug crimp':                                           'PK-100',
+    'enphase iq cable branch terminator':                                        'EACH',
+    'enphase q cable sealing caps':                                              'EACH',
+    'fire clips 50mm trunking':                                                  'EACH',
+    'fire resistant cable cleat 30.4mm-35mm metal black':                       'PK-50',
+    'ho7rnf 6mm 3 core':                                                         'RL-50m',
+    'ip65 box 600x400mm and backplate':                                          'EA',
+    'iq battery 5p kit':                                                         'EACH',
+    'mcg ip66 clear lid enclosure':                                              'EACH',
+    'membrane kit':                                                              'EACH',
+    'orbix self tapper (200 per box)':                                           'PK-200',
+    'proteus 6 way 100a incomer metal clad consumer with type 2 spd':            'EACH',
+    'proteus b10 bi directional rcbo type a':                                    'EACH',
+    'proteus b20 bi directional rcbo type a':                                    'EACH',
+    'proteus b40a single pole 10ka mcb':                                         'EACH',
+    'schneider sarel 241mm x 194mm x 107mm abs enclosure with transparent cover ip66': 'EACH',
+    'termination plug':                                                          'EACH',
+    'unicrimp 15.1mm - 17.8mm cable clip (pack of 10)':                         'PK-10',
+    'wiska combi 607/5/s 110mm x 110mm x 66mm pvc adaptable box black ip66':    'EACH',
+    'zeroburn 16-21mm (pack 20)':                                               'PK-20',
+    'zeroburn black single p clips (pack of 50 x2) 8.7-9mm':                   'PK-50',
+    'zeroburn cable clips 10 - 15mm black':                                     'PK-20',
+};
+
+/**
+ * Normalise a material name for map lookups.
+ */
+function normaliseKey(name) {
+    return String(name).toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Look up a Part Code for a material name.
+ */
+function getPartId(name) {
+    return PART_ID_MAP[normaliseKey(name)] || null;
+}
+
+/**
+ * Look up a Pack Size for a material name.
+ */
+function getPackSize(name) {
+    return PACK_SIZE_MAP[normaliseKey(name)] || null;
+}
+
+window._surveys   = [];
+window._filter    = 'all';
 window._approvals = {};
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -399,22 +572,19 @@ function showToast(msg, error = false) {
 }
 
 // ── parse additionalMaterials ─────────────────────────────────────────────────
-// Format: "• Electrical: 6mm² Twin & Earth × 10" or "• Roof: bracket × 4" etc.
 function parseMaterials(rawArr) {
     if (!Array.isArray(rawArr)) return [];
     const re = /^[•·-]?\s*(Electrical|Roof|KF|Other)?:?\s*(.+?)\s*[×x]\s*(\d+)\s*$/i;
     return rawArr.map(line => {
         const m = String(line).match(re);
         if (m) return { category: m[1] || 'Other', name: m[2].trim(), qty: parseInt(m[3], 10), raw: line };
-        // fallback — treat whole line as name with qty 1
         return { category: 'Other', name: String(line).replace(/^[•·-]\s*/, '').trim(), qty: 1, raw: line };
     }).filter(m => m.name);
 }
 
-// ── parse picklist items from survey sections ─────────────────────────────────
+// ── parse picklist items ──────────────────────────────────────────────────────
 function parsePicklist(survey) {
     const items = [];
-    // conduct-survey.html stores a picklist under sections.picklist or sections.materials
     const pl = survey.sections?.picklist || survey.sections?.materials || survey.picklist;
     if (Array.isArray(pl)) {
         pl.forEach(item => {
@@ -430,7 +600,6 @@ function parsePicklist(survey) {
     return items;
 }
 
-// ── check if already approved ─────────────────────────────────────────────────
 function isApproved(survey) { return survey._approvedAt != null; }
 
 // ── LOAD ──────────────────────────────────────────────────────────────────────
@@ -450,7 +619,6 @@ window.loadData = async function () {
             getDocs(collection(db, 'approved-additional-materials'))
         ]);
 
-        // Build jobs lookup: jobNumber → job data
         const jobMap = {};
         jobsSnap.forEach(d => {
             const jd = d.data();
@@ -458,11 +626,9 @@ window.loadData = async function () {
             if (num) jobMap[num] = jd;
         });
 
-        // Build approved lookup: docId → approval record
         const approvedMap = {};
         approvedSnap.forEach(d => { approvedMap[d.id] = d.data(); });
 
-        // Filter surveys: from cutoff date, has additionalMaterials OR picklist
         const raw = surveysSnap.docs
             .map(d => ({ _docId: d.id, ...d.data() }))
             .filter(s => {
@@ -470,7 +636,7 @@ window.loadData = async function () {
                 if (!submittedAt) return false;
                 const date = new Date(submittedAt);
                 if (date < CUTOFF) return false;
-                const hasMats    = Array.isArray(s.sections?.additionalMaterials) && s.sections.additionalMaterials.length > 0;
+                const hasMats     = Array.isArray(s.sections?.additionalMaterials) && s.sections.additionalMaterials.length > 0;
                 const hasPicklist = parsePicklist(s).length > 0;
                 return hasMats || hasPicklist;
             })
@@ -480,30 +646,26 @@ window.loadData = async function () {
                 return String(tb).localeCompare(String(ta));
             });
 
-        // Enrich with job data + approval status
         window._surveys = raw.map(s => {
             const num = String(s.jobNumber || '').trim();
             const jd  = jobMap[num] || {};
             const ap  = approvedMap[s._docId];
             return {
                 ...s,
-                _address:     jd['1st line of address'] || '',
-                _postcode:    jd['Postcode'] || '',
-                _custName:    jd['Name'] || s.sections?.customerSignOff?.name || '',
-                _installDate: jd['Install Date'] || '',
-                _approvedAt:  ap?.approvedAt || null,
+                _address:      jd['1st line of address'] || '',
+                _postcode:     jd['Postcode'] || '',
+                _custName:     jd['Name'] || s.sections?.customerSignOff?.name || '',
+                _installDate:  jd['Install Date'] || '',
+                _approvedAt:   ap?.approvedAt || null,
                 _approvedMats: ap?.approvedMaterials || null,
             };
         });
 
-        // Initialise approval state for new surveys
         window._surveys.forEach(s => {
             if (!window._approvals[s._docId]) {
                 const mats = parseMaterials(s.sections?.additionalMaterials);
                 const state = {};
-                mats.forEach((m, i) => {
-                    state[i] = { approved: null, qty: m.qty };
-                });
+                mats.forEach((m, i) => { state[i] = { approved: null, qty: m.qty }; });
                 window._approvals[s._docId] = state;
             }
         });
@@ -531,9 +693,9 @@ window.setFilter = function (f) {
 
 // ── RENDER ALL ────────────────────────────────────────────────────────────────
 window.renderAll = function () {
-    const f       = window._filter;
-    const search  = document.getElementById('search-input').value.trim().toLowerCase();
-    const all     = window._surveys;
+    const f      = window._filter;
+    const search = document.getElementById('search-input').value.trim().toLowerCase();
+    const all    = window._surveys;
 
     let shown = all.filter(s => {
         if (f === 'approved' && !isApproved(s)) return false;
@@ -570,15 +732,14 @@ function buildCard(s, idx) {
     const installDate = s._installDate ? fmtDate(s._installDate) : '—';
     const survType = s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only';
 
-    const picklist = parsePicklist(s);
+    const picklist  = parsePicklist(s);
     const materials = parseMaterials(s.sections?.additionalMaterials);
-    const apState  = window._approvals[id] || {};
+    const apState   = window._approvals[id] || {};
 
-    // Count how many additional materials have been actioned
     const total    = materials.length;
     const actioned = Object.values(apState).filter(v => v.approved !== null).length;
 
-    // ── picklist HTML ─────────────────────────────────────────────────────────
+    // ── picklist HTML (with Part ID column) ──────────────────────────────────
     const picklistHtml = picklist.length ? `
         <div>
             <div class="section-label">📋 Standard Picklist</div>
@@ -587,33 +748,50 @@ function buildCard(s, idx) {
                     <tr>
                         <th>Item</th>
                         <th>Category</th>
+                        <th>Part Code</th>
+                        <th>Pack Size</th>
                         <th style="text-align:center">Qty</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${picklist.map(item => `
-                    <tr>
-                        <td>${esc(item.name)}</td>
-                        <td class="cat">${esc(item.category)}</td>
-                        <td class="qty">${esc(String(item.qty))}</td>
-                    </tr>`).join('')}
+                    ${picklist.map(item => {
+                        const pid  = getPartId(item.name);
+                        const pack = getPackSize(item.name);
+                        return `
+                        <tr>
+                            <td>${esc(item.name)}</td>
+                            <td class="cat">${esc(item.category)}</td>
+                            <td class="part-id">${pid  ? esc(pid)  : '<span style="color:var(--text-dim);font-size:0.72rem">—</span>'}</td>
+                            <td class="part-id">${pack ? esc(pack) : '<span style="color:var(--text-dim);font-size:0.72rem">—</span>'}</td>
+                            <td class="qty">${esc(String(item.qty))}</td>
+                        </tr>`;
+                    }).join('')}
                 </tbody>
             </table>
         </div>` : '';
 
-    // ── additional materials HTML ─────────────────────────────────────────────
+    // ── additional materials HTML (with Part ID badge) ────────────────────────
     let matsHtml = '';
     if (materials.length) {
         const rows = materials.map((mat, i) => {
-            const st    = apState[i] || { approved: null, qty: mat.qty };
+            const st     = apState[i] || { approved: null, qty: mat.qty };
             const rowCls = st.approved === true ? 'approved' : st.approved === false ? 'denied' : '';
             const appCls = st.approved === true  ? 'active' : '';
             const denCls = st.approved === false ? 'active' : '';
             const disabled = approved ? 'disabled' : '';
+            const pid  = getPartId(mat.name);
+            const pack = getPackSize(mat.name);
+            const pidHtml = pid
+                ? `<span class="mat-part-id">${esc(pid)}</span>`
+                : '';
+            const packHtml = pack
+                ? `<span class="mat-pack-size">${esc(pack)}</span>`
+                : '';
             return `
             <div class="material-row ${rowCls}" id="matrow-${id}-${i}">
                 <div class="mat-info">
                     <div class="mat-name">${esc(mat.name)}</div>
+                    ${pidHtml}${packHtml}
                     <div class="mat-cat">${esc(mat.category)}</div>
                 </div>
                 <div class="mat-qty-wrap">
@@ -711,15 +889,13 @@ window.setApproval = function (id, idx, approved) {
     if (!window._approvals[id]) return;
     window._approvals[id][idx].approved = approved;
 
-    // Update row styling
     const row  = document.getElementById(`matrow-${id}-${idx}`);
     const appB = document.getElementById(`app-${id}-${idx}`);
     const denB = document.getElementById(`den-${id}-${idx}`);
-    if (row) { row.className = `material-row ${approved ? 'approved' : 'denied'}`; }
-    if (appB){ appB.className = `btn-approve ${approved ? 'active' : ''}`; }
-    if (denB){ denB.className = `btn-deny    ${!approved ? 'active' : ''}`; }
+    if (row)  { row.className = `material-row ${approved ? 'approved' : 'denied'}`; }
+    if (appB) { appB.className = `btn-approve ${approved ? 'active' : ''}`; }
+    if (denB) { denB.className = `btn-deny    ${!approved ? 'active' : ''}`; }
 
-    // Disable qty if denied
     const qtyEl = document.getElementById(`qty-${id}-${idx}`);
     if (qtyEl) qtyEl.disabled = !approved;
 
@@ -727,11 +903,11 @@ window.setApproval = function (id, idx, approved) {
 };
 
 function updateSubmitBtn(id) {
-    const survey   = window._surveys.find(s => s._docId === id);
+    const survey  = window._surveys.find(s => s._docId === id);
     if (!survey) return;
-    const mats     = parseMaterials(survey.sections?.additionalMaterials);
-    const apState  = window._approvals[id] || {};
-    const total    = mats.length;
+    const mats    = parseMaterials(survey.sections?.additionalMaterials);
+    const apState = window._approvals[id] || {};
+    const total   = mats.length;
     const actioned = Object.values(apState).filter(v => v.approved !== null).length;
 
     const progEl = document.querySelector(`#card-${id} .submit-progress`);
@@ -742,17 +918,17 @@ function updateSubmitBtn(id) {
 
 // ── SUBMIT ────────────────────────────────────────────────────────────────────
 window.submitApproval = async function (id) {
-    const survey   = window._surveys.find(s => s._docId === id);
+    const survey  = window._surveys.find(s => s._docId === id);
     if (!survey) return;
 
     const mats    = parseMaterials(survey.sections?.additionalMaterials);
     const apState = window._approvals[id] || {};
-    const approved = mats.map((m, i) => {
+    const resolved = mats.map((m, i) => {
         const st = apState[i] || { approved: true, qty: m.qty };
-        return { ...m, qty: st.qty, approved: st.approved };
+        return { ...m, qty: st.qty, approved: st.approved, partId: getPartId(m.name), packSize: getPackSize(m.name) };
     });
-    const approvedMats  = approved.filter(m => m.approved === true);
-    const deniedMats    = approved.filter(m => m.approved === false);
+    const approvedMats = resolved.filter(m => m.approved === true);
+    const deniedMats   = resolved.filter(m => m.approved === false);
 
     const btn = document.getElementById(`sub-${id}`);
     if (btn) { btn.disabled = true; btn.textContent = 'Submitting…'; }
@@ -763,19 +939,19 @@ window.submitApproval = async function (id) {
     const address  = [survey._address, survey._postcode].filter(Boolean).join(', ') || '—';
     const install  = survey._installDate ? fmtDate(survey._installDate) : '—';
 
-    // ── Firestore: save to approved-additional-materials ─────────────────────
+    // ── Firestore ─────────────────────────────────────────────────────────────
     try {
         await setDoc(doc(db, 'approved-additional-materials', id), {
-            surveyDocId:        id,
-            jobNumber:          jobNum,
-            customerName:       custName,
-            address:            address,
-            installDate:        survey._installDate || '',
-            surveyType:         survey.surveyType || '',
-            surveyor:           survey.sections?.surveyDetails?.surveyor || '',
-            approvedAt:         nowISO,
-            approvedMaterials:  approvedMats.map(m => ({ name: m.name, category: m.category, qty: m.qty })),
-            deniedMaterials:    deniedMats.map(m =>  ({ name: m.name, category: m.category, qty: m.qty })),
+            surveyDocId:       id,
+            jobNumber:         jobNum,
+            customerName:      custName,
+            address:           address,
+            installDate:       survey._installDate || '',
+            surveyType:        survey.surveyType || '',
+            surveyor:          survey.sections?.surveyDetails?.surveyor || '',
+            approvedAt:        nowISO,
+            approvedMaterials: approvedMats.map(m => ({ name: m.name, category: m.category, qty: m.qty, partId: m.partId || '', packSize: m.packSize || '' })),
+            deniedMaterials:   deniedMats.map(m  => ({ name: m.name, category: m.category, qty: m.qty, partId: m.partId || '', packSize: m.packSize || '' })),
         });
     } catch (e) {
         showToast('Firestore save failed: ' + e.message, true);
@@ -784,13 +960,24 @@ window.submitApproval = async function (id) {
     }
 
     // ── EmailJS ───────────────────────────────────────────────────────────────
-    // Skip email entirely if every item was denied
     if (approvedMats.length === 0) {
         showToast('All items denied — saved to Firestore, no email sent.');
     } else {
-        const approvedListText = approvedMats.map(m => `• ${m.category}: ${m.name} × ${m.qty}`).join('\n');
+        // Build approved list with Part ID included
+        const approvedListText = approvedMats
+            .map(m => {
+                const pidStr  = m.partId   ? ` [${m.partId}]`   : '';
+                const packStr = m.packSize ? ` (${m.packSize})` : '';
+                return `• ${m.category}: ${m.name}${pidStr}${packStr} × ${m.qty}`;
+            })
+            .join('\n');
+
         const deniedListText = deniedMats.length
-            ? deniedMats.map(m => `• ${m.name}`).join('\n')
+            ? deniedMats.map(m => {
+                const pidStr  = m.partId   ? ` [${m.partId}]`   : '';
+                const packStr = m.packSize ? ` (${m.packSize})` : '';
+                return `• ${m.name}${pidStr}${packStr}`;
+              }).join('\n')
             : 'None denied.';
 
         try {
@@ -806,14 +993,12 @@ window.submitApproval = async function (id) {
             });
             showToast('Approval submitted & email sent!');
         } catch (e) {
-            // Email failed but Firestore saved — still mark approved
             showToast('Saved to Firestore, but email failed: ' + e.message, true);
         }
     }
 
-    // Update local state so card flips to approved
-    survey._approvedAt    = nowISO;
-    survey._approvedMats  = approvedMats;
+    survey._approvedAt   = nowISO;
+    survey._approvedMats = approvedMats;
     renderAll();
 };
 
