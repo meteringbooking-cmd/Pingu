@@ -57,6 +57,45 @@
         .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
         @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
 
+        /* ── Job Number Input ─────────────────────────────────────────────────── */
+        .job-number-bar {
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            border-radius: 14px; padding: 1.25rem 1.5rem;
+            display: flex; align-items: center; gap: 1rem;
+            margin-bottom: 1.5rem; animation: fadeUp 0.4s ease-out;
+            flex-wrap: wrap;
+        }
+        .job-number-bar label {
+            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--secondary); white-space: nowrap; flex-shrink: 0;
+        }
+        .job-number-input {
+            flex: 1; min-width: 160px; background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter); color: var(--text);
+            padding: 0.65rem 1rem; border-radius: 9px;
+            font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .job-number-input:focus { outline: none; border-color: var(--secondary); }
+        .job-number-input.matched { border-color: var(--success); }
+        .job-number-input.no-match { border-color: var(--error); }
+        .job-verify-btn {
+            padding: 0.65rem 1.3rem; border-radius: 9px;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            color: white; border: none; font-family: 'Syne', sans-serif;
+            font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .job-verify-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(255,200,87,0.3); }
+        .job-verify-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .job-match-badge {
+            display: none; padding: 0.3rem 0.8rem; border-radius: 20px;
+            font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+        }
+        .job-match-badge.found { display: inline-block; background: rgba(78,204,163,0.15); border: 1px solid var(--success); color: var(--success); }
+        .job-match-badge.not-found { display: inline-block; background: rgba(255,107,107,0.12); border: 1px solid var(--error); color: var(--error); }
+
+        /* ── Upload Zone ──────────────────────────────────────────────────────── */
         .upload-zone {
             border: 2px dashed rgba(0,217,255,0.3); border-radius: 16px;
             padding: 3rem 2rem; text-align: center; background: var(--dark-light);
@@ -111,6 +150,18 @@
         }
         .error-msg.show { display: block; animation: fadeUp 0.3s ease; }
 
+        /* ── Save to Firebase banner ────────────────────────────────────────── */
+        .save-banner {
+            display: none; margin-bottom: 1.5rem; padding: 1rem 1.3rem;
+            border-radius: 12px; font-size: 0.9rem; align-items: center; gap: 0.75rem;
+            animation: fadeUp 0.4s ease;
+        }
+        .save-banner.show { display: flex; }
+        .save-banner.saving { background: rgba(0,217,255,0.08); border: 2px solid rgba(0,217,255,0.3); color: var(--accent); }
+        .save-banner.saved  { background: rgba(78,204,163,0.1); border: 2px solid rgba(78,204,163,0.4); color: var(--success); }
+        .save-banner.save-err { background: rgba(255,107,107,0.1); border: 2px solid rgba(255,107,107,0.3); color: var(--error); }
+        .save-spinner { width:16px;height:16px;border:2px solid rgba(0,217,255,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0; }
+
         .results-area { display: none; animation: fadeUp 0.5s ease-out; }
         .results-area.show { display: block; }
 
@@ -137,15 +188,6 @@
         .layout-image-wrap { text-align:center; background:rgba(255,255,255,0.02); border-radius:10px; padding:1rem; }
         .layout-image-wrap img { max-width:100%; border-radius:8px; border:1px solid var(--dark-lighter); }
         .image-hint { color:var(--text-dim); font-size:0.78rem; margin-top:0.75rem; }
-
-        .boxes-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        .box-card {
-            background: rgba(181,123,255,0.06); border: 1px solid rgba(181,123,255,0.2);
-            border-radius: 10px; padding: 1rem 1.1rem;
-        }
-        .box-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--kf); margin-bottom:0.5rem; opacity:0.8; }
-        .box-text { font-size:0.88rem; color:var(--text); line-height:1.6; white-space:pre-wrap; }
-        .box-empty { color:var(--text-dim); font-style:italic; font-size:0.82rem; }
 
         .copy-row { display:flex; gap:0.6rem; margin-top:1rem; flex-wrap:wrap; }
         .copy-btn {
@@ -180,7 +222,7 @@
 
         @media (max-width:600px) {
             h1 { font-size:1.8rem; }
-            .boxes-grid { grid-template-columns:1fr; }
+            .job-number-bar { flex-direction: column; align-items: stretch; }
         }
     </style>
 </head>
@@ -192,8 +234,16 @@
             <a href="index.html" class="back-btn">← Back</a>
         </div>
         <h1>📄 PDF Ripper</h1>
-        <p class="subtitle">Upload a solar survey PDF — extracts the address, proposed layout image, and all four site assessment boxes automatically.</p>
+        <p class="subtitle">Upload a solar survey PDF — extracts the address, proposed layout image, and site assessment boxes. Optionally link to a job number to save directly to that job.</p>
     </header>
+
+    <!-- Job Number Link -->
+    <div class="job-number-bar">
+        <label>🔗 Link to Job:</label>
+        <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number (optional)…" />
+        <button class="job-verify-btn" id="job-verify-btn" onclick="verifyJobNumber()">Verify Job</button>
+        <span class="job-match-badge" id="job-match-badge"></span>
+    </div>
 
     <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
         <span class="upload-icon" id="upload-icon">📂</span>
@@ -214,7 +264,11 @@
         <div class="progress-step" id="step-address"><span class="step-icon">📍</span> Finding address from page 1…</div>
         <div class="progress-step" id="step-layout"> <span class="step-icon">🗺️</span> Rendering layout image from page 3…</div>
         <div class="progress-step" id="step-boxes">  <span class="step-icon">📦</span> Extracting box content from page 4…</div>
+        <div class="progress-step" id="step-save">   <span class="step-icon">💾</span> Saving to job record…</div>
     </div>
+
+    <!-- Save status banner (shown after extraction) -->
+    <div class="save-banner" id="save-banner"></div>
 
     <div class="results-area" id="results-area">
 
@@ -275,6 +329,35 @@
     </div>
 </div>
 
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, query, where, doc, updateDoc, setDoc }
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { getStorage, ref, uploadString, getDownloadURL }
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain: "pingu-solar.firebaseapp.com",
+        projectId: "pingu-solar",
+        storageBucket: "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId: "1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId: "G-PFH059DZ64"
+    };
+
+    try {
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.storage = getStorage(app);
+        window.firebaseModules = { collection, getDocs, query, where, doc, updateDoc, setDoc, ref, uploadString, getDownloadURL };
+        console.log('✅ Firebase initialized');
+    } catch (e) {
+        console.error('Firebase error:', e);
+    }
+</script>
+
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc =
         'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -283,6 +366,53 @@
     let layoutDataUrl = '';
     let rawPage1Lines = [];
     let rawPage4Lines = [];
+    let verifiedJobId  = null;   // Firestore doc ID of matched job
+    let verifiedJobNum = null;   // human-readable job number string
+
+    // ── Firebase job verification ─────────────────────────────────────────────
+    async function verifyJobNumber() {
+        const num = document.getElementById('job-number-input').value.trim();
+        if (!num) { showError('Please enter a job number to verify.'); return; }
+        const btn   = document.getElementById('job-verify-btn');
+        const badge = document.getElementById('job-match-badge');
+        const input = document.getElementById('job-number-input');
+        btn.disabled = true; btn.textContent = '…';
+        badge.className = 'job-match-badge'; badge.textContent = '';
+        try {
+            if (!window.firebaseModules) throw new Error('Firebase not ready');
+            const { collection, getDocs, query, where } = window.firebaseModules;
+            const q = query(collection(window.db, 'jobs'), where('Job Number', '==', num));
+            const snap = await getDocs(q);
+            if (snap.empty) {
+                verifiedJobId  = null;
+                verifiedJobNum = null;
+                input.className = 'job-number-input no-match';
+                badge.className = 'job-match-badge not-found';
+                badge.textContent = '✗ Job not found';
+            } else {
+                const jobDoc = snap.docs[0];
+                verifiedJobId  = jobDoc.id;
+                verifiedJobNum = num;
+                input.className = 'job-number-input matched';
+                badge.className = 'job-match-badge found';
+                const d = jobDoc.data();
+                badge.textContent = `✓ ${d['Name'] || num} · ${d['1st line of address'] || ''}`;
+            }
+        } catch (err) {
+            console.error(err);
+            badge.className = 'job-match-badge not-found';
+            badge.textContent = '✗ Lookup failed';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Verify Job';
+        }
+    }
+
+    // Allow Enter key in job number field
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('job-number-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') verifyJobNumber();
+        });
+    });
 
     // ── File handling ─────────────────────────────────────────────────────────
     const fileInput  = document.getElementById('file-input');
@@ -313,62 +443,25 @@
         const content  = await page.getTextContent();
         const viewport = page.getViewport({ scale: 1 });
         const items    = [];
-
         for (const item of content.items) {
             if (!item.str || !item.str.trim()) continue;
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
-            items.push({
-                text: item.str.trim(),
-                x:    tx[4],
-                y:    viewport.height - tx[5],   // flip: 0 = top of page
-            });
+            items.push({ text: item.str.trim(), x: tx[4], y: viewport.height - tx[5] });
         }
-
-        // Sort top-to-bottom, left-to-right within same row (6pt tolerance)
         items.sort((a, b) => {
             if (Math.abs(a.y - b.y) < 6) return a.x - b.x;
             return a.y - b.y;
         });
-
-        // Merge into lines
         const lines = [];
         let lastY = -999, curLine = [];
         for (const item of items) {
             if (Math.abs(item.y - lastY) > 6 && curLine.length) {
-                lines.push(curLine.join(' '));
-                curLine = [];
+                lines.push(curLine.join(' ')); curLine = [];
             }
-            curLine.push(item.text);
-            lastY = item.y;
+            curLine.push(item.text); lastY = item.y;
         }
         if (curLine.length) lines.push(curLine.join(' '));
-
         return lines;
-    }
-
-    // ── Find content directly after a label ───────────────────────────────────
-    // Returns lines immediately following a line that contains `label`,
-    // stopping when we hit another known section header or maxLines is reached.
-    function extractAfterLabel(lines, label, stopLabels, maxLines) {
-        stopLabels = stopLabels || [];
-        maxLines   = maxLines   || 10;
-        const lowerLabel = label.toLowerCase();
-
-        for (let i = 0; i < lines.length; i++) {
-            if (lines[i].toLowerCase().includes(lowerLabel)) {
-                const result = [];
-                for (let j = i + 1; j < lines.length && result.length < maxLines; j++) {
-                    const l = lines[j].trim();
-                    if (!l) continue;
-                    // Stop if we hit a stop label
-                    const lower = l.toLowerCase();
-                    if (stopLabels.some(s => lower.includes(s.toLowerCase()))) break;
-                    result.push(l);
-                }
-                if (result.length) return result.join('\n');
-            }
-        }
-        return null;
     }
 
     // ── Render a page to a JPEG data URL ─────────────────────────────────────
@@ -382,15 +475,13 @@
         return canvas.toDataURL('image/jpeg', 0.92);
     }
 
-    // ── Crop image to top 43% ────────────────────────────────────────────────────
     function cropToY(dataUrl) {
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
                 const cropH  = Math.floor(img.height * 0.43);
                 const canvas = document.createElement('canvas');
-                canvas.width  = img.width;
-                canvas.height = cropH;
+                canvas.width  = img.width; canvas.height = cropH;
                 canvas.getContext('2d').drawImage(img, 0, 0, img.width, cropH, 0, 0, img.width, cropH);
                 resolve(canvas.toDataURL('image/jpeg', 0.92));
             };
@@ -398,15 +489,13 @@
         });
     }
 
-    // ── Crop an image data URL to its bottom half ─────────────────────────────
     function cropBottomHalf(dataUrl) {
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
-                const cropY  = Math.floor(img.height * 0.45); // start at 45% down
+                const cropY  = Math.floor(img.height * 0.45);
                 const canvas = document.createElement('canvas');
-                canvas.width  = img.width;
-                canvas.height = img.height - cropY;
+                canvas.width  = img.width; canvas.height = img.height - cropY;
                 canvas.getContext('2d').drawImage(img, 0, cropY, img.width, img.height - cropY, 0, 0, img.width, img.height - cropY);
                 resolve(canvas.toDataURL('image/jpeg', 0.92));
             };
@@ -430,7 +519,50 @@
             icon.style.display = '';
             if (state === 'done')  icon.textContent = '✅';
             if (state === 'error') icon.textContent = '❌';
+            if (state === 'skip')  icon.textContent = '⏭️';
         }
+    }
+
+    // ── Upload layout image to Firebase Storage ───────────────────────────────
+    async function uploadLayoutImage(dataUrl, jobNum) {
+        if (!window.firebaseModules || !dataUrl) return null;
+        const { ref, uploadString, getDownloadURL } = window.firebaseModules;
+        // Strip the data:image/jpeg;base64, prefix
+        const base64 = dataUrl.split(',')[1];
+        const storagePath = `pdf-ripper/${jobNum}/proposed-layout-${Date.now()}.jpg`;
+        const storageRef = ref(window.storage, storagePath);
+        await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
+        return await getDownloadURL(storageRef);
+    }
+
+    // ── Upload page 4 image to Firebase Storage ───────────────────────────────
+    async function uploadPage4Image(dataUrl, jobNum) {
+        if (!window.firebaseModules || !dataUrl) return null;
+        const { ref, uploadString, getDownloadURL } = window.firebaseModules;
+        const base64 = dataUrl.split(',')[1];
+        const storagePath = `pdf-ripper/${jobNum}/site-assessment-${Date.now()}.jpg`;
+        const storageRef = ref(window.storage, storagePath);
+        await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
+        return await getDownloadURL(storageRef);
+    }
+
+    // ── Save extracted data to Firestore job record ───────────────────────────
+    async function saveToJob(address, layoutUrl, page4Url, rawPage4Text) {
+        if (!verifiedJobId || !window.firebaseModules) return false;
+        const { doc, updateDoc } = window.firebaseModules;
+        const jobRef = doc(window.db, 'jobs', verifiedJobId);
+        const payload = {
+            pdfRipper: {
+                address:          address,
+                proposedLayoutUrl: layoutUrl  || null,
+                siteAssessmentUrl: page4Url   || null,
+                siteAssessmentText: rawPage4Text || '',
+                savedAt:           new Date().toISOString(),
+                jobNumber:         verifiedJobNum
+            }
+        };
+        await updateDoc(jobRef, payload);
+        return true;
     }
 
     // ── Main extraction ───────────────────────────────────────────────────────
@@ -440,6 +572,10 @@
         const btn = document.getElementById('extract-btn');
         btn.disabled = true; btn.textContent = '⏳ Processing…';
         document.getElementById('progress-area').classList.add('show');
+
+        // Show/hide save step depending on whether a job is linked
+        const saveStepEl = document.getElementById('step-save');
+        saveStepEl.style.display = verifiedJobId ? '' : 'none';
 
         try {
             // Step 1: Load PDF
@@ -455,20 +591,14 @@
             if (totalPages >= 1) {
                 const p1 = await pdf.getPage(1);
                 rawPage1Lines = await getPageLines(p1);
-
-                // Find the line after ADDRESS that looks like a street address
-                // A street address contains a number and/or postcode pattern
                 const addrLabels = ['address', 'site address', 'installation address', 'property address'];
                 for (const lbl of addrLabels) {
                     for (let i = 0; i < rawPage1Lines.length; i++) {
                         if (rawPage1Lines[i].toLowerCase().includes(lbl)) {
-                            // Look ahead up to 5 lines for something that looks like an address
                             for (let j = i + 1; j < Math.min(i + 6, rawPage1Lines.length); j++) {
                                 const l = rawPage1Lines[j].trim();
-                                // Must contain a digit and not be a section header or #
                                 if (l && /\d/.test(l) && !l.startsWith('#') && l.length > 5 && l.length < 80) {
-                                    address = l;
-                                    break;
+                                    address = l; break;
                                 }
                             }
                             if (address !== 'Not found') break;
@@ -484,37 +614,55 @@
             layoutDataUrl = '';
             if (totalPages >= 3) {
                 const p3 = await pdf.getPage(3);
-                // Render full page then crop to bottom half (where the aerial image lives)
                 const fullDataUrl = await renderPage(p3, 2.5);
                 layoutDataUrl = await cropBottomHalf(fullDataUrl);
             }
             setStep('step-layout', 'done');
 
-            // Step 4: Box content from page 4
+            // Step 4: Box content from page 4 (rendered image)
             setStep('step-boxes', 'active');
-            let boxSolar    = null;
-            let boxInverter = null;
-            let boxBattery  = null;
-            let boxBird     = null;
+            let page4DataUrl = null;
+            let page4RawText = '';
 
             if (totalPages >= 4) {
                 const p4 = await pdf.getPage(4);
                 rawPage4Lines = await getPageLines(p4);
+                page4RawText  = rawPage4Lines.join('\n');
 
-                // Render page 4 and crop to top 43%
                 const p4page = await pdf.getPage(4);
                 const p4full2 = await renderPage(p4page, 2.0);
-                boxSolar = await cropToY(p4full2);
+                page4DataUrl = await cropToY(p4full2);
             }
             setStep('step-boxes', 'done');
 
-            populateResults(address, layoutDataUrl, boxSolar, null, null, null);
+            // Step 5: Save to Firebase (only if job is linked)
+            let savedLayoutUrl = null;
+            let savedPage4Url  = null;
+
+            if (verifiedJobId) {
+                setStep('step-save', 'active');
+                showSaveBanner('saving', '💾 Uploading images and saving to job record…');
+                try {
+                    if (layoutDataUrl) savedLayoutUrl = await uploadLayoutImage(layoutDataUrl, verifiedJobNum);
+                    if (page4DataUrl)  savedPage4Url  = await uploadPage4Image(page4DataUrl, verifiedJobNum);
+                    await saveToJob(address, savedLayoutUrl, savedPage4Url, page4RawText);
+                    setStep('step-save', 'done');
+                    showSaveBanner('saved', `✅ Saved to Job #${verifiedJobNum} — layout and site assessment available in Conduct Survey`);
+                } catch (saveErr) {
+                    console.error('Save error:', saveErr);
+                    setStep('step-save', 'error');
+                    showSaveBanner('save-err', `⚠️ Save failed: ${saveErr.message}`);
+                }
+            }
+
+            populateResults(address, layoutDataUrl, page4DataUrl, page4RawText);
 
         } catch (err) {
             console.error(err);
             showError('Extraction failed: ' + err.message);
-            ['step-parse','step-address','step-layout','step-boxes'].forEach(id => {
-                if (document.getElementById(id).classList.contains('active')) setStep(id, 'error');
+            ['step-parse','step-address','step-layout','step-boxes','step-save'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('active')) setStep(id, 'error');
             });
         } finally {
             btn.disabled = false; btn.textContent = '⚡ Extract Data from PDF';
@@ -522,7 +670,7 @@
     }
 
     // ── Populate results UI ───────────────────────────────────────────────────
-    function populateResults(address, layoutUrl, solar, inverter, battery, bird) {
+    function populateResults(address, layoutUrl, page4DataUrl, page4Text) {
         // Address
         const addrEl = document.getElementById('result-address');
         const lines  = address.split('\n').filter(l => l.trim());
@@ -535,9 +683,8 @@
         if (layoutUrl) { img.src = layoutUrl; img.style.display = 'block'; ph.style.display = 'none'; }
         else { ph.textContent = 'No page 3 found in this PDF.'; }
 
-        // Boxes
-        // solar already contains the full combined page 4 text
-        setBox('box-all', solar);
+        // Boxes — show rendered image if available
+        setBox('box-all', page4DataUrl || page4Text || '');
 
         // Raw debug panels
         const fmt = lines => lines.length
@@ -552,13 +699,21 @@
     function setBox(id, value) {
         const el = document.getElementById(id);
         if (!value || !value.trim()) {
-            el.innerHTML = '<span class="box-empty">Not found — expand raw text below to troubleshoot</span>';
+            el.innerHTML = '<span style="color:var(--text-dim);font-style:italic;font-size:0.82rem;">Not found — expand raw text below to troubleshoot</span>';
         } else if (value.startsWith('data:image')) {
-            // It's a rendered page image — show it
             el.innerHTML = '<img src="' + value + '" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />';
         } else {
             el.textContent = value;
         }
+    }
+
+    // ── Save banner ───────────────────────────────────────────────────────────
+    function showSaveBanner(type, msg) {
+        const el = document.getElementById('save-banner');
+        el.className = 'save-banner show ' + type;
+        el.innerHTML = type === 'saving'
+            ? `<div class="save-spinner"></div><span>${msg}</span>`
+            : `<span>${msg}</span>`;
     }
 
     // ── Utilities ─────────────────────────────────────────────────────────────
@@ -595,11 +750,14 @@
     function resetResults() {
         document.getElementById('results-area').classList.remove('show');
         document.getElementById('progress-area').classList.remove('show');
-        ['step-parse','step-address','step-layout','step-boxes'].forEach(id => {
-            document.getElementById(id).className = 'progress-step';
-            const icon = document.getElementById(id).querySelector('.step-icon');
+        document.getElementById('save-banner').className = 'save-banner';
+        ['step-parse','step-address','step-layout','step-boxes','step-save'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.className = 'progress-step';
+            const icon = el.querySelector('.step-icon');
             if (icon) icon.style.display = '';
-            const sp = document.getElementById(id).querySelector('.spinner');
+            const sp = el.querySelector('.spinner');
             if (sp) sp.remove();
         });
         layoutDataUrl = ''; rawPage1Lines = []; rawPage4Lines = [];
