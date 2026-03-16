@@ -346,6 +346,13 @@
             font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.95rem;
             -moz-appearance: textfield;
         }
+        .material-range {
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    margin-left: 8px;
+    font-weight: 400;
+    white-space: nowrap;
+}
         .quantity-input::-webkit-outer-spin-button,
         .quantity-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .quantity-label { color: var(--text-dim); font-size: 0.82rem; white-space: nowrap; }
@@ -1370,22 +1377,44 @@ const electricalItems = [
             {desc:"Bird deterrent 30m"},{desc:"Solar panel bird Exclusion kit (Black Mesh)"},{desc:"Bird mesh clips"}
         ];
 
-        function renderMaterials(containerId, items) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-            let html = '';
-            items.forEach((item, i) => {
-                const uid = containerId + '-' + i;
-                html += `<div class="material-item">
-                    <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}">
-                    <label for="chk-${uid}" class="material-desc">${item.desc}</label>
-                    <div class="quantity-wrapper" id="qw-${uid}">
-                        <span class="quantity-label">Qty:</span>
-                        <input type="number" class="quantity-input" id="qty-${uid}" min="0" value="0" step="1">
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
+function renderMaterials(containerId, items) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let html = '';
+    items.forEach((item, i) => {
+        const uid = containerId + '-' + i;
+        const pack = item.packSize && item.packSize.trim() !== '' 
+            ? `<span class="material-range">(${item.packSize})</span>` 
+            : '';
+
+        html += `<div class="material-item">
+            <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}">
+            <label for="chk-${uid}" class="material-desc">
+                ${item.desc}
+                ${pack}
+            </label>
+            <div class="quantity-wrapper" id="qw-${uid}">
+                <span class="quantity-label">Qty:</span>
+                <input type="number" class="quantity-input" id="qty-${uid}" min="0" value="0" step="1">
+            </div>
+        </div>`;
+    });
+
+    container.innerHTML = html;
+
+    // Keep the existing checkbox → quantity logic
+    container.querySelectorAll('.material-checkbox').forEach(chk => {
+        const uid = chk.id.replace('chk-', '');
+        const qw = document.getElementById('qw-' + uid);
+        const qi = document.getElementById('qty-' + uid);
+
+        chk.addEventListener('change', () => {
+            qw.classList.toggle('show', chk.checked);
+            if (!chk.checked) qi.value = '0';
+        });
+    });
+}
             container.querySelectorAll('.material-checkbox').forEach(chk => {
                 const uid = chk.id.replace('chk-', '');
                 const qw = document.getElementById('qw-' + uid);
