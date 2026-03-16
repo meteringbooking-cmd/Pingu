@@ -411,7 +411,7 @@
             <!-- PDF Ripper Panel -->
             <div class="ripper-panel" id="ripper-panel">
                 <div class="ripper-panel-header">
-                    📄 PDF Survey Data
+                    📄 SFA PDF Data
                     <span class="rp-saved-at" id="rp-saved-at"></span>
                 </div>
                 <div id="ripper-panel-body">
@@ -1539,20 +1539,22 @@
                 const hasAssessTxt = !!rip.siteAssessmentText;
                 const hasAssess    = hasAssessImg || hasAssessTxt;
 
-                let html = `<div class="ripper-tabs">
-                    <button class="ripper-tab active" onclick="ripperTab(event,'rp-address')">📍 Address</button>
-                    ${haslayout  ? '<button class="ripper-tab" onclick="ripperTab(event,\'rp-layout\')">🗺️ Proposed Layout</button>' : ''}
-                    ${hasAssess  ? '<button class="ripper-tab" onclick="ripperTab(event,\'rp-assessment\')">📦 Site Assessment</button>' : ''}
-                </div>`;
+                // Determine which tab is active first
+                const firstTab = haslayout ? 'rp-layout' : hasAssess ? 'rp-assessment' : null;
+                if (!firstTab) {
+                    body.innerHTML = `<div class="ripper-none">No layout or assessment data found in the saved PDF data.</div>`;
+                    panel.classList.add('show');
+                    return;
+                }
 
-                // Address tab
-                html += `<div class="ripper-tab-content active" id="rp-address">
-                    <div class="ripper-address-block">${rip.address ? esc(rip.address).replace(/\n/g,'<br>') : '<em style="color:var(--text-dim)">No address extracted</em>'}</div>
+                let html = `<div class="ripper-tabs">
+                    ${haslayout ? `<button class="ripper-tab${firstTab==='rp-layout'?' active':''}" onclick="ripperTab(event,'rp-layout')">🗺️ Proposed Layout</button>` : ''}
+                    ${hasAssess ? `<button class="ripper-tab${firstTab==='rp-assessment'?' active':''}" onclick="ripperTab(event,'rp-assessment')">📦 Site Assessment</button>` : ''}
                 </div>`;
 
                 // Layout tab
                 if (haslayout) {
-                    html += `<div class="ripper-tab-content" id="rp-layout">
+                    html += `<div class="ripper-tab-content${firstTab==='rp-layout'?' active':''}" id="rp-layout">
                         <div class="ripper-image-wrap">
                             <img src="${rip.proposedLayoutUrl}" alt="Proposed layout" />
                             <p class="ripper-image-hint">Proposed layout · extracted from page 3 of survey PDF</p>
@@ -1568,7 +1570,7 @@
                             <p class="ripper-image-hint">Site assessment boxes · extracted from page 4 of survey PDF</p>
                            </div>`
                         : `<pre style="white-space:pre-wrap;font-size:0.82rem;color:var(--text);line-height:1.6;background:var(--dark);padding:1rem;border-radius:8px;overflow-x:auto;">${esc(rip.siteAssessmentText)}</pre>`;
-                    html += `<div class="ripper-tab-content" id="rp-assessment">${assessContent}</div>`;
+                    html += `<div class="ripper-tab-content${firstTab==='rp-assessment'?' active':''}" id="rp-assessment">${assessContent}</div>`;
                 }
 
                 body.innerHTML = html;
