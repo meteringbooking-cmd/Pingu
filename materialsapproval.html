@@ -329,7 +329,7 @@ window._surveys = [];
 window._filter = 'all';
 window._approvals = {};
 
-// ── PART ID LOOKUP ─────────────────────────────────────────────────────────────
+// ── PART ID LOOKUP (from your latest image) ─────────────────────────────────
 const PART_IDS = {
     "1000V INSULATION SHROUD BLANKET (900MM X 600MM)": "NG-132-C",
     "100amp 100mA RCD main switched isolator": "NG-130-C",
@@ -551,7 +551,7 @@ window.renderAll = function () {
     listEl.innerHTML = shown.map((s, i) => buildCard(s, i)).join('');
 };
 
-// ── BUILD CARD ────────────────────────────────────────────────────────────────
+// ── BUILD CARD (with Code + Pack Size + Approve/Deny buttons) ─────────────────
 function buildCard(s, idx) {
     const id = s._docId;
     const approved = isApproved(s);
@@ -562,15 +562,40 @@ function buildCard(s, idx) {
     const survDate = fmtDate(s.sections?.surveyDetails?.conductedOn || s.submittedAt);
     const installDate = s._installDate ? fmtDate(s._installDate) : '—';
     const survType = s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : 'Battery Only';
+
     const materials = parseMaterials(s.sections?.additionalMaterials || []);
-    let rows = materials.map(m => `
-        <tr>
-            <td class="mat-desc">${esc(m.desc)}</td>
-            <td class="mat-code">${esc(m.code)}</td>
-            <td class="mat-pack">${esc(m.packSize)}</td>
-        </tr>
-    `).join('');
-    if (!rows) rows = `<tr><td colspan="3" style="text-align:center;color:var(--text-dim);padding:2rem;">No additional materials requested</td></tr>`;
+    const apState = window._approvals[id] || {};
+
+    let rows = materials.map((mat, i) => {
+        const st = apState[i] || { approved: null, qty: mat.qty || 1 };
+        const rowCls = st.approved === true ? 'approved' : st.approved === false ? 'denied' : '';
+        const appCls = st.approved === true ? 'active' : '';
+        const denCls = st.approved === false ? 'active' : '';
+        const disabled = approved ? 'disabled' : '';
+        return `
+        <div class="material-row ${rowCls}" id="matrow-${id}-${i}">
+            <div class="mat-info">
+                <div class="mat-name">${esc(mat.desc)}</div>
+                <div class="mat-cat">Code: <strong>${esc(mat.code)}</strong> • Pack Size: <strong>${esc(mat.packSize)}</strong></div>
+            </div>
+            <div class="mat-qty-wrap">
+                <span class="mat-qty-lbl">Qty</span>
+                <input type="number" class="mat-qty-input" min="1"
+                    id="qty-${id}-${i}" value="${st.qty}"
+                    ${approved ? 'disabled' : ''}
+                    onchange="updateQty('${id}', ${i}, this.value)" />
+            </div>
+            <div class="mat-actions">
+                <button class="btn-approve ${appCls}" id="app-${id}-${i}"
+                    onclick="setApproval('${id}', ${i}, true)" ${disabled}>✓ Approve</button>
+                <button class="btn-deny ${denCls}" id="den-${id}-${i}"
+                    onclick="setApproval('${id}', ${i}, false)" ${disabled}>✕ Deny</button>
+            </div>
+        </div>`;
+    }).join('');
+
+    if (!rows) rows = `<div class="no-mats">No additional materials requested for this survey.</div>`;
+
     let submitHtml = approved ? `
         <div class="submit-section">
             <div class="already-approved-banner">
@@ -578,8 +603,14 @@ function buildCard(s, idx) {
             </div>
         </div>` : `
         <div class="submit-section">
-            <button class="btn-submit" onclick="submitApproval('${id}')">📧 Submit Approval & Send Email</button>
+            <div class="submit-progress">
+                <span id="progress-${id}">0</span> / <span>${materials.length}</span> materials reviewed
+            </div>
+            <button class="btn-submit" id="sub-${id}" onclick="submitApproval('${id}')" ${materials.length === 0 ? 'disabled' : ''}>
+                📧 Submit Approval &amp; Send Email
+            </button>
         </div>`;
+
     return `
     <div class="survey-card${approved ? ' is-approved' : ''}" id="card-${id}" style="animation-delay:${idx * 0.06}s">
         <div class="card-stripe ${approved ? 'stripe-approved' : 'stripe-pending'}"></div>
@@ -604,26 +635,49 @@ function buildCard(s, idx) {
         <div class="card-body">
             <div>
                 <div class="section-label">⚡ Additional Materials Requested</div>
-                <table class="materials-table">
-                    <thead>
-                        <tr>
-                            <th>Description</th>
-                            <th>Code</th>
-                            <th>Pack Size</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rows}
-                    </tbody>
-                </table>
+                <div class="materials-list">${rows}</div>
             </div>
         </div>
         ${submitHtml}
     </div>`;
 }
 
+// ── APPROVAL STATE MANAGEMENT ─────────────────────────────────────────────────
+window.updateQty = function (id, idx, val) {
+    if (!window._approvals[id]) return;
+    window._approvals[id][idx].qty = Math.max(1, parseInt(val, 10) || 1);
+    updateSubmitBtn(id);
+};
+
+window.setApproval = function (id, idx, approved) {
+    if (!window._approvals[id]) return;
+    window._approvals[id][idx].approved = approved;
+    const row = document.getElementById(`matrow-${id}-${idx}`);
+    const appB = document.getElementById(`app-${id}-${idx}`);
+    const denB = document.getElementById(`den-${id}-${idx}`);
+    if (row) row.className = `material-row ${approved ? 'approved' : 'denied'}`;
+    if (appB) appB.className = `btn-approve ${approved ? 'active' : ''}`;
+    if (denB) denB.className = `btn-deny ${!approved ? 'active' : ''}`;
+    updateSubmitBtn(id);
+};
+
+function updateSubmitBtn(id) {
+    const survey = window._surveys.find(s => s._docId === id);
+    if (!survey) return;
+    const mats = parseMaterials(survey.sections?.additionalMaterials || []);
+    const apState = window._approvals[id] || {};
+    const actioned = Object.values(apState).filter(v => v.approved !== null).length;
+    const progEl = document.getElementById(`progress-${id}`);
+    const subBtn = document.getElementById(`sub-${id}`);
+    if (progEl) progEl.textContent = actioned;
+    if (subBtn) subBtn.disabled = actioned < mats.length;
+}
+
 window.submitApproval = async function (id) {
+    const survey = window._surveys.find(s => s._docId === id);
+    if (!survey) return;
     alert('✅ Approval submitted and email sent to procurement team.');
+    survey._approvedAt = new Date().toISOString();
     renderAll();
 };
 
