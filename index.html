@@ -215,9 +215,33 @@
             opacity: 0.72;
             transition: opacity 0.2s, transform 0.2s;
             vertical-align: middle;
+            cursor: pointer;
         }
-        .footer-logo-img:hover { opacity: 1; transform: scale(1.1); }
+        .footer-logo-img:hover { opacity: 1; transform: scale(1.15); }
         footer p { color: var(--text-dim); font-size: 0.85rem; }
+
+        /* ── Logo lightbox ── */
+        #logo-lightbox {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+        #logo-lightbox.open { display: flex; animation: lbFadeIn 0.2s ease; }
+        @keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #logo-lightbox img {
+            max-width: min(480px, 90vw);
+            max-height: 90vh;
+            border-radius: 20px;
+            box-shadow: 0 0 80px rgba(255,107,53,0.35), 0 0 0 2px rgba(255,255,255,0.08);
+            transform: scale(0.85);
+            animation: lbPop 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        @keyframes lbPop { to { transform: scale(1); } }
 
         .deco-line {
             height: 2px; background: linear-gradient(90deg, transparent, var(--primary), transparent);
@@ -362,10 +386,31 @@
                     src="https://www.dropbox.com/scl/fi/ghccbr6i2bux4e5w841pj/ChatGPT-Image-Mar-16-2026-11_56_53-AM.png?rlkey=n6ratrtewwmekujp2l5sibfw5&st=f8vwnqju&dl=1"
                     alt="Pingu logo"
                     class="footer-logo-img"
+                    onclick="openLogoLightbox()"
+                    title="Click to expand"
                 />
                 <p>Pingu - Solar 2026. Barry Dixon</p>
             </div>
         </footer>
+
+        <!-- Logo lightbox -->
+        <div id="logo-lightbox" onclick="closeLogoLightbox()">
+            <img
+                src="https://www.dropbox.com/scl/fi/ghccbr6i2bux4e5w841pj/ChatGPT-Image-Mar-16-2026-11_56_53-AM.png?rlkey=n6ratrtewwmekujp2l5sibfw5&st=f8vwnqju&dl=1"
+                alt="Pingu logo expanded"
+            />
+        </div>
+        <script>
+            function openLogoLightbox() {
+                document.getElementById('logo-lightbox').classList.add('open');
+            }
+            function closeLogoLightbox() {
+                document.getElementById('logo-lightbox').classList.remove('open');
+            }
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') closeLogoLightbox();
+            });
+        </script>
     </div>
     </div><!-- end #page-content -->
 
