@@ -128,7 +128,6 @@
         }
         .survey-card:hover { border-color:rgba(0,217,255,0.3); }
 
-        /* Card header — clickable */
         .card-header {
             display:flex; align-items:center; justify-content:space-between;
             padding:1.1rem 1.4rem; cursor:pointer; user-select:none;
@@ -142,12 +141,12 @@
             width:40px; height:40px; border-radius:10px; flex-shrink:0;
             display:flex; align-items:center; justify-content:center; font-size:1.3rem;
         }
-        .type-icon.battery-only     { background:rgba(0,217,255,0.12); }
+        .type-icon.battery-only      { background:rgba(0,217,255,0.12); }
         .type-icon.battery-and-solar { background:rgba(255,200,87,0.12); }
-        .type-icon.unknown           { background:rgba(255,107,53,0.12); }
+        .type-icon.unknown            { background:rgba(255,107,53,0.12); }
 
         .card-meta { display:flex; flex-direction:column; gap:0.15rem; }
-        .card-job { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text); }
+        .card-job  { font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700; color:var(--text); }
         .card-date { font-size:0.78rem; color:var(--text-dim); }
 
         .card-header-right { display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap; }
@@ -188,10 +187,9 @@
         .field-val { font-size:0.88rem; color:var(--text); }
         .field-val.missing { color:var(--text-dim); font-style:italic; font-size:0.8rem; }
 
-        /* radio value colours */
-        .val-yes   { color:var(--success); font-weight:600; }
-        .val-no    { color:var(--error);   font-weight:600; }
-        .val-na    { color:var(--text-dim);}
+        .val-yes { color:var(--success); font-weight:600; }
+        .val-no  { color:var(--error);   font-weight:600; }
+        .val-na  { color:var(--text-dim);}
 
         /* materials list */
         .materials-list { display:flex; flex-direction:column; gap:0.3rem; margin-top:0.4rem; }
@@ -263,7 +261,7 @@
             font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:800;
             color:var(--secondary); margin-bottom:0.3rem;
         }
-        .fwd-sub { font-size:0.8rem; color:var(--text-dim); margin-bottom:1.3rem; }
+        .fwd-sub  { font-size:0.8rem; color:var(--text-dim); margin-bottom:1.3rem; }
         .fwd-input {
             width:100%; background:var(--dark-lighter); border:2px solid var(--dark-lighter);
             color:var(--text); padding:0.75rem 1rem; border-radius:8px;
@@ -287,6 +285,14 @@
             font-family:'JetBrains Mono',monospace; font-size:0.85rem; cursor:pointer; transition:all 0.2s;
         }
         .fwd-cancel:hover { color:var(--text); }
+        /* picklist loading indicator inside modal */
+        .fwd-picklist-status {
+            font-size:0.75rem; color:var(--text-dim); margin-bottom:0.8rem;
+            padding:0.5rem 0.75rem; background:var(--dark-lighter);
+            border-radius:6px; border-left:3px solid var(--kf);
+            display:none;
+        }
+        .fwd-picklist-status.show { display:block; }
 
         @media(max-width:650px) {
             .page-title { font-size:1.75rem; }
@@ -312,15 +318,13 @@
         <span id="welcome-name">Loading…</span>
     </div>
 
-    <!-- Stats -->
     <div class="stats-bar">
         <div class="stat-card"><div class="stat-lbl">Total</div><div class="stat-val c-cyan" id="stat-total">—</div></div>
         <div class="stat-card"><div class="stat-lbl">Battery Only</div><div class="stat-val c-green" id="stat-bo">—</div></div>
-        <div class="stat-card"><div class="stat-lbl">Battery & Solar</div><div class="stat-val c-orange" id="stat-bas">—</div></div>
+        <div class="stat-card"><div class="stat-lbl">Battery &amp; Solar</div><div class="stat-val c-orange" id="stat-bas">—</div></div>
         <div class="stat-card"><div class="stat-lbl">This Month</div><div class="stat-val c-kf" id="stat-month">—</div></div>
     </div>
 
-    <!-- Filters -->
     <div class="filter-bar">
         <span class="filter-label">Type</span>
         <select class="filter-select" id="type-filter" onchange="renderSurveys()">
@@ -333,7 +337,6 @@
         <input type="text" class="filter-input" id="job-filter" placeholder="Filter by job number…" oninput="renderSurveys()">
     </div>
 
-    <!-- Content -->
     <div class="state-msg" id="loading-state"><div class="icon">⏳</div>Loading your surveys…</div>
     <div class="state-msg" id="empty-state"><div class="icon">📭</div>No surveys match this filter.</div>
     <div class="survey-list" id="survey-list"></div>
@@ -349,7 +352,7 @@
 
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getFirestore, collection, getDocs, query, where, orderBy }
+import { getFirestore, collection, getDocs, query, where, orderBy, limit }
     from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const app = initializeApp({
@@ -362,16 +365,20 @@ const app = initializeApp({
 });
 const db = getFirestore(app);
 
-// ── Resolve logged-in name from session ─────────────────────────────────────
+// Expose db + query helpers globally so the non-module script can call them
+window._db = db;
+window._fbQuery    = query;
+window._fbColl     = collection;
+window._fbWhere    = where;
+window._fbOrderBy  = orderBy;
+window._fbLimit    = limit;
+window._fbGetDocs  = getDocs;
+
+// ── Resolve logged-in name ───────────────────────────────────────────────────
 function getSessionName() {
-    // teamview.html stores session in localStorage under 'engineerSession' or similar.
-    // Try several common keys used across the Pingu app.
     try {
         const raw = localStorage.getItem('loggedInEngineer');
-        if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed && parsed.name) return parsed.name.trim();
-        }
+        if (raw) { const p = JSON.parse(raw); if (p && p.name) return p.name.trim(); }
     } catch {}
     return null;
 }
@@ -380,32 +387,25 @@ window._allSurveys = [];
 
 async function init() {
     const name = getSessionName();
-
-    if (!name) {
-        // Not logged in — redirect to team login
-        window.location.replace('teamlogin.html');
-        return;
-    }
+    if (!name) { window.location.replace('teamlogin.html'); return; }
 
     document.getElementById('welcome-name').textContent = `Signed in as ${name}`;
     document.getElementById('loading-state').classList.add('show');
 
     try {
-        // Query site-surveys where surveyor matches the logged-in name (case-insensitive via two passes)
         const snap = await getDocs(
             query(collection(db, 'site-surveys'), orderBy('submittedAt', 'desc'))
         );
-
         const nameLower = name.toLowerCase();
         window._allSurveys = snap.docs
             .map(d => ({ _id: d.id, ...d.data() }))
             .filter(s => {
-                // surveyor field lives directly or inside sections.surveyDetails
-                const sv =
-                    (s.surveyor ||
-                     s.sections?.surveyDetails?.surveyor ||
-                     s.sections?.surveyDetails?.conductedBy ||
-                     '').trim().toLowerCase();
+                const sv = (
+                    s.surveyor ||
+                    s.sections?.surveyDetails?.surveyor ||
+                    s.sections?.surveyDetails?.conductedBy ||
+                    ''
+                ).trim().toLowerCase();
                 return sv === nameLower;
             });
 
@@ -423,32 +423,23 @@ function updateStats() {
     const s = window._allSurveys;
     const now = new Date();
     const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-    const thisMonth = s.filter(x => (x.submittedAt||'').startsWith(curMonth)).length;
-
     document.getElementById('stat-total').textContent  = s.length;
     document.getElementById('stat-bo').textContent     = s.filter(x=>x.surveyType==='battery-only').length;
     document.getElementById('stat-bas').textContent    = s.filter(x=>x.surveyType==='battery-and-solar').length;
-    document.getElementById('stat-month').textContent  = thisMonth;
+    document.getElementById('stat-month').textContent  = s.filter(x=>(x.submittedAt||'').startsWith(curMonth)).length;
 }
 
 window.renderSurveys = function() {
     const typeFilter = document.getElementById('type-filter').value;
     const jobFilter  = document.getElementById('job-filter').value.trim().toLowerCase();
-
-    let filtered = window._allSurveys.filter(s => {
+    const filtered   = window._allSurveys.filter(s => {
         if (typeFilter && s.surveyType !== typeFilter) return false;
         if (jobFilter && !(s.jobNumber||'').toLowerCase().includes(jobFilter)) return false;
         return true;
     });
-
     const listEl  = document.getElementById('survey-list');
     const emptyEl = document.getElementById('empty-state');
-
-    if (!filtered.length) {
-        emptyEl.classList.add('show');
-        listEl.innerHTML = '';
-        return;
-    }
+    if (!filtered.length) { emptyEl.classList.add('show'); listEl.innerHTML = ''; return; }
     emptyEl.classList.remove('show');
     listEl.innerHTML = filtered.map((s, i) => buildCard(s, i)).join('');
 };
@@ -461,16 +452,13 @@ function buildCard(s, i) {
     const badgeCls  = type === 'battery-only' ? 'badge-battery-only' : type === 'battery-and-solar' ? 'badge-battery-and-solar' : '';
     const submitted = s.submittedAt ? fmtDatetime(s.submittedAt) : '—';
     const sec       = s.sections || {};
-
-    const id = `card-${i}`;
+    const id        = `card-${i}`;
 
     return `
     <div class="survey-card" id="${id}" style="animation-delay:${i*0.06}s">
         <div class="card-header" onclick="toggleCard('${id}')">
             <div class="card-header-left">
-                <div class="type-icon ${type}">
-                    ${typeIcon}
-                </div>
+                <div class="type-icon ${type}">${typeIcon}</div>
                 <div class="card-meta">
                     <div class="card-job">Job #${esc(s.jobNumber || '—')}</div>
                     <div class="card-date">📅 ${submitted}</div>
@@ -494,7 +482,6 @@ function buildCardBody(s, sec, type) {
     const am = sec.additionalMaterials || [];
     let html = '';
 
-    // ── Survey Details ─────────────────────────────────────
     html += `<div class="section-block">
         <div class="section-title">📅 Survey Details</div>
         <div class="fields-grid">
@@ -504,37 +491,35 @@ function buildCardBody(s, sec, type) {
         </div>
     </div>`;
 
-    // ── Electrical System ──────────────────────────────────
     html += `<div class="section-block">
         <div class="section-title">⚡ Electrical System</div>
         <div class="fields-grid">
-            ${field('Meter Position',   el.meterPosition)}
-            ${field('Meter Work Needed',el.meterWorkNeeded)}
+            ${field('Meter Position',    el.meterPosition)}
+            ${field('Meter Work Needed', el.meterWorkNeeded)}
             ${el.meterWorkDetails ? field('Meter Work Details', el.meterWorkDetails) : ''}
             ${field('Fuse Rating',       el.fuseRating)}
             ${field('Earthing System',   el.earthingSystem)}
             ${field('Gas Bonded',        radioVal(el.gasBonded))}
-            ${el.gasBondingEquipment ? field('Gas Bonding Equip.',el.gasBondingEquipment) : ''}
+            ${el.gasBondingEquipment ? field('Gas Bonding Equip.', el.gasBondingEquipment) : ''}
             ${field('Water Bonded',      radioVal(el.waterBonded))}
-            ${el.waterBondingEquipment ? field('Water Bonding Equip.',el.waterBondingEquipment) : ''}
+            ${el.waterBondingEquipment ? field('Water Bonding Equip.', el.waterBondingEquipment) : ''}
             ${field('Cable Run',         el.cableRun)}
             ${field('Cable Run Length',  el.cableRunLength != null ? el.cableRunLength + ' m' : null)}
             ${field('Battery Location',  el.batteryLocation)}
             ${field('Surface Type',      el.surfaceType)}
             ${(el.batteryWidth || el.batteryDepth || el.batteryLength)
-                ? field('Dimensions (W/D/L)',`${el.batteryWidth||0} / ${el.batteryDepth||0} / ${el.batteryLength||0} mm`)
+                ? field('Dimensions (W/D/L)', `${el.batteryWidth||0} / ${el.batteryDepth||0} / ${el.batteryLength||0} mm`)
                 : ''}
             ${field('Render / Cladding', el.renderCladding)}
             ${field('WiFi Signal',       el.wifiSignal)}
         </div>
-        ${photoRow('Meter Position Photos',  el.meterPositionPhotos)}
-        ${photoRow('Earthing System Photos', el.earthingSystemPhotos)}
-        ${photoRow('Cable Run Photos',       el.cableRunPhotos)}
-        ${photoRow('Battery Location Photos',el.batteryLocationPhotos)}
-        ${photoRow('Surface Photos',         el.surfacePhotos)}
+        ${photoRow('Meter Position Photos',   el.meterPositionPhotos)}
+        ${photoRow('Earthing System Photos',  el.earthingSystemPhotos)}
+        ${photoRow('Cable Run Photos',        el.cableRunPhotos)}
+        ${photoRow('Battery Location Photos', el.batteryLocationPhotos)}
+        ${photoRow('Surface Photos',          el.surfacePhotos)}
     </div>`;
 
-    // ── Battery & Solar extra sections ─────────────────────
     if (type === 'battery-and-solar') {
         const pi = sec.propertyInternal || {};
         const pe = sec.propertyExternal || {};
@@ -594,7 +579,6 @@ function buildCardBody(s, sec, type) {
         </div>`;
     }
 
-    // ── Additional Materials ───────────────────────────────
     html += `<div class="section-block">
         <div class="section-title">🛠️ Additional Materials Requested</div>
         ${am.length
@@ -602,7 +586,6 @@ function buildCardBody(s, sec, type) {
             : `<div class="no-materials">None requested</div>`}
     </div>`;
 
-    // ── Customer Sign-off ──────────────────────────────────
     const signoff = sec.customerSignOff || {};
     if (signoff.name || signoff.date) {
         html += `<div class="section-block">
@@ -626,7 +609,6 @@ function radioVal(v) {
 
 function field(label, value) {
     const hasVal = value !== null && value !== undefined && value !== '';
-    // value might already contain HTML (from radioVal)
     const display = hasVal
         ? (typeof value === 'string' && value.includes('<') ? value : esc(String(value)))
         : 'Not recorded';
@@ -688,6 +670,7 @@ document.addEventListener('DOMContentLoaded', init);
     <div class="fwd-modal-box">
         <div class="fwd-title">📤 Forward Survey</div>
         <div class="fwd-sub" id="fwd-sub">Job #<span id="fwd-job-ref">—</span></div>
+        <div class="fwd-picklist-status" id="fwd-picklist-status">📦 Loading picklist data…</div>
         <input type="email" class="fwd-input" id="fwd-email" placeholder="Enter recipient email address…">
         <div class="fwd-actions">
             <button class="fwd-cancel" onclick="closeFwdModal()">Cancel</button>
@@ -700,22 +683,125 @@ document.addEventListener('DOMContentLoaded', init);
 <script type="text/javascript">
 (function(){ emailjs.init('ziLnha91scpGjFABh'); })();
 
-let _fwdSurvey = null;
+let _fwdSurvey   = null;
+let _fwdPicklist = null;   // cached picklist data for the current forward modal
 
+// ── Open forward modal + fetch picklist in background ─────────────────────────
 function openFwdModal(idx, event) {
-    event.stopPropagation(); // don't toggle the card
-    _fwdSurvey = window._allSurveys[idx];
-    document.getElementById('fwd-job-ref').textContent = _fwdSurvey.jobNumber || '—';
-    document.getElementById('fwd-email').value = '';
-    document.getElementById('fwd-send-btn').disabled = false;
-    document.getElementById('fwd-send-btn').textContent = '✉️ Send';
+    event.stopPropagation();
+    _fwdSurvey   = window._allSurveys[idx];
+    _fwdPicklist = null;
+
+    document.getElementById('fwd-job-ref').textContent    = _fwdSurvey.jobNumber || '—';
+    document.getElementById('fwd-email').value            = '';
+    document.getElementById('fwd-send-btn').disabled      = false;
+    document.getElementById('fwd-send-btn').textContent   = '✉️ Send';
     document.getElementById('fwd-modal').classList.add('show');
     setTimeout(() => document.getElementById('fwd-email').focus(), 120);
+
+    // Start fetching picklist immediately (non-blocking)
+    if (_fwdSurvey.jobNumber) {
+        const statusEl = document.getElementById('fwd-picklist-status');
+        statusEl.textContent = '📦 Loading picklist data…';
+        statusEl.classList.add('show');
+
+        fetchPicklistForJob(_fwdSurvey.jobNumber)
+            .then(pl => {
+                _fwdPicklist = pl;
+                statusEl.textContent = pl
+                    ? '✅ Picklist data loaded — will be included in email'
+                    : '📭 No picklist found for this job';
+            })
+            .catch(() => {
+                _fwdPicklist = null;
+                statusEl.textContent = '⚠️ Could not load picklist';
+            });
+    }
+}
+
+// ── Fetch the most recent picklist for a job number ───────────────────────────
+async function fetchPicklistForJob(jobNumber) {
+    try {
+        const q = window._fbQuery(
+            window._fbColl(window._db, 'picklists'),
+            window._fbWhere('jobNumber', '==', jobNumber),
+            window._fbOrderBy('savedAt', 'desc'),
+            window._fbLimit(1)
+        );
+        const snap = await window._fbGetDocs(q);
+        if (snap.empty) return null;
+        return snap.docs[0].data();
+    } catch (e) {
+        console.warn('Picklist fetch error:', e);
+        return null;
+    }
+}
+
+// ── Build a plain-text picklist summary ───────────────────────────────────────
+function buildPicklistSummary(pl) {
+    if (!pl) return null;
+    const lines = ['', '════════════════════════════════', '📦 PICKLIST DATA', '════════════════════════════════'];
+
+    const savedDate = pl.savedAt
+        ? new Date(pl.savedAt).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'})
+        : '—';
+    lines.push(`Picklist saved: ${savedDate}`);
+
+    // ── System / Mounting / Electrical specs ──────────────────────────────────
+    if (pl.specs && Object.keys(pl.specs).length) {
+        lines.push('', '--- System Configuration ---');
+        const sysKeys = ['Type of System','Inverter Size','No. of Batteries','Battery','Retrofit','Enphase Pedestal','Enphase Branches','DC Expansion'];
+        sysKeys.forEach(k => { if (pl.specs[k]) lines.push(`${k}: ${pl.specs[k]}`); });
+
+        lines.push('', '--- Mounting & Hardware ---');
+        const mountKeys = ['Mounting System','Hook Type','Ave Hook Spacing','Hook Spacing','Min. Roof Anchors','Bird Mesh','Roof Type','Rafter Spacing'];
+        mountKeys.forEach(k => { if (pl.specs[k]) lines.push(`${k}: ${pl.specs[k]}`); });
+
+        lines.push('', '--- Electrical & Supply ---');
+        const elecKeys = ['Supply Cables','Submain Location','Trenching'];
+        elecKeys.forEach(k => { if (pl.specs[k]) lines.push(`${k}: ${pl.specs[k]}`); });
+    }
+
+    // ── Mount system sense check ───────────────────────────────────────────────
+    if (pl.mountCheck && Object.keys(pl.mountCheck).length) {
+        lines.push('', '--- Mount System Sense Check ---');
+        const checkKeys = ['# Portrait Panels','# Landscape Panels','Total Panels','Total Perimeter','End Clamps','Mid Clamps','Rail Length','# Roof Anchors','New Picklist Cost Saving'];
+        checkKeys.forEach(k => { if (pl.mountCheck[k]) lines.push(`${k}: ${pl.mountCheck[k]}`); });
+    }
+
+    // ── Panel layout summary ───────────────────────────────────────────────────
+    const flatArr = pl.panelFlat || (pl.panelGrid ? pl.panelGrid.flat() : null);
+    if (flatArr) {
+        const portrait  = flatArr.filter(v => v === 'P').length;
+        const landscape = flatArr.filter(v => v === 'L').length;
+        if (portrait || landscape) {
+            lines.push('', '--- Roof Panel Layout ---');
+            lines.push(`Portrait panels:  ${portrait}`);
+            lines.push(`Landscape panels: ${landscape}`);
+            lines.push(`Total panels:     ${portrait + landscape}`);
+        }
+    }
+
+    // ── KF Picklist items ──────────────────────────────────────────────────────
+    if (Array.isArray(pl.kfPicklist) && pl.kfPicklist.length) {
+        lines.push('', '--- KF Picklist Items ---');
+        let totalQty = 0;
+        pl.kfPicklist.forEach((it, i) => {
+            const qty = parseFloat(it.qty);
+            if (!isNaN(qty)) totalQty += qty;
+            lines.push(`  ${i + 1}. ${it.partCode || '—'}  ×  ${it.qty || '—'}`);
+        });
+        lines.push(`  Total qty: ${totalQty}`);
+    }
+
+    return lines.join('\n');
 }
 
 function closeFwdModal() {
     document.getElementById('fwd-modal').classList.remove('show');
-    _fwdSurvey = null;
+    document.getElementById('fwd-picklist-status').classList.remove('show');
+    _fwdSurvey   = null;
+    _fwdPicklist = null;
 }
 
 document.getElementById('fwd-modal').addEventListener('click', function(e) {
@@ -726,73 +812,77 @@ document.getElementById('fwd-email').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') sendForward();
 });
 
+// ── Build full survey text summary ────────────────────────────────────────────
 function buildSurveySummary(s) {
-    const sec = s.sections || {};
-    const sd  = sec.surveyDetails || {};
-    const el  = sec.electricalSystem || {};
-    const am  = sec.additionalMaterials || [];
-    const type = s.surveyType === 'battery-only' ? 'Battery Only' : s.surveyType === 'battery-and-solar' ? 'Battery & Solar' : s.surveyType || 'Unknown';
+    const sec  = s.sections || {};
+    const sd   = sec.surveyDetails || {};
+    const el   = sec.electricalSystem || {};
+    const am   = sec.additionalMaterials || [];
+    const type = s.surveyType === 'battery-only' ? 'Battery Only'
+               : s.surveyType === 'battery-and-solar' ? 'Battery & Solar'
+               : s.surveyType || 'Unknown';
 
     const lines = [
         '=== SURVEY SUMMARY ===',
-        'Survey Type: ' + type,
-        'Job Number: ' + (s.jobNumber || '—'),
-        'Submitted: ' + (s.submittedAt ? new Date(s.submittedAt).toLocaleString('en-GB') : '—'),
+        `Survey Type: ${type}`,
+        `Job Number: ${s.jobNumber || '—'}`,
+        `Submitted: ${s.submittedAt ? new Date(s.submittedAt).toLocaleString('en-GB') : '—'}`,
         '',
         '--- Survey Details ---',
-        'Conducted On: ' + (sd.conductedOn || '—'),
-        'Surveyor: ' + (sd.surveyor || '—'),
-        'Customer Present: ' + (sd.customerPresent || '—'),
+        `Conducted On: ${sd.conductedOn || '—'}`,
+        `Surveyor: ${sd.surveyor || '—'}`,
+        `Customer Present: ${sd.customerPresent || '—'}`,
         '',
         '--- Electrical System ---',
-        'Meter Position: ' + (el.meterPosition || '—'),
-        'Meter Work Needed: ' + (el.meterWorkNeeded || '—'),
-        el.meterWorkDetails ? 'Meter Work Details: ' + el.meterWorkDetails : '',
-        'Fuse Rating: ' + (el.fuseRating || '—'),
-        'Earthing System: ' + (el.earthingSystem || '—'),
-        'Gas Bonded: ' + (el.gasBonded || '—'),
-        el.gasBondingEquipment ? 'Gas Bonding Equipment: ' + el.gasBondingEquipment : '',
-        'Water Bonded: ' + (el.waterBonded || '—'),
-        el.waterBondingEquipment ? 'Water Bonding Equipment: ' + el.waterBondingEquipment : '',
-        'Cable Run: ' + (el.cableRun || '—'),
-        'Cable Run Length: ' + (el.cableRunLength != null ? el.cableRunLength + ' m' : '—'),
-        'Battery Location: ' + (el.batteryLocation || '—'),
-        'Surface Type: ' + (el.surfaceType || '—'),
-        'Dimensions (W/D/L mm): ' + (el.batteryWidth||0) + ' / ' + (el.batteryDepth||0) + ' / ' + (el.batteryLength||0),
-        'Render / Cladding: ' + (el.renderCladding || '—'),
-        'WiFi Signal: ' + (el.wifiSignal || '—'),
+        `Meter Position: ${el.meterPosition || '—'}`,
+        `Meter Work Needed: ${el.meterWorkNeeded || '—'}`,
+        el.meterWorkDetails ? `Meter Work Details: ${el.meterWorkDetails}` : '',
+        `Fuse Rating: ${el.fuseRating || '—'}`,
+        `Earthing System: ${el.earthingSystem || '—'}`,
+        `Gas Bonded: ${el.gasBonded || '—'}`,
+        el.gasBondingEquipment ? `Gas Bonding Equipment: ${el.gasBondingEquipment}` : '',
+        `Water Bonded: ${el.waterBonded || '—'}`,
+        el.waterBondingEquipment ? `Water Bonding Equipment: ${el.waterBondingEquipment}` : '',
+        `Cable Run: ${el.cableRun || '—'}`,
+        `Cable Run Length: ${el.cableRunLength != null ? el.cableRunLength + ' m' : '—'}`,
+        `Battery Location: ${el.batteryLocation || '—'}`,
+        `Surface Type: ${el.surfaceType || '—'}`,
+        `Dimensions (W/D/L mm): ${el.batteryWidth||0} / ${el.batteryDepth||0} / ${el.batteryLength||0}`,
+        `Render / Cladding: ${el.renderCladding || '—'}`,
+        `WiFi Signal: ${el.wifiSignal || '—'}`,
     ];
 
     if (s.surveyType === 'battery-and-solar') {
         const pi = sec.propertyInternal || {};
         const pe = sec.propertyExternal || {};
         const sc = sec.scaffolding || {};
-        lines.push('', '--- Property (Internal) ---',
-            'Loft Accessible: ' + (pi.loftAccessible || '—'),
-            'Loft Ladder: ' + (pi.loftLadder || '—'),
-            'Loft Boarded: ' + (pi.loftBoarded || '—'),
-            'Asbestos: ' + (pi.asbestos || '—'),
-            'Rafter W/D mm: ' + (pi.rafterWidth||0) + ' / ' + (pi.rafterDepth||0),
-            'Truss Spacing mm: ' + (pi.trussSpacing||0),
-            'Deflection: ' + (pi.deflection || '—'),
-            'Rot/Damage: ' + (pi.rotDamage || '—'),
-            'Roof Concern: ' + (pi.roofConcern || '—'),
+        lines.push(
+            '', '--- Property (Internal) ---',
+            `Loft Accessible: ${pi.loftAccessible || '—'}`,
+            `Loft Ladder: ${pi.loftLadder || '—'}`,
+            `Loft Boarded: ${pi.loftBoarded || '—'}`,
+            `Asbestos: ${pi.asbestos || '—'}`,
+            `Rafter W/D mm: ${pi.rafterWidth||0} / ${pi.rafterDepth||0}`,
+            `Truss Spacing mm: ${pi.trussSpacing||0}`,
+            `Deflection: ${pi.deflection || '—'}`,
+            `Rot/Damage: ${pi.rotDamage || '—'}`,
+            `Roof Concern: ${pi.roofConcern || '—'}`,
             '', '--- Property (External) ---',
-            'Proposed Design Fits: ' + (pe.proposedDesignFit || '—'),
-            pe.proposedDesignReasonWhyNot ? 'Design Reason: ' + pe.proposedDesignReasonWhyNot : '',
-            'Roof Covering: ' + (pe.roofCovering || '—'),
-            'No. of Stories: ' + (pe.numberStories || '—'),
-            'Roof Condition: ' + (pe.roofCondition || '—'),
-            'Roof Obstructions: ' + (pe.roofObstructions || '—'),
-            pe.obstructionsDescription ? 'Obstruction Detail: ' + pe.obstructionsDescription : '',
-            'Shading: ' + (pe.roofShading || '—'),
+            `Proposed Design Fits: ${pe.proposedDesignFit || '—'}`,
+            pe.proposedDesignReasonWhyNot ? `Design Reason: ${pe.proposedDesignReasonWhyNot}` : '',
+            `Roof Covering: ${pe.roofCovering || '—'}`,
+            `No. of Stories: ${pe.numberStories || '—'}`,
+            `Roof Condition: ${pe.roofCondition || '—'}`,
+            `Roof Obstructions: ${pe.roofObstructions || '—'}`,
+            pe.obstructionsDescription ? `Obstruction Detail: ${pe.obstructionsDescription}` : '',
+            `Shading: ${pe.roofShading || '—'}`,
             '', '--- Scaffolding ---',
-            'Access Type: ' + (sc.accessType || '—'),
-            'Parking Available: ' + (sc.parkingAvailable || '—'),
-            'Ground Type: ' + (sc.groundType || '—'),
-            'Access Issues: ' + (sc.accessIssues || '—'),
-            'Gutter Obstacles: ' + (sc.gutterObstacles || '—'),
-            sc.gutterObstaclesDescription ? 'Obstacle Detail: ' + sc.gutterObstaclesDescription : '',
+            `Access Type: ${sc.accessType || '—'}`,
+            `Parking Available: ${sc.parkingAvailable || '—'}`,
+            `Ground Type: ${sc.groundType || '—'}`,
+            `Access Issues: ${sc.accessIssues || '—'}`,
+            `Gutter Obstacles: ${sc.gutterObstacles || '—'}`,
+            sc.gutterObstaclesDescription ? `Obstacle Detail: ${sc.gutterObstaclesDescription}` : '',
         );
     }
 
@@ -803,14 +893,21 @@ function buildSurveySummary(s) {
 
     const signoff = sec.customerSignOff || {};
     if (signoff.name || signoff.date) {
-        lines.push('', '--- Customer Sign-off ---',
-            'Name: ' + (signoff.name || '—'),
-            'Date: ' + (signoff.date || '—'));
+        lines.push(
+            '', '--- Customer Sign-off ---',
+            `Name: ${signoff.name || '—'}`,
+            `Date: ${signoff.date || '—'}`
+        );
     }
+
+    // ── Append picklist if loaded ──────────────────────────────────────────────
+    const picklistBlock = buildPicklistSummary(_fwdPicklist);
+    if (picklistBlock) lines.push(picklistBlock);
 
     return lines.filter(l => l !== undefined && l !== '').join('\n');
 }
 
+// ── Send the forward email ────────────────────────────────────────────────────
 async function sendForward() {
     const email = document.getElementById('fwd-email').value.trim();
     if (!email || !email.includes('@')) {
@@ -850,7 +947,7 @@ function showToast(msg, isError) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.borderColor = isError ? 'var(--error)' : 'var(--success)';
-    t.style.color = isError ? 'var(--error)' : 'var(--success)';
+    t.style.color       = isError ? 'var(--error)' : 'var(--success)';
     t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 3200);
 }
