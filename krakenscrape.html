@@ -36,12 +36,15 @@
         .status-bar { padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 24px; display: none; }
         .status-bar.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--success); display: block; }
         .status-bar.error { background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: var(--danger); display: block; }
-        .controls { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+        .controls { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; align-items: center; }
         .btn { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
         .btn-primary { background: var(--accent); color: #000; }
         .btn-primary:hover { background: #00c4db; box-shadow: 0 0 20px rgba(0,229,255,0.3); }
         .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
         .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-green { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.35); }
+        .btn-green:hover { background: rgba(16,185,129,0.28); border-color: #6ee7b7; box-shadow: 0 0 16px rgba(16,185,129,0.2); }
+        .controls-divider { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
         .results-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
         table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
         thead th { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 14px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
@@ -112,7 +115,9 @@
     <div id="resultsArea" style="display:none;">
         <div class="summary-strip" id="summaryStrip"></div>
         <div class="controls">
-            <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn btn-primary" onclick="exportCSV()">⬇ Export Schedule CSV</button>
+            <button class="btn btn-green" onclick="exportJobList()">⬇ Export Job List CSV</button>
+            <div class="controls-divider"></div>
             <button class="btn btn-secondary" onclick="clearResults()">✕ Clear</button>
         </div>
         <div class="results-wrap">
@@ -128,7 +133,6 @@
     const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
 
     const JOB_TYPES = [
-        // Aftercare MUST come before plain Solar PV Install
         { pattern: /Solar PV Install[^a-zA-Z]*Aftercare/i, displayLabel: 'Solar PV Install (Aftercare)', key: 'aftercare', css: 'type-solar-aftercare' },
         { pattern: /Solar PV Install(?!\s*Aftercare)/i,    displayLabel: 'Solar PV Install',             key: 'solar',     css: 'type-solar-pv' },
         { pattern: /Battery Install/i,                     displayLabel: 'Battery Install',              key: 'battery',   css: 'type-battery' },
@@ -171,28 +175,18 @@
         return values;
     }
 
-    // Returns array of { job, jt } pairs in document order.
-    // Each job number is paired with the type that immediately precedes it.
-    // jt may be null if no type preceded the job number.
     function extractFromCell(cell) {
         const tokens = [];
-
-        // Collect job number positions
         for (const m of cell.matchAll(/J-[A-Za-z0-9]{8}/g)) {
             tokens.push({ pos: m.index, kind: 'job', value: m[0] });
         }
-
-        // Collect type match positions
         for (const jt of JOB_TYPES) {
             const re = new RegExp(jt.pattern.source, 'gi');
             for (const m of cell.matchAll(re)) {
                 tokens.push({ pos: m.index, kind: 'type', jt });
             }
         }
-
         tokens.sort((a, b) => a.pos - b.pos);
-
-        // Walk in order: each type token sets the pending type for the next job token
         const pairs = [];
         let pendingType = null;
         for (const tok of tokens) {
@@ -203,7 +197,6 @@
                 pendingType = null;
             }
         }
-
         return pairs;
     }
 
@@ -232,7 +225,7 @@
             DAYS.forEach((day, di) => {
                 const colIdx = dayIndices[di];
                 const cell = colIdx >= 0 ? (vals[colIdx] || '') : '';
-                dayData[day] = extractFromCell(cell); // array of {job, jt}
+                dayData[day] = extractFromCell(cell);
             });
             rows.push({ name, dayData });
         }
@@ -240,16 +233,12 @@
         if (!rows.length) { showStatus('No data rows found.', 'error'); return; }
         window._processedRows = rows;
 
-        // ── Summary counts ──────────────────────────────────────────
-        // Per-engineer: deduplicate job numbers across days (spanning = count once)
         const typeTotals = {};
         JOB_TYPES.forEach(jt => { typeTotals[jt.key] = 0; });
         let totalUniqueJobs = 0;
 
         rows.forEach(row => {
-            // Unique jobs this engineer has (deduped across days)
             const seenJobs = new Set();
-            // Per type: unique job numbers for this engineer
             const typeJobSets = {};
             JOB_TYPES.forEach(jt => { typeJobSets[jt.key] = new Set(); });
 
@@ -313,6 +302,7 @@
         }).join('');
     }
 
+    // ── Export 1: original schedule export ──────────────────────────
     function exportCSV() {
         const rows = window._processedRows;
         const totals = window._typeTotals;
@@ -320,7 +310,6 @@
 
         const lines = [];
 
-        // Summary block
         lines.push('WEEKLY SUMMARY');
         lines.push(`"Solar PV Install","${totals.solar}"`);
         lines.push(`"Solar PV Install (Aftercare)","${totals.aftercare}"`);
@@ -329,7 +318,6 @@
         lines.push(`"Solar PIV - Electrical","${totals.elec}"`);
         lines.push('');
 
-        // Detail block — one column per day, each cell: "J-XXXXX (Type) | J-YYYYY (Type)"
         const header = ['Name', ...DAYS];
         lines.push(header.map(h => `"${h}"`).join(','));
 
@@ -345,13 +333,72 @@
             lines.push(cells.join(','));
         });
 
-        const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+        downloadCSV(lines.join('\n'), `kraken_schedule_${today()}.csv`);
+    }
+
+    // ── Export 2: unique job list ────────────────────────────────────
+    function exportJobList() {
+        const rows = window._processedRows;
+        if (!rows) return;
+
+        // Map: jobNumber -> { type, engineer, firstDayIndex, dayCount (Set of day indices) }
+        const jobMap = new Map();
+
+        rows.forEach(row => {
+            DAYS.forEach((day, di) => {
+                row.dayData[day].forEach(({ job, jt }) => {
+                    if (!jobMap.has(job)) {
+                        jobMap.set(job, {
+                            type: jt ? jt.displayLabel : 'Unknown',
+                            engineer: row.name,
+                            firstDayIndex: di,
+                            days: new Set([di])
+                        });
+                    } else {
+                        const entry = jobMap.get(job);
+                        entry.days.add(di);
+                        // Track earliest day
+                        if (di < entry.firstDayIndex) {
+                            entry.firstDayIndex = di;
+                            // Update type and engineer to match the first occurrence
+                            entry.type = jt ? jt.displayLabel : 'Unknown';
+                            entry.engineer = row.name;
+                        }
+                    }
+                });
+            });
+        });
+
+        const lines = [];
+        lines.push('"Job Number","Job Type","Engineer","First Day","Days Covered"');
+
+        // Sort by first day, then alphabetically by job number
+        const sorted = [...jobMap.entries()].sort((a, b) => {
+            if (a[1].firstDayIndex !== b[1].firstDayIndex) return a[1].firstDayIndex - b[1].firstDayIndex;
+            return a[0].localeCompare(b[0]);
+        });
+
+        sorted.forEach(([job, info]) => {
+            const firstDay = DAYS[info.firstDayIndex];
+            const dayCount = info.days.size;
+            lines.push(`"${job}","${info.type}","${info.engineer}","${firstDay}","${dayCount}"`);
+        });
+
+        downloadCSV(lines.join('\n'), `kraken_joblist_${today()}.csv`);
+    }
+
+    function downloadCSV(content, filename) {
+        const blob = new Blob([content], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `kraken_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
+    }
+
+    function today() {
+        return new Date().toISOString().slice(0, 10);
     }
 
     function clearResults() {
