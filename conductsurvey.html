@@ -772,8 +772,12 @@
                         <textarea id="cable-run" class="form-textarea" placeholder="Describe the cable run(s)..." required></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="cable-run-length" class="form-label required">Length of Cable Run (metres)</label>
-                        <input type="number" id="cable-run-length" class="form-input" placeholder="0" step="0.1" min="0" required />
+                        <label for="cable-run-length" class="form-label required">Length of Cable Run DC (metres)</label>
+                        <input type="number" id="cable-run-length-dc" class="form-input" placeholder="0" step="0.1" min="0" required />
+                    </div>
+                                        <div class="form-group">
+                        <label for="cable-run-length" class="form-label required">Length of Cable Run AC (metres)</label>
+                        <input type="number" id="cable-run-length-ac" class="form-input" placeholder="0" step="0.1" min="0" required />
                     </div>
                     <div class="form-group">
                         <div class="conditional-field show" id="battery-gateway-upload">
@@ -1370,7 +1374,7 @@ function formatDate(raw) {
             {desc:"Zeroburn black single P clips (pack of 50 x2) 8.7-9MM", pack:"PK-50"},
             {desc:"Zeroburn Cable Clips 10 - 15mm Black", pack:"PK-20"},
             {desc:"Zeroburn cable clips 22mm-26mm", pack:""},
-            {desc:"Proteus IP65 rated consumer unit 6 way with SPD and isolator", ""},
+            {desc:"Proteus IP65 rated consumer unit 6 way with SPD and isolator", pack:""},
         ];
 
 const roofItems = [
@@ -1976,7 +1980,7 @@ async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
             }
         }
 
-        async function submitSurvey(event){
+async function submitSurvey(event){
             event.preventDefault();
             const form=document.getElementById('survey-form');
             if(!form.checkValidity()){showAlert('Please fill in all required fields','error');form.reportValidity();return;}
@@ -1991,6 +1995,7 @@ async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
                     submittedAt:new Date().toISOString(),status:'completed',surveyType:selectedSurveyType
                 };
 
+                // ══ BATTERY ONLY ══
                 if(selectedSurveyType==='battery-only'){
                     const boGetVal=id=>{const el=document.getElementById(id);return el?el.value:'';};
                     const boGetRadio=name=>{const el=document.querySelector('input[name="'+name+'"]:checked');return el?el.value:'';};
@@ -2027,9 +2032,31 @@ async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
                         additionalMaterials:collectMaterialsSummary(),
                         customerSignOff:{date:boGetVal('bo-signoff-date'),name:boGetVal('bo-signoff-name')}
                     };
-                    const summaryLines=['Survey Type: Battery Only','Conducted On: '+boGetVal('bo-conducted-on'),'Surveyor: '+boGetVal('bo-surveyor'),'Customer Present: '+boGetRadio('bo-customer-present'),'Risk Assessment Done: '+boGetRadio('bo-risk-assessment'),'Meter Position: '+boGetVal('bo-meter-position'),'Meter Work Needed: '+boGetVal('bo-meter-work-needed'),'Fuse Rating: '+boGetVal('bo-fuse-rating'),'Earthing System: '+boGetVal('bo-earthing-system'),'Gas Bonded: '+boGetRadio('bo-gas-bonded'),'Water Bonded: '+boGetRadio('bo-water-bonded'),'Cable Run: '+boGetVal('bo-cable-run'),'Cable Run Length: '+boGetVal('bo-cable-run-length')+' metres','Battery Location: '+boGetVal('bo-battery-location'),'Surface Type: '+boGetVal('bo-surface-type'),'Dimensions (W/D/L mm): '+boGetVal('bo-battery-width')+' / '+boGetVal('bo-battery-depth')+' / '+boGetVal('bo-battery-length'),'Render/Cladding: '+boGetVal('bo-render-cladding'),'WiFi Signal: '+boGetVal('bo-wifi-signal'),'Customer Sign-off Name: '+boGetVal('bo-signoff-name'),'Customer Sign-off Date: '+boGetVal('bo-signoff-date')];
+                    const summaryLines=[
+                        'Survey Type: Battery Only',
+                        'Conducted On: '+boGetVal('bo-conducted-on'),
+                        'Surveyor: '+boGetVal('bo-surveyor'),
+                        'Customer Present: '+boGetRadio('bo-customer-present'),
+                        'Risk Assessment Done: '+boGetRadio('bo-risk-assessment'),
+                        'Meter Position: '+boGetVal('bo-meter-position'),
+                        'Meter Work Needed: '+boGetVal('bo-meter-work-needed'),
+                        'Fuse Rating: '+boGetVal('bo-fuse-rating'),
+                        'Earthing System: '+boGetVal('bo-earthing-system'),
+                        'Gas Bonded: '+boGetRadio('bo-gas-bonded'),
+                        'Water Bonded: '+boGetRadio('bo-water-bonded'),
+                        'Cable Run: '+boGetVal('bo-cable-run'),
+                        'Cable Run Length: '+boGetVal('bo-cable-run-length')+' metres',
+                        'Battery Location: '+boGetVal('bo-battery-location'),
+                        'Surface Type: '+boGetVal('bo-surface-type'),
+                        'Dimensions (W/D/L mm): '+boGetVal('bo-battery-width')+' / '+boGetVal('bo-battery-depth')+' / '+boGetVal('bo-battery-length'),
+                        'Render/Cladding: '+boGetVal('bo-render-cladding'),
+                        'WiFi Signal: '+boGetVal('bo-wifi-signal'),
+                        'Customer Sign-off Name: '+boGetVal('bo-signoff-name'),
+                        'Customer Sign-off Date: '+boGetVal('bo-signoff-date')
+                    ];
                     await sendSurveyEmail('Battery Only',summaryLines,null,null);
 
+                // ══ BATTERY AND SOLAR ══
                 } else if(selectedSurveyType==='battery-and-solar'){
                     const photoUrls={};
                     let totalFiles=0,uploadedCount=0;
@@ -2054,8 +2081,12 @@ async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
                             fuseRating:getVal('fuse-rating'),earthingSystem:getVal('earthing-system'),earthingSystemPhotos:photoUrls['earthing-system-files']||[],
                             gasBonded:getRadio('gas-bonded'),gasBondingEquipment:getVal('gas-bonding-equipment'),gasBondedPhotos:photoUrls['gas-bonded-files']||[],
                             waterBonded:getRadio('water-bonded'),waterBondingEquipment:getVal('water-bonding-equipment'),waterBondedPhotos:photoUrls['water-bonded-files']||[],
-                            cableRun:getVal('cable-run'),cableRunLength:parseFloat(getVal('cable-run-length'))||0,cableRunPhotos:photoUrls['cable-files']||[],
+                            cableRun:getVal('cable-run'),
+                            cableRunLengthAC:parseFloat(getVal('cable-run-length-ac'))||0,
+                            cableRunLengthDC:parseFloat(getVal('cable-run-length-dc'))||0,
+                            cableRunPhotos:photoUrls['cable-files']||[],
                             batteryLocation:getVal('battery-location'),batteryLocationPhotos:photoUrls['battery-location-files']||[],
+                            smokeAlarmRequired:getRadio('smoke-alarm-required'),
                             surfaceType:getVal('surface-type'),surfacePhotos:photoUrls['surface-files']||[],
                             batteryWidth:parseInt(getVal('battery-width'))||0,batteryDepth:parseInt(getVal('battery-depth'))||0,batteryLength:parseInt(getVal('battery-length'))||0,
                             additionalNotesBattery:getVal('additional-notes-battery'),renderCladding:getVal('render-cladding'),wifiSignal:getVal('wifi-signal')
@@ -2098,7 +2129,55 @@ async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
                         additionalMaterials:collectMaterialsSummary(),
                         customerSignOff:{date:getVal('signoff-date'),name:getVal('signoff-name')}
                     };
-                    const summaryLines=['Survey Type: Battery and Solar','Conducted On: '+getVal('conducted-on'),'Surveyor: '+getVal('surveyor'),'Customer Present: '+getRadio('customer-present'),'Risk Assessment Done: '+getRadio('risk-assessment'),'Meter Position: '+getVal('meter-position'),'Meter Work Needed: '+getVal('meter-work-needed'),'Fuse Rating: '+getVal('fuse-rating'),'Earthing System: '+getVal('earthing-system'),'Gas Bonded: '+getRadio('gas-bonded'),'Water Bonded: '+getRadio('water-bonded'),'Cable Run: '+getVal('cable-run'),'Cable Run Length: '+getVal('cable-run-length')+' metres','Battery Location: '+getVal('battery-location'),'Surface Type: '+getVal('surface-type'),'Dimensions (W/D/L mm): '+getVal('battery-width')+' / '+getVal('battery-depth')+' / '+getVal('battery-length'),'Render/Cladding: '+getVal('render-cladding'),'WiFi Signal: '+getVal('wifi-signal'),'Loft Accessible: '+getRadio('loft-accessible'),'Loft Ladder: '+getRadio('loft-ladder'),'Loft Boarded: '+getRadio('loft-boarded'),'Asbestos: '+getRadio('asbestos'),'Rafter W/D mm: '+getVal('rafter-width')+' / '+getVal('rafter-depth'),'Web W/D/L mm: '+getVal('web-width')+' / '+getVal('web-depth')+' / '+getVal('web-length'),'Truss Spacing mm: '+getVal('truss-spacing'),'Deflection: '+getRadio('roof-deflection'),'Rot/Damage: '+getRadio('rot-damage'),'Roof Concern: '+getRadio('roof-concern'),'Dwarf Walls: '+getRadio('dwarf-walls'),'Structural Work: '+getRadio('structural-work'),'Proposed Design Fits: '+getRadio('proposed-design'),'Roof Covering: '+getVal('roof-covering'),'Number of Stories: '+getVal('number-stories'),'Roof Condition: '+getVal('roof-condition'),'Roof Work Age (yrs): '+getVal('roof-work-age'),'Roof Obstructions: '+getRadio('roof-obstructions'),'Shading: '+getRadio('roof-shading'),'Access Type: '+getVal('access-type'),'Parking Available: '+getRadio('parking-available'),'Overhead Powerlines: '+getRadio('overhead-powerlines'),'Property on Pavement: '+getRadio('property-location'),'Ground Type: '+getVal('ground-type'),'Gutter Obstacles: '+getRadio('gutter-obstacles'),'Customer Sign-off Name: '+getVal('signoff-name'),'Customer Sign-off Date: '+getVal('signoff-date')];
+                    const summaryLines=[
+                        'Survey Type: Battery and Solar',
+                        'Conducted On: '+getVal('conducted-on'),
+                        'Surveyor: '+getVal('surveyor'),
+                        'Customer Present: '+getRadio('customer-present'),
+                        'Risk Assessment Done: '+getRadio('risk-assessment'),
+                        'Meter Position: '+getVal('meter-position'),
+                        'Meter Work Needed: '+getVal('meter-work-needed'),
+                        'Fuse Rating: '+getVal('fuse-rating'),
+                        'Earthing System: '+getVal('earthing-system'),
+                        'Gas Bonded: '+getRadio('gas-bonded'),
+                        'Water Bonded: '+getRadio('water-bonded'),
+                        'Cable Run: '+getVal('cable-run'),
+                        'Cable Run Length AC: '+getVal('cable-run-length-ac')+' metres',
+                        'Cable Run Length DC: '+getVal('cable-run-length-dc')+' metres',
+                        'Battery Location: '+getVal('battery-location'),
+                        'Smoke Alarm Required: '+getRadio('smoke-alarm-required'),
+                        'Surface Type: '+getVal('surface-type'),
+                        'Dimensions (W/D/L mm): '+getVal('battery-width')+' / '+getVal('battery-depth')+' / '+getVal('battery-length'),
+                        'Render/Cladding: '+getVal('render-cladding'),
+                        'WiFi Signal: '+getVal('wifi-signal'),
+                        'Loft Accessible: '+getRadio('loft-accessible'),
+                        'Loft Ladder: '+getRadio('loft-ladder'),
+                        'Loft Boarded: '+getRadio('loft-boarded'),
+                        'Asbestos: '+getRadio('asbestos'),
+                        'Rafter W/D mm: '+getVal('rafter-width')+' / '+getVal('rafter-depth'),
+                        'Web W/D/L mm: '+getVal('web-width')+' / '+getVal('web-depth')+' / '+getVal('web-length'),
+                        'Truss Spacing mm: '+getVal('truss-spacing'),
+                        'Deflection: '+getRadio('roof-deflection'),
+                        'Rot/Damage: '+getRadio('rot-damage'),
+                        'Roof Concern: '+getRadio('roof-concern'),
+                        'Dwarf Walls: '+getRadio('dwarf-walls'),
+                        'Structural Work: '+getRadio('structural-work'),
+                        'Proposed Design Fits: '+getRadio('proposed-design'),
+                        'Roof Covering: '+getVal('roof-covering'),
+                        'Number of Stories: '+getVal('number-stories'),
+                        'Roof Condition: '+getVal('roof-condition'),
+                        'Roof Work Age (yrs): '+getVal('roof-work-age'),
+                        'Roof Obstructions: '+getRadio('roof-obstructions'),
+                        'Shading: '+getRadio('roof-shading'),
+                        'Access Type: '+getVal('access-type'),
+                        'Parking Available: '+getRadio('parking-available'),
+                        'Overhead Powerlines: '+getRadio('overhead-powerlines'),
+                        'Property on Pavement: '+getRadio('property-location'),
+                        'Ground Type: '+getVal('ground-type'),
+                        'Gutter Obstacles: '+getRadio('gutter-obstacles'),
+                        'Customer Sign-off Name: '+getVal('signoff-name'),
+                        'Customer Sign-off Date: '+getVal('signoff-date')
+                    ];
                     await sendSurveyEmail('Battery and Solar',summaryLines,getVal,getRadio);
                 }
 
