@@ -167,7 +167,6 @@
         .job-card.status-short-notice-cancellation { background: linear-gradient(135deg, var(--short-notice), #90ee90); }
 
         /* ── Survey overlays ── */
-        /* Urgent: flashing red border + glow, semi-transparent red tint on top */
         .job-card.survey-urgent {
             border-color: rgba(255,107,107,0.9) !important;
             box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5);
@@ -184,7 +183,6 @@
             50%       { opacity: 0.75; box-shadow: 0 0 0 3px rgba(255,107,107,0.9), 0 0 22px 8px rgba(255,107,107,0.7); }
         }
 
-        /* Pending: desaturated / ghost appearance */
         .job-card.survey-pending {
             opacity: 0.38;
             filter: saturate(0.15) brightness(0.85);
@@ -196,7 +194,6 @@
             font-size: 0.65rem; z-index: 10; pointer-events: none;
             opacity: 1; filter: none;
         }
-        /* Restore hover to full opacity for pending cards so they're readable on hover */
         .job-card.survey-pending:hover {
             opacity: 1;
             filter: none;
@@ -332,7 +329,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule — Solar-jobs &amp; Jobs collections merged · Survey alerts from 30 Mar 2026</p>
+            <p class="subtitle">Visual schedule — Solar-jobs &amp; Jobs collections merged · Survey alerts from 30 Mar 2026 · Team grouping from 6 Apr 2026</p>
         </header>
 
         <div class="controls-card">
@@ -381,6 +378,10 @@
                 <strong>📊 Google Sheets Integration Active</strong><br>
                 <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet. You'll be asked to sign in with your Google account on first use.</span>
             </div>
+            <div class="debug-info" style="display: block; background: linear-gradient(135deg, rgba(255,200,87,0.1), rgba(255,107,53,0.1)); border: 2px solid var(--warning); margin-top: 1rem;">
+                <strong>👷 Team Grouping Active from 6 Apr 2026</strong><br>
+                <span style="font-size: 0.8rem;">Sub-engineers are grouped under their team lead on the timeline. The job modal shows both the team lead and original engineer name.</span>
+            </div>
         </div>
 
         <div class="timeline-container">
@@ -408,7 +409,8 @@
                 <div class="detail-row"><div class="detail-label">Job Type</div><div class="detail-value" id="status-job-type"></div></div>
                 <div class="detail-row"><div class="detail-label">Booked Date</div><div class="detail-value" id="status-booked-date"></div></div>
                 <div class="detail-row"><div class="detail-label">Days</div><div class="detail-value" id="status-days"></div></div>
-                <div class="detail-row"><div class="detail-label">Lead Engineer</div><div class="detail-value" id="status-lead"></div></div>
+                <div class="detail-row"><div class="detail-label">Team Lead</div><div class="detail-value" id="status-lead"></div></div>
+                <div class="detail-row"><div class="detail-label">Field Engineer</div><div class="detail-value" id="status-original-engineer"></div></div>
                 <div class="detail-row"><div class="detail-label">Team Number</div><div class="detail-value" id="status-team"></div></div>
                 <div class="detail-row"><div class="detail-label">Panel Number</div><div class="detail-value" id="status-panel"></div></div>
                 <div class="detail-row"><div class="detail-label">Current Status</div><div class="detail-value" id="status-current"></div></div>
@@ -548,6 +550,81 @@
         let surveyMap = {};
 
         /* ══════════════════════════════════════════════
+           ENGINEER TEAM GROUPING (from 6 Apr 2026)
+           Sub-engineers display under their team lead
+        ══════════════════════════════════════════════ */
+        const TEAM_GROUPING_START = new Date('2026-04-06');
+        TEAM_GROUPING_START.setHours(0,0,0,0);
+
+        const ENGINEER_TEAM_MAP = {
+            // Thomas Perry & Zak Haines → Seyi Oshin
+            'thomas perry':        'Seyi Oshin',
+            'zak haines':          'Seyi Oshin',
+            // Craig Kick & Alex Jackson → Ant Halliday
+            'craig kick':          'Ant Halliday',
+            'alex jackson':        'Ant Halliday',
+            // Callum Taylor & Owen Miller → Kain Bell
+            'callum taylor':       'Kain Bell',
+            'owen miller':         'Kain Bell',
+            // Matthew Hudson, Liam Newall, Scott Bainbridge → Antonio Castillo
+            'matthew hudson':      'Antonio Castillo',
+            'liam newall':         'Antonio Castillo',
+            'scott bainbridge':    'Antonio Castillo',
+            // Graeme Haswell, Phil De Winter, Jay Gray → Alex Chudiakov
+            'graeme haswell':      'Alex Chudiakov',
+            'phil de winter':      'Alex Chudiakov',
+            'jay gray':            'Alex Chudiakov',
+            // Owen Middlemiss & Paul Johnson → Tony Middlemiss
+            'owen middlemiss':     'Tony Middlemiss',
+            'paul johnson':        'Tony Middlemiss',
+            // Cameron Bradley & Ashley Haithwaite → Trevor Savage
+            'cameron bradley':     'Trevor Savage',
+            'ashley haithwaite':   'Trevor Savage',
+            // Shaun Pearson & Jack Bates → Jerry Pinegar
+            'shaun pearson':       'Jerry Pinegar',
+            'jack bates':          'Jerry Pinegar',
+            // Grady Nathaniel & Marvin Porteous → John Weight
+            'grady nathaniel':     'John Weight',
+            'marvin porteous':     'John Weight',
+            // Danny Pankhurst & Jason Sinden → Kieran Wood
+            'danny pankhurst':     'Kieran Wood',
+            'jason sinden':        'Kieran Wood',
+            // Marcain Woodard & James Stubbs → Liam Childs
+            'marcain woodard':     'Liam Childs',
+            'james stubbs':        'Liam Childs',
+            // Martin Wigan, Rhys Wigan, Scott Price, Colin Rourke, Mike Edwards → Paul Meadows
+            'martin wigan':        'Paul Meadows',
+            'rhys wigan':          'Paul Meadows',
+            'scott price':         'Paul Meadows',
+            'colin rourke':        'Paul Meadows',
+            'mike edwards':        'Paul Meadows',
+            // Liam Harratt & Alfie Williams → Harvey Evans
+            'liam harratt':        'Harvey Evans',
+            'alfie williams':      'Harvey Evans',
+            // Dan Mann, Logan Phelps, Jonah Loveridge → Neil Ledsham
+            'dan mann':            'Neil Ledsham',
+            'logan phelps':        'Neil Ledsham',
+            'jonah loveridge':     'Neil Ledsham',
+            // Roger Hodgman & Alex Naylor → Brian Blewitt
+            'roger hodgman':       'Brian Blewitt',
+            'alex naylor':         'Brian Blewitt',
+            // Charlie Hewitt & Harvey Seward → Neil Ledsham
+            'charlie hewitt':      'Neil Ledsham',
+            'harvey seward':       'Neil Ledsham',
+        };
+
+        /**
+         * Returns the display engineer name for timeline grouping.
+         * From 6 Apr 2026 onward, sub-engineers are rolled up into their team lead.
+         * jobDate should be the job's parsedDate (a Date object or null).
+         */
+        function resolveDisplayEngineer(engineerName, jobDate) {
+            if (!jobDate || jobDate < TEAM_GROUPING_START) return engineerName;
+            const key = (engineerName || '').toLowerCase().trim();
+            return ENGINEER_TEAM_MAP[key] || engineerName;
+        }
+
+        /* ══════════════════════════════════════════════
            GOOGLE SHEETS CONFIG
         ══════════════════════════════════════════════ */
         const GOOGLE_SHEETS_CONFIG = {
@@ -609,7 +686,7 @@
         }
 
         /* ══════════════════════════════════════════════
-           SURVEY HELPERS  (mirrors adminviewjobs logic)
+           SURVEY HELPERS
         ══════════════════════════════════════════════ */
         function getSurveyStatus(job) {
             if (!jobsSet.has(job.jobNumber)) return 'na';
@@ -674,11 +751,7 @@
         }
 
         /* ══════════════════════════════════════════════
-           FIREBASE LOAD  — mirrors adminviewjobs merge logic
-           1. site-surveys → surveyMap
-           2. Solar-jobs   → solarMap
-           3. jobs         → jobsMap + jobsSet
-           Merge: solar+both from solarMap, jobs-only from jobsMap
+           FIREBASE LOAD
         ══════════════════════════════════════════════ */
         async function loadJobs() {
             try {
@@ -715,10 +788,13 @@
                         }
                     }
 
-                    let engineer = 'Unassigned';
+                    // Resolve original engineer name first, then apply team grouping
+                    let originalEngineer = 'Unassigned';
                     for (const f of ['Lead','Lead Engineer','Engineer','engineer']) {
-                        if (data[f]?.trim()) { engineer = data[f].trim(); break; }
+                        if (data[f]?.trim()) { originalEngineer = data[f].trim(); break; }
                     }
+                    // Apply team grouping from 6 Apr 2026
+                    const engineer = resolveDisplayEngineer(originalEngineer, parsedDate);
 
                     const jobType   = data['Job Type'] || 'Standard';
                     const status    = data['Status Update'] || data['status'] || 'Scheduled';
@@ -729,7 +805,7 @@
                     return {
                         id: docSnap.id, source, ...data,
                         jobNumber, parsedDate, projectedCompletionDate,
-                        jobLength, engineer, jobType, status, completedDays,
+                        jobLength, engineer, originalEngineer, jobType, status, completedDays,
                         notes:              data['notes']              || '',
                         poNumbers:          data['poNumbers']          || '',
                         poNumbersUpdatedAt: data['poNumbersUpdatedAt'] || '',
@@ -794,7 +870,6 @@
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const job = allJobs.find(j => j.id === jobId);
-                // Write to the correct collection based on source
                 const collName = (job && job.source === 'jobs') ? 'jobs' : 'Solar-jobs';
                 const jobRef   = doc(window.db, collName, jobId);
                 const updateData = { 'Status Update': newStatus };
@@ -823,7 +898,7 @@
                 const engineer       = job.engineer || 'Unassigned';
                 const jobType        = job.jobType  || 'Standard';
                 const completionDate = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#4ECCA3;">✅ Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Lead Engineer:</td><td>${engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
+                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#4ECCA3;">✅ Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Team Lead:</td><td>${engineer}</td></tr><tr><td>Field Engineer:</td><td>${job.originalEngineer || engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
                 await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
                     to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
                     job_number: jobNumber, postcode, engineer, job_type: jobType,
@@ -955,7 +1030,7 @@
 
             const html = `<div class="timeline-wrapper">
                 <div class="timeline-header">
-                    <div class="engineer-header">👷 Engineer</div>
+                    <div class="engineer-header">👷 Team Lead</div>
                     <div class="dates-header">${timelineDates.map(date => {
                         const isToday = date.toDateString() === new Date().toDateString();
                         return `<div class="date-cell ${isToday?'today':''}">
@@ -1066,6 +1141,9 @@
                 const completionPercent = jobLength>1 && completedDays.length>0 ? (completedDays.length/jobLength)*100 : 0;
                 const textStyle         = span>1 ? 'white-space:normal;word-wrap:break-word;' : '';
 
+                // Show original engineer on card if it differs from display (team lead)
+                const showOriginalEngineer = job.originalEngineer && job.originalEngineer !== job.engineer;
+
                 html += `<div class="job-card ${statusClass} ${srvClass}" data-job-id="${job.id}"
                     style="grid-column:${col+1}/span ${span};grid-row:${row+1};">
                     ${completionPercent>0 && completionPercent<100 ? `<div class="completion-overlay" style="width:${completionPercent}%;"></div>` : ''}
@@ -1073,6 +1151,7 @@
                     <div class="job-number">#${escapeHtml(job['Job Number'] || job.jobNumber || 'N/A')}</div>
                     <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
                     <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
+                    ${showOriginalEngineer ? `<div class="job-type" style="font-size:0.6rem;opacity:0.85;">${escapeHtml(job.originalEngineer)}</div>` : ''}
                     ${jobLength>1 ? `<div class="job-days">${completedDays.length>0?`${completedDays.length}/`:''}${jobLength}d</div>` : ''}
                     ${getSurveyStatus(job) === 'complete' ? `<div class="job-survey-done">SC</div>` : ''}
                 </div>`;
@@ -1109,7 +1188,21 @@
             document.getElementById('status-job-type').textContent    = job.jobType  || 'Standard';
             document.getElementById('status-booked-date').textContent = formatDate(job.parsedDate) || 'N/A';
             document.getElementById('status-days').textContent        = job.jobLength || '1';
-            document.getElementById('status-lead').textContent        = job.engineer || 'Unassigned';
+
+            // Team lead vs original engineer display
+            const isGrouped = job.originalEngineer && job.originalEngineer !== job.engineer;
+            document.getElementById('status-lead').textContent = job.engineer || 'Unassigned';
+
+            const origEngRow = document.getElementById('status-original-engineer');
+            if (isGrouped) {
+                origEngRow.textContent = job.originalEngineer;
+                origEngRow.parentElement.style.display = 'grid';
+            } else {
+                origEngRow.textContent = job.originalEngineer || job.engineer || 'Unassigned';
+                // Still show the row; label says "Field Engineer"
+                origEngRow.parentElement.style.display = 'grid';
+            }
+
             document.getElementById('status-team').textContent        = job['Team Number'] || job['Team'] || 'N/A';
             document.getElementById('status-panel').textContent       = job['Panel No.'] || job['Panel Number'] || 'N/A';
             document.getElementById('status-current').textContent     = job.status || 'Scheduled';
