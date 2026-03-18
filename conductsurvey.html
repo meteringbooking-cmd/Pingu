@@ -1287,8 +1287,16 @@
 
         const EMAIL_SERVICE    = 'service_t6c3ke8';
         const EMAIL_TEMPLATE_COMPLETION = 'template_g2vl1eb';
-        const EMAIL_SERVICE_METER = 'service_o75fskf';
-        const EMAIL_TEMPLATE_METER = 'template_ijhp8qj';
+const EMAIL_SERVICE_METER = 'service_o75fskf';
+const EMAIL_TEMPLATE_METER = 'template_ijhp8qj';
+
+function formatDate(raw) {
+    if (!raw) return 'TBD';
+    const parts = raw.split('/');
+    if (parts.length !== 3) return raw;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${parts[0]} ${months[parseInt(parts[1], 10) - 1]} ${parts[2]}`;
+}
 
         // ── Additional Materials Data ──────────────────────────────────────────
         const electricalItems = [
@@ -1758,19 +1766,24 @@ const roofItems = [
             return urls.join('\n');
         }
 
-        async function sendMeterWorkEmail(meterWorkDetails,meterFilesFieldId){
-            if(!verifiedJob)return;
-            let photoLinks='No photos uploaded yet';
-            try{photoLinks=await uploadMeterPhotos(meterFilesFieldId,verifiedJob['Job Number']);}
-            catch(e){photoLinks='Error uploading photos: '+e.message;}
-            const emailData={
-                job_number:verifiedJob['Job Number']||'N/A',customer_name:verifiedJob['Name']||'N/A',
-                address:verifiedJob['1st line of address']||'N/A',postcode:verifiedJob['Postcode']||'N/A',
-                install_date:verifiedJob['Install Date']||'TBD',meter_work_details:meterWorkDetails,photo_links:photoLinks
-            };
-            try{await emailjs.send(EMAIL_SERVICE_METER,EMAIL_TEMPLATE_METER,emailData);}
-            catch(error){console.warn('Could not send meter work notification email',error);}
-        }
+async function sendMeterWorkEmail(meterWorkDetails, meterFilesFieldId) {
+    if (!verifiedJob) return;
+    let photoLinks = 'No photos uploaded yet';
+    try { photoLinks = await uploadMeterPhotos(meterFilesFieldId, verifiedJob['Job Number']); }
+    catch (e) { photoLinks = 'Error uploading photos: ' + e.message; }
+
+    const emailData = {
+        job_number: verifiedJob['Job Number'] || 'N/A',
+        customer_name: verifiedJob['Name'] || 'N/A',
+        address: verifiedJob['1st line of address'] || 'N/A',
+        postcode: verifiedJob['Postcode'] || 'N/A',
+        install_date: formatDate(verifiedJob['Install Date']),
+        meter_work_details: meterWorkDetails,
+        photo_links: photoLinks
+    };
+    try { await emailjs.send(EMAIL_SERVICE_METER, EMAIL_TEMPLATE_METER, emailData); }
+    catch (error) { console.warn('Could not send meter work notification email', error); }
+}
 
         function buildFlaggedIssues(getVal,getRadio){
             const flags=[];
@@ -1814,7 +1827,7 @@ const roofItems = [
             const emailData={
                 job_number:verifiedJob['Job Number']||'N/A',customer_name:verifiedJob['Name']||'N/A',
                 address:verifiedJob['1st line of address']||'N/A',postcode:verifiedJob['Postcode']||'N/A',
-                install_date:verifiedJob['Install Date']||'TBD',survey_type:surveyTypeLabel,
+                install_date: formatDate(verifiedJob['Install Date']),survey_type:surveyTypeLabel,
                 survey_summary:summaryLines.join('\n'),flagged_issues:flaggedSection,
                 submitted_at:new Date().toLocaleString('en-GB')
             };
