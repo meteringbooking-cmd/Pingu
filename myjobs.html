@@ -146,6 +146,38 @@
         .filter-btn.active { background: rgba(255,200,87,0.15); border-color: var(--secondary); color: var(--secondary); }
         .filter-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); display: none; }
         .filter-btn.active .filter-dot { display: block; }
+
+        /* ── Filter Bar ── */
+        .filter-bar {
+            display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+            background: var(--dark-lighter); border-radius: 12px; padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem; border: 2px solid transparent; transition: border-color 0.3s;
+        }
+        .filter-bar.has-filters { border-color: rgba(0,217,255,0.3); }
+        .filter-bar-label { color: var(--text-dim); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+        .week-select {
+            background: var(--dark); border: 2px solid var(--dark-lighter); color: var(--text);
+            padding: 0.55rem 1rem; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.88rem; cursor: pointer;
+            transition: all 0.3s ease; min-width: 200px;
+        }
+        .week-select:focus { outline: none; border-color: var(--accent); }
+        .toggle-all-btn {
+            background: var(--dark); border: 2px solid var(--dark-lighter); color: var(--text-dim);
+            padding: 0.55rem 1.2rem; border-radius: 8px; cursor: pointer;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.88rem;
+            transition: all 0.3s ease; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem;
+        }
+        .toggle-all-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .toggle-all-btn.showing-all { background: rgba(0,217,255,0.1); border-color: var(--accent); color: var(--accent); }
+        .toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+        .clear-week-btn {
+            background: none; border: none; color: var(--text-dim); cursor: pointer;
+            font-size: 0.85rem; padding: 0.4rem 0.8rem; border-radius: 6px;
+            transition: all 0.2s; font-family: 'JetBrains Mono', monospace;
+        }
+        .clear-week-btn:hover { color: var(--error); background: rgba(255,107,107,0.1); }
+
         .results-count { font-family: 'Syne', sans-serif; font-size: 1.2rem; color: var(--accent); margin-bottom: 1.5rem; }
         .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 1.5rem; }
 
@@ -167,6 +199,7 @@
         .job-status.upcoming { background: var(--accent); color: var(--dark); }
         .job-status.survey-complete { background: #FFC857; color: var(--dark); }
         .job-status.install-started { background: #FF9F1C; color: var(--dark); }
+        .job-status.install-complete { background: var(--success); color: var(--dark); }
         .job-customer { font-size: 1rem; color: var(--text); margin-bottom: 1rem; font-weight: 500; }
         .job-details { display: flex; flex-direction: column; gap: 0.6rem; flex: 1; }
         .job-detail { display: flex; align-items: center; gap: 0.8rem; color: var(--text-dim); font-size: 0.9rem; }
@@ -242,6 +275,8 @@
             .quick-stats { grid-template-columns:1fr; }
             .status-buttons { grid-template-columns:1fr; }
             .section-controls { flex-direction:column; align-items:flex-start; }
+            .filter-bar { flex-direction:column; align-items:flex-start; }
+            .week-select { min-width: unset; width: 100%; }
         }
     </style>
 </head>
@@ -315,6 +350,21 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Filter Bar -->
+                <div class="filter-bar" id="filter-bar">
+                    <span class="filter-bar-label">&#x1F5D3; Week:</span>
+                    <select class="week-select" id="week-select" onchange="onWeekChange()">
+                        <option value="">All weeks</option>
+                    </select>
+                    <button class="clear-week-btn" id="clear-week-btn" onclick="clearWeekFilter()" style="display:none;">&#x2715; Clear</button>
+                    <div style="flex:1;"></div>
+                    <button class="toggle-all-btn" id="toggle-all-btn" onclick="toggleShowAll()">
+                        <span class="toggle-dot" id="toggle-dot" style="display:none;"></span>
+                        &#x1F4C2; Show All Statuses
+                    </button>
+                </div>
+
                 <div class="results-count" id="results-count">Loading...</div>
                 <div id="jobs-container"><div class="loading">Loading your upcoming jobs...</div></div>
             </section>
@@ -380,46 +430,130 @@
     let pendingStatusUpdate = null;
     let completedSurveyJobNumbers = new Set();
     let showIncompleteOnly = false;
+    let showAllStatuses = false;   // default: upcoming only
+    let selectedWeek = '';         // ISO string of the Monday for the selected week, or ''
 
-    // ── Team state ──────────────────────────────────────────────────────────────
-    // If the logged-in user is a MEMBER of a team, this is their lead's name.
     let userTeamLeadName = null;
-    // If the logged-in user IS the LEAD of a team, this holds the full team object
-    // (so we can build the set of engineer names whose jobs they should also see).
     let userIsLeadOf = null;
-    // ────────────────────────────────────────────────────────────────────────────
 
     const SURVEY_COLLECTIONS = ['site-surveys','battery-surveys','solar-surveys','inspections','jobs','installations'];
 
+    // ── Date helpers ────────────────────────────────────────────────
     function parseInstallDate(dateStr) {
         if (!dateStr) return null;
         if (dateStr.includes('/')) {
-            const parts = dateStr.split('/');
+            var parts = dateStr.split('/');
             if (parts.length === 3) {
-                const day = parts[0].padStart(2,'0');
-                const month = parts[1].padStart(2,'0');
-                const year = parts[2];
-                const parsed = new Date(year + '-' + month + '-' + day);
+                var day = parts[0].padStart(2,'0');
+                var month = parts[1].padStart(2,'0');
+                var year = parts[2];
+                var parsed = new Date(year + '-' + month + '-' + day);
                 if (!isNaN(parsed.getTime())) return parsed;
             }
         } else {
-            const parsed = new Date(dateStr);
-            if (!isNaN(parsed.getTime())) return parsed;
+            var parsed2 = new Date(dateStr);
+            if (!isNaN(parsed2.getTime())) return parsed2;
         }
         return null;
     }
 
+    // Returns the Monday of the week containing the given date (local midnight).
+    function getMondayOf(date) {
+        var d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        var day = d.getDay(); // 0=Sun
+        var diff = day === 0 ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        return d;
+    }
+
+    // Format a Monday date as "w/c DD MMM YYYY"
+    function formatWeekLabel(monday) {
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        return 'w/c ' + monday.getDate() + ' ' + months[monday.getMonth()] + ' ' + monday.getFullYear();
+    }
+
+    // ISO date string "YYYY-MM-DD" from a Date
+    function toISODate(date) {
+        return date.getFullYear() + '-' + String(date.getMonth()+1).padStart(2,'0') + '-' + String(date.getDate()).padStart(2,'0');
+    }
+
+    // ── Populate week dropdown from upcomingJobs ─────────────────────
+    function buildWeekOptions() {
+        var weekSet = new Set();
+        upcomingJobs.forEach(function(job) {
+            var d = parseInstallDate(job['Install Date']);
+            if (d) {
+                var mon = getMondayOf(d);
+                weekSet.add(toISODate(mon));
+            }
+        });
+        // Sort ascending
+        var weeks = Array.from(weekSet).sort();
+        var select = document.getElementById('week-select');
+        select.innerHTML = '<option value="">All weeks</option>';
+        weeks.forEach(function(isoMon) {
+            var parts = isoMon.split('-');
+            var mon = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+            var opt = document.createElement('option');
+            opt.value = isoMon;
+            opt.textContent = formatWeekLabel(mon);
+            select.appendChild(opt);
+        });
+        // Restore selection if still valid
+        if (selectedWeek && weekSet.has(selectedWeek)) {
+            select.value = selectedWeek;
+        } else {
+            selectedWeek = '';
+            select.value = '';
+        }
+        updateFilterBarStyle();
+    }
+
+    window.onWeekChange = function() {
+        selectedWeek = document.getElementById('week-select').value;
+        document.getElementById('clear-week-btn').style.display = selectedWeek ? 'inline-block' : 'none';
+        updateFilterBarStyle();
+        displayJobs();
+    };
+
+    window.clearWeekFilter = function() {
+        selectedWeek = '';
+        document.getElementById('week-select').value = '';
+        document.getElementById('clear-week-btn').style.display = 'none';
+        updateFilterBarStyle();
+        displayJobs();
+    };
+
+    window.toggleShowAll = function() {
+        showAllStatuses = !showAllStatuses;
+        var btn = document.getElementById('toggle-all-btn');
+        var dot = document.getElementById('toggle-dot');
+        if (showAllStatuses) {
+            btn.classList.add('showing-all');
+            btn.innerHTML = '<span class="toggle-dot" id="toggle-dot"></span> &#x1F4CB; Upcoming Only';
+            dot.style.display = 'inline-block';
+        } else {
+            btn.classList.remove('showing-all');
+            btn.innerHTML = '<span class="toggle-dot" id="toggle-dot" style="display:none;"></span> &#x1F4C2; Show All Statuses';
+        }
+        updateFilterBarStyle();
+        displayJobs();
+    };
+
+    function updateFilterBarStyle() {
+        var bar = document.getElementById('filter-bar');
+        bar.classList.toggle('has-filters', !!(selectedWeek || showAllStatuses));
+    }
+
+    // ── Login / session ──────────────────────────────────────────────
     async function checkExistingLogin() {
         try {
-            const loginDataStr = localStorage.getItem('loggedInEngineer');
+            var loginDataStr = localStorage.getItem('loggedInEngineer');
             if (!loginDataStr) { await loadEngineers(); return; }
-            const loginData = JSON.parse(loginDataStr);
-            if (Date.now() > loginData.expiresAt) {
-                localStorage.removeItem('loggedInEngineer');
-                await loadEngineers(); return;
-            }
+            var loginData = JSON.parse(loginDataStr);
+            if (Date.now() > loginData.expiresAt) { localStorage.removeItem('loggedInEngineer'); await loadEngineers(); return; }
             await loadEngineers();
-            const engineer = teamMembers.find(m => m.id === loginData.id);
+            var engineer = teamMembers.find(function(m) { return m.id === loginData.id; });
             if (!engineer) { localStorage.removeItem('loggedInEngineer'); return; }
             currentUser = engineer;
             document.getElementById('login-screen').style.display = 'none';
@@ -436,75 +570,42 @@
 
     async function loadEngineers() {
         try {
-            const { collection, getDocs } = window.firebaseModules;
-            const snap = await getDocs(collection(window.db, 'team-members'));
+            var { collection, getDocs } = window.firebaseModules;
+            var snap = await getDocs(collection(window.db, 'team-members'));
             teamMembers = [];
-            snap.forEach(d => teamMembers.push({ id: d.id, ...d.data() }));
-            const select = document.getElementById('engineer-select');
+            snap.forEach(function(d) { teamMembers.push(Object.assign({ id: d.id }, d.data())); });
+            var select = document.getElementById('engineer-select');
             select.innerHTML = '<option value="">Select your name...</option>';
-            teamMembers
-                .sort((a,b) => (a.name||'').localeCompare(b.name||''))
-                .forEach(member => {
-                    const option = document.createElement('option');
-                    option.value = member.id;
-                    option.textContent = member.name;
-                    select.appendChild(option);
-                });
-        } catch (error) {
-            console.error('Error loading team members:', error);
-        }
+            teamMembers.sort(function(a,b) { return (a.name||'').localeCompare(b.name||''); }).forEach(function(member) {
+                var option = document.createElement('option');
+                option.value = member.id;
+                option.textContent = member.name;
+                select.appendChild(option);
+            });
+        } catch (error) { console.error('Error loading team members:', error); }
     }
 
-    // ── loadUserTeam ─────────────────────────────────────────────────────────────
-    // Checks the team-database collection to determine the logged-in user's role:
-    //
-    //  Case A – user is an ENGINEER MEMBER of a team:
-    //           store the lead's name → filter will include jobs assigned to that lead.
-    //
-    //  Case B – user IS THE LEAD of a team:
-    //           store the full team object → filter will include jobs assigned to any
-    //           of their team's engineers.
-    //
-    // Both cases can theoretically be true simultaneously (a lead who is also a
-    // member of another team), so we process every team doc rather than returning early.
-    // ─────────────────────────────────────────────────────────────────────────────
     async function loadUserTeam() {
         try {
-            userTeamLeadName = null;
-            userIsLeadOf = null;
-            const { collection, getDocs } = window.firebaseModules;
-            const snap = await getDocs(collection(window.db, 'team-database'));
-            const userName = (currentUser.name || '').trim().toLowerCase();
-
+            userTeamLeadName = null; userIsLeadOf = null;
+            var { collection, getDocs } = window.firebaseModules;
+            var snap = await getDocs(collection(window.db, 'team-database'));
+            var userName = (currentUser.name || '').trim().toLowerCase();
             snap.forEach(function(teamDoc) {
-                var team = teamDoc.data();
-                team.id = teamDoc.id;
+                var team = teamDoc.data(); team.id = teamDoc.id;
                 var engineers = team.engineers || [];
                 var leadName = (team.lead && team.lead.name) ? team.lead.name.trim().toLowerCase() : '';
-
-                // Case A: current user is in the engineers array
-                var isEngineerMember = engineers.some(function(eng) {
-                    return (eng.name || '').trim().toLowerCase() === userName;
-                });
-                if (isEngineerMember && leadName) {
-                    userTeamLeadName = team.lead.name.trim();
-                }
-
-                // Case B: current user is the lead of this team
-                if (leadName === userName) {
-                    userIsLeadOf = team;
-                }
+                var isEngineerMember = engineers.some(function(eng) { return (eng.name||'').trim().toLowerCase() === userName; });
+                if (isEngineerMember && leadName) userTeamLeadName = team.lead.name.trim();
+                if (leadName === userName) userIsLeadOf = team;
             });
-
-            // Update UI
             var badge = document.getElementById('team-badge');
             var subtitle = document.getElementById('page-subtitle');
-
             if (userIsLeadOf) {
-                var memberCount = (userIsLeadOf.engineers || []).length;
-                badge.textContent = 'Lead — ' + memberCount + ' engineer' + (memberCount !== 1 ? 's' : '');
+                var mc = (userIsLeadOf.engineers||[]).length;
+                badge.textContent = 'Lead — ' + mc + ' engineer' + (mc!==1?'s':'');
                 badge.classList.add('show');
-                subtitle.textContent = 'Showing your jobs plus jobs assigned to your ' + memberCount + ' team engineer' + (memberCount !== 1 ? 's' : '');
+                subtitle.textContent = 'Showing your jobs plus jobs assigned to your ' + mc + ' team engineer' + (mc!==1?'s':'');
             } else if (userTeamLeadName) {
                 badge.textContent = 'Team: ' + userTeamLeadName;
                 badge.classList.add('show');
@@ -513,31 +614,21 @@
                 badge.classList.remove('show');
                 subtitle.textContent = "All jobs that haven't been completed yet";
             }
-
-            console.log('loadUserTeam — userTeamLeadName:', userTeamLeadName, ' | userIsLeadOf:', userIsLeadOf ? userIsLeadOf.id : 'none');
-        } catch (error) {
-            console.error('Error loading user team:', error);
-        }
+        } catch (error) { console.error('Error loading user team:', error); }
     }
 
     async function loadCompletedSurveys() {
         try {
-            const { collection, getDocs, query, where } = window.firebaseModules;
+            var { collection, getDocs, query, where } = window.firebaseModules;
             completedSurveyJobNumbers = new Set();
             for (var col of SURVEY_COLLECTIONS) {
                 try {
-                    var q = query(collection(window.db, col), where('status', '==', 'completed'));
+                    var q = query(collection(window.db, col), where('status','==','completed'));
                     var snap = await getDocs(q);
-                    snap.forEach(function(d) {
-                        var jobNum = d.data().jobNumber;
-                        if (jobNum) completedSurveyJobNumbers.add(String(jobNum).trim());
-                    });
-                } catch(e) { /* collection may not exist */ }
+                    snap.forEach(function(d) { var jn = d.data().jobNumber; if (jn) completedSurveyJobNumbers.add(String(jn).trim()); });
+                } catch(e) {}
             }
-            console.log('Completed surveys found:', completedSurveyJobNumbers.size);
-        } catch (error) {
-            console.error('Error loading completed surveys:', error);
-        }
+        } catch (error) { console.error('Error loading completed surveys:', error); }
     }
 
     async function handleLogin(event) {
@@ -546,19 +637,15 @@
         var password = document.getElementById('password-input').value;
         var errorDiv = document.getElementById('login-error');
         var loginBtn = document.getElementById('login-btn');
-        errorDiv.classList.remove('show');
-        errorDiv.textContent = '';
-        if (!engineerId) {
-            errorDiv.textContent = 'Please select your name';
-            errorDiv.classList.add('show'); return;
-        }
+        errorDiv.classList.remove('show'); errorDiv.textContent = '';
+        if (!engineerId) { errorDiv.textContent = 'Please select your name'; errorDiv.classList.add('show'); return; }
         loginBtn.disabled = true; loginBtn.textContent = 'Logging in...';
         try {
             var engineer = teamMembers.find(function(m) { return m.id === engineerId; });
             if (!engineer) throw new Error('Engineer not found');
             if (engineer.password !== password) throw new Error('Incorrect password');
             currentUser = engineer;
-            var loginData = { id: engineer.id, name: engineer.name, expiresAt: Date.now() + (6 * 60 * 60 * 1000) };
+            var loginData = { id: engineer.id, name: engineer.name, expiresAt: Date.now() + (6*60*60*1000) };
             localStorage.setItem('loggedInEngineer', JSON.stringify(loginData));
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('main-dashboard').classList.add('active');
@@ -578,12 +665,17 @@
         currentUser = null; upcomingJobs = []; allJobs = [];
         userTeamLeadName = null; userIsLeadOf = null;
         completedSurveyJobNumbers = new Set(); showIncompleteOnly = false;
+        showAllStatuses = false; selectedWeek = '';
         document.getElementById('incomplete-filter-btn').classList.remove('active');
         document.getElementById('team-badge').classList.remove('show');
         document.getElementById('login-screen').style.display = 'flex';
         document.getElementById('main-dashboard').classList.remove('active');
         document.getElementById('password-input').value = '';
         document.getElementById('engineer-select').value = '';
+        // Reset toggle btn text
+        var btn = document.getElementById('toggle-all-btn');
+        btn.classList.remove('showing-all');
+        btn.innerHTML = '<span class="toggle-dot" id="toggle-dot" style="display:none;"></span> &#x1F4C2; Show All Statuses';
     }
 
     window.handleLogin = handleLogin;
@@ -591,12 +683,13 @@
 
     async function loadAllJobs() {
         try {
-            const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
+            var { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
             var jobsQuery = query(collection(window.db, 'jobs'), orderByFn('uploadDate', 'desc'));
             var snap = await getDocs(jobsQuery);
             allJobs = [];
             snap.forEach(function(d) { allJobs.push(Object.assign({ id: d.id }, d.data())); });
             filterUpcomingJobs();
+            buildWeekOptions();
             updateStats();
             displayJobs();
         } catch (error) {
@@ -609,35 +702,31 @@
         if (!currentUser) { upcomingJobs = []; return; }
         var now = new Date();
         var userName = (currentUser.name || '').trim().toLowerCase();
-
-        // Build the set of lead-engineer names whose jobs this user can see:
-        //   1. Always include the user's own name (they see jobs assigned directly to them).
-        //   2. If they are a MEMBER of a team, also include their lead's name.
-        //   3. If they ARE a LEAD, also include every engineer in their team.
         var visibleLeadNames = new Set();
         visibleLeadNames.add(userName);
-
-        if (userTeamLeadName) {
-            visibleLeadNames.add(userTeamLeadName.toLowerCase());
-        }
-
+        if (userTeamLeadName) visibleLeadNames.add(userTeamLeadName.toLowerCase());
         if (userIsLeadOf) {
-            (userIsLeadOf.engineers || []).forEach(function(eng) {
-                if (eng.name) visibleLeadNames.add(eng.name.trim().toLowerCase());
-            });
+            (userIsLeadOf.engineers||[]).forEach(function(eng) { if (eng.name) visibleLeadNames.add(eng.name.trim().toLowerCase()); });
         }
-
-        console.log('Visible lead names:', Array.from(visibleLeadNames));
 
         upcomingJobs = allJobs.filter(function(job) {
-            var leadEngineer = (job['Lead Engineer'] || '').trim().toLowerCase();
+            var leadEngineer = (job['Lead Engineer']||'').trim().toLowerCase();
             if (!visibleLeadNames.has(leadEngineer)) return false;
-
             var installDate = parseInstallDate(job['Install Date']);
             var jobStatus = job.status || 'upcoming';
             var isNotCompleted = jobStatus !== 'install-complete' && jobStatus !== 'completed';
             var isFuture = !installDate || installDate > now;
             return isNotCompleted || isFuture;
+        });
+
+        // Sort by install date ascending (null dates go to the end)
+        upcomingJobs.sort(function(a, b) {
+            var da = parseInstallDate(a['Install Date']);
+            var db2 = parseInstallDate(b['Install Date']);
+            if (!da && !db2) return 0;
+            if (!da) return 1;
+            if (!db2) return -1;
+            return da - db2;
         });
     }
 
@@ -654,9 +743,7 @@
 
     function updateStats() {
         var now = new Date();
-        var currentDay = now.getDay();
-        var daysToMonday = currentDay === 0 ? -6 : 1 - currentDay;
-        var startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() + daysToMonday); startOfWeek.setHours(0,0,0,0);
+        var startOfWeek = getMondayOf(now);
         var endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23,59,59,999);
         var startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         var endOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0); endOfMonth.setHours(23,59,59,999);
@@ -681,31 +768,58 @@
     function displayJobs() {
         var container = document.getElementById('jobs-container');
         var count = document.getElementById('results-count');
-        var userName = (currentUser ? currentUser.name || '' : '').trim().toLowerCase();
 
-        var displayList = showIncompleteOnly
-            ? upcomingJobs.filter(function(job) { return !hasSurveyCompleted(job['Job Number']); })
-            : upcomingJobs;
+        var displayList = upcomingJobs.slice(); // already date-sorted
 
-        var filterNote = showIncompleteOnly ? ' (incomplete surveys only)' : '';
-        count.textContent = displayList.length + ' upcoming job' + (displayList.length !== 1 ? 's' : '') + filterNote;
+        // 1. Status filter: default to upcoming only, unless showAllStatuses
+        if (!showAllStatuses) {
+            displayList = displayList.filter(function(job) {
+                var jobStatus = job.status || 'upcoming';
+                return jobStatus === 'upcoming' || jobStatus === '' || !jobStatus;
+            });
+        }
+
+        // 2. Week filter
+        if (selectedWeek) {
+            displayList = displayList.filter(function(job) {
+                var d = parseInstallDate(job['Install Date']);
+                if (!d) return false;
+                return toISODate(getMondayOf(d)) === selectedWeek;
+            });
+        }
+
+        // 3. Incomplete surveys filter
+        if (showIncompleteOnly) {
+            displayList = displayList.filter(function(job) { return !hasSurveyCompleted(job['Job Number']); });
+        }
+
+        var notes = [];
+        if (!showAllStatuses) notes.push('upcoming only');
+        if (selectedWeek) {
+            var parts = selectedWeek.split('-');
+            var mon = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+            notes.push(formatWeekLabel(mon));
+        }
+        if (showIncompleteOnly) notes.push('incomplete surveys');
+        var filterNote = notes.length ? ' (' + notes.join(' · ') + ')' : '';
+        count.textContent = displayList.length + ' job' + (displayList.length !== 1 ? 's' : '') + filterNote;
 
         if (displayList.length === 0) {
-            container.innerHTML = showIncompleteOnly
-                ? '<div class="empty-state"><div class="empty-icon">&#x2705;</div><h3>All Surveys Complete!</h3><p>Every upcoming job has a completed survey.</p></div>'
-                : '<div class="empty-state"><div class="empty-icon">&#x2705;</div><h3>No Upcoming Jobs</h3><p>All your jobs are completed!</p></div>';
-            return;
+            var msg = showIncompleteOnly
+                ? '<div class="empty-state"><div class="empty-icon">&#x2705;</div><h3>All Surveys Complete!</h3><p>No jobs match your current filters.</p></div>'
+                : '<div class="empty-state"><div class="empty-icon">&#x2705;</div><h3>No Jobs Found</h3><p>No jobs match your current filters.</p></div>';
+            container.innerHTML = msg; return;
         }
 
         var html = '<div class="results-grid">' + displayList.map(function(job) {
             var jobStatus = job.status || 'upcoming';
             var jobNumber = job['Job Number'] || 'N/A';
             var surveyDone = hasSurveyCompleted(jobNumber);
-            var leadEngineer = (job['Lead Engineer'] || '').trim().toLowerCase();
 
             var statusText = 'Upcoming', statusClass = 'upcoming';
-            if (surveyDone || jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
-            else if (jobStatus === 'install-started') { statusText = 'Install Started'; statusClass = 'install-started'; }
+            if (surveyDone || jobStatus === 'survey-complete')     { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
+            else if (jobStatus === 'install-started')              { statusText = 'Install Started'; statusClass = 'install-started'; }
+            else if (jobStatus === 'install-complete' || jobStatus === 'completed') { statusText = 'Complete'; statusClass = 'install-complete'; }
 
             var footerHtml = surveyDone
                 ? '<div class="survey-done-badge">&#x2705; Survey Completed</div>'
@@ -735,6 +849,10 @@
 
     window.showJobDetails = async function(jobId) {
         var job = upcomingJobs.find(function(j) { return j.id === jobId; });
+        if (!job) {
+            // Also check allJobs in case "show all" was recently toggled
+            job = allJobs.find(function(j) { return j.id === jobId; });
+        }
         if (!job) return;
         var modal = document.getElementById('job-modal');
         var modalBody = document.getElementById('modal-body');
@@ -792,7 +910,7 @@
     async function updateJobStatus(jobId, newStatus, buttonElement) {
         var messageDiv = document.getElementById('status-update-message');
         try {
-            const { doc, updateDoc } = window.firebaseModules;
+            var { doc, updateDoc } = window.firebaseModules;
             await updateDoc(doc(window.db, 'jobs', jobId), { status: newStatus, lastStatusUpdate: new Date().toISOString() });
             var job = allJobs.find(function(j) { return j.id === jobId; });
             if (job) job.status = newStatus;
@@ -802,7 +920,7 @@
             setTimeout(function() { messageDiv.innerHTML = ''; }, 3000);
             document.querySelectorAll('.status-update-btn').forEach(function(btn) { btn.classList.remove('current'); });
             if (buttonElement) buttonElement.classList.add('current');
-            filterUpcomingJobs(); updateStats(); displayJobs();
+            filterUpcomingJobs(); buildWeekOptions(); updateStats(); displayJobs();
         } catch (error) {
             console.error('Error updating status:', error);
             messageDiv.innerHTML = '<div class="status-update-message error">&#x2717; Failed: ' + error.message + '</div>';
@@ -829,11 +947,11 @@
     async function loadJobFiles(jobNumber) {
         var attachmentsList = document.getElementById('attachments-list');
         try {
-            const { collection, getDocs, query, where } = window.firebaseModules;
+            var { collection, getDocs, query, where } = window.firebaseModules;
             var fileCollections = [
                 { name:'scaffolding-csv', icon:'&#x1F3D7;', type:'Scaffolding CSV' },
-                { name:'schletter-pdf', icon:'&#x1F4C4;', type:'Schletter Report' },
-                { name:'design-pdf', icon:'&#x1F3A8;', type:'Design PDF' }
+                { name:'schletter-pdf',  icon:'&#x1F4C4;', type:'Schletter Report' },
+                { name:'design-pdf',     icon:'&#x1F3A8;', type:'Design PDF' }
             ];
             var allFiles = [];
             for (var fc of fileCollections) {
@@ -857,20 +975,9 @@
 
     window.closeJobModal = function() { document.getElementById('job-modal').classList.remove('show'); };
 
-    // Returns the team lead's name for display purposes.
-    // If the logged-in user is a lead, all jobs show the lead's own name.
-    // If the logged-in user is a member, show their lead's name.
-    // Otherwise fall back to whatever is stored on the job.
     function getDisplayLeadName(job) {
-        if (userIsLeadOf) {
-            // User is a lead — always show their own name
-            return currentUser.name || job['Lead Engineer'] || 'Unassigned';
-        }
-        if (userTeamLeadName) {
-            // User is a team member — show the lead's name
-            return userTeamLeadName;
-        }
-        // No team relationship — show whatever is on the job
+        if (userIsLeadOf) return currentUser.name || job['Lead Engineer'] || 'Unassigned';
+        if (userTeamLeadName) return userTeamLeadName;
         return job['Lead Engineer'] || 'Unassigned';
     }
 
