@@ -307,7 +307,7 @@
 
     <div class="expected-cols">
         <strong>Required fields (must be mapped):</strong><br>
-        Job Type, Job Number, Address, Postcode, Booked Date, Projected Completion Date, Days, Panel No., Lead, Team Number
+        Job Number, Name, Phone Number, Email Address, 1st line of address, Postcode, Install Date, Lead Engineer, Job Length, Job Type
     </div>
 
     <div style="text-align: center; margin-top: 3rem;">
@@ -333,18 +333,18 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // Required fields (must be mapped)
+    // Required fields — matching uploaddata.html
     const requiredFields = [
-        "Job Type",
         "Job Number",
-        "Address",
+        "Name",
+        "Phone Number",
+        "Email Address",
+        "1st line of address",
         "Postcode",
-        "Booked Date",
-        "Projected Completion Date",
-        "Days",
-        "Panel No.",
-        "Lead",
-        "Team Number"
+        "Install Date",
+        "Lead Engineer",
+        "Job Length",
+        "Job Type"
     ];
 
     let csvData = [];           // raw rows with original column names
@@ -569,20 +569,19 @@
         let failed = 0;
 
         for (const row of csvData) {
-    try {
-        const docData = {
-            "uploadDate": new Date().toISOString()
-        };
-        // REMOVED: "status" field is no longer saved
+            try {
+                const docData = {
+                    "uploadDate": new Date().toISOString()
+                };
 
-        requiredFields.forEach(field => {
-            const csvCol = columnMapping[field];
-            if (csvCol && row[csvCol] !== undefined && row[csvCol] !== '') {
-                docData[field] = row[csvCol];
-            }
-        });
+                requiredFields.forEach(field => {
+                    const csvCol = columnMapping[field];
+                    if (csvCol && row[csvCol] !== undefined && row[csvCol] !== '') {
+                        docData[field] = row[csvCol];
+                    }
+                });
 
-        await addDoc(collection(db, "Solar-jobs"), docData);
+                await addDoc(collection(db, "Solar-jobs"), docData);
                 success++;
             } catch (err) {
                 console.error(err);
