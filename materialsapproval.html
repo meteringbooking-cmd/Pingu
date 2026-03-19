@@ -508,6 +508,12 @@ function esc(t) {
 
 function fmtDate(str) {
     if (!str) return '—';
+    // Handle DD/MM/YYYY format from Firestore (e.g. "01/04/2026")
+    const ddmmyyyy = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (ddmmyyyy) {
+        const d = new Date(`${ddmmyyyy[3]}-${ddmmyyyy[2]}-${ddmmyyyy[1]}`);
+        return isNaN(d) ? str : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    }
     const d = new Date(str);
     return isNaN(d) ? str : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
 }
