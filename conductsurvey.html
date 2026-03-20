@@ -1391,6 +1391,7 @@ const electricalItems = [
             {desc:"Zeroburn Cable Clips 10 - 15mm Black", pack:"PK-20"},
             {desc:"Zeroburn cable clips 22mm-26mm", pack:""},
             {desc:"Proteus IP65 rated consumer unit 6 way with SPD and isolator", pack:""},
+            {desc:"Aico Ei650iRF RadioLINK+ Battery Powered Optical", each:""},
         ];
 
         const roofItems = [
@@ -1763,6 +1764,11 @@ const electricalItems = [
             let photoLinks = 'No photos uploaded yet';
             try { photoLinks = await uploadMeterPhotos(meterFilesFieldId, verifiedJob['Job Number']); }
             catch (e) { photoLinks = 'Error uploading photos: ' + e.message; }
+// Build individual photo variables for email template
+            const photoUrlList = photoLinks.split('\n')
+                .filter(l => l.includes('http'))
+                .map(l => l.replace(/^Photo \d+: /, '').trim());
+
             const emailData = {
                 job_number: verifiedJob['Job Number'] || 'N/A',
                 customer_name: verifiedJob['Name'] || 'N/A',
@@ -1770,7 +1776,12 @@ const electricalItems = [
                 postcode: verifiedJob['Postcode'] || 'N/A',
                 install_date: formatDate(verifiedJob['Install Date']),
                 meter_work_details: meterWorkDetails,
-                photo_links: photoLinks
+                photo_links: photoLinks,
+                photo_1: photoUrlList[0] || '',
+                photo_2: photoUrlList[1] || '',
+                photo_3: photoUrlList[2] || '',
+                photo_4: photoUrlList[3] || '',
+                photo_5: photoUrlList[4] || '',
             };
             try { await emailjs.send(EMAIL_SERVICE_METER, EMAIL_TEMPLATE_METER, emailData); }
             catch (error) { console.warn('Could not send meter work notification email', error); }
