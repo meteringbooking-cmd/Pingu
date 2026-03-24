@@ -242,7 +242,7 @@
     <!-- Job Number Link -->
     <div class="job-number-bar">
         <label>🔗 Link to Job:</label>
-        <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number, or drop a PDF named 'Sales Agreement 12345'…" />
+        <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number e.g. J-A9C48150, or drop a PDF with the job number in its filename…" />
         <button class="job-verify-btn" id="job-verify-btn" onclick="verifyJobNumber()">Verify Job</button>
         <span class="job-match-badge" id="job-match-badge"></span>
     </div>
@@ -442,17 +442,14 @@
         hideError(); resetResults();
 
         // ── Auto-detect job number from filename ──────────────────────────────
-        // Handles filenames like "Sales Agreement 12345.pdf", "Sales Agreement - 12345.pdf",
-        // "Sales Agreement_12345.pdf", "Sales Agreement (12345).pdf" etc.
+        // Matches J-XXXXXXXX format (J- followed by exactly 8 alphanumeric chars)
+        // e.g. "Sales Agreement J-A9C48150.pdf", "Survey_J-A9C48150 Smith.pdf"
         const jobInput = document.getElementById('job-number-input');
         if (!jobInput.value.trim()) {
             const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
-            // Strip a leading "Sales Agreement" prefix (case-insensitive) if present, then grab trailing digits
-            const stripped = nameNoExt.replace(/^sales\s+agreement\s*/i, '');
-            // Match a number at the end of whatever remains (allowing leading separators like - _ space ( )
-            const match = stripped.match(/[\s\-_\(]*(\d+)\)?[\s\-_]*$/);
+            const match = nameNoExt.match(/\b(J-[A-Z0-9]{8})\b/i);
             if (match) {
-                const extracted = match[1].trim();
+                const extracted = match[1].toUpperCase();
                 jobInput.value = extracted;
                 jobInput.className = 'job-number-input';
                 document.getElementById('job-match-badge').className = 'job-match-badge';
