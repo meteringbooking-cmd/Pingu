@@ -79,6 +79,7 @@
         .job-number-input:focus { outline: none; border-color: var(--secondary); }
         .job-number-input.matched { border-color: var(--success); }
         .job-number-input.no-match { border-color: var(--error); }
+        .job-number-input.verifying { border-color: var(--accent); }
         .job-verify-btn {
             padding: 0.65rem 1.3rem; border-radius: 9px;
             background: linear-gradient(135deg, var(--secondary), var(--primary));
@@ -94,6 +95,7 @@
         }
         .job-match-badge.found { display: inline-block; background: rgba(78,204,163,0.15); border: 1px solid var(--success); color: var(--success); }
         .job-match-badge.not-found { display: inline-block; background: rgba(255,107,107,0.12); border: 1px solid var(--error); color: var(--error); }
+        .job-match-badge.checking { display: inline-block; background: rgba(0,217,255,0.1); border: 1px solid var(--accent); color: var(--accent); }
 
         /* ── Upload Zone ──────────────────────────────────────────────────────── */
         .upload-zone {
@@ -240,7 +242,7 @@
     <!-- Job Number Link -->
     <div class="job-number-bar">
         <label>🔗 Link to Job:</label>
-        <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number (optional)…" />
+        <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number, or drop a PDF named 'Sales Agreement 12345'…" />
         <button class="job-verify-btn" id="job-verify-btn" onclick="verifyJobNumber()">Verify Job</button>
         <span class="job-match-badge" id="job-match-badge"></span>
     </div>
@@ -248,7 +250,7 @@
     <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
         <span class="upload-icon" id="upload-icon">📂</span>
         <div class="upload-title" id="upload-title">Drop your PDF here</div>
-        <div class="upload-sub">or click to browse · PDF files only</div>
+        <div class="upload-sub">or click to browse · PDF files only · job number auto-detected from filename</div>
         <div class="upload-file-name" id="upload-file-name"></div>
         <input type="file" id="file-input" accept=".pdf,application/pdf" />
     </div>
@@ -377,7 +379,8 @@
         const badge = document.getElementById('job-match-badge');
         const input = document.getElementById('job-number-input');
         btn.disabled = true; btn.textContent = '…';
-        badge.className = 'job-match-badge'; badge.textContent = '';
+        badge.className = 'job-match-badge checking'; badge.textContent = '⏳ Checking…';
+        input.className = 'job-number-input verifying';
         try {
             if (!window.firebaseModules) throw new Error('Firebase not ready');
             const { collection, getDocs, query, where } = window.firebaseModules;
@@ -400,6 +403,7 @@
             }
         } catch (err) {
             console.error(err);
+            input.className = 'job-number-input no-match';
             badge.className = 'job-match-badge not-found';
             badge.textContent = '✗ Lookup failed';
         } finally {
@@ -436,6 +440,26 @@
         document.getElementById('upload-file-name').textContent = (f.size / 1024 / 1024).toFixed(2) + ' MB';
         document.getElementById('extract-btn').classList.add('visible');
         hideError(); resetResults();
+
+        // ── Auto-detect job number from filename ──────────────────────────────
+        // Handles filenames like "Sales Agreement 12345.pdf", "Sales Agreement - 12345.pdf",
+        // "Sales Agreement_12345.pdf", "Sales Agreement (12345).pdf" etc.
+        const jobInput = document.getElementById('job-number-input');
+        if (!jobInput.value.trim()) {
+            const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
+            // Strip a leading "Sales Agreement" prefix (case-insensitive) if present, then grab trailing digits
+            const stripped = nameNoExt.replace(/^sales\s+agreement\s*/i, '');
+            // Match a number at the end of whatever remains (allowing leading separators like - _ space ( )
+            const match = stripped.match(/[\s\-_\(]*(\d+)\)?[\s\-_]*$/);
+            if (match) {
+                const extracted = match[1].trim();
+                jobInput.value = extracted;
+                jobInput.className = 'job-number-input';
+                document.getElementById('job-match-badge').className = 'job-match-badge';
+                // Auto-verify after a short delay so the UI settles first
+                setTimeout(() => verifyJobNumber(), 400);
+            }
+        }
     }
 
     // ── Extract positioned text items from a page, sorted top→bottom ─────────
@@ -527,7 +551,6 @@
     async function uploadLayoutImage(dataUrl, jobNum) {
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
-        // Strip the data:image/jpeg;base64, prefix
         const base64 = dataUrl.split(',')[1];
         const storagePath = `pdf-ripper/${jobNum}/proposed-layout-${Date.now()}.jpg`;
         const storageRef = ref(window.storage, storagePath);
@@ -771,6 +794,11 @@
         document.getElementById('upload-file-name').textContent = '';
         document.getElementById('extract-btn').classList.remove('visible');
         fileInput.value = ''; hideError();
+        // Clear job number state so next file can auto-detect again
+        document.getElementById('job-number-input').value = '';
+        document.getElementById('job-number-input').className = 'job-number-input';
+        document.getElementById('job-match-badge').className = 'job-match-badge';
+        verifiedJobId = null; verifiedJobNum = null;
     }
 </script>
 </body>
