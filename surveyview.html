@@ -19,6 +19,7 @@
             --error: #FF6B6B;
             --kf: #B57BFF;
             --warning: #FFA500;
+            --ripper: #FF6B35;
         }
 
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -158,12 +159,10 @@
         .signoff-val { font-size:0.95rem; color:var(--text); font-weight:600; }
 
         /* ── PICKLIST SECTION ── */
-        /* uses .section / .section-body but with secondary accent colour */
         .section.picklist-section { border-color:rgba(255,200,87,0.35); }
         .section.picklist-section .section-title-text { color:var(--secondary); }
         .section.picklist-section .section-chevron { color:rgba(255,200,87,0.5); }
 
-        /* spec cards grid */
         .pl-section-label {
             font-size:0.72rem; font-weight:700; color:var(--secondary);
             text-transform:uppercase; letter-spacing:0.08em;
@@ -185,7 +184,6 @@
         .pl-spec-val.empty { font-style:italic; color:var(--text-dim); font-size:0.76rem; font-weight:400; }
         .pl-spec-unit { font-size:0.64rem; color:var(--text-dim); margin-left:0.2rem; }
 
-        /* roof layout grid */
         .pl-roof-wrap {
             margin-top:1.2rem; padding:1.1rem; background:var(--dark);
             border-radius:12px; border:2px solid rgba(0,217,255,0.15);
@@ -225,7 +223,6 @@
         .pl-roof-stat { font-size:0.76rem; color:var(--text-dim); }
         .pl-roof-stat strong { color:var(--text); }
 
-        /* KF picklist table */
         .pl-kf-wrap {
             margin-top:1.2rem; padding:1.1rem; background:var(--dark);
             border-radius:12px; border:2px solid rgba(181,123,255,0.22);
@@ -261,7 +258,6 @@
         }
         .pl-kf-total td { border-top:2px solid rgba(181,123,255,0.22); color:var(--text-dim); font-size:0.72rem; padding-top:0.55rem; }
 
-        /* saved date pill */
         .pl-saved-pill {
             font-size:0.72rem; color:var(--text-dim);
             font-family:'JetBrains Mono',monospace; margin-left:auto;
@@ -269,6 +265,64 @@
         .pl-no-data {
             padding:0.9rem 1rem; background:var(--dark); border-radius:8px;
             color:var(--text-dim); font-size:0.82rem; border-left:3px solid var(--text-dim);
+        }
+
+        /* ── PDF RIPPER SECTION ── */
+        .section.ripper-section { border-color:rgba(255,107,53,0.35); }
+        .section.ripper-section .section-title-text { color:var(--primary); }
+        .section.ripper-section .section-chevron { color:rgba(255,107,53,0.5); }
+
+        .ripper-saved-pill {
+            font-size:0.72rem; color:var(--text-dim);
+            font-family:'JetBrains Mono',monospace; margin-left:auto;
+        }
+
+        .ripper-grid {
+            display:grid; grid-template-columns:1fr 1fr; gap:1.2rem;
+            margin-bottom:1rem;
+        }
+        @media(max-width:600px) { .ripper-grid { grid-template-columns:1fr; } }
+
+        .ripper-img-card {
+            background:var(--dark); border-radius:10px;
+            border:2px solid rgba(255,107,53,0.2);
+            overflow:hidden;
+        }
+        .ripper-img-card-label {
+            padding:0.55rem 0.9rem;
+            font-size:0.68rem; color:var(--text-dim); text-transform:uppercase;
+            letter-spacing:0.07em; border-bottom:1px solid rgba(255,107,53,0.12);
+            display:flex; align-items:center; gap:0.4rem;
+        }
+        .ripper-img-card img {
+            width:100%; display:block; cursor:pointer;
+            transition:transform 0.2s; max-height:340px; object-fit:contain;
+            background:rgba(0,0,0,0.2);
+        }
+        .ripper-img-card img:hover { transform:scale(1.01); }
+        .ripper-img-placeholder {
+            padding:2rem; text-align:center;
+            color:var(--text-dim); font-size:0.82rem; font-style:italic;
+        }
+        .ripper-address-card {
+            background:var(--dark); border-radius:10px; padding:1rem 1.1rem;
+            border:2px solid rgba(255,107,53,0.2); margin-bottom:1rem;
+        }
+        .ripper-address-label {
+            font-size:0.68rem; color:var(--text-dim); text-transform:uppercase;
+            letter-spacing:0.07em; margin-bottom:0.5rem;
+        }
+        .ripper-address-val {
+            font-family:'Syne',sans-serif; font-size:1rem; color:var(--text);
+            line-height:1.7;
+        }
+        .ripper-meta-row {
+            display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.5rem;
+            font-size:0.72rem; color:var(--text-dim);
+        }
+        .ripper-meta-chip {
+            background:rgba(255,107,53,0.08); border:1px solid rgba(255,107,53,0.2);
+            padding:0.18rem 0.6rem; border-radius:20px; color:var(--primary);
         }
 
         /* ── STATES ── */
@@ -342,6 +396,8 @@
         <div id="sections-wrap"></div>
         <!-- Picklist section injected here -->
         <div id="picklist-wrap"></div>
+        <!-- PDF Ripper section injected here -->
+        <div id="ripper-wrap"></div>
         <div class="footer">Generated by Pingu Solar · Survey data is read-only</div>
     </div>
 
@@ -425,34 +481,42 @@ async function load() {
     if (!id) { showError(); return; }
 
     try {
-        // Load survey and picklist in parallel
-        const [surveySnap] = await Promise.all([
-            getDoc(doc(db, 'site-surveys', id))
-        ]);
-
+        const surveySnap = await getDoc(doc(db, 'site-surveys', id));
         if (!surveySnap.exists()) { showError(); return; }
 
         const survey = { _id: surveySnap.id, ...surveySnap.data() };
 
-        // Now fetch the most recent picklist for this job number
+        // Fetch picklist + job record (for PDF ripper data) in parallel
         let picklistData = null;
+        let jobData      = null;
+
+        const promises = [];
+
         if (survey.jobNumber) {
-            try {
-                const plSnap = await getDocs(
-                    query(
-                        collection(db, 'picklists'),
-                        where('jobNumber', '==', survey.jobNumber),
-                        orderBy('savedAt', 'desc'),
-                        limit(1)
-                    )
-                );
-                if (!plSnap.empty) picklistData = plSnap.docs[0].data();
-            } catch(e) {
-                console.warn('Picklist load failed:', e);
-            }
+            // Picklist
+            promises.push(
+                getDocs(query(
+                    collection(db, 'picklists'),
+                    where('jobNumber', '==', survey.jobNumber),
+                    orderBy('savedAt', 'desc'),
+                    limit(1)
+                )).then(snap => { if (!snap.empty) picklistData = snap.docs[0].data(); })
+                  .catch(e => console.warn('Picklist load failed:', e))
+            );
+            // Job record (holds pdfRipper data)
+            promises.push(
+                getDocs(query(
+                    collection(db, 'jobs'),
+                    where('Job Number', '==', survey.jobNumber),
+                    limit(1)
+                )).then(snap => { if (!snap.empty) jobData = snap.docs[0].data(); })
+                  .catch(e => console.warn('Job record load failed:', e))
+            );
         }
 
-        render(survey, picklistData);
+        await Promise.all(promises);
+        render(survey, picklistData, jobData);
+
     } catch(e) {
         console.error(e);
         showError();
@@ -465,7 +529,7 @@ function showError() {
 }
 
 // ── Main render ────────────────────────────────────────────────────────────
-function render(s, picklist) {
+function render(s, picklist, jobData) {
     document.getElementById('state-loading').style.display  = 'none';
     document.getElementById('survey-content').style.display = 'block';
 
@@ -506,13 +570,19 @@ function render(s, picklist) {
     wrap.querySelectorAll('.section-hdr').forEach(hdr =>
         hdr.addEventListener('click', () => hdr.closest('.section').classList.toggle('open'))
     );
-    // Open first section by default
     const first = wrap.querySelector('.section');
     if (first) first.classList.add('open');
 
     // Picklist section
     document.getElementById('picklist-wrap').innerHTML = buildPicklistSection(picklist);
     document.querySelectorAll('#picklist-wrap .section-hdr').forEach(hdr =>
+        hdr.addEventListener('click', () => hdr.closest('.section').classList.toggle('open'))
+    );
+
+    // PDF Ripper section
+    const ripperData = jobData?.pdfRipper || null;
+    document.getElementById('ripper-wrap').innerHTML = buildRipperSection(ripperData);
+    document.querySelectorAll('#ripper-wrap .section-hdr').forEach(hdr =>
         hdr.addEventListener('click', () => hdr.closest('.section').classList.toggle('open'))
     );
 }
@@ -716,7 +786,6 @@ function buildPicklistSection(d) {
         ? new Date(d.savedAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
         : null;
 
-    // Header pill showing saved date
     const savedPill = savedDate
         ? `<span class="pl-saved-pill">Saved ${savedDate}</span>`
         : '';
@@ -726,7 +795,6 @@ function buildPicklistSection(d) {
     if (!d) {
         body = `<div class="pl-no-data">📭 No picklist found for this job.</div>`;
     } else {
-        // ── Spec groups ─────────────────────────────────────────────────────
         const specCard = (def) => {
             const val  = d.specs?.[def.label] || '';
             const hasV = !!val;
@@ -748,7 +816,6 @@ function buildPicklistSection(d) {
                      <div class="pl-specs-grid">${SPECS.electrical.map(specCard).join('')}</div>`;
         }
 
-        // ── Mount sense check ────────────────────────────────────────────────
         if (d.mountCheck) {
             const mcCards = MOUNT_CHECK.map(def => {
                 const val  = d.mountCheck[def.label] || '';
@@ -763,7 +830,6 @@ function buildPicklistSection(d) {
                      <div class="pl-specs-grid">${mcCards}</div>`;
         }
 
-        // ── Roof panel layout grid ───────────────────────────────────────────
         const flatArr = d.panelFlat || (d.panelGrid ? d.panelGrid.flat() : null);
         const cols    = d.panelCols || (d.panelGrid?.[0]?.length) || 0;
         if (flatArr && cols) {
@@ -795,7 +861,6 @@ function buildPicklistSection(d) {
             }
         }
 
-        // ── KF Picklist items ────────────────────────────────────────────────
         if (Array.isArray(d.kfPicklist) && d.kfPicklist.length) {
             let totalQty = 0;
             d.kfPicklist.forEach(it => { const q = parseFloat(it.qty); if (!isNaN(q)) totalQty += q; });
@@ -845,6 +910,99 @@ function buildPicklistSection(d) {
     </div>`;
 }
 
+// ── PDF Ripper section ─────────────────────────────────────────────────────
+function buildRipperSection(d) {
+    const savedDate = d?.savedAt
+        ? new Date(d.savedAt).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'})
+        : null;
+
+    const savedPill = savedDate
+        ? `<span class="ripper-saved-pill">Ripped ${savedDate}</span>`
+        : '';
+
+    let body = '';
+
+    if (!d) {
+        body = `<div class="pl-no-data">📭 No PDF Ripper data found for this job.</div>`;
+    } else {
+        const hasLayout     = !!d.proposedLayoutUrl;
+        const hasAssessment = !!d.siteAssessmentUrl;
+        const hasAddress    = !!d.address;
+        const hasText       = !!d.siteAssessmentText;
+
+        // Address block
+        if (hasAddress) {
+            body += `<div class="ripper-address-card">
+                <div class="ripper-address-label">📍 Property Address</div>
+                <div class="ripper-address-val">${esc(d.address).replace(/\n/g,'<br>')}</div>
+                ${d.jobNumber ? `<div class="ripper-meta-row"><span class="ripper-meta-chip">Job #${esc(d.jobNumber)}</span></div>` : ''}
+            </div>`;
+        }
+
+        // Images grid
+        if (hasLayout || hasAssessment) {
+            body += `<div class="ripper-grid">`;
+
+            if (hasLayout) {
+                body += `<div class="ripper-img-card">
+                    <div class="ripper-img-card-label">🗺️ Proposed Layout <span style="margin-left:auto;font-size:0.6rem;opacity:0.6">PDF page 3</span></div>
+                    <img src="${esc(d.proposedLayoutUrl)}" alt="Proposed Layout"
+                         onclick="openRipperImg('${esc(d.proposedLayoutUrl)}','Proposed Layout')"
+                         loading="lazy">
+                </div>`;
+            } else {
+                body += `<div class="ripper-img-card">
+                    <div class="ripper-img-card-label">🗺️ Proposed Layout</div>
+                    <div class="ripper-img-placeholder">No layout image saved</div>
+                </div>`;
+            }
+
+            if (hasAssessment) {
+                body += `<div class="ripper-img-card">
+                    <div class="ripper-img-card-label">📦 Site Assessment <span style="margin-left:auto;font-size:0.6rem;opacity:0.6">PDF page 4</span></div>
+                    <img src="${esc(d.siteAssessmentUrl)}" alt="Site Assessment"
+                         onclick="openRipperImg('${esc(d.siteAssessmentUrl)}','Site Assessment')"
+                         loading="lazy">
+                </div>`;
+            } else {
+                body += `<div class="ripper-img-card">
+                    <div class="ripper-img-card-label">📦 Site Assessment</div>
+                    <div class="ripper-img-placeholder">No site assessment image saved</div>
+                </div>`;
+            }
+
+            body += `</div>`;
+        }
+
+        // Raw text fallback for site assessment
+        if (hasText && !hasAssessment) {
+            body += `<div style="margin-top:0.8rem">
+                <div style="font-size:0.68rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:0.5rem">📄 Site Assessment Text</div>
+                <div style="background:var(--dark);border-radius:8px;padding:1rem;font-size:0.8rem;white-space:pre-wrap;color:var(--text);border:1px solid rgba(255,107,53,0.15);max-height:300px;overflow-y:auto">${esc(d.siteAssessmentText)}</div>
+            </div>`;
+        }
+
+        if (!hasLayout && !hasAssessment && !hasAddress && !hasText) {
+            body = `<div class="pl-no-data">PDF Ripper record found but contains no displayable data.</div>`;
+        }
+    }
+
+    return `
+    <div class="section ripper-section" style="animation-delay:0.7s">
+        <div class="section-hdr">
+            <div class="section-hdr-left">
+                <span>📄</span>
+                <span class="section-title-text">PDF Ripper Data</span>
+                ${savedPill}
+            </div>
+            <span class="section-chevron">▼</span>
+        </div>
+        <div class="section-body">
+            <div class="section-inner">${body}</div>
+        </div>
+    </div>`;
+}
+
 // ── Lightbox ───────────────────────────────────────────────────────────────
 window.openLb = function(idx) {
     lbIndex = idx;
@@ -866,6 +1024,17 @@ function updateLb() {
     document.getElementById('lb-prev').disabled = lbIndex === 0;
     document.getElementById('lb-next').disabled = lbIndex === allPhotos.length - 1;
 }
+
+// Open a single ripper image in the lightbox (no nav needed)
+window.openRipperImg = function(url, label) {
+    // Push to allPhotos temporarily, or use a simple single-image lightbox mode
+    const tempIdx = allPhotos.length;
+    allPhotos.push({ url, label });
+    lbIndex = tempIdx;
+    updateLb();
+    document.getElementById('lightbox').classList.add('show');
+};
+
 document.getElementById('lightbox').addEventListener('click', e => {
     if (e.target === document.getElementById('lightbox')) closeLb();
 });
