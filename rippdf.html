@@ -441,23 +441,21 @@
         document.getElementById('extract-btn').classList.add('visible');
         hideError(); resetResults();
 
-        // ── Auto-detect job number from filename ──────────────────────────────
-        // Matches J-XXXXXXXX format (J- followed by exactly 8 alphanumeric chars)
-        // e.g. "Sales Agreement J-A9C48150.pdf", "Survey_J-A9C48150 Smith.pdf"
-        const jobInput = document.getElementById('job-number-input');
-        if (!jobInput.value.trim()) {
-            const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
-            const match = nameNoExt.match(/\b(J-[A-Z0-9]{8})\b/i);
-            if (match) {
-                const extracted = match[1].toUpperCase();
-                jobInput.value = extracted;
-                jobInput.className = 'job-number-input';
-                document.getElementById('job-match-badge').className = 'job-match-badge';
-                // Auto-verify after a short delay so the UI settles first
-                setTimeout(() => verifyJobNumber(), 400);
-            }
-        }
-    }
+// ── Auto-detect job number from filename ──────────────────────────────
+// Always reset job state when a new file is loaded, then detect fresh
+const jobInput = document.getElementById('job-number-input');
+jobInput.value = '';
+jobInput.className = 'job-number-input';
+document.getElementById('job-match-badge').className = 'job-match-badge';
+verifiedJobId  = null;
+verifiedJobNum = null;
+
+const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
+const match = nameNoExt.match(/\b(J-[A-Z0-9]{8})\b/i);
+if (match) {
+    jobInput.value = match[1].toUpperCase();
+    setTimeout(() => verifyJobNumber(), 400);
+}
 
     // ── Extract positioned text items from a page, sorted top→bottom ─────────
     async function getPageLines(page) {
