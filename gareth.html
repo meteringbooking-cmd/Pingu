@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gareth | Pingu Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #F8F7F4;
+            --surface: #FFFFFF;
+            --border: #E8E5E0;
+            --text: #1A1A1A;
+            --muted: #8A8680;
+            --tag: #F0EDE8;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        .page {
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 5rem 2rem 6rem;
+        }
+
+        /* ── Header ── */
+        .header {
+            margin-bottom: 4rem;
+            opacity: 0;
+            animation: rise 0.6s ease-out 0.1s forwards;
+        }
+
+        .greeting {
+            font-family: 'Instrument Serif', serif;
+            font-size: clamp(2.2rem, 5vw, 3.2rem);
+            font-weight: 400;
+            line-height: 1.15;
+            color: var(--text);
+            margin-bottom: 0.6rem;
+        }
+
+        .greeting em {
+            font-style: italic;
+            color: var(--muted);
+        }
+
+        .header-meta {
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--border);
+            margin-bottom: 3rem;
+            opacity: 0;
+            animation: rise 0.6s ease-out 0.25s forwards;
+        }
+
+        .section-label {
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 1rem;
+            opacity: 0;
+            animation: rise 0.6s ease-out 0.35s forwards;
+        }
+
+        /* ── Grid ── */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background: var(--border);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--surface);
+            padding: 1.8rem 1.6rem;
+            text-decoration: none;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            transition: background 0.15s ease;
+            opacity: 0;
+            animation: rise 0.5s ease-out forwards;
+        }
+
+        .card:hover { background: #FAFAF8; }
+        .card:hover .card-arrow { opacity: 1; transform: translate(0,0); }
+
+        .card-top {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+        }
+
+        .card-icon {
+            width: 36px; height: 36px;
+            background: var(--tag);
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .card-arrow {
+            font-size: 0.85rem;
+            color: var(--muted);
+            opacity: 0;
+            transform: translate(-4px, 4px);
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .card-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .card-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.65;
+            font-weight: 400;
+        }
+
+        /* Stagger */
+        .card:nth-child(1) { animation-delay: 0.40s; }
+        .card:nth-child(2) { animation-delay: 0.47s; }
+        .card:nth-child(3) { animation-delay: 0.54s; }
+        .card:nth-child(4) { animation-delay: 0.61s; }
+        .card:nth-child(5) { animation-delay: 0.68s; }
+        .card:nth-child(6) { animation-delay: 0.75s; }
+        .card:nth-child(7) { animation-delay: 0.82s; }
+        .card:nth-child(8) { animation-delay: 0.89s; }
+        .card:nth-child(9) { animation-delay: 0.96s; }
+
+        /* Wide card */
+        .card.wide {
+            grid-column: span 3;
+            flex-direction: row;
+            align-items: center;
+            gap: 1.4rem;
+            padding: 1.6rem 1.8rem;
+        }
+
+        .card.wide .card-icon {
+            width: 42px; height: 42px;
+            font-size: 1.1rem;
+        }
+
+        .card.wide .card-body { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+
+        .card.wide .card-arrow {
+            opacity: 0.3;
+            transform: none;
+            flex-shrink: 0;
+        }
+
+        .card.wide:hover .card-arrow { opacity: 0.7; transform: none; }
+
+        /* ── Footer ── */
+        footer {
+            margin-top: 3.5rem;
+            font-size: 0.72rem;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            opacity: 0;
+            animation: rise 0.6s ease-out 1.1s forwards;
+        }
+
+        .footer-brand { font-weight: 600; color: var(--text); }
+
+        @keyframes rise {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @media (max-width: 640px) {
+            .page { padding: 3rem 1.2rem 4rem; }
+            .grid { grid-template-columns: 1fr; }
+            .card.wide { grid-column: span 1; flex-direction: column; align-items: flex-start; }
+        }
+
+        @media (min-width: 641px) and (max-width: 860px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+            .card.wide { grid-column: span 2; }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+
+    <header class="header">
+        <h1 class="greeting" id="greeting">Good morning, <em>Gareth.</em></h1>
+        <p class="header-meta">Pingu Solar &middot; CEO Dashboard</p>
+    </header>
+
+    <hr>
+
+    <p class="section-label">Operations</p>
+
+    <div class="grid">
+
+        <a class="card wide" href="https://pingu-blue.vercel.app/adminviewjobs.html">
+            <div class="card-icon">📋</div>
+            <div class="card-body">
+                <div class="card-title">View All Jobs</div>
+                <div class="card-desc">Search, filter and review every job across all engineers and dates.</div>
+            </div>
+            <span class="card-arrow">↗</span>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/viewtimeline.html">
+            <div class="card-top">
+                <div class="card-icon">🗓</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Timeline</div>
+            <div class="card-desc">Visual schedule across all engineers and upcoming installations.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/datasheet.html">
+            <div class="card-top">
+                <div class="card-icon">📊</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Progress Report</div>
+            <div class="card-desc">Last, current and next week job performance at a glance.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/submitfigures.html">
+            <div class="card-top">
+                <div class="card-icon">💷</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Submit Figures</div>
+            <div class="card-desc">Enter revenue, cost and completion figures for reporting.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/viewsurvey.html">
+            <div class="card-top">
+                <div class="card-icon">🔍</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">View Surveys</div>
+            <div class="card-desc">Review site survey submissions and installation clearances.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/meterworkrequired.html">
+            <div class="card-top">
+                <div class="card-icon">⚡</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Meter Work Required</div>
+            <div class="card-desc">Jobs flagged as needing meter work before completion.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/materialsapproval.html">
+            <div class="card-top">
+                <div class="card-icon">✅</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Materials Approval</div>
+            <div class="card-desc">Approve material cost requests from field engineers.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/inventorycheck.html">
+            <div class="card-top">
+                <div class="card-icon">📦</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Inventory Checker</div>
+            <div class="card-desc">Current stock levels of panels, inverters and materials.</div>
+        </a>
+
+        <a class="card" href="https://pingu-blue.vercel.app/adminexport.html">
+            <div class="card-top">
+                <div class="card-icon">📤</div>
+                <span class="card-arrow">↗</span>
+            </div>
+            <div class="card-title">Data Export</div>
+            <div class="card-desc">Export job data to CSV or Excel for finance and compliance.</div>
+        </a>
+
+    </div>
+
+    <footer>
+        <span class="footer-brand">Pingu Solar</span>
+        <span id="footer-time"></span>
+    </footer>
+
+</div>
+<script>
+    function tick() {
+        const now  = new Date();
+        const hour = now.getHours();
+        const time = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+        const date = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+        let greet = 'Good morning';
+        if (hour >= 12 && hour < 17) greet = 'Good afternoon';
+        else if (hour >= 17)          greet = 'Good evening';
+        document.getElementById('greeting').innerHTML = `${greet}, <em>Gareth.</em>`;
+        document.getElementById('footer-time').textContent = `${date} \u00b7 ${time}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+</script>
+</body>
+</html>
