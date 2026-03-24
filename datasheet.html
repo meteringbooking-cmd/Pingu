@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Datasheet | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --in-progress: #00D9FF;
+            --complete: #4ECCA3;
+            --aborted: #FF6B6B;
+            --cancelled: #9A9AB0;
+            --snc: #90ee90;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0,217,255,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255,200,87,0.06) 0%, transparent 50%);
+            animation: bgFloat 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes bgFloat {
+            0%,100% { transform: translate(0,0) rotate(0deg); }
+            33%      { transform: translate(30px,-30px) rotate(120deg); }
+            66%      { transform: translate(-20px,20px) rotate(240deg); }
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        /* ── Header ── */
+        header {
+            display: flex; align-items: center; justify-content: space-between;
+            flex-wrap: wrap; gap: 1rem; margin-bottom: 2.5rem;
+            animation: slideDown 0.7s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity:0; transform:translateY(-24px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif; font-size: 1.9rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-decoration: none;
+        }
+
+        .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+
+        .back-btn {
+            background: var(--dark-light); color: var(--text); text-decoration: none;
+            padding: 0.65rem 1.4rem; border-radius: 8px; font-size: 0.85rem;
+            border: 2px solid transparent; transition: all 0.3s ease;
+        }
+        .back-btn:hover { border-color: var(--primary); transform: translateX(-4px); }
+
+        .refresh-btn {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white; border: none; padding: 0.65rem 1.4rem;
+            border-radius: 8px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem; font-weight: 700; cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .refresh-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(255,107,53,0.4); }
+        .refresh-btn.loading { opacity: 0.6; cursor: not-allowed; }
+
+        .page-title { font-family: 'Syne', sans-serif; font-size: 2.2rem; font-weight: 800; color: var(--text); }
+        .page-sub   { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.3rem; }
+
+        /* ── Week label strip ── */
+        .week-range {
+            font-size: 0.75rem; color: var(--text-dim); background: var(--dark-lighter);
+            padding: 0.3rem 0.8rem; border-radius: 20px; white-space: nowrap;
+        }
+
+        /* ── Loading / error ── */
+        .loading-state, .error-state {
+            text-align: center; padding: 4rem 2rem; color: var(--text-dim);
+        }
+        .loading-spinner {
+            width: 48px; height: 48px; border: 4px solid var(--dark-lighter);
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 1.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Three-column week grid ── */
+        .weeks-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            animation: fadeUp 0.6s ease-out;
+        }
+        @keyframes fadeUp {
+            from { opacity:0; transform:translateY(20px); }
+            to   { opacity:1; transform:translateY(0); }
+        }
+
+        /* ── Week card ── */
+        .week-card {
+            background: var(--dark-light);
+            border-radius: 18px;
+            border: 2px solid var(--dark-lighter);
+            overflow: hidden;
+            transition: border-color 0.3s ease;
+        }
+        .week-card:hover { border-color: rgba(255,107,53,0.4); }
+
+        .week-card.last-week  { border-top: 3px solid var(--text-dim); }
+        .week-card.this-week  { border-top: 3px solid var(--primary); box-shadow: 0 0 30px rgba(255,107,53,0.1); }
+        .week-card.next-week  { border-top: 3px solid var(--accent); }
+
+        .week-header {
+            padding: 1.5rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--dark-lighter);
+        }
+
+        .week-badge {
+            display: inline-block;
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.12em;
+            padding: 0.25rem 0.7rem; border-radius: 20px;
+            margin-bottom: 0.6rem;
+        }
+        .badge-last { background: rgba(154,154,176,0.18); color: var(--text-dim); }
+        .badge-this { background: rgba(255,107,53,0.2); color: var(--primary); }
+        .badge-next { background: rgba(0,217,255,0.15); color: var(--accent); }
+
+        .week-title {
+            font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700;
+            color: var(--text); line-height: 1.2;
+        }
+        .week-dates { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+        /* ── Big number ── */
+        .total-jobs-banner {
+            padding: 1.2rem 1.5rem;
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--dark-lighter);
+        }
+        .total-label { font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+        .total-number {
+            font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            line-height: 1;
+        }
+
+        /* ── Stat rows ── */
+        .stats-list { padding: 1rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.6rem; }
+
+        .stat-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.7rem 1rem; border-radius: 10px;
+            background: var(--dark-lighter);
+            transition: all 0.2s ease;
+        }
+        .stat-row:hover { transform: translateX(3px); }
+
+        .stat-left { display: flex; align-items: center; gap: 0.6rem; }
+        .stat-icon { font-size: 1rem; width: 20px; text-align: center; }
+        .stat-name { font-size: 0.82rem; color: var(--text-dim); }
+
+        .stat-val {
+            font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700;
+        }
+        .val-complete    { background: linear-gradient(135deg, var(--complete), #3DB88E);     -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .val-inprogress  { background: linear-gradient(135deg, var(--in-progress), #00B8D9);  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .val-cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F);    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .val-aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .val-snc         { background: linear-gradient(135deg, var(--snc), #5cb85c);          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .val-scheduled   { background: linear-gradient(135deg, var(--secondary), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        /* ── Progress bar ── */
+        .progress-section { padding: 0 1.5rem 1.5rem; }
+        .progress-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.6rem; display: flex; justify-content: space-between; }
+        .progress-label span { color: var(--text); font-weight: 700; }
+        .progress-track { height: 8px; background: var(--dark-lighter); border-radius: 99px; overflow: hidden; }
+        .progress-fill  { height: 100%; border-radius: 99px; transition: width 1s ease; }
+        .fill-green  { background: linear-gradient(90deg, var(--complete), #3DB88E); }
+        .fill-orange { background: linear-gradient(90deg, var(--primary), var(--secondary)); }
+
+        /* ── On-track insight ── */
+        .insight-box {
+            margin: 0 1.5rem 1.5rem;
+            padding: 0.9rem 1rem;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex; align-items: center; gap: 0.6rem;
+        }
+        .insight-good   { background: rgba(78,204,163,0.12); border: 1px solid rgba(78,204,163,0.35); color: var(--success); }
+        .insight-warn   { background: rgba(255,200,87,0.12); border: 1px solid rgba(255,200,87,0.4);  color: var(--warning); }
+        .insight-danger { background: rgba(255,107,107,0.12); border: 1px solid rgba(255,107,107,0.4); color: var(--error); animation: warnPulse 2s ease-in-out infinite; }
+        .insight-info   { background: rgba(0,217,255,0.1);  border: 1px solid rgba(0,217,255,0.3);   color: var(--accent); }
+
+        @keyframes warnPulse {
+            0%,100% { box-shadow: none; }
+            50%      { box-shadow: 0 0 12px rgba(255,107,107,0.3); }
+        }
+
+        /* ── Engineer breakdown table ── */
+        .breakdown-section { padding: 0 1.5rem 1.5rem; }
+        .breakdown-title {
+            font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase;
+            letter-spacing: 0.1em; margin-bottom: 0.7rem;
+        }
+        .engineer-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+        .engineer-table th {
+            color: var(--text-dim); font-weight: 500; text-align: left;
+            padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--dark-lighter);
+        }
+        .engineer-table th:last-child { text-align: right; }
+        .engineer-table td { padding: 0.45rem 0.5rem; color: var(--text); border-bottom: 1px solid rgba(255,255,255,0.04); }
+        .engineer-table td:last-child { text-align: right; font-family: 'Syne', sans-serif; font-weight: 700; color: var(--primary); }
+        .engineer-table tr:last-child td { border-bottom: none; }
+        .engineer-table tr:hover td { background: rgba(255,255,255,0.03); }
+
+        /* ── Status breakdown bar ── */
+        .status-bar { display: flex; height: 6px; border-radius: 99px; overflow: hidden; margin: 0 1.5rem 1.2rem; gap: 2px; }
+        .status-bar-seg { height: 100%; border-radius: 3px; transition: width 0.8s ease; }
+
+        /* ── Footer timestamp ── */
+        .footer-ts { text-align: center; color: var(--text-dim); font-size: 0.75rem; margin-top: 2.5rem; }
+
+        @media (max-width: 960px) {
+            .weeks-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            .total-number { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <header>
+        <div>
+            <a href="index.html" class="logo">Pingu – Solar</a>
+            <div class="page-title" style="margin-top:0.5rem;">Weekly Datasheet</div>
+            <div class="page-sub">Job performance across last, current &amp; next week</div>
+        </div>
+        <div class="header-right">
+            <a href="admin.html" class="back-btn">← Back to Admin</a>
+            <button class="refresh-btn" id="refresh-btn" onclick="loadData()">⟳ Refresh</button>
+        </div>
+    </header>
+
+    <div id="content">
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <div>Loading job data from Firebase…</div>
+        </div>
+    </div>
+
+    <div class="footer-ts" id="footer-ts"></div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+    import { initializeApp }    from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, query, orderBy }
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+        apiKey:            "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain:        "pingu-solar.firebaseapp.com",
+        projectId:         "pingu-solar",
+        storageBucket:     "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId:             "1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId:     "G-PFH059DZ64"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db  = getFirestore(app);
+    window._fb = { db, collection, getDocs, query, orderBy };
+    console.log('✅ Firebase ready');
+    window.loadData();
+</script>
+
+<script>
+/* ════════════════════════════════════════════
+   UTILS
+════════════════════════════════════════════ */
+function parseDate(v) {
+    if (!v) return null;
+    if (typeof v === 'string' && v.includes('/')) {
+        const p = v.split('/');
+        if (p.length === 3) {
+            const d = new Date(+p[2], +p[1]-1, +p[0]);
+            if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+        }
+    }
+    const d = new Date(v);
+    if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+    return null;
+}
+
+function weekBounds(offsetWeeks = 0) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const day   = today.getDay();
+    const diffToMon = (day === 0) ? 6 : day - 1;
+    const mon   = new Date(today); mon.setDate(today.getDate() - diffToMon + offsetWeeks * 7);
+    const sun   = new Date(mon);   sun.setDate(mon.getDate() + 6); sun.setHours(23,59,59,999);
+    return { start: mon, end: sun };
+}
+
+function fmtDate(d) {
+    if (!d) return '–';
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+}
+
+function fmtFull(d) {
+    if (!d) return '–';
+    return d.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+}
+
+function esc(s) {
+    const d = document.createElement('div'); d.textContent = String(s ?? ''); return d.innerHTML;
+}
+
+/* ════════════════════════════════════════════
+   LOAD
+════════════════════════════════════════════ */
+window.loadData = async function() {
+    const btn = document.getElementById('refresh-btn');
+    btn.classList.add('loading'); btn.textContent = '⟳ Loading…';
+
+    document.getElementById('content').innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <div>Fetching jobs…</div>
+        </div>`;
+
+    try {
+        const { db, collection, getDocs, query, orderBy } = window._fb;
+
+        // ── Fetch Solar-jobs ──
+        const solarSnap = await getDocs(query(collection(db,'Solar-jobs'), orderBy('uploadDate','desc')));
+        // ── Fetch jobs ──
+        const jobsSnap  = await getDocs(query(collection(db,'jobs'),       orderBy('uploadDate','desc')));
+
+        const processDoc = (snap, source) => {
+            const data = snap.data();
+
+            let parsedDate = null;
+            for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
+                if (data[f]) { parsedDate = parseDate(data[f]); if (parsedDate) break; }
+            }
+
+            let jobLength = 1;
+            for (const f of ['Days','Job Length (days)','Job Length','jobLength','Duration','duration']) {
+                if (data[f] != null && data[f] !== '') {
+                    const p = parseInt(data[f],10); if (!isNaN(p) && p > 0) { jobLength = p; break; }
+                }
+            }
+
+            let engineer = 'Unassigned';
+            for (const f of ['Lead','Lead Engineer','Engineer','engineer']) {
+                if (data[f]?.trim()) { engineer = data[f].trim(); break; }
+            }
+
+            return {
+                id:          snap.id,
+                source,
+                jobNumber:   String(data['Job Number'] || 'N/A').trim(),
+                parsedDate,
+                jobLength,
+                engineer,
+                jobType:     data['Job Type'] || 'Standard',
+                status:      data['Status Update'] || data['status'] || 'Scheduled',
+                completedDays: data['completedDays'] || [],
+            };
+        };
+
+        const solarMap = new Map();
+        solarSnap.forEach(d => {
+            const j = processDoc(d,'solar');
+            if (!solarMap.has(j.jobNumber)) solarMap.set(j.jobNumber, j);
+        });
+
+        const jobsMapLocal = new Map();
+        jobsSnap.forEach(d => {
+            const j = processDoc(d,'jobs');
+            if (!jobsMapLocal.has(j.jobNumber)) jobsMapLocal.set(j.jobNumber, j);
+        });
+
+        // Merge
+        const allJobs = [];
+        solarMap.forEach((j, jn) => {
+            allJobs.push({ ...j, source: jobsMapLocal.has(jn) ? 'both' : 'solar' });
+        });
+        jobsMapLocal.forEach((j, jn) => {
+            if (!solarMap.has(jn)) allJobs.push(j);
+        });
+
+        // Only jobs with a date
+        const jobs = allJobs.filter(j => j.parsedDate != null);
+
+        renderDashboard(jobs);
+
+        document.getElementById('footer-ts').textContent =
+            `Last refreshed: ${new Date().toLocaleString('en-GB')} · ${jobs.length} total jobs loaded`;
+
+    } catch(err) {
+        document.getElementById('content').innerHTML = `
+            <div class="error-state">
+                <div style="font-size:2.5rem;margin-bottom:1rem;">⚠️</div>
+                <div style="font-size:1.1rem;margin-bottom:0.5rem;">Failed to load data</div>
+                <div style="font-size:0.85rem;color:var(--text-dim);">${esc(err.message)}</div>
+            </div>`;
+    } finally {
+        btn.classList.remove('loading'); btn.textContent = '⟳ Refresh';
+    }
+};
+
+/* ════════════════════════════════════════════
+   ANALYSE WEEK
+════════════════════════════════════════════ */
+function analyseWeek(allJobs, bounds) {
+    const jobs = allJobs.filter(j => {
+        const s = new Date(j.parsedDate); s.setHours(0,0,0,0);
+        return s >= bounds.start && s <= bounds.end;
+    });
+
+    const booked     = jobs.length;
+    const complete   = jobs.filter(j => j.status === 'Complete').length;
+    const inProgress = jobs.filter(j => j.status === 'In-Progress').length;
+    const aborted    = jobs.filter(j => j.status === 'Aborted').length;
+    const cancelled  = jobs.filter(j => j.status === 'Cancelled').length;
+    const snc        = jobs.filter(j => j.status === 'Short Notice Cancellation').length;
+    const scheduled  = jobs.filter(j => !['Complete','In-Progress','Aborted','Cancelled','Short Notice Cancellation'].includes(j.status)).length;
+
+    // Engineer breakdown
+    const engMap = {};
+    jobs.forEach(j => {
+        const e = j.engineer || 'Unassigned';
+        engMap[e] = (engMap[e] || 0) + 1;
+    });
+    const engineers = Object.entries(engMap).sort((a,b) => b[1]-a[1]);
+
+    return { jobs, booked, complete, inProgress, aborted, cancelled, snc, scheduled, engineers };
+}
+
+/* ════════════════════════════════════════════
+   ON-TRACK LOGIC (for "this week")
+   On-track = (complete + in-progress) / (booked - cancelled - snc - aborted) >= 60%
+════════════════════════════════════════════ */
+function onTrackInsight(data) {
+    const active = data.booked - data.cancelled - data.snc - data.aborted;
+    if (active <= 0) return null;
+    const done   = data.complete;
+    const pct    = Math.round((done / active) * 100);
+    const today  = new Date(); today.setHours(0,0,0,0);
+    const thisBounds = weekBounds(0);
+    const daysLeft   = Math.ceil((thisBounds.end - today) / 86400000);
+    const daysPassed = 7 - daysLeft;
+
+    // Expected completion pace based on days passed
+    const expectedPct = Math.round((daysPassed / 7) * 100);
+
+    if (data.scheduled === 0 && data.inProgress === 0 && data.complete > 0) {
+        return { cls:'insight-good', icon:'✅', text:`All active jobs complete — great week!` };
+    }
+    if (pct >= expectedPct + 10) {
+        return { cls:'insight-good', icon:'🚀', text:`Ahead of pace — ${pct}% complete vs ${expectedPct}% expected by now` };
+    }
+    if (pct >= expectedPct - 10) {
+        return { cls:'insight-warn', icon:'📊', text:`On track — ${pct}% complete, ${data.scheduled + data.inProgress} job${data.scheduled+data.inProgress!==1?'s':''} still running` };
+    }
+    return { cls:'insight-danger', icon:'🚨', text:`Behind pace — only ${pct}% complete vs ${expectedPct}% expected. ${data.scheduled + data.inProgress} jobs outstanding` };
+}
+
+/* ════════════════════════════════════════════
+   RENDER
+════════════════════════════════════════════ */
+function renderDashboard(allJobs) {
+    const last = weekBounds(-1);
+    const curr = weekBounds(0);
+    const next = weekBounds(1);
+
+    const lastData = analyseWeek(allJobs, last);
+    const currData = analyseWeek(allJobs, curr);
+    const nextData = analyseWeek(allJobs, next);
+
+    const insight  = onTrackInsight(currData);
+
+    const html = `
+    <div class="weeks-grid">
+        ${renderLastWeek(lastData, last)}
+        ${renderThisWeek(currData, curr, insight)}
+        ${renderNextWeek(nextData, next)}
+    </div>`;
+
+    document.getElementById('content').innerHTML = html;
+}
+
+/* ── Shared: status bar ── */
+function statusBar(data) {
+    if (!data.booked) return '';
+    const b  = data.booked;
+    const segs = [
+        { pct: (data.complete/b)*100,   cls:'fill-green',  color:'var(--complete)' },
+        { pct: (data.inProgress/b)*100, cls:'',            color:'var(--in-progress)' },
+        { pct: (data.aborted/b)*100,    cls:'',            color:'var(--aborted)' },
+        { pct: (data.cancelled/b)*100,  cls:'',            color:'var(--cancelled)' },
+        { pct: (data.snc/b)*100,        cls:'',            color:'var(--snc)' },
+        { pct: (data.scheduled/b)*100,  cls:'',            color:'var(--secondary)' },
+    ].filter(s => s.pct > 0);
+
+    return `<div class="status-bar">
+        ${segs.map(s => `<div class="status-bar-seg" style="width:${s.pct}%;background:${s.color};"></div>`).join('')}
+    </div>`;
+}
+
+/* ── Shared: engineer table ── */
+function engTable(engineers) {
+    if (!engineers.length) return '';
+    const rows = engineers.slice(0,8).map(([name, count]) =>
+        `<tr><td>${esc(name)}</td><td>${count}</td></tr>`
+    ).join('');
+    const more = engineers.length > 8
+        ? `<tr><td style="color:var(--text-dim);font-size:0.72rem;">+ ${engineers.length-8} more engineers…</td><td></td></tr>` : '';
+    return `
+    <div class="breakdown-section">
+        <div class="breakdown-title">Jobs by Engineer</div>
+        <table class="engineer-table">
+            <thead><tr><th>Engineer</th><th style="text-align:right;">Jobs</th></tr></thead>
+            <tbody>${rows}${more}</tbody>
+        </table>
+    </div>`;
+}
+
+/* ── Shared: stat row ── */
+function statRow(icon, label, value, valClass) {
+    return `<div class="stat-row">
+        <div class="stat-left">
+            <span class="stat-icon">${icon}</span>
+            <span class="stat-name">${label}</span>
+        </div>
+        <span class="stat-val ${valClass}">${value}</span>
+    </div>`;
+}
+
+/* ════════
+   LAST WEEK
+════════ */
+function renderLastWeek(d, bounds) {
+    const cancelledTotal = d.cancelled + d.snc;
+    const completionRate = d.booked > 0 ? Math.round((d.complete / d.booked) * 100) : 0;
+
+    return `
+    <div class="week-card last-week">
+        <div class="week-header">
+            <div class="week-badge badge-last">Last Week</div>
+            <div class="week-title">How did we do?</div>
+            <div class="week-dates">${fmtDate(bounds.start)} – ${fmtDate(bounds.end)}</div>
+        </div>
+
+        <div class="total-jobs-banner">
+            <div>
+                <div class="total-label">Jobs Booked</div>
+                <div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.2rem;">${d.engineers.length} engineer${d.engineers.length!==1?'s':''}</div>
+            </div>
+            <div class="total-number">${d.booked}</div>
+        </div>
+
+        ${statusBar(d)}
+
+        <div class="stats-list">
+            ${statRow('✅','Completed',  d.complete,  'val-complete')}
+            ${statRow('🔄','In-Progress',d.inProgress,'val-inprogress')}
+            ${statRow('⚠️','Aborted',    d.aborted,   'val-aborted')}
+            ${statRow('❌','Cancelled',  d.cancelled, 'val-cancelled')}
+            ${statRow('🔔','SNC',        d.snc,       'val-snc')}
+        </div>
+
+        ${d.booked > 0 ? `
+        <div class="progress-section">
+            <div class="progress-label">Completion Rate <span>${completionRate}%</span></div>
+            <div class="progress-track">
+                <div class="progress-fill fill-green" style="width:${completionRate}%;"></div>
+            </div>
+        </div>` : ''}
+
+        ${cancelledTotal > 0 ? `
+        <div class="insight-box insight-warn">
+            ⚠️ ${cancelledTotal} job${cancelledTotal!==1?'s':''} lost to cancellation last week
+        </div>` : d.booked > 0 ? `
+        <div class="insight-box insight-good">
+            🎉 Zero cancellations last week
+        </div>` : `
+        <div class="insight-box insight-info">
+            📭 No jobs were booked this week
+        </div>`}
+
+        ${engTable(d.engineers)}
+    </div>`;
+}
+
+/* ════════
+   THIS WEEK
+════════ */
+function renderThisWeek(d, bounds, insight) {
+    const cancelledSoFar = d.cancelled + d.snc;
+    const activeJobs     = d.booked - d.cancelled - d.snc - d.aborted;
+    const pctDone        = activeJobs > 0 ? Math.round((d.complete / activeJobs) * 100) : 0;
+
+    return `
+    <div class="week-card this-week">
+        <div class="week-header">
+            <div class="week-badge badge-this">This Week</div>
+            <div class="week-title">Current Status</div>
+            <div class="week-dates">${fmtDate(bounds.start)} – ${fmtDate(bounds.end)}</div>
+        </div>
+
+        <div class="total-jobs-banner">
+            <div>
+                <div class="total-label">Jobs Booked</div>
+                <div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.2rem;">${d.engineers.length} engineer${d.engineers.length!==1?'s':''}</div>
+            </div>
+            <div class="total-number">${d.booked}</div>
+        </div>
+
+        ${statusBar(d)}
+
+        <div class="stats-list">
+            ${statRow('✅','Complete',    d.complete,   'val-complete')}
+            ${statRow('🔄','In-Progress', d.inProgress, 'val-inprogress')}
+            ${statRow('📅','Scheduled',   d.scheduled,  'val-scheduled')}
+            ${statRow('⚠️','Aborted',     d.aborted,    'val-aborted')}
+            ${statRow('❌','Cancelled',   d.cancelled,  'val-cancelled')}
+            ${statRow('🔔','SNC',         d.snc,        'val-snc')}
+        </div>
+
+        ${activeJobs > 0 ? `
+        <div class="progress-section">
+            <div class="progress-label">Progress (excl. cancellations) <span>${pctDone}%</span></div>
+            <div class="progress-track">
+                <div class="progress-fill fill-orange" style="width:${pctDone}%;"></div>
+            </div>
+        </div>` : ''}
+
+        ${insight ? `<div class="insight-box ${insight.cls}">${insight.icon} ${insight.text}</div>` : ''}
+
+        ${cancelledSoFar > 0 ? `
+        <div class="insight-box insight-warn">
+            🔕 ${cancelledSoFar} cancellation${cancelledSoFar!==1?'s':''} so far this week
+        </div>` : ''}
+
+        ${engTable(d.engineers)}
+    </div>`;
+}
+
+/* ════════
+   NEXT WEEK
+════════ */
+function renderNextWeek(d, bounds) {
+    return `
+    <div class="week-card next-week">
+        <div class="week-header">
+            <div class="week-badge badge-next">Next Week</div>
+            <div class="week-title">What's coming?</div>
+            <div class="week-dates">${fmtDate(bounds.start)} – ${fmtDate(bounds.end)}</div>
+        </div>
+
+        <div class="total-jobs-banner">
+            <div>
+                <div class="total-label">Jobs Booked</div>
+                <div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.2rem;">${d.engineers.length} engineer${d.engineers.length!==1?'s':''}</div>
+            </div>
+            <div class="total-number">${d.booked}</div>
+        </div>
+
+        <div class="stats-list">
+            ${statRow('📅','Scheduled',  d.scheduled,  'val-scheduled')}
+            ${statRow('🔄','In-Progress',d.inProgress, 'val-inprogress')}
+            ${statRow('❌','Cancelled',  d.cancelled,  'val-cancelled')}
+            ${statRow('🔔','SNC',        d.snc,        'val-snc')}
+        </div>
+
+        ${d.booked === 0 ? `
+        <div class="insight-box insight-info">
+            📭 Nothing booked yet — calendar is clear
+        </div>` : d.booked <= 5 ? `
+        <div class="insight-box insight-warn">
+            📋 Light week ahead — only ${d.booked} job${d.booked!==1?'s':''} booked
+        </div>` : `
+        <div class="insight-box insight-good">
+            📈 ${d.booked} job${d.booked!==1?'s':''} lined up for next week
+        </div>`}
+
+        ${engTable(d.engineers)}
+    </div>`;
+}
+</script>
+</body>
+</html>
