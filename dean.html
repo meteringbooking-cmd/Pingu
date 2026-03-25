@@ -1,424 +1,316 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materials Planner | Pingu - Solar</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #FF6B35;
-            --primary-dark: #E55A2B;
-            --secondary: #FFC857;
-            --accent: #00D9FF;
-            --dark: #1A1A2E;
-            --dark-light: #252541;
-            --dark-lighter: #2F2F4A;
-            --text: #EAEAEA;
-            --text-dim: #9A9AB0;
-            --success: #4ECCA3;
-            --error: #FF6B6B;
-            --shadow: rgba(255, 107, 53, 0.3);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Materials Planner | Pingu - Solar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    --primary: #FF6B35;
+    --secondary: #FFC857;
+    --accent: #00D9FF;
+    --dark: #1A1A2E;
+    --dark-light: #252541;
+    --dark-lighter: #2F2F4A;
+    --text: #EAEAEA;
+    --text-dim: #9A9AB0;
+    --success: #4ECCA3;
+    --error: #FF6B6B;
+    --shadow: rgba(255,107,53,0.3);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--dark); color: var(--text);
+    line-height: 1.6; min-height: 100vh; overflow-x: hidden;
+}
+body::before {
+    content:''; position:fixed; top:-50%; left:-50%;
+    width:200%; height:200%;
+    background:
+        radial-gradient(circle at 20% 50%, rgba(255,107,53,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0,217,255,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(255,200,87,0.06) 0%, transparent 50%);
+    animation: ambientFloat 20s ease-in-out infinite;
+    pointer-events: none; z-index: -1;
+}
+@keyframes ambientFloat {
+    0%,100% { transform:translate(0,0) rotate(0deg); }
+    33% { transform:translate(30px,-30px) rotate(120deg); }
+    66% { transform:translate(-20px,20px) rotate(240deg); }
+}
+@keyframes slideDown { from{opacity:0;transform:translateY(-30px)}to{opacity:1;transform:translateY(0)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)} }
+@keyframes popUp { from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:translateY(0)} }
+@keyframes slideRight { from{opacity:0;transform:translateX(100px)}to{opacity:1;transform:translateX(0)} }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+.container { max-width:1400px; margin:0 auto; padding:2rem; }
+header { margin-bottom:2rem; animation:slideDown 0.8s ease-out; }
+.header-content { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; }
+.logo {
+    font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
+    background:linear-gradient(135deg,var(--primary) 0%,var(--secondary) 50%,var(--accent) 100%);
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none;
+}
+.back-btn {
+    background:var(--dark-light); color:var(--text); text-decoration:none;
+    padding:0.7rem 1.5rem; border-radius:8px; font-size:0.9rem;
+    transition:all 0.3s; border:2px solid transparent;
+}
+.back-btn:hover { background:var(--dark-lighter); border-color:var(--primary); transform:translateX(-5px); }
+h1 { font-family:'Syne',sans-serif; font-size:2.5rem; margin-bottom:0.3rem; }
+.subtitle { color:var(--text-dim); font-size:0.95rem; }
 
-        body {
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--dark);
-            color: var(--text);
-            line-height: 1.6;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
+.paste-section {
+    background:var(--dark-light); border-radius:16px; padding:2rem;
+    margin:2rem 0; border:2px solid transparent; transition:border-color 0.3s;
+    animation:fadeUp 0.8s ease-out 0.2s both;
+}
+.paste-section:focus-within { border-color:var(--primary); }
+.paste-header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
+.paste-icon { font-size:2rem; }
+.paste-header h2 { font-family:'Syne',sans-serif; font-size:1.5rem; }
+.paste-instructions {
+    background:var(--dark-lighter); border-radius:10px; padding:1rem 1.5rem;
+    margin-bottom:1rem; font-size:0.85rem; color:var(--text-dim);
+    border-left:3px solid var(--accent);
+}
+.paste-instructions strong { color:var(--accent); }
+.tab-name-row { display:flex; gap:0.8rem; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap; }
+.tab-name-label { color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; white-space:nowrap; }
+.tab-name-input {
+    background:var(--dark-lighter); border:2px solid var(--dark-lighter); color:var(--text);
+    padding:0.5rem 1rem; border-radius:8px; font-family:'JetBrains Mono',monospace;
+    font-size:0.9rem; flex:1; min-width:160px; max-width:300px; transition:all 0.3s;
+}
+.tab-name-input:focus { outline:none; border-color:var(--primary); background:var(--dark); }
+.paste-textarea {
+    width:100%; min-height:160px;
+    background:var(--dark-lighter); border:2px solid var(--dark-lighter);
+    color:var(--text); padding:1rem 1.5rem; border-radius:12px;
+    font-family:'JetBrains Mono',monospace; font-size:0.82rem;
+    resize:vertical; transition:all 0.3s;
+}
+.paste-textarea:focus { outline:none; border-color:var(--primary); background:var(--dark); }
+.paste-textarea::placeholder { color:var(--text-dim); opacity:0.6; }
+.btn-row { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; }
+.parse-btn {
+    padding:0.9rem 2.5rem;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    color:white; border:none; border-radius:12px;
+    font-family:'Syne',sans-serif; font-size:1.05rem; font-weight:700;
+    cursor:pointer; transition:all 0.3s;
+}
+.parse-btn:hover { transform:translateY(-3px); box-shadow:0 10px 30px var(--shadow); }
+.clear-btn {
+    padding:0.9rem 2rem; background:var(--dark-lighter); color:var(--text);
+    border:2px solid var(--text-dim); border-radius:12px;
+    font-family:'Syne',sans-serif; font-size:1rem; font-weight:600;
+    cursor:pointer; transition:all 0.3s;
+}
+.clear-btn:hover { border-color:var(--error); color:var(--error); }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(0,217,255,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(255,200,87,0.06) 0%, transparent 50%);
-            animation: float 20s ease-in-out infinite;
-            pointer-events: none; z-index: -1;
-        }
+.tabs-section { display:none; margin-top:1.5rem; }
+.tabs-label { color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; }
+.tabs-row { display:flex; gap:0.6rem; flex-wrap:wrap; }
+.tab-btn {
+    background:var(--dark-lighter); color:var(--text-dim);
+    padding:0.5rem 1.2rem; border-radius:20px; font-size:0.85rem;
+    cursor:pointer; border:2px solid transparent; transition:all 0.3s;
+    font-family:'JetBrains Mono',monospace;
+}
+.tab-btn:hover { border-color:var(--primary); color:var(--text); }
+.tab-btn.active { background:linear-gradient(135deg,var(--primary),var(--secondary)); color:var(--dark); font-weight:700; border-color:transparent; }
 
-        @keyframes float {
-            0%,100% { transform: translate(0,0) rotate(0deg); }
-            33% { transform: translate(30px,-30px) rotate(120deg); }
-            66% { transform: translate(-20px,20px) rotate(240deg); }
-        }
+.results-section { margin-top:2rem; display:none; }
+.results-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
+.results-count { font-family:'Syne',sans-serif; font-size:1.3rem; color:var(--accent); }
+.view-btn {
+    background:var(--dark-light); color:var(--text-dim);
+    border:2px solid transparent; padding:0.6rem 1.2rem;
+    border-radius:8px; cursor:pointer; transition:all 0.3s;
+    font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+}
+.view-btn:hover { border-color:var(--primary); color:var(--text); }
+.view-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
+.jobs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:1.5rem; }
+.job-card {
+    background:var(--dark-light); border-radius:16px; padding:1.8rem;
+    border:2px solid transparent; transition:all 0.3s; cursor:pointer; position:relative; overflow:hidden;
+}
+.job-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:4px;
+    background:linear-gradient(90deg,var(--primary),var(--accent));
+    transform:scaleX(0); transition:transform 0.3s;
+}
+.job-card:hover { border-color:var(--primary); transform:translateY(-5px); box-shadow:0 10px 30px rgba(0,0,0,0.3); }
+.job-card:hover::before { transform:scaleX(1); }
+.job-number {
+    font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:700;
+    background:linear-gradient(135deg,var(--primary),var(--secondary));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:0.4rem;
+}
+.job-type-badge {
+    font-size:0.78rem; padding:0.2rem 0.7rem; border-radius:12px;
+    background:var(--accent); color:var(--dark); font-weight:700;
+    text-transform:uppercase; display:inline-block; margin-bottom:0.8rem;
+}
+.job-details { display:flex; flex-direction:column; gap:0.45rem; padding-top:0.8rem; border-top:1px solid var(--dark-lighter); }
+.job-detail { display:flex; align-items:center; gap:0.7rem; color:var(--text-dim); font-size:0.87rem; }
+.job-detail-icon { color:var(--accent); }
 
-        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+.results-table { background:var(--dark-light); border-radius:16px; overflow:hidden; }
+table { width:100%; border-collapse:collapse; }
+thead { background:var(--dark-lighter); }
+th { padding:1.1rem; text-align:left; font-family:'Syne',sans-serif; font-weight:600; color:var(--accent); font-size:0.85rem; text-transform:uppercase; white-space:nowrap; }
+tbody tr { border-bottom:1px solid var(--dark-lighter); transition:all 0.2s; cursor:pointer; }
+tbody tr:hover { background:var(--dark-lighter); }
+td { padding:1.1rem; color:var(--text-dim); font-size:0.88rem; }
+td:first-child { color:var(--text); font-weight:500; }
 
-        header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
+.modal {
+    display:none; position:fixed; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.85); backdrop-filter:blur(10px);
+    z-index:1000; align-items:center; justify-content:center;
+}
+.modal.show { display:flex; }
+.modal-content {
+    background:var(--dark-light); border-radius:16px; padding:2.5rem;
+    max-width:800px; width:94%; max-height:90vh; overflow-y:auto;
+    border:2px solid var(--primary); animation:popUp 0.35s ease;
+}
+.modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:2px solid var(--dark-lighter); }
+.modal-title {
+    font-family:'Syne',sans-serif; font-size:1.8rem;
+    background:linear-gradient(135deg,var(--primary),var(--accent));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.close-btn { background:none; border:none; color:var(--text-dim); font-size:2rem; cursor:pointer; transition:color 0.3s; line-height:1; }
+.close-btn:hover { color:var(--error); }
+.modal-meta { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
+.meta-item { background:var(--dark-lighter); border-radius:8px; padding:0.8rem 1rem; }
+.meta-label { color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; }
+.meta-value { color:var(--text); font-size:1rem; margin-top:0.2rem; }
 
-        @keyframes slideDown {
-            from { opacity:0; transform:translateY(-30px); }
-            to { opacity:1; transform:translateY(0); }
-        }
+.materials-section h3 { font-family:'Syne',sans-serif; font-size:1.2rem; color:var(--accent); margin-bottom:1rem; }
+.mat-search {
+    background:var(--dark-lighter); border:2px solid var(--dark-lighter); color:var(--text);
+    padding:0.8rem 1.2rem; border-radius:10px; width:100%;
+    font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+    margin-bottom:1rem; transition:all 0.3s;
+}
+.mat-search:focus { outline:none; border-color:var(--primary); background:var(--dark); }
+.mat-search::placeholder { color:var(--text-dim); opacity:0.6; }
+.mat-list {
+    max-height:300px; overflow-y:auto;
+    background:var(--dark-lighter); border-radius:10px; border:2px solid var(--dark-lighter);
+}
+.mat-list::-webkit-scrollbar { width:6px; }
+.mat-list::-webkit-scrollbar-thumb { background:var(--primary); border-radius:3px; }
 
-        .header-content {
-            display: flex; align-items: center;
-            justify-content: space-between; flex-wrap: wrap; gap: 1rem;
-            margin-bottom: 1rem;
-        }
+/* === KEY PART: material row with qty/unit === */
+.mat-row {
+    display:flex; align-items:center; gap:0.8rem;
+    padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.04);
+    cursor:pointer; transition:background 0.15s; user-select:none;
+}
+.mat-row:last-child { border-bottom:none; }
+.mat-row:hover { background:rgba(255,107,53,0.1); }
+.mat-row.checked { background:rgba(78,204,163,0.1); }
 
-        .logo {
-            font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            text-decoration: none;
-        }
+.mat-cb { width:17px; height:17px; accent-color:var(--primary); flex-shrink:0; pointer-events:none; }
+.mat-name { flex:1; font-size:0.87rem; color:var(--text); min-width:0; }
 
-        .back-btn {
-            background: var(--dark-light); color: var(--text); text-decoration: none;
-            padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
-            transition: all 0.3s ease; border: 2px solid transparent;
-        }
-        .back-btn:hover { background: var(--dark-lighter); border-color: var(--primary); transform: translateX(-5px); }
+.mat-controls {
+    display:none;
+    align-items:center;
+    gap:0.4rem;
+    flex-shrink:0;
+}
+.mat-row.checked .mat-controls {
+    display:flex;
+}
 
-        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.3rem; }
-        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
+.mat-qty {
+    width:62px; background:var(--dark); border:2px solid var(--primary);
+    color:var(--text); padding:0.3rem 0.4rem; border-radius:6px;
+    font-family:'JetBrains Mono',monospace; font-size:0.85rem; text-align:center;
+}
+.mat-qty:focus { outline:none; border-color:var(--secondary); }
+.mat-unit {
+    background:var(--dark); border:2px solid var(--primary); color:var(--text);
+    padding:0.3rem 0.4rem; border-radius:6px;
+    font-family:'JetBrains Mono',monospace; font-size:0.82rem; cursor:pointer; min-width:72px;
+}
+.mat-unit:focus { outline:none; border-color:var(--secondary); }
 
-        /* PASTE SECTION */
-        .paste-section {
-            background: var(--dark-light); border-radius: 16px; padding: 2rem;
-            margin: 2rem 0; border: 2px solid transparent; transition: all 0.3s ease;
-            animation: fadeInUp 0.8s ease-out 0.2s both;
-        }
-        .paste-section:focus-within { border-color: var(--primary); }
+.sel-summary { margin-top:1.5rem; background:var(--dark-lighter); border-radius:10px; padding:1.2rem; display:none; }
+.sel-summary.show { display:block; }
+.sel-summary h4 { font-family:'Syne',sans-serif; color:var(--secondary); margin-bottom:0.8rem; font-size:1rem; }
+.sel-tags { margin-bottom:1rem; }
+.sel-tag {
+    display:inline-block; background:rgba(255,107,53,0.15); border:1px solid var(--primary);
+    color:var(--text); padding:0.25rem 0.6rem; border-radius:6px; font-size:0.78rem; margin:0.2rem;
+}
+.output-box { background:var(--dark); border:2px solid var(--success); border-radius:10px; padding:1rem 1.2rem; }
+.output-lbl { color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.4rem; }
+.output-val { font-size:0.82rem; color:var(--success); word-break:break-all; }
 
-        @keyframes fadeInUp {
-            from { opacity:0; transform:translateY(30px); }
-            to { opacity:1; transform:translateY(0); }
-        }
+.modal-actions { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items:center; }
+.btn-copy {
+    padding:1rem 2.5rem; border-radius:10px;
+    background:linear-gradient(135deg,var(--success),#3DB88D);
+    color:var(--dark); border:none; font-family:'Syne',sans-serif;
+    font-size:1.1rem; font-weight:700; cursor:pointer; transition:all 0.3s;
+}
+.btn-copy:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 25px rgba(78,204,163,0.4); }
+.btn-copy:disabled { opacity:0.35; cursor:not-allowed; }
+.btn-clr {
+    padding:0.9rem 1.8rem; border-radius:10px; margin-left:auto;
+    background:var(--dark-lighter); color:var(--error);
+    border:2px solid var(--error); font-family:'Syne',sans-serif;
+    font-size:1rem; font-weight:700; cursor:pointer; transition:all 0.3s;
+}
+.btn-clr:hover { background:rgba(255,107,107,0.1); }
+.copy-flash { font-size:0.82rem; color:var(--success); display:none; font-weight:600; }
 
-        .paste-header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem; }
-        .paste-icon { font-size:2rem; filter: drop-shadow(0 4px 8px var(--shadow)); }
-        .paste-header h2 { font-family:'Syne',sans-serif; font-size:1.5rem; }
+.export-section { display:none; margin-top:2rem; background:var(--dark-light); border-radius:16px; padding:2rem; border:2px solid var(--success); }
+.export-section.show { display:block; }
+.export-section h3 { font-family:'Syne',sans-serif; color:var(--success); margin-bottom:0.5rem; }
+.export-desc { color:var(--text-dim); font-size:0.85rem; margin-bottom:1rem; }
+.export-wrap { overflow-x:auto; border-radius:10px; border:2px solid var(--dark-lighter); }
+.export-wrap table { font-size:0.85rem; }
+td.mfilled { color:var(--success); font-size:0.8rem; white-space:normal; max-width:300px; }
+td.mempty { color:var(--text-dim); font-style:italic; opacity:0.45; }
+.export-actions { display:flex; gap:1rem; margin-top:1rem; }
+.export-btn {
+    padding:0.8rem 2rem; background:linear-gradient(135deg,var(--secondary),var(--primary));
+    color:var(--dark); border:none; border-radius:10px;
+    font-family:'Syne',sans-serif; font-size:1rem; font-weight:700; cursor:pointer; transition:all 0.3s;
+}
+.export-btn:hover { transform:translateY(-2px); }
 
-        .paste-instructions {
-            background: var(--dark-lighter); border-radius: 10px; padding: 1rem 1.5rem;
-            margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-dim);
-            border-left: 3px solid var(--accent);
-        }
-        .paste-instructions strong { color: var(--accent); }
+.toastel {
+    position:fixed; top:2rem; right:2rem; padding:1rem 1.5rem;
+    border-radius:8px; font-size:0.9rem; z-index:2000;
+    animation:slideRight 0.4s ease; display:none; font-weight:600;
+}
+.toastel.show { display:block; }
+.toastel.ok { background:var(--success); color:var(--dark); }
+.toastel.err { background:var(--error); color:white; }
 
-        .tab-name-row {
-            display:flex; gap:0.8rem; align-items:center; margin-bottom:0.8rem; flex-wrap:wrap;
-        }
-        .tab-name-label { color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; white-space:nowrap; }
-        .tab-name-input {
-            background:var(--dark-lighter); border:2px solid var(--dark-lighter); color:var(--text);
-            padding:0.5rem 1rem; border-radius:8px; font-family:'JetBrains Mono',monospace;
-            font-size:0.9rem; flex:1; min-width:160px; max-width:300px; transition:all 0.3s;
-        }
-        .tab-name-input:focus { outline:none; border-color:var(--primary); background:var(--dark); }
+.empty-state { text-align:center; padding:4rem 2rem; color:var(--text-dim); grid-column:1/-1; }
+.empty-icon { font-size:4rem; margin-bottom:1rem; opacity:0.4; }
+.empty-state h3 { font-family:'Syne',sans-serif; font-size:1.4rem; color:var(--text); margin-bottom:0.5rem; }
 
-        .paste-textarea {
-            width: 100%; min-height: 160px;
-            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
-            color: var(--text); padding: 1rem 1.5rem; border-radius: 12px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
-            resize: vertical; transition: all 0.3s ease;
-        }
-        .paste-textarea:focus { outline:none; border-color: var(--primary); background: var(--dark); }
-        .paste-textarea::placeholder { color: var(--text-dim); opacity:0.6; }
-
-        .btn-row { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; }
-
-        .parse-btn {
-            padding: 0.9rem 2.5rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white; border: none; border-radius: 12px;
-            font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700;
-            cursor: pointer; transition: all 0.3s ease;
-        }
-        .parse-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 30px var(--shadow); }
-
-        .clear-btn {
-            padding: 0.9rem 2rem;
-            background: var(--dark-lighter); color: var(--text);
-            border: 2px solid var(--text-dim); border-radius: 12px;
-            font-family: 'Syne', sans-serif; font-size: 1rem; font-weight: 600;
-            cursor: pointer; transition: all 0.3s ease;
-        }
-        .clear-btn:hover { border-color: var(--error); color: var(--error); }
-
-        /* TABS */
-        .tabs-section { display:none; margin-top:1.5rem; animation: fadeInUp 0.5s ease-out; }
-        .tabs-label { color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; }
-        .tabs-row { display:flex; gap:0.6rem; flex-wrap:wrap; }
-
-        .tab-btn {
-            background: var(--dark-lighter); color: var(--text-dim);
-            padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 0.85rem;
-            cursor: pointer; border: 2px solid transparent; transition: all 0.3s ease;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .tab-btn:hover { border-color: var(--primary); color: var(--text); }
-        .tab-btn.active {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            color: var(--dark); border-color: transparent; font-weight: 700;
-        }
-
-        /* RESULTS */
-        .results-section { margin-top: 2rem; display:none; animation: fadeInUp 0.5s ease-out; }
-        .results-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:1rem; }
-        .results-count { font-family:'Syne',sans-serif; font-size:1.3rem; color:var(--accent); }
-
-        .view-btn {
-            background: var(--dark-light); color: var(--text-dim);
-            border: 2px solid transparent; padding: 0.6rem 1.2rem;
-            border-radius: 8px; cursor: pointer; transition: all 0.3s;
-            font-family: 'JetBrains Mono', monospace; font-size:0.9rem;
-        }
-        .view-btn:hover { border-color: var(--primary); color:var(--text); }
-        .view-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
-
-        .jobs-grid {
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 1.5rem;
-        }
-
-        .job-card {
-            background: var(--dark-light); border-radius: 16px; padding: 1.8rem;
-            border: 2px solid transparent; transition: all 0.3s ease; cursor: pointer;
-            position:relative; overflow:hidden;
-        }
-        .job-card::before {
-            content:''; position:absolute; top:0; left:0; right:0; height:4px;
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            transform: scaleX(0); transition: transform 0.3s ease;
-        }
-        .job-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .job-card:hover::before { transform: scaleX(1); }
-
-        .job-number {
-            font-family:'Syne',sans-serif; font-size:1.5rem; font-weight:700;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-            margin-bottom:0.4rem;
-        }
-        .job-type-badge {
-            font-size:0.78rem; padding:0.2rem 0.7rem; border-radius:12px;
-            background: var(--accent); color: var(--dark); font-weight:700;
-            text-transform:uppercase; letter-spacing:0.05em; display:inline-block; margin-bottom:0.8rem;
-        }
-        .job-details { display:flex; flex-direction:column; gap:0.45rem; padding-top:0.8rem; border-top:1px solid var(--dark-lighter); }
-        .job-detail { display:flex; align-items:center; gap:0.7rem; color:var(--text-dim); font-size:0.87rem; }
-        .job-detail-icon { color:var(--accent); }
-
-        /* TABLE VIEW */
-        .results-table { background:var(--dark-light); border-radius:16px; overflow:hidden; }
-        table { width:100%; border-collapse:collapse; }
-        thead { background:var(--dark-lighter); }
-        th { padding:1.1rem; text-align:left; font-family:'Syne',sans-serif; font-weight:600; color:var(--accent); font-size:0.85rem; text-transform:uppercase; letter-spacing:0.05em; white-space:nowrap; }
-        tbody tr { border-bottom:1px solid var(--dark-lighter); transition:all 0.2s; cursor:pointer; }
-        tbody tr:hover { background:var(--dark-lighter); }
-        td { padding:1.1rem; color:var(--text-dim); font-size:0.88rem; }
-        td:first-child { color:var(--text); font-weight:500; }
-
-        /* MODAL */
-        .modal {
-            display:none; position:fixed; top:0; left:0; right:0; bottom:0;
-            background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
-            z-index:1000; align-items:center; justify-content:center;
-        }
-        .modal.show { display:flex; }
-
-        .modal-content {
-            background: var(--dark-light); border-radius: 16px; padding: 2.5rem;
-            max-width: 800px; width: 94%; max-height: 90vh; overflow-y: auto;
-            border: 2px solid var(--primary); animation: slideUp 0.35s ease;
-        }
-        @keyframes slideUp {
-            from { opacity:0; transform:translateY(50px); }
-            to { opacity:1; transform:translateY(0); }
-        }
-
-        .modal-header {
-            display:flex; justify-content:space-between; align-items:center;
-            margin-bottom:1.5rem; padding-bottom:1rem; border-bottom:2px solid var(--dark-lighter);
-        }
-        .modal-title {
-            font-family:'Syne',sans-serif; font-size:1.8rem;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-        }
-        .close-btn { background:none; border:none; color:var(--text-dim); font-size:2rem; cursor:pointer; transition:color 0.3s; line-height:1; }
-        .close-btn:hover { color:var(--error); }
-
-        .modal-meta { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.5rem; }
-        .meta-item { background:var(--dark-lighter); border-radius:8px; padding:0.8rem 1rem; }
-        .meta-label { color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; }
-        .meta-value { color:var(--text); font-size:1rem; margin-top:0.2rem; }
-
-        /* MATERIALS */
-        .materials-section h3 { font-family:'Syne',sans-serif; font-size:1.2rem; color:var(--accent); margin-bottom:1rem; }
-
-        .materials-search {
-            background: var(--dark-lighter); border: 2px solid var(--dark-lighter); color:var(--text);
-            padding: 0.8rem 1.2rem; border-radius:10px; width:100%;
-            font-family:'JetBrains Mono',monospace; font-size:0.9rem;
-            margin-bottom:1rem; transition:all 0.3s;
-        }
-        .materials-search:focus { outline:none; border-color:var(--primary); background:var(--dark); }
-        .materials-search::placeholder { color:var(--text-dim); opacity:0.6; }
-
-        .materials-list {
-            max-height: 280px; overflow-y:auto; background:var(--dark-lighter);
-            border-radius:10px; border:2px solid var(--dark-lighter);
-        }
-        .materials-list::-webkit-scrollbar { width:6px; }
-        .materials-list::-webkit-scrollbar-track { background:var(--dark-lighter); }
-        .materials-list::-webkit-scrollbar-thumb { background:var(--primary); border-radius:3px; }
-
-        .material-row {
-            display:flex; align-items:center; gap:0.8rem; padding:0.7rem 1rem;
-            border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.2s;
-        }
-        .material-row:last-child { border-bottom:none; }
-        .material-row:hover { background:rgba(255,107,53,0.08); }
-        .material-row.checked { background:rgba(78,204,163,0.08); }
-
-        .material-checkbox { width:17px; height:17px; accent-color:var(--primary); cursor:pointer; flex-shrink:0; }
-        .material-name {
-            flex:1; font-size:0.87rem; color:var(--text); user-select:none; cursor:pointer;
-            min-width: 0; /* allow text to shrink */
-        }
-
-        /* QTY + UNIT inline controls */
-        .mat-controls {
-            display: none !important;
-            align-items: center;
-            gap: 0.4rem;
-            flex-shrink: 0;
-        }
-        .mat-controls.visible { display: flex !important; }
-
-        .material-qty {
-            width: 64px;
-            background: var(--dark);
-            border: 2px solid var(--primary);
-            color: var(--text);
-            padding: 0.3rem 0.5rem;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            text-align: center;
-        }
-        .material-qty:focus { outline: none; border-color: var(--secondary); }
-
-        .material-unit {
-            background: var(--dark);
-            border: 2px solid var(--primary);
-            color: var(--text);
-            padding: 0.3rem 0.4rem;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.82rem;
-            cursor: pointer;
-            min-width: 72px;
-        }
-        .material-unit:focus { outline: none; border-color: var(--secondary); }
-
-        /* SUMMARY */
-        .selected-summary {
-            margin-top:1.5rem; background:var(--dark-lighter); border-radius:10px;
-            padding:1.2rem; display:none;
-        }
-        .selected-summary.visible { display:block; }
-        .selected-summary h4 { font-family:'Syne',sans-serif; color:var(--secondary); margin-bottom:0.8rem; font-size:1rem; }
-
-        .selected-tags { margin-bottom:1rem; }
-        .selected-tag {
-            display:inline-block; background:rgba(255,107,53,0.15); border:1px solid var(--primary);
-            color:var(--text); padding:0.25rem 0.6rem; border-radius:6px; font-size:0.78rem; margin:0.2rem;
-        }
-
-        .output-box {
-            background:var(--dark); border:2px solid var(--success);
-            border-radius:10px; padding:1rem 1.2rem;
-        }
-        .output-box-label { color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.4rem; }
-        .output-text { font-size:0.82rem; color:var(--success); word-break:break-all; }
-
-        .modal-actions { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; align-items: center; }
-
-        .action-btn {
-            padding:0.9rem 2rem; border-radius:10px; font-family:'Syne',sans-serif;
-            font-size:1rem; font-weight:700; cursor:pointer; transition:all 0.3s; border:none;
-        }
-        .action-btn.copy {
-            background: linear-gradient(135deg, var(--success), #3DB88D);
-            color:var(--dark); font-size: 1.1rem; padding: 1rem 2.5rem;
-        }
-        .action-btn.copy:hover { transform:translateY(-2px); box-shadow: 0 8px 25px rgba(78,204,163,0.4); }
-        .action-btn.copy:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-        .action-btn.danger { background:var(--dark-lighter); color:var(--error); border:2px solid var(--error); }
-        .action-btn.danger:hover { background:rgba(255,107,107,0.1); }
-
-        .copy-hint {
-            font-size: 0.78rem; color: var(--text-dim);
-            background: rgba(78,204,163,0.08); border: 1px solid rgba(78,204,163,0.2);
-            padding: 0.5rem 0.9rem; border-radius: 8px;
-        }
-        .copy-hint strong { color: var(--success); }
-
-        /* EXPORT */
-        .export-section {
-            display:none; margin-top:2rem; background:var(--dark-light); border-radius:16px;
-            padding:2rem; border:2px solid var(--success); animation:fadeInUp 0.5s ease-out;
-        }
-        .export-section.visible { display:block; }
-        .export-section h3 { font-family:'Syne',sans-serif; color:var(--success); margin-bottom:0.5rem; }
-        .export-desc { color:var(--text-dim); font-size:0.85rem; margin-bottom:1rem; }
-        .export-table-wrap { overflow-x:auto; border-radius:10px; border:2px solid var(--dark-lighter); }
-        .export-table-wrap table { font-size:0.85rem; }
-        .export-table-wrap thead { background:var(--dark-lighter); }
-        .export-table-wrap th { padding:0.9rem 1rem; }
-        .export-table-wrap td { padding:0.9rem 1rem; }
-        td.mat-filled { color:var(--success); font-size:0.8rem; white-space:normal; max-width:300px; }
-        td.mat-empty { color:var(--text-dim); font-style:italic; opacity:0.45; }
-
-        .export-actions { display:flex; gap:1rem; margin-top:1rem; flex-wrap:wrap; }
-        .export-btn {
-            padding:0.8rem 2rem;
-            background: linear-gradient(135deg, var(--secondary), var(--primary));
-            color:var(--dark); border:none; border-radius:10px;
-            font-family:'Syne',sans-serif; font-size:1rem; font-weight:700;
-            cursor:pointer; transition:all 0.3s;
-        }
-        .export-btn:hover { transform:translateY(-2px); box-shadow:0 8px 25px var(--shadow); }
-
-        /* TOAST */
-        .status-toast {
-            position:fixed; top:2rem; right:2rem;
-            padding:1rem 1.5rem; border-radius:8px; font-size:0.9rem;
-            z-index:2000; animation:slideInRight 0.4s ease; display:none; font-weight:600;
-        }
-        @keyframes slideInRight {
-            from { opacity:0; transform:translateX(100px); }
-            to { opacity:1; transform:translateX(0); }
-        }
-        .status-toast.show { display:block; }
-        .status-toast.success { background:var(--success); color:var(--dark); }
-        .status-toast.error { background:var(--error); color:white; }
-
-        .empty-state { text-align:center; padding:4rem 2rem; color:var(--text-dim); grid-column:1/-1; }
-        .empty-icon { font-size:4rem; margin-bottom:1rem; opacity:0.4; }
-        .empty-state h3 { font-family:'Syne',sans-serif; font-size:1.4rem; color:var(--text); margin-bottom:0.5rem; }
-
-        @media(max-width:768px){
-            .container { padding:1rem; }
-            .modal-content { padding:1.5rem; }
-            .modal-meta { grid-template-columns:1fr; }
-            .jobs-grid { grid-template-columns:1fr; }
-        }
-    </style>
+@media(max-width:768px){
+    .container{padding:1rem;}
+    .modal-content{padding:1.5rem;}
+    .modal-meta{grid-template-columns:1fr;}
+    .jobs-grid{grid-template-columns:1fr;}
+}
+</style>
 </head>
 <body>
 <div class="container">
@@ -430,71 +322,51 @@
         <h1>Materials Planner</h1>
         <p class="subtitle">Import job data, assign materials, copy into your spreadsheet</p>
     </header>
-
     <main>
-        <!-- PASTE SECTION -->
         <section class="paste-section">
             <div class="paste-header">
                 <span class="paste-icon">📋</span>
                 <h2>Import Job Data</h2>
             </div>
             <div class="paste-instructions">
-                <strong>How to use:</strong> In your SharePoint Excel, select the data you want (include the header row), copy it (Ctrl+C), then paste below.<br>
-                Expected columns: <strong>B</strong> = Job Number &nbsp;|&nbsp; <strong>G</strong> = Postcode &nbsp;|&nbsp; <strong>H</strong> = Install Date &nbsp;|&nbsp; <strong>J</strong> = Days &nbsp;|&nbsp; <strong>K</strong> = Job Type &nbsp;|&nbsp; <strong>L</strong> = Materials<br>
-                Jobs where <strong>Column L is empty</strong> will appear as cards for you to assign materials.
-                You can paste multiple tabs — give each one a name below.
+                <strong>How to use:</strong> In your SharePoint Excel, select the data (include header row), copy it (Ctrl+C), paste below.<br>
+                Expected columns: <strong>B</strong> = Job Number | <strong>G</strong> = Postcode | <strong>H</strong> = Install Date | <strong>J</strong> = Days | <strong>K</strong> = Job Type | <strong>L</strong> = Materials<br>
+                Jobs where <strong>Column L is empty</strong> appear as cards to assign. You can paste multiple sheets.
             </div>
             <div class="tab-name-row">
                 <span class="tab-name-label">Sheet / Tab Name</span>
-                <input id="tab-name-input" type="text" class="tab-name-input" placeholder="e.g. Week 1, Sheet2..." />
+                <input id="tabNameInput" type="text" class="tab-name-input" placeholder="e.g. Week 1, Sheet2..." />
             </div>
-            <textarea
-                class="paste-textarea"
-                id="paste-area"
-                placeholder="Paste spreadsheet data here (Ctrl+V)...&#10;&#10;Include the header row for best column detection."
-            ></textarea>
+            <textarea id="pasteArea" class="paste-textarea" placeholder="Paste spreadsheet data here (Ctrl+V)..."></textarea>
             <div class="btn-row">
                 <button class="parse-btn" onclick="parseData()">📥 Load Jobs</button>
-                <button class="clear-btn" onclick="clearAll()">🗑 Clear All Data</button>
+                <button class="clear-btn" onclick="clearAll()">🗑 Clear All</button>
             </div>
-
-            <div class="tabs-section" id="tabs-section">
+            <div class="tabs-section" id="tabsSection">
                 <div class="tabs-label">Filter by Sheet</div>
-                <div class="tabs-row" id="tabs-row"></div>
+                <div class="tabs-row" id="tabsRow"></div>
             </div>
         </section>
 
-        <!-- RESULTS -->
-        <section class="results-section" id="results-section">
+        <section class="results-section" id="resultsSection">
             <div class="results-header">
-                <div class="results-count" id="results-count">0 jobs need materials</div>
+                <div class="results-count" id="resultsCount">0 jobs need materials</div>
                 <div style="display:flex;gap:0.5rem;">
-                    <button class="view-btn active" id="btn-grid" onclick="setView('grid')">Grid</button>
-                    <button class="view-btn" id="btn-table" onclick="setView('table')">Table</button>
-                    <button class="view-btn" onclick="showExport()" style="margin-left:0.5rem;">📊 Export Table</button>
+                    <button class="view-btn active" id="btnGrid" onclick="setView('grid')">Grid</button>
+                    <button class="view-btn" id="btnTable" onclick="setView('table')">Table</button>
+                    <button class="view-btn" onclick="showExport()" style="margin-left:0.5rem;">📊 Export</button>
                 </div>
             </div>
-            <div id="jobs-container"></div>
+            <div id="jobsContainer"></div>
         </section>
 
-        <!-- EXPORT SECTION -->
-        <section class="export-section" id="export-section">
+        <section class="export-section" id="exportSection">
             <h3>📊 Updated Job Data</h3>
-            <p class="export-desc">All jobs from all sheets. Column L now reflects your saved materials lists. Copy this or download as CSV to paste back into your spreadsheet.</p>
-            <div class="export-table-wrap">
+            <p class="export-desc">All jobs with their assigned materials.</p>
+            <div class="export-wrap">
                 <table>
-                    <thead>
-                        <tr>
-                            <th>Sheet</th>
-                            <th>Job Number (B)</th>
-                            <th>Postcode (G)</th>
-                            <th>Install Date (H)</th>
-                            <th>Days (J)</th>
-                            <th>Job Type (K)</th>
-                            <th>Materials (L)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="export-tbody"></tbody>
+                    <thead><tr><th>Sheet</th><th>Job Number</th><th>Postcode</th><th>Install Date</th><th>Days</th><th>Job Type</th><th>Materials (L)</th></tr></thead>
+                    <tbody id="exportTbody"></tbody>
                 </table>
             </div>
             <div class="export-actions">
@@ -504,471 +376,326 @@
     </main>
 </div>
 
-<!-- MODAL -->
-<div class="modal" id="job-modal">
+<div class="modal" id="jobModal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2 class="modal-title" id="modal-title">Job #</h2>
-            <button class="close-btn" onclick="closeModal()">×</button>
+            <h2 class="modal-title" id="modalTitle">Job #</h2>
+            <button class="close-btn" onclick="closeModal()">x</button>
         </div>
-        <div class="modal-meta" id="modal-meta"></div>
-
+        <div class="modal-meta" id="modalMeta"></div>
         <div class="materials-section">
-            <h3>🔧 Select Materials</h3>
-            <input type="text" class="materials-search" id="mat-search" placeholder="Search materials list..." oninput="filterMaterials()" />
-            <div class="materials-list" id="materials-list"></div>
+            <h3>Select Materials</h3>
+            <input type="text" class="mat-search" id="matSearch" placeholder="Search materials..." oninput="filterMats()" />
+            <div class="mat-list" id="matList"></div>
         </div>
-
-        <div class="selected-summary" id="selected-summary">
-            <h4>✅ Selected Materials</h4>
-            <div class="selected-tags" id="selected-tags"></div>
+        <div class="sel-summary" id="selSummary">
+            <h4>Selected</h4>
+            <div class="sel-tags" id="selTags"></div>
             <div class="output-box">
-                <div class="output-box-label">Ready to paste into Column L</div>
-                <div class="output-text" id="output-text"></div>
+                <div class="output-lbl">Ready to paste into Column L</div>
+                <div class="output-val" id="outputVal"></div>
             </div>
         </div>
-
         <div class="modal-actions">
-            <button class="action-btn copy" id="copy-btn" onclick="copyAndDone()" disabled>
-                📋 Copy &amp; Done
-            </button>
-            <span class="copy-hint" id="copy-hint" style="display:none;">
-                <strong>Copied!</strong> Go paste into your spreadsheet cell. Job removed from board.
-            </span>
-            <button class="action-btn danger" onclick="clearSelections()" style="margin-left:auto;">✕ Clear</button>
+            <button class="btn-copy" id="copyBtn" onclick="copyAndDone()" disabled>Copy and Done</button>
+            <span class="copy-flash" id="copyFlash">Copied! Paste into your spreadsheet cell.</span>
+            <button class="btn-clr" onclick="clearSels()">Clear</button>
         </div>
     </div>
 </div>
 
-<div class="status-toast" id="status-toast"></div>
+<div class="toastel" id="toastel"></div>
 
 <script>
-// ── MATERIALS LIST ────────────────────────────────────────────────────────
-const MATERIALS = [
-    "1 inch screws ( box )","1.5 inch screws ( box )",
-    "1000V INSULATION SHROUD BLANKET (900MM X 600MM)",
+var MATERIALS = [
+    "1 inch screws (box)","1.5 inch screws (box)",
+    "1000V Insulation Shroud Blanket 900x600mm",
     "100amp 100ma RCD main switched isolator",
     "100mm x 50mm Warning Surge Protection Device Label",
-    "10mm Earth cable","10mm SWA 3 core","10mm² 3 Core CAT5 EV Cable Black 50m",
-    "16mm Earth","16mm SWA 3 core","2 inch screws ( box )","25mm conduit black plastic",
-    "25mm Double Insulated Stranded Blue (per meter)",
-    "25mm Double Insulated Stranded Brown (per meter)",
+    "10mm Earth cable","10mm SWA 3 core","10mm 3 Core CAT5 EV Cable Black 50m",
+    "16mm Earth","16mm SWA 3 core","2 inch screws (box)","25mm conduit black plastic",
+    "25mm Double Insulated Stranded Blue per meter",
+    "25mm Double Insulated Stranded Brown per meter",
     "25mm Female Brass Bush","25mm IP68 Compression Glands Black","25mm Lockring",
-    "25mm Male Brass Bush","25mm male/female adaptors black plastic","25mm SWA 3core",
-    "32a Rotary Isolator - 3 Pole","32mm conduit black plastic","32mm gland (pack of 10)",
-    "32mm p clips metal","38mm x 25mm trunking","38MMx25MM External Bend",
-    "38MMx25MM Flat Bend","38MMx25MM Internal Bend","40a Rotary Isolator - 3 Pole",
-    "4302P2254-02 22awg 2pair 430series 600v LSZH FireFighter IEC60332-3 24 Black Cable",
-    "50 x 50 Trunking White PVC","50x50 end Caps","6mm DC Black Cable",
-    "6mm earth cable (50M)","6mm PV ultra cable 2 core PV","6mm Pv ultra cable 4 core",
-    "6mm yellow fork crimps","6mm² 3 Core CAT5 EV Cable Black",
-    "Adhesive & Sealant - Clear","Aico Ei650iRF RadioLINK+ Battery Powered Optical",
-    "Aico Optical and Heat alarm (230v)","Aico RF Module/RF Smart link",
-    "Atkore Koreflex 25mm IP 66 Spiral reinforced 25mm pack Black (10m and 10 glands)",
-    "Atkore Koreflex 32mm IP66 Conduit Contractor Pack Black (10m Reel and 10 Glands)",
-    "BioHazard Label - Roof","Biohazard Label Set","Bird deterrent 30m Solar panel bird Exclusion kit (Black Mesh)",
-    "Bird mesh clips","bootlace ferruls 6mm ( pack )","brown plugs ( box )",
-    "Connector Solo5, Solo5 light, profiplus, FixZ-7 & Fiz-Z-15",
-    "CT Clamp fox accessories","DC Cable Labels","Disconnection Tool","double pole isolator",
+    "25mm Male Brass Bush","25mm male female adaptors black plastic","25mm SWA 3core",
+    "32a Rotary Isolator 3 Pole","32mm conduit black plastic","32mm gland pack of 10",
+    "32mm p clips metal","38mm x 25mm trunking","38x25mm External Bend",
+    "38x25mm Flat Bend","38x25mm Internal Bend","40a Rotary Isolator 3 Pole",
+    "4302P2254 FireFighter Cable Black",
+    "50x50 Trunking White PVC","50x50 end Caps","6mm DC Black Cable",
+    "6mm earth cable 50M","6mm PV ultra cable 2 core PV","6mm PV ultra cable 4 core",
+    "6mm yellow fork crimps","6mm 3 Core CAT5 EV Cable Black",
+    "Adhesive and Sealant Clear","Aico Ei650iRF RadioLINK Battery Powered Optical",
+    "Aico Optical and Heat alarm 230v","Aico RF Module Smart link",
+    "Atkore Koreflex 25mm IP66 Conduit Pack Black",
+    "Atkore Koreflex 32mm IP66 Conduit Pack Black",
+    "BioHazard Label Roof","Biohazard Label Set",
+    "Bird deterrent 30m Solar panel bird Exclusion kit Black Mesh",
+    "Bird mesh clips","Bootlace ferruls 6mm pack","Brown plugs box",
+    "Connector Solo5 Solo5 light profiplus FixZ",
+    "CT Clamp fox accessories","DC Cable Labels","Disconnection Tool","Double pole isolator",
     "End Clamp Rapid 16 30-40mm Black",
-    "Engex 300mm x 4.8mm Cable Ties Black (Pack of 100)",
-    "Engex 5mm yellow ring lug crimp","ENPHASE CONTROL PANEL",
-    "enphase IQ cable branch terminator","Enphase Q Cable Sealing Caps",
-    "EricTile - solarslateplate.co.uk","Fire Clips 50mm trunking",
-    "Fire Resistant Cable Cleat 30.4mm-35mm metal black",
+    "Engex 300mm x 4.8mm Cable Ties Black Pack of 100",
+    "Engex 5mm yellow ring lug crimp","Enphase Control Panel",
+    "Enphase IQ cable branch terminator","Enphase Q Cable Sealing Caps",
+    "EricTile solarslateplate","Fire Clips 50mm trunking",
+    "Fire Resistant Cable Cleat 30-35mm metal black",
     "Genius Flashing flexi flash profile Tile Kit","Genius flashing Pan tile",
     "Genius Slate Flashing Re-Fit Kit","HO7RNF 6MM 3 CORE",
     "IP65 box 600x400mm and Backplate","IQ Battery 5P Kit","KlickIn Component",
-    "KMF switched fused isolator 60amp","KMF switched fused isolator 80 amp",
+    "KMF switched fused isolator 60amp","KMF switched fused isolator 80amp",
     "M2 63A 4 pole rotary isolator switch IP67","M8 Nut","M8 X 20mm Screw",
-    "MCG 400 x 400 x 200 steel enclosure with mounting plate","MCG IP66 Clear Lid Enclosure",
+    "MCG 400x400x200 steel enclosure with mounting plate","MCG IP66 Clear Lid Enclosure",
     "Membrane Kit","Mid Clamp Rapid 16 30-40mm Black",
-    "Module Bearing profile Solo light - 3.55m","Orbix self tapper (200 PER BOX)",
-    "penny washers 6mm","Plastic End Cap Solo Profi05 Black",
+    "Module Bearing profile Solo light 3.55m","Orbix self tapper 200 per box",
+    "Penny washers 6mm","Plastic End Cap Solo Profi05 Black",
     "Projoy DC isolator 32A 4 pole 2 string","Proteus 1 input 1 output 100v DC SPD",
     "Proteus 6 way 100A Incomer Metal Clad Consumer With Type 2 SPD",
     "Proteus B10 Bi Directional RCBO Type A","Proteus B20 Bi Directional RCBO Type A",
-    "Proteus B25 Single Pole 10ka MCB","Proteus B40 Bi Directional 40map RCBO Type A",
+    "Proteus B25 Single Pole 10ka MCB","Proteus B40 Bi Directional 40amp RCBO Type A",
     "Proteus B40a Single Pole 10ka MCB","Proteus Blank Module",
     "Proteus IP65 rated consumer unit 6 way with SPD and isolator",
-    "Proteus XL Double pole Bi Directional B curve 25Amp 10ka 30ma RCBO type A",
-    "Proteus XL Double pole Bi Directional B curve 40Amp 10ka 30ma RCBO type A",
-    "RapFix attachment for ECO roof hooks","RCD testing label","red plugs (box)",
+    "Proteus XL Double pole B curve 25Amp RCBO type A",
+    "Proteus XL Double pole B curve 40Amp RCBO type A",
+    "RapFix attachment for ECO roof hooks","RCD testing label","Red plugs box",
     "Roof Hook Rapid 2+Pro 45","Roof hook Universal",
-    "Schneider Sarel 241mm x 194mm x 107mm ABS Enclosure With Transparent Cover IP66",
-    "seals and ferruls","Slate / Flat Concrete Roof Hook","Solar Array Sticker Set",
+    "Schneider Sarel 241x194x107mm ABS Enclosure Transparent Cover IP66",
+    "Seals and ferruls","Slate Flat Concrete Roof Hook","Solar Array Sticker Set",
     "Terminal Block 100A 5 Way Blue","Terminal Block 100A 5 Way Brown",
     "Terminal Block 100A 5 Way Green","Termination Plug","TP Link",
-    "Unicrimp 15.1mm - 17.8mm Cable clip (pack of 10)",
-    "VA Flat Head TORX 8/100 Wood Screw (Singles)",
-    "VA Flat Head TORX 8/80 Wood Screw (Singles)",
-    "Wago compact 3 way connection max 6mm (box of 30)",
+    "Unicrimp 15-18mm Cable clip pack of 10",
+    "VA Flat Head TORX 8/100 Wood Screw",
+    "VA Flat Head TORX 8/80 Wood Screw",
+    "Wago compact 3 way connection max 6mm box of 30",
     "Washer",
-    "Wiska COMBI 607/5/S 110mm x 110mm x 66mm PVC Adaptable Box Black IP66",
-    "Zeroburn 16-21mm (pack 20)",
-    "Zeroburn black single P clips (pack of 50 x2) 8.7-9MM",
-    "Zeroburn Cable Clips 10 - 15mm Black","Zeroburn cable clips 22mm-26mm"
-].sort((a,b) => a.localeCompare(b));
+    "Wiska COMBI 607 110x110x66mm PVC Adaptable Box Black IP66",
+    "Zeroburn 16-21mm pack 20",
+    "Zeroburn black single P clips pack 8.7-9MM",
+    "Zeroburn Cable Clips 10-15mm Black","Zeroburn cable clips 22-26mm"
+].sort(function(a,b){ return a.localeCompare(b); });
 
-const UNITS = ['unit','box','pack','metre','roll','pair','set','bag','each','length','reel'];
+var UNITS = ['unit','box','pack','metre','roll','pair','set','bag','each','length','reel'];
 
-// ── STATE ─────────────────────────────────────────────────────────────────
-let allJobs = [];
-let tabs = [];
-let activeTab = 'all';
-let currentView = 'grid';
-let currentJobIdx = null;
-let selections = {}; // name -> { qty, unit }
+var allJobs = [];
+var tabs = [];
+var activeTab = 'all';
+var currentView = 'grid';
+var currentJobIdx = null;
+var sels = {};
 
-// ── PARSE ─────────────────────────────────────────────────────────────────
 function parseData() {
-    const raw = document.getElementById('paste-area').value.trim();
-    const tabName = document.getElementById('tab-name-input').value.trim() || `Sheet ${tabs.length + 1}`;
-
-    if (!raw) { showToast('Please paste some spreadsheet data first', 'error'); return; }
-
-    const rows = raw.split('\n').map(r => r.split('\t'));
-
-    let dataRows = rows;
-    const first = (rows[0] || []).map(c => (c || '').toLowerCase().trim());
-    if (first.some(c => c.includes('job') || c.includes('postcode') || c.includes('date') || c.includes('type') || c.includes('days'))) {
+    var raw = document.getElementById('pasteArea').value.trim();
+    var tabName = document.getElementById('tabNameInput').value.trim() || ('Sheet ' + (tabs.length + 1));
+    if (!raw) { showToast('Please paste some data first', 'err'); return; }
+    var rows = raw.split('\n').map(function(r){ return r.split('\t'); });
+    var dataRows = rows;
+    var first = (rows[0]||[]).map(function(c){ return (c||'').toLowerCase().trim(); });
+    if (first.some(function(c){ return c.indexOf('job')>-1||c.indexOf('postcode')>-1||c.indexOf('date')>-1||c.indexOf('type')>-1; })) {
         dataRows = rows.slice(1);
     }
-
-    let added = 0;
-    dataRows.forEach((cols) => {
-        const jobNumber = (cols[1] || '').trim();
-        if (!jobNumber) return;
-        allJobs.push({
-            tab:         tabName,
-            jobNumber:   jobNumber,
-            postcode:    (cols[6]  || '').trim(),
-            installDate: (cols[7]  || '').trim(),
-            days:        (cols[9]  || '').trim(),
-            jobType:     (cols[10] || '').trim(),
-            materials:   (cols[11] || '').trim(),
-            _raw:        [...cols]
-        });
+    var added = 0;
+    dataRows.forEach(function(cols) {
+        var jn = (cols[1]||'').trim();
+        if (!jn) return;
+        allJobs.push({ tab:tabName, jobNumber:jn, postcode:(cols[6]||'').trim(), installDate:(cols[7]||'').trim(), days:(cols[9]||'').trim(), jobType:(cols[10]||'').trim(), materials:(cols[11]||'').trim() });
         added++;
     });
-
-    if (!tabs.includes(tabName)) tabs.push(tabName);
-
-    document.getElementById('paste-area').value = '';
-    document.getElementById('tab-name-input').value = '';
-
-    renderTabs();
-    renderJobs();
-    showToast(`Loaded ${added} rows from "${tabName}"`, 'success');
+    if (tabs.indexOf(tabName) === -1) tabs.push(tabName);
+    document.getElementById('pasteArea').value = '';
+    document.getElementById('tabNameInput').value = '';
+    renderTabs(); renderJobs();
+    showToast('Loaded ' + added + ' rows from "' + tabName + '"', 'ok');
 }
 
 function clearAll() {
-    if (allJobs.length && !confirm('Clear all loaded data?')) return;
-    allJobs = []; tabs = []; activeTab = 'all';
-    document.getElementById('tabs-section').style.display = 'none';
-    document.getElementById('results-section').style.display = 'none';
-    document.getElementById('export-section').classList.remove('visible');
-    showToast('All data cleared', 'success');
+    if (allJobs.length && !confirm('Clear all data?')) return;
+    allJobs=[]; tabs=[]; activeTab='all';
+    document.getElementById('tabsSection').style.display='none';
+    document.getElementById('resultsSection').style.display='none';
+    document.getElementById('exportSection').classList.remove('show');
+    showToast('Cleared','ok');
 }
 
-// ── TABS ──────────────────────────────────────────────────────────────────
 function renderTabs() {
-    const section = document.getElementById('tabs-section');
-    const row = document.getElementById('tabs-row');
-    section.style.display = 'block';
-    row.innerHTML = ['all', ...tabs].map(t =>
-        `<button class="tab-btn ${activeTab===t?'active':''}" onclick="setTab('${t.replace(/'/g,"\\'")}')">
-            ${t === 'all' ? 'All Sheets' : esc(t)}
-        </button>`
-    ).join('');
-}
-
-function setTab(tab) {
-    activeTab = tab;
-    renderTabs();
-    renderJobs();
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────
-function setView(v) {
-    currentView = v;
-    document.getElementById('btn-grid').classList.toggle('active', v === 'grid');
-    document.getElementById('btn-table').classList.toggle('active', v === 'table');
-    renderJobs();
-}
-
-function renderJobs() {
-    const section = document.getElementById('results-section');
-    const container = document.getElementById('jobs-container');
-    const countEl = document.getElementById('results-count');
-    section.style.display = 'block';
-
-    const visible = allJobs.filter(j => {
-        const tabOk = activeTab === 'all' || j.tab === activeTab;
-        const needsMaterials = !j.materials || j.materials.trim() === '';
-        return tabOk && needsMaterials;
-    });
-
-    countEl.textContent = `${visible.length} job${visible.length !== 1 ? 's' : ''} need${visible.length === 1 ? 's' : ''} materials`;
-
-    if (visible.length === 0) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><h3>All jobs have materials assigned</h3><p>Switch tabs or load more data</p></div>`;
-        return;
-    }
-
-    if (currentView === 'grid') {
-        container.innerHTML = `<div class="jobs-grid">${visible.map(job => {
-            const idx = allJobs.indexOf(job);
-            return `<div class="job-card" onclick="openModal(${idx})">
-                <div class="job-number">#${esc(job.jobNumber)}</div>
-                ${job.jobType ? `<span class="job-type-badge">${esc(job.jobType)}</span>` : ''}
-                <div class="job-details">
-                    <div class="job-detail"><span class="job-detail-icon">📍</span>${esc(job.postcode) || 'No postcode'}</div>
-                    <div class="job-detail"><span class="job-detail-icon">📅</span>${esc(job.installDate) || 'No date'}</div>
-                    ${job.days ? `<div class="job-detail"><span class="job-detail-icon">⏱</span>${esc(job.days)} days</div>` : ''}
-                    <div class="job-detail"><span class="job-detail-icon">🗂</span>${esc(job.tab)}</div>
-                </div>
-            </div>`;
-        }).join('')}</div>`;
-    } else {
-        container.innerHTML = `<div class="results-table"><table>
-            <thead><tr><th>Job Number</th><th>Postcode</th><th>Install Date</th><th>Days</th><th>Job Type</th><th>Sheet</th></tr></thead>
-            <tbody>${visible.map(job => {
-                const idx = allJobs.indexOf(job);
-                return `<tr onclick="openModal(${idx})">
-                    <td>#${esc(job.jobNumber)}</td>
-                    <td>${esc(job.postcode)}</td>
-                    <td>${esc(job.installDate)}</td>
-                    <td>${esc(job.days)}</td>
-                    <td>${esc(job.jobType)}</td>
-                    <td>${esc(job.tab)}</td>
-                </tr>`;
-            }).join('')}</tbody>
-        </table></div>`;
-    }
-}
-
-// ── MODAL ─────────────────────────────────────────────────────────────────
-function openModal(idx) {
-    currentJobIdx = idx;
-    selections = {};
-    const job = allJobs[idx];
-
-    document.getElementById('modal-title').textContent = `Job #${job.jobNumber}`;
-    document.getElementById('modal-meta').innerHTML = `
-        <div class="meta-item"><div class="meta-label">Postcode</div><div class="meta-value">${esc(job.postcode) || '—'}</div></div>
-        <div class="meta-item"><div class="meta-label">Install Date</div><div class="meta-value">${esc(job.installDate) || '—'}</div></div>
-        <div class="meta-item"><div class="meta-label">Job Type</div><div class="meta-value">${esc(job.jobType) || '—'}</div></div>
-        <div class="meta-item"><div class="meta-label">Sheet</div><div class="meta-value">${esc(job.tab)}</div></div>
-    `;
-
-    document.getElementById('mat-search').value = '';
-    document.getElementById('copy-hint').style.display = 'none';
-    renderMaterials();
-    updateSummary();
-    document.getElementById('job-modal').classList.add('show');
-}
-
-function closeModal() {
-    document.getElementById('job-modal').classList.remove('show');
-    currentJobIdx = null;
-}
-
-// ── MATERIALS ─────────────────────────────────────────────────────────────
-function renderMaterials() {
-    const search = document.getElementById('mat-search').value.toLowerCase();
-    const list = document.getElementById('materials-list');
-    const filtered = MATERIALS.filter(m => m.toLowerCase().includes(search));
-
-    if (!filtered.length) {
-        list.innerHTML = '<div style="padding:1rem;color:var(--text-dim);text-align:center;font-size:0.9rem;">No materials match your search</div>';
-        return;
-    }
-
-    list.innerHTML = filtered.map(name => {
-        const sel = selections[name];
-        const checked = !!sel;
-        const qty = sel ? sel.qty : '1';
-        const unit = sel ? sel.unit : 'unit';
-        const unitOpts = UNITS.map(u => `<option value="${u}" ${unit===u?'selected':''}>${u}</option>`).join('');
-        const rowId = 'row_' + btoa(encodeURIComponent(name)).replace(/[^a-z0-9]/gi,'');
-        return `<div class="material-row ${checked ? 'checked' : ''}" id="${rowId}" onclick="handleRowClick(event, ${JSON.stringify(name)})">
-            <input type="checkbox" class="material-checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="handleCheckbox(event, ${JSON.stringify(name)})" />
-            <span class="material-name">${esc(name)}</span>
-            <div class="mat-controls ${checked ? 'visible' : ''}">
-                <input type="number" class="material-qty" value="${qty}" min="0.1" step="0.1"
-                    onclick="event.stopPropagation()"
-                    onchange="event.stopPropagation(); updateQty(${JSON.stringify(name)}, this.value)"
-                    oninput="event.stopPropagation(); updateQty(${JSON.stringify(name)}, this.value)" />
-                <select class="material-unit" onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateUnit(${JSON.stringify(name)}, this.value)">${unitOpts}</select>
-            </div>
-        </div>`;
+    document.getElementById('tabsSection').style.display='block';
+    document.getElementById('tabsRow').innerHTML = ['all'].concat(tabs).map(function(t){
+        return '<button class="tab-btn'+(activeTab===t?' active':'')+'" onclick="setTab(\''+t.replace(/'/g,"\\'")+'\')">'+( t==='all'?'All Sheets':escH(t))+'</button>';
     }).join('');
 }
 
-function filterMaterials() { renderMaterials(); }
+function setTab(t){ activeTab=t; renderTabs(); renderJobs(); }
 
-function handleRowClick(event, name) {
-    // Only toggle if click was not on the qty/unit controls
-    const tag = event.target.tagName.toLowerCase();
-    if (tag === 'input' && event.target.type === 'number') return;
-    if (tag === 'select') return;
-    setMaterial(name, !selections[name]);
+function setView(v){
+    currentView=v;
+    document.getElementById('btnGrid').classList.toggle('active',v==='grid');
+    document.getElementById('btnTable').classList.toggle('active',v==='table');
+    renderJobs();
 }
 
-function handleCheckbox(event, name) {
-    setMaterial(name, event.target.checked);
-}
-
-function setMaterial(name, isChecked) {
-    if (isChecked) {
-        if (!selections[name]) selections[name] = { qty: '1', unit: 'unit' };
+function renderJobs(){
+    document.getElementById('resultsSection').style.display='block';
+    var vis=allJobs.filter(function(j){ return (activeTab==='all'||j.tab===activeTab)&&(!j.materials||j.materials.trim()===''); });
+    document.getElementById('resultsCount').textContent=vis.length+' job'+(vis.length!==1?'s':'')+' need'+(vis.length===1?'s':'')+' materials';
+    var c=document.getElementById('jobsContainer');
+    if(!vis.length){ c.innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><h3>All jobs have materials assigned</h3><p>Load more data or switch tabs</p></div>'; return; }
+    if(currentView==='grid'){
+        c.innerHTML='<div class="jobs-grid">'+vis.map(function(job){
+            var idx=allJobs.indexOf(job);
+            return '<div class="job-card" onclick="openModal('+idx+')">'
+                +'<div class="job-number">#'+escH(job.jobNumber)+'</div>'
+                +(job.jobType?'<span class="job-type-badge">'+escH(job.jobType)+'</span>':'')
+                +'<div class="job-details">'
+                +'<div class="job-detail"><span class="job-detail-icon">📍</span>'+(escH(job.postcode)||'No postcode')+'</div>'
+                +'<div class="job-detail"><span class="job-detail-icon">📅</span>'+(escH(job.installDate)||'No date')+'</div>'
+                +(job.days?'<div class="job-detail"><span class="job-detail-icon">⏱</span>'+escH(job.days)+' days</div>':'')
+                +'<div class="job-detail"><span class="job-detail-icon">🗂</span>'+escH(job.tab)+'</div>'
+                +'</div></div>';
+        }).join('')+'</div>';
     } else {
-        delete selections[name];
+        c.innerHTML='<div class="results-table"><table><thead><tr><th>Job Number</th><th>Postcode</th><th>Install Date</th><th>Days</th><th>Job Type</th><th>Sheet</th></tr></thead><tbody>'
+            +vis.map(function(job){
+                var idx=allJobs.indexOf(job);
+                return '<tr onclick="openModal('+idx+')">'
+                    +'<td>#'+escH(job.jobNumber)+'</td><td>'+escH(job.postcode)+'</td><td>'+escH(job.installDate)+'</td><td>'+escH(job.days)+'</td><td>'+escH(job.jobType)+'</td><td>'+escH(job.tab)+'</td></tr>';
+            }).join('')+'</tbody></table></div>';
     }
-    // Update this row in place
-    const rowId = 'row_' + btoa(encodeURIComponent(name)).replace(/[^a-z0-9]/gi,'');
-    const row = document.getElementById(rowId);
-    if (row) {
-        row.classList.toggle('checked', isChecked);
-        const cb = row.querySelector('.material-checkbox');
-        if (cb) cb.checked = isChecked;
-        const ctrl = row.querySelector('.mat-controls');
-        if (ctrl) {
-            if (isChecked) {
-                ctrl.classList.add('visible');
-                ctrl.style.display = 'flex';
+}
+
+function openModal(idx){
+    currentJobIdx=idx; sels={};
+    var job=allJobs[idx];
+    document.getElementById('modalTitle').textContent='Job #'+job.jobNumber;
+    document.getElementById('modalMeta').innerHTML=
+        '<div class="meta-item"><div class="meta-label">Postcode</div><div class="meta-value">'+(escH(job.postcode)||'—')+'</div></div>'
+        +'<div class="meta-item"><div class="meta-label">Install Date</div><div class="meta-value">'+(escH(job.installDate)||'—')+'</div></div>'
+        +'<div class="meta-item"><div class="meta-label">Job Type</div><div class="meta-value">'+(escH(job.jobType)||'—')+'</div></div>'
+        +'<div class="meta-item"><div class="meta-label">Sheet</div><div class="meta-value">'+escH(job.tab)+'</div></div>';
+    document.getElementById('matSearch').value='';
+    document.getElementById('copyFlash').style.display='none';
+    renderMatList();
+    updateSummary();
+    document.getElementById('jobModal').classList.add('show');
+}
+
+function closeModal(){ document.getElementById('jobModal').classList.remove('show'); currentJobIdx=null; }
+
+function filterMats(){ renderMatList(); }
+
+function renderMatList(){
+    var search=document.getElementById('matSearch').value.toLowerCase();
+    var filtered=MATERIALS.filter(function(m){ return m.toLowerCase().indexOf(search)>-1; });
+    var list=document.getElementById('matList');
+    if(!filtered.length){ list.innerHTML='<div style="padding:1rem;color:var(--text-dim);text-align:center;">No matches</div>'; return; }
+
+    var html=filtered.map(function(name,fi){
+        var isSel=!!sels[name];
+        var qty=isSel?sels[name].qty:'1';
+        var unit=isSel?sels[name].unit:'unit';
+        var opts=UNITS.map(function(u){ return '<option value="'+u+'"'+(u===unit?' selected':'')+'>'+u+'</option>'; }).join('');
+        var rid='mr'+fi;
+        return '<div class="mat-row'+(isSel?' checked':'')+'" id="'+rid+'" data-name="'+escAttr(name)+'">'
+            +'<input type="checkbox" class="mat-cb"'+(isSel?' checked':'')+' />'
+            +'<span class="mat-name">'+escH(name)+'</span>'
+            +'<div class="mat-controls">'
+            +'<input type="number" class="mat-qty" value="'+qty+'" min="0.1" step="0.1" />'
+            +'<select class="mat-unit">'+opts+'</select>'
+            +'</div>'
+            +'</div>';
+    }).join('');
+    list.innerHTML=html;
+
+    filtered.forEach(function(name,fi){
+        var rid='mr'+fi;
+        var row=document.getElementById(rid);
+        if(!row) return;
+        var cb=row.querySelector('.mat-cb');
+        var qtyEl=row.querySelector('.mat-qty');
+        var unitEl=row.querySelector('.mat-unit');
+
+        row.addEventListener('click', function(e){
+            if(e.target===qtyEl||e.target===unitEl) return;
+            e.stopPropagation();
+            if(sels[name]){
+                delete sels[name];
+                row.classList.remove('checked');
+                cb.checked=false;
             } else {
-                ctrl.classList.remove('visible');
-                ctrl.style.display = 'none';
+                sels[name]={qty:'1',unit:'unit'};
+                row.classList.add('checked');
+                cb.checked=true;
+                qtyEl.value='1';
+                unitEl.value='unit';
             }
-        }
-    }
-    updateSummary();
-}
+            updateSummary();
+        });
 
+        qtyEl.addEventListener('click',function(e){ e.stopPropagation(); });
+        qtyEl.addEventListener('input',function(e){ e.stopPropagation(); if(sels[name]) sels[name].qty=this.value; updateSummary(); });
 
-function updateQty(name, val) {
-    if (selections[name]) { selections[name].qty = val; updateSummary(); }
-}
-
-function updateUnit(name, val) {
-    if (selections[name]) { selections[name].unit = val; updateSummary(); }
-}
-
-function clearSelections() {
-    selections = {};
-    renderMaterials();
-    updateSummary();
-}
-
-function buildColL() {
-    return Object.keys(selections)
-        .map(k => `${selections[k].qty} ${selections[k].unit} - ${k}`)
-        .join(', ');
-}
-
-function updateSummary() {
-    const summary = document.getElementById('selected-summary');
-    const tagsEl  = document.getElementById('selected-tags');
-    const outputEl = document.getElementById('output-text');
-    const copyBtn  = document.getElementById('copy-btn');
-    const keys = Object.keys(selections);
-
-    if (!keys.length) {
-        summary.classList.remove('visible');
-        copyBtn.disabled = true;
-        return;
-    }
-
-    summary.classList.add('visible');
-    copyBtn.disabled = false;
-
-    tagsEl.innerHTML = keys.map(k =>
-        `<span class="selected-tag">${selections[k].qty} ${selections[k].unit} — ${esc(k)}</span>`
-    ).join('');
-    outputEl.textContent = buildColL();
-}
-
-function copyAndDone() {
-    const val = buildColL();
-    if (!val) { showToast('No materials selected yet', 'error'); return; }
-
-    navigator.clipboard.writeText(val).then(() => {
-        // Mark job as done (set a placeholder so it disappears from the "needs materials" list)
-        if (currentJobIdx !== null) {
-            allJobs[currentJobIdx].materials = val;
-            if (allJobs[currentJobIdx]._raw) allJobs[currentJobIdx]._raw[11] = val;
-        }
-
-        // Show confirmation inside modal briefly, then close
-        const hint = document.getElementById('copy-hint');
-        hint.style.display = 'inline-block';
-
-        showToast('✓ Copied! Paste into your spreadsheet cell.', 'success');
-
-        setTimeout(() => {
-            closeModal();
-            renderJobs();
-        }, 1200);
-    }).catch(() => {
-        // Clipboard API failed — fallback: select the text for manual copy
-        showToast('Auto-copy failed — text is highlighted below, press Ctrl+C', 'error');
-        const out = document.getElementById('output-text');
-        const range = document.createRange();
-        range.selectNodeContents(out);
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(range);
+        unitEl.addEventListener('click',function(e){ e.stopPropagation(); });
+        unitEl.addEventListener('change',function(e){ e.stopPropagation(); if(sels[name]) sels[name].unit=this.value; updateSummary(); });
     });
 }
 
-// ── EXPORT ────────────────────────────────────────────────────────────────
-function showExport() {
-    const tbody = document.getElementById('export-tbody');
-    tbody.innerHTML = allJobs.map(j => `<tr>
-        <td>${esc(j.tab)}</td>
-        <td>${esc(j.jobNumber)}</td>
-        <td>${esc(j.postcode)}</td>
-        <td>${esc(j.installDate)}</td>
-        <td>${esc(j.days)}</td>
-        <td>${esc(j.jobType)}</td>
-        <td class="${j.materials ? 'mat-filled' : 'mat-empty'}">${j.materials || '(empty)'}</td>
-    </tr>`).join('');
-    const sec = document.getElementById('export-section');
-    sec.classList.add('visible');
-    sec.scrollIntoView({ behavior:'smooth' });
+function clearSels(){ sels={}; renderMatList(); updateSummary(); }
+
+function buildColL(){
+    return Object.keys(sels).map(function(k){ return sels[k].qty+' '+sels[k].unit+' - '+k; }).join(', ');
 }
 
-function downloadCSV() {
-    const header = 'Sheet,Job Number,Postcode,Install Date,Days,Job Type,Materials\n';
-    const rows = allJobs.map(j =>
-        [j.tab, j.jobNumber, j.postcode, j.installDate, j.days, j.jobType, j.materials]
-        .map(v => `"${(v||'').replace(/"/g,'""')}"`)
-        .join(',')
-    ).join('\n');
-    const blob = new Blob([header + rows], { type:'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'pingu_materials_export.csv'; a.click();
-    showToast('CSV downloaded!', 'success');
+function updateSummary(){
+    var keys=Object.keys(sels);
+    var summary=document.getElementById('selSummary');
+    var copyBtn=document.getElementById('copyBtn');
+    if(!keys.length){ summary.classList.remove('show'); copyBtn.disabled=true; return; }
+    summary.classList.add('show'); copyBtn.disabled=false;
+    document.getElementById('selTags').innerHTML=keys.map(function(k){
+        return '<span class="sel-tag">'+sels[k].qty+' '+sels[k].unit+' — '+escH(k)+'</span>';
+    }).join('');
+    document.getElementById('outputVal').textContent=buildColL();
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────────────
-function esc(t) {
-    if (t == null) return '';
-    const d = document.createElement('div'); d.textContent = String(t); return d.innerHTML;
+function copyAndDone(){
+    var val=buildColL();
+    if(!val){ showToast('Select at least one material','err'); return; }
+    navigator.clipboard.writeText(val).then(function(){
+        if(currentJobIdx!==null) allJobs[currentJobIdx].materials=val;
+        document.getElementById('copyFlash').style.display='inline';
+        showToast('Copied! Paste into your spreadsheet cell.','ok');
+        setTimeout(function(){ closeModal(); renderJobs(); },1200);
+    }).catch(function(){
+        var el=document.getElementById('outputVal');
+        var r=document.createRange(); r.selectNodeContents(el);
+        var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+        showToast('Press Ctrl+C to copy the highlighted text','err');
+    });
 }
 
-function showToast(msg, type) {
-    const t = document.getElementById('status-toast');
-    t.textContent = msg; t.className = `status-toast ${type} show`;
+function showExport(){
+    document.getElementById('exportTbody').innerHTML=allJobs.map(function(j){
+        return '<tr><td>'+escH(j.tab)+'</td><td>'+escH(j.jobNumber)+'</td><td>'+escH(j.postcode)+'</td><td>'+escH(j.installDate)+'</td><td>'+escH(j.days)+'</td><td>'+escH(j.jobType)+'</td><td class="'+(j.materials?'mfilled':'mempty')+'">'+(j.materials||'(empty)')+'</td></tr>';
+    }).join('');
+    var sec=document.getElementById('exportSection'); sec.classList.add('show'); sec.scrollIntoView({behavior:'smooth'});
+}
+
+function downloadCSV(){
+    var h='Sheet,Job Number,Postcode,Install Date,Days,Job Type,Materials\n';
+    var rows=allJobs.map(function(j){ return [j.tab,j.jobNumber,j.postcode,j.installDate,j.days,j.jobType,j.materials].map(function(v){ return '"'+(v||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var b=new Blob([h+rows],{type:'text/csv'}); var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='pingu_materials.csv'; a.click();
+    showToast('CSV downloaded!','ok');
+}
+
+function escH(t){ if(t==null) return ''; var d=document.createElement('div'); d.textContent=String(t); return d.innerHTML; }
+function escAttr(t){ return String(t||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function showToast(msg,type){
+    var el=document.getElementById('toastel');
+    el.textContent=msg; el.className='toastel '+type+' show';
     clearTimeout(window._tt);
-    window._tt = setTimeout(() => t.classList.remove('show'), 3200);
+    window._tt=setTimeout(function(){ el.classList.remove('show'); },3200);
 }
 
-document.getElementById('job-modal').addEventListener('click', e => {
-    if (e.target.id === 'job-modal') closeModal();
-});
+document.getElementById('jobModal').addEventListener('click',function(e){ if(e.target.id==='jobModal') closeModal(); });
 </script>
 </body>
 </html>
