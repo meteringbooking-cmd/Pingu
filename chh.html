@@ -270,7 +270,7 @@
             <a href="index.html" class="back-btn">← Back</a>
         </div>
         <h1>CHH SFA</h1>
-        <p class="subtitle">PDF Ripper + View Submissions from CHH SFA collection</p>
+        <p class="subtitle">PDF Ripper → saves directly to CHH SFA collection • View Submissions grouped by Install Date week</p>
     </header>
 
     <!-- Tabs -->
@@ -303,7 +303,7 @@
             <div class="progress-step" id="step-address"><span class="step-icon">📍</span> Finding address from page 1…</div>
             <div class="progress-step" id="step-layout"> <span class="step-icon">🗺️</span> Rendering layout image from page 3…</div>
             <div class="progress-step" id="step-boxes"> <span class="step-icon">📦</span> Extracting box content from page 4…</div>
-            <div class="progress-step" id="step-save"> <span class="step-icon">💾</span> Saving to job record…</div>
+            <div class="progress-step" id="step-save"> <span class="step-icon">💾</span> Saving to CHH SFA collection…</div>
         </div>
         <div class="save-banner" id="save-banner"></div>
         <div class="results-area" id="results-area">
@@ -358,7 +358,7 @@
     <!-- Submissions Tab -->
     <div id="submissions-view" class="submissions-view">
         <div class="week-selector">
-            <label>Week Commencing:</label>
+            <label>Week Commencing (based on Install Date):</label>
             <select id="week-select" onchange="loadJobsForWeek()">
                 <!-- populated by JS -->
             </select>
@@ -374,7 +374,7 @@
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc }
+    import { getFirestore, collection, getDocs, query, where, orderBy, doc, setDoc }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
     import { getStorage, ref, uploadString, getDownloadURL }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
@@ -393,8 +393,8 @@
         const app = initializeApp(firebaseConfig);
         window.db = getFirestore(app);
         window.storage = getStorage(app);
-        window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, ref, uploadString, getDownloadURL };
-        console.log('✅ Firebase initialized');
+        window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, setDoc, ref, uploadString, getDownloadURL };
+        console.log('✅ Firebase initialized for CHH SFA');
     } catch (e) {
         console.error('Firebase error:', e);
     }
@@ -581,7 +581,7 @@
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
         const base64 = dataUrl.split(',')[1];
-        const storagePath = `pdf-ripper/${jobNum}/proposed-layout-${Date.now()}.jpg`;
+        const storagePath = `pdf-ripper/${jobNum || 'unknown'}/proposed-layout-${Date.now()}.jpg`;
         const storageRef = ref(window.storage, storagePath);
         await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
         return await getDownloadURL(storageRef);
@@ -591,27 +591,31 @@
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
         const base64 = dataUrl.split(',')[1];
-        const storagePath = `pdf-ripper/${jobNum}/site-assessment-${Date.now()}.jpg`;
+        const storagePath = `pdf-ripper/${jobNum || 'unknown'}/site-assessment-${Date.now()}.jpg`;
         const storageRef = ref(window.storage, storagePath);
         await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
         return await getDownloadURL(storageRef);
     }
 
-    async function saveToJob(address, layoutUrl, page4Url, rawPage4Text) {
-        if (!verifiedJobId || !window.firebaseModules) return false;
-        const { doc, updateDoc } = window.firebaseModules;
-        const jobRef = doc(window.db, 'jobs', verifiedJobId);
+    // NEW: Save to CHH SFA collection (creates a new document)
+    async function saveToCHHSFA(address, layoutUrl, page4Url, rawPage4Text) {
+        if (!window.firebaseModules) return false;
+        const { collection, doc, setDoc } = window.firebaseModules;
+        const chhRef = collection(window.db, 'CHH SFA');
+        const newDoc = doc(chhRef); // auto-generated ID
+
         const payload = {
-            pdfRipper: {
-                address: address,
-                proposedLayoutUrl: layoutUrl || null,
-                siteAssessmentUrl: page4Url || null,
-                siteAssessmentText: rawPage4Text || '',
-                savedAt: new Date().toISOString(),
-                jobNumber: verifiedJobNum
-            }
+            'Job Number': verifiedJobNum || 'UNKNOWN',
+            'Address': address,
+            'Proposed Layout': layoutUrl || null,
+            'Site Assessment': page4Url || null,
+            'Site Assessment Text': rawPage4Text || '',
+            'SavedAt': new Date().toISOString(),
+            // Install Date / Postcode will be added manually later in admin if needed
         };
-        await updateDoc(jobRef, payload);
+
+        await setDoc(newDoc, payload);
+        console.log('✅ Saved to CHH SFA collection with ID:', newDoc.id);
         return true;
     }
 
@@ -622,7 +626,8 @@
         btn.disabled = true; btn.textContent = '⏳ Processing…';
         document.getElementById('progress-area').classList.add('show');
         const saveStepEl = document.getElementById('step-save');
-        if (saveStepEl) saveStepEl.style.display = verifiedJobId ? '' : 'none';
+        if (saveStepEl) saveStepEl.style.display = '';
+
         try {
             setStep('step-parse', 'active');
             const arrayBuffer = await pdfFile.arrayBuffer();
@@ -676,21 +681,21 @@
 
             let savedLayoutUrl = null;
             let savedPage4Url = null;
-            if (verifiedJobId) {
-                setStep('step-save', 'active');
-                showSaveBanner('saving', '💾 Uploading images and saving to job record…');
-                try {
-                    if (layoutDataUrl) savedLayoutUrl = await uploadLayoutImage(layoutDataUrl, verifiedJobNum);
-                    if (page4DataUrl) savedPage4Url = await uploadPage4Image(page4DataUrl, verifiedJobNum);
-                    await saveToJob(address, savedLayoutUrl, savedPage4Url, page4RawText);
-                    setStep('step-save', 'done');
-                    showSaveBanner('saved', `✅ Saved to Job #${verifiedJobNum}`);
-                } catch (saveErr) {
-                    console.error('Save error:', saveErr);
-                    setStep('step-save', 'error');
-                    showSaveBanner('save-err', `⚠️ Save failed: ${saveErr.message}`);
-                }
+
+            setStep('step-save', 'active');
+            showSaveBanner('saving', '💾 Saving to CHH SFA collection…');
+            try {
+                if (layoutDataUrl) savedLayoutUrl = await uploadLayoutImage(layoutDataUrl, verifiedJobNum);
+                if (page4DataUrl) savedPage4Url = await uploadPage4Image(page4DataUrl, verifiedJobNum);
+                await saveToCHHSFA(address, savedLayoutUrl, savedPage4Url, page4RawText);
+                setStep('step-save', 'done');
+                showSaveBanner('saved', `✅ Saved to CHH SFA collection! (Job: ${verifiedJobNum || 'new entry'})`);
+            } catch (saveErr) {
+                console.error('Save error:', saveErr);
+                setStep('step-save', 'error');
+                showSaveBanner('save-err', `⚠️ Save failed: ${saveErr.message}`);
             }
+
             populateResults(address, layoutDataUrl, page4DataUrl, page4RawText);
         } catch (err) {
             console.error(err);
@@ -823,34 +828,57 @@
         if (n === 1) initWeekSelector();
     }
 
-    // Submissions Tab - Updated to pull Postcode and Install Date from your admin view style
+    // Helper: Get Monday (Week Commencing) from any date
+    function getWeekCommencing(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+        d.setDate(diff);
+        d.setHours(0, 0, 0, 0);
+        return d.toISOString().split('T')[0];
+    }
+
+    // Submissions: Week selector based on Install Date
     async function initWeekSelector() {
         const select = document.getElementById('week-select');
-        select.innerHTML = '<option value="">Loading weeks...</option>';
+        select.innerHTML = '<option value="">Loading weeks from Install Dates...</option>';
+
         try {
-            const { collection, getDocs, query, orderBy } = window.firebaseModules;
-            const q = query(collection(window.db, 'CHH SFA'), orderBy('Week Commencing', 'desc'));
-            const snap = await getDocs(q);
+            const { collection, getDocs } = window.firebaseModules;
+            const snap = await getDocs(collection(window.db, 'CHH SFA'));
+
             const weeks = new Set();
             snap.forEach(docSnap => {
                 const data = docSnap.data();
-                let wc = data['Week Commencing'];
-                if (wc && wc.toDate) wc = wc.toDate();
-                if (wc) {
-                    const dateStr = wc instanceof Date ? wc.toISOString().split('T')[0] : String(wc).split('T')[0];
-                    if (dateStr) weeks.add(dateStr);
+                let installDate = null;
+                const possibleFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
+                for (let f of possibleFields) {
+                    if (data[f]) {
+                        installDate = data[f];
+                        if (installDate && installDate.toDate) installDate = installDate.toDate();
+                        break;
+                    }
+                }
+                if (installDate) {
+                    const weekStr = getWeekCommencing(installDate);
+                    weeks.add(weekStr);
                 }
             });
-            select.innerHTML = '<option value="">Select week commencing...</option>';
+
+            select.innerHTML = '<option value="">Select week (based on Install Date)...</option>';
             Array.from(weeks).sort().reverse().forEach(w => {
                 const opt = document.createElement('option');
                 opt.value = w;
-                opt.textContent = new Date(w).toLocaleDateString('en-GB', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+                opt.textContent = new Date(w).toLocaleDateString('en-GB', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) + ' (Mon)';
                 select.appendChild(opt);
             });
+
+            if (weeks.size === 0) {
+                select.innerHTML = '<option value="">No Install Dates found in CHH SFA yet</option>';
+            }
         } catch (e) {
             console.error(e);
-            select.innerHTML = '<option value="">Error loading weeks</option>';
+            select.innerHTML = '<option value="">Error loading weeks — check console</option>';
         }
     }
 
@@ -859,59 +887,50 @@
         if (!weekStr) return alert('Please select a week');
 
         const listEl = document.getElementById('jobs-list');
-        listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">Loading jobs...</div>';
+        listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">Loading jobs for the selected week...</div>';
 
         try {
-            const { collection, getDocs, query, where, orderBy } = window.firebaseModules;
-            const colRef = collection(window.db, 'CHH SFA');
+            const { collection, getDocs } = window.firebaseModules;
+            const snap = await getDocs(collection(window.db, 'CHH SFA'));
 
-            const startDate = new Date(weekStr);
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 7);
-
-            const q = query(colRef, 
-                where('Week Commencing', '>=', startDate),
-                where('Week Commencing', '<', endDate),
-                orderBy('Week Commencing')
-            );
-
-            const snap = await getDocs(q);
             listEl.innerHTML = '';
 
-            if (snap.empty) {
-                listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">No jobs found for this week.</div>';
-                return;
-            }
-
+            let found = 0;
             snap.forEach(docSnap => {
                 const data = docSnap.data();
-                const jobNum = data['Job Number'] || '—';
-
-                // Postcode from your admin view fields
-                let postcode = data['Postcode'] || data['postcode'] || '—';
-
-                // Install Date from multiple possible fields (matching your admin view)
-                let installDate = '—';
-                const dateFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
-                for (let field of dateFields) {
-                    if (data[field]) {
-                        let d = data[field];
-                        if (d && d.toDate) d = d.toDate();
-                        installDate = new Date(d).toLocaleDateString('en-GB');
+                let installDate = null;
+                const possibleFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
+                for (let f of possibleFields) {
+                    if (data[f]) {
+                        installDate = data[f];
+                        if (installDate && installDate.toDate) installDate = installDate.toDate();
                         break;
                     }
                 }
+                if (!installDate) return;
+
+                const jobWeek = getWeekCommencing(installDate);
+                if (jobWeek !== weekStr) return;
+
+                found++;
+                const jobNum = data['Job Number'] || '—';
+                const postcode = data['Postcode'] || data['postcode'] || '—';
+                const installFormatted = new Date(installDate).toLocaleDateString('en-GB');
 
                 const div = document.createElement('div');
                 div.className = 'job-item';
                 div.innerHTML = `
                     <div class="job-num">${jobNum}</div>
                     <div class="postcode">${postcode}</div>
-                    <div class="install-date">${installDate}</div>
+                    <div class="install-date">${installFormatted}</div>
                 `;
                 div.onclick = () => showJobModal(data);
                 listEl.appendChild(div);
             });
+
+            if (found === 0) {
+                listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">No jobs found for this week based on Install Date.</div>';
+            }
         } catch (err) {
             console.error(err);
             listEl.innerHTML = `<div style="padding:3rem;color:var(--error);">Error: ${err.message}</div>`;
@@ -950,7 +969,6 @@
         });
     }
 
-    // Enter key for job number
     document.addEventListener('DOMContentLoaded', () => {
         const jobInput = document.getElementById('job-number-input');
         if (jobInput) jobInput.addEventListener('keydown', e => { if (e.key === 'Enter') verifyJobNumber(); });
