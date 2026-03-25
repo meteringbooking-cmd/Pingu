@@ -47,14 +47,8 @@
         .logo {
             font-family:'Syne',sans-serif; font-size:2rem; font-weight:800;
             background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent));
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; text-decoration:none;
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
         }
-        .back-btn {
-            background:var(--dark-light); color:var(--text); text-decoration:none;
-            padding:0.65rem 1.3rem; border-radius:8px; font-size:0.85rem;
-            border:2px solid transparent; transition:all 0.2s;
-        }
-        .back-btn:hover { border-color:var(--accent); }
         h1 { font-family:'Syne',sans-serif; font-size:2.2rem; font-weight:800; }
         .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
 
@@ -249,30 +243,6 @@
         .debug-panel.show { display:block; }
 
         /* ── View Submissions Panel ───────────────────────────────────────────── */
-        .week-selector {
-            background: var(--dark-light); border: 2px solid var(--dark-lighter);
-            border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
-            animation: fadeUp 0.4s ease-out;
-        }
-        .week-selector label {
-            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
-            color: var(--secondary); display: block; margin-bottom: 0.75rem;
-        }
-        .week-grid {
-            display: flex; flex-wrap: wrap; gap: 0.5rem;
-        }
-        .week-btn {
-            padding: 0.55rem 1rem; border-radius: 8px; border: 2px solid var(--dark-lighter);
-            background: var(--dark-lighter); color: var(--text-dim);
-            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
-            cursor: pointer; transition: all 0.2s;
-        }
-        .week-btn:hover { border-color: var(--accent); color: var(--text); }
-        .week-btn.active {
-            background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(0,217,255,0.2));
-            border-color: var(--primary); color: var(--text);
-        }
-
         .submissions-loading {
             text-align: center; padding: 3rem; color: var(--text-dim); font-size: 0.9rem;
         }
@@ -379,8 +349,9 @@
 <div class="container">
     <header>
         <div class="header-row">
-            <a href="index.html" class="logo">Pingu - Solar</a>
-            <a href="index.html" class="back-btn">← Back</a>
+            <!-- CHANGE 1: logo is now a plain <span> (not clickable) -->
+            <!-- CHANGE 2: back button removed -->
+            <span class="logo">Pingu - Solar</span>
         </div>
         <h1>🏠 CHH SFA</h1>
         <p class="subtitle">Upload a CHH SFA PDF — extracts the address, proposed layout image, and site assessment. Saved to the CHH SFA Firebase collection.</p>
@@ -489,14 +460,7 @@
     <!-- ══ SUBMISSIONS TAB ═════════════════════════════════════════════════════ -->
     <div class="tab-panel" id="tab-submissions">
 
-        <!-- Week Selector -->
-        <div class="week-selector" id="week-selector-wrap">
-            <label>📅 Filter by Week Commencing (Install Date)</label>
-            <div id="weeks-loading" style="color:var(--text-dim);font-size:0.85rem;">Loading weeks from jobs…</div>
-            <div class="week-grid" id="week-grid" style="display:none;"></div>
-        </div>
-
-        <div id="submissions-loading-area" style="display:none;">
+        <div id="submissions-loading-area">
             <div class="submissions-loading">
                 <div class="spinner"></div>
                 Loading submissions…
@@ -537,8 +501,7 @@
         window.storage = getStorage(app);
         window.firebaseModules = { collection, getDocs, query, where, doc, updateDoc, setDoc, ref, uploadString, getDownloadURL, orderBy, addDoc };
         console.log('✅ Firebase initialized');
-        // Kick off jobs load for week selector after DOM ready
-        window.addEventListener('DOMContentLoaded', () => { window.loadJobsForWeeks(); });
+        window.addEventListener('DOMContentLoaded', () => { window.loadSubmissions(); });
     } catch (e) {
         console.error('Firebase error:', e);
     }
@@ -554,8 +517,7 @@
     let rawPage4Lines   = [];
     let verifiedJobId   = null;
     let verifiedJobNum  = null;
-    let allJobsCache    = [];    // from Solar-jobs + jobs collections
-    let selectedWeekMs  = null; // timestamp of Mon of selected week
+    let allJobsCache    = [];
 
     /* ═════════════════════════════════════════════
        TAB SWITCHING
@@ -565,8 +527,8 @@
         document.getElementById('tab-submissions').classList.toggle('active', tab === 'submissions');
         document.getElementById('tab-upload-btn').classList.toggle('active', tab === 'upload');
         document.getElementById('tab-submissions-btn').classList.toggle('active', tab === 'submissions');
-        if (tab === 'submissions' && allJobsCache.length === 0) {
-            loadJobsForWeeks();
+        if (tab === 'submissions') {
+            loadSubmissions();
         }
     };
 
@@ -587,15 +549,6 @@
         return null;
     }
 
-    function getMondayOf(date) {
-        const d = new Date(date);
-        d.setHours(0,0,0,0);
-        const day = d.getDay(); // 0=Sun
-        const diff = (day === 0) ? -6 : 1 - day;
-        d.setDate(d.getDate() + diff);
-        return d;
-    }
-
     function formatDateDisplay(d) {
         if (!d) return 'N/A';
         return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
@@ -608,116 +561,15 @@
     }
 
     /* ═════════════════════════════════════════════
-       LOAD JOBS FOR WEEK SELECTOR
-       Mirrors adminviewjobs.html: reads Solar-jobs + jobs,
-       merges, extracts install dates + postcodes
+       CHANGE 3: Load and display ONLY submitted CHH SFA entries
+       (no week filter, no unsubmitted jobs shown)
     ═════════════════════════════════════════════ */
-    window.loadJobsForWeeks = async function() {
+    window.loadSubmissions = async function() {
         if (!window.firebaseModules) {
-            setTimeout(loadJobsForWeeks, 600);
-            return;
-        }
-        document.getElementById('weeks-loading').style.display = '';
-        document.getElementById('week-grid').style.display     = 'none';
-
-        try {
-            const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
-
-            const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
-            const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
-
-            const processDoc = (docSnap, source) => {
-                const data = docSnap.data();
-                let bookedDate = null;
-                for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
-                    if (data[f]) { bookedDate = parseDate(data[f]); if (bookedDate) break; }
-                }
-                let postcode = data['Postcode'] || data['postcode'] || 'N/A';
-                const jobNumber = String(data['Job Number'] || 'N/A').trim();
-                return { id: docSnap.id, source, jobNumber, bookedDate, postcode };
-            };
-
-            const solarMap = new Map();
-            solarSnap.forEach(d => {
-                const job = processDoc(d, 'solar');
-                if (!solarMap.has(job.jobNumber)) solarMap.set(job.jobNumber, job);
-            });
-
-            const jobsMap = new Map();
-            jobsSnap.forEach(d => {
-                const job = processDoc(d, 'jobs');
-                if (!jobsMap.has(job.jobNumber)) jobsMap.set(job.jobNumber, job);
-            });
-
-            // Merge: solar wins for data, but jobs provides the same bookedDate/postcode
-            const merged = [];
-            solarMap.forEach((solarJob, jn) => {
-                const jobsJob = jobsMap.get(jn);
-                if (jobsJob) {
-                    // prefer jobs collection for install date if solar doesn't have one
-                    merged.push({
-                        ...solarJob,
-                        bookedDate: solarJob.bookedDate || jobsJob.bookedDate,
-                        postcode:   solarJob.postcode !== 'N/A' ? solarJob.postcode : jobsJob.postcode
-                    });
-                } else {
-                    merged.push(solarJob);
-                }
-            });
-            jobsMap.forEach((jobsJob, jn) => {
-                if (!solarMap.has(jn)) merged.push(jobsJob);
-            });
-
-            allJobsCache = merged;
-            buildWeekButtons(merged);
-
-        } catch(err) {
-            console.error(err);
-            document.getElementById('weeks-loading').textContent = 'Error loading jobs: ' + err.message;
-        }
-    };
-
-    function buildWeekButtons(jobs) {
-        const weekSet = new Set();
-        jobs.forEach(j => {
-            if (j.bookedDate) {
-                const mon = getMondayOf(j.bookedDate);
-                weekSet.add(mon.getTime());
-            }
-        });
-
-        const sorted = Array.from(weekSet).sort((a,b) => b - a); // newest first
-
-        if (!sorted.length) {
-            document.getElementById('weeks-loading').textContent = 'No install dates found in jobs.';
+            setTimeout(loadSubmissions, 600);
             return;
         }
 
-        const grid = document.getElementById('week-grid');
-        grid.innerHTML = sorted.map(ms => {
-            const d = new Date(ms);
-            const sun = new Date(ms); sun.setDate(sun.getDate() + 6);
-            const label = `w/c ${formatDateDisplay(d)}`;
-            return `<button class="week-btn" data-ms="${ms}" onclick="selectWeek(${ms})">${label}</button>`;
-        }).join('');
-
-        document.getElementById('weeks-loading').style.display = 'none';
-        grid.style.display = 'flex';
-    }
-
-    window.selectWeek = async function(ms) {
-        selectedWeekMs = ms;
-        // Highlight selected
-        document.querySelectorAll('.week-btn').forEach(btn => {
-            btn.classList.toggle('active', parseInt(btn.dataset.ms) === ms);
-        });
-        await loadSubmissionsForWeek(ms);
-    };
-
-    /* ═════════════════════════════════════════════
-       LOAD CHH SFA SUBMISSIONS FOR SELECTED WEEK
-    ═════════════════════════════════════════════ */
-    async function loadSubmissionsForWeek(weekStartMs) {
         const loadingArea = document.getElementById('submissions-loading-area');
         const listEl      = document.getElementById('submissions-list');
         loadingArea.style.display = 'block';
@@ -725,61 +577,87 @@
         listEl.innerHTML = '';
 
         try {
-            const { collection, getDocs } = window.firebaseModules;
+            const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
+
+            // Fetch all CHH SFA submissions
             const chhSnap = await getDocs(collection(window.db, 'CHH SFA'));
-            const allCHH = [];
+            const allCHH  = [];
             chhSnap.forEach(d => { allCHH.push({ id: d.id, ...d.data() }); });
 
-            // Find jobs whose install date falls in this Mon–Sun window
-            const weekStart = new Date(weekStartMs); weekStart.setHours(0,0,0,0);
-            const weekEnd   = new Date(weekStartMs); weekEnd.setDate(weekEnd.getDate() + 6); weekEnd.setHours(23,59,59,999);
+            // Also load jobs cache for postcode/install date enrichment
+            if (allJobsCache.length === 0) {
+                try {
+                    const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
+                    const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
 
-            const jobsInWeek = allJobsCache.filter(j => {
-                if (!j.bookedDate) return false;
-                return j.bookedDate >= weekStart && j.bookedDate <= weekEnd;
-            });
+                    const processDoc = (docSnap, source) => {
+                        const data = docSnap.data();
+                        let bookedDate = null;
+                        for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
+                            if (data[f]) { bookedDate = parseDate(data[f]); if (bookedDate) break; }
+                        }
+                        let postcode = data['Postcode'] || data['postcode'] || 'N/A';
+                        const jobNumber = String(data['Job Number'] || 'N/A').trim();
+                        return { id: docSnap.id, source, jobNumber, bookedDate, postcode };
+                    };
 
-            // Build lookup: jobNumber → CHH SFA submission
-            const chhByJob = {};
-            allCHH.forEach(sub => {
-                const jn = sub.jobNumber || sub['jobNumber'] || '';
-                if (jn) chhByJob[jn.trim()] = sub;
-            });
+                    const solarMap = new Map();
+                    solarSnap.forEach(d => { const j = processDoc(d,'solar'); if (!solarMap.has(j.jobNumber)) solarMap.set(j.jobNumber, j); });
+                    const jobsMap = new Map();
+                    jobsSnap.forEach(d => { const j = processDoc(d,'jobs'); if (!jobsMap.has(j.jobNumber)) jobsMap.set(j.jobNumber, j); });
+
+                    solarMap.forEach((solarJob, jn) => {
+                        const jobsJob = jobsMap.get(jn);
+                        allJobsCache.push(jobsJob
+                            ? { ...solarJob, bookedDate: solarJob.bookedDate || jobsJob.bookedDate, postcode: solarJob.postcode !== 'N/A' ? solarJob.postcode : jobsJob.postcode }
+                            : solarJob);
+                    });
+                    jobsMap.forEach((j, jn) => { if (!solarMap.has(jn)) allJobsCache.push(j); });
+                } catch(e) {
+                    console.warn('Could not load jobs cache:', e);
+                }
+            }
 
             loadingArea.style.display = 'none';
 
-            if (!jobsInWeek.length) {
+            if (!allCHH.length) {
                 listEl.innerHTML = `
                     <div class="no-submissions">
                         <span class="icon">📋</span>
-                        <p style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">No Jobs This Week</p>
-                        <p>No jobs with install dates in this week were found.</p>
+                        <p style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">No Submissions Yet</p>
+                        <p>No CHH SFA forms have been submitted yet.</p>
                     </div>`;
                 listEl.classList.add('show');
                 return;
             }
 
-            // Sort by booked date
-            jobsInWeek.sort((a,b) => (a.bookedDate||0) - (b.bookedDate||0));
+            // Sort by savedAt descending (newest first)
+            allCHH.sort((a, b) => {
+                const da = a.savedAt ? new Date(a.savedAt) : new Date(0);
+                const db = b.savedAt ? new Date(b.savedAt) : new Date(0);
+                return db - da;
+            });
 
-            listEl.innerHTML = jobsInWeek.map(job => {
-                const sub  = chhByJob[job.jobNumber] || null;
-                const hasSub = !!sub;
-                const savedAt = sub ? formatTimestamp(sub.savedAt || '') : '';
+            listEl.innerHTML = allCHH.map(sub => {
+                const jobNum    = sub.jobNumber || '—';
+                const address   = sub.address   || '—';
+                const savedAt   = formatTimestamp(sub.savedAt || '');
+                const layoutUrl = sub.proposedLayoutUrl || '';
+                const assessUrl = sub.siteAssessmentUrl || '';
 
-                const layoutUrl    = sub ? (sub.proposedLayoutUrl  || '') : '';
-                const assessUrl    = sub ? (sub.siteAssessmentUrl  || '') : '';
-                const address      = sub ? (sub.address            || '—') : '—';
+                // Enrich with install date / postcode from jobs cache
+                const cachedJob   = allJobsCache.find(j => j.jobNumber === jobNum);
+                const installDate = cachedJob && cachedJob.bookedDate ? formatDateDisplay(cachedJob.bookedDate) : (sub.installDate ? formatDateDisplay(parseDate(sub.installDate)) : 'N/A');
+                const postcode    = (cachedJob && cachedJob.postcode) || sub.postcode || 'N/A';
 
                 return `
-                <div class="submission-card" id="card-${escHtml(job.jobNumber)}">
-                    <div class="submission-card-header" onclick="toggleCard('${escHtml(job.jobNumber)}')">
-                        <div class="submission-job-number">#${escHtml(job.jobNumber)}</div>
+                <div class="submission-card" id="card-${escHtml(jobNum)}">
+                    <div class="submission-card-header" onclick="toggleCard('${escHtml(jobNum)}')">
+                        <div class="submission-job-number">#${escHtml(jobNum)}</div>
                         <div class="submission-meta">
-                            <div class="submission-meta-item">📮 Postcode: <span>${escHtml(job.postcode)}</span></div>
-                            <div class="submission-meta-item">📅 Install: <span>${formatDateDisplay(job.bookedDate)}</span></div>
-                            <div class="submission-meta-item">📄 SFA: <span style="color:${hasSub ? 'var(--success)' : 'var(--error)'}">${hasSub ? '✓ Submitted' : '✗ Not submitted'}</span></div>
-                            ${hasSub ? `<div class="submission-meta-item">📍 <span>${escHtml(address)}</span></div>` : ''}
+                            <div class="submission-meta-item">📮 Postcode: <span>${escHtml(postcode)}</span></div>
+                            <div class="submission-meta-item">📅 Install: <span>${escHtml(installDate)}</span></div>
+                            <div class="submission-meta-item">📍 <span>${escHtml(address)}</span></div>
                         </div>
                         <span class="submission-chevron">▼</span>
                     </div>
@@ -792,7 +670,7 @@
                                        <a class="dl-btn" href="${escHtml(layoutUrl)}" target="_blank" download>⬇️ Download</a>
                                        <a class="dl-btn" href="${escHtml(layoutUrl)}" target="_blank">🔗 Open</a>
                                    </div>`
-                                : `<div class="submission-img-placeholder">${hasSub ? '⚠️ No layout image saved' : '— Not submitted yet —'}</div>`
+                                : `<div class="submission-img-placeholder">⚠️ No layout image saved</div>`
                             }
                         </div>
                         <div class="submission-img-block">
@@ -803,7 +681,7 @@
                                        <a class="dl-btn" href="${escHtml(assessUrl)}" target="_blank" download>⬇️ Download</a>
                                        <a class="dl-btn" href="${escHtml(assessUrl)}" target="_blank">🔗 Open</a>
                                    </div>`
-                                : `<div class="submission-img-placeholder">${hasSub ? '⚠️ No assessment image saved' : '— Not submitted yet —'}</div>`
+                                : `<div class="submission-img-placeholder">⚠️ No assessment image saved</div>`
                             }
                         </div>
                     </div>
@@ -819,7 +697,7 @@
             listEl.innerHTML = `<div class="no-submissions"><span class="icon">❌</span><p>Error loading submissions: ${escHtml(err.message)}</p></div>`;
             listEl.classList.add('show');
         }
-    }
+    };
 
     window.toggleCard = function(jobNum) {
         const card = document.getElementById('card-' + jobNum);
@@ -912,9 +790,7 @@
         try {
             if (!window.firebaseModules) throw new Error('Firebase not ready');
             const { collection, getDocs, query, where } = window.firebaseModules;
-            // Check jobs collection (like adminviewjobs.html)
             let snap = await getDocs(query(collection(window.db, 'jobs'), where('Job Number', '==', num)));
-            // Fallback: Solar-jobs
             if (snap.empty) {
                 snap = await getDocs(query(collection(window.db, 'Solar-jobs'), where('Job Number', '==', num)));
             }
@@ -931,7 +807,6 @@
                 input.className = 'job-number-input matched';
                 badge.className = 'job-match-badge found';
                 const d = jobDoc.data();
-                // Pull postcode and install date from adminviewjobs-style fields
                 let installDateStr = '';
                 for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
                     if (d[f]) { installDateStr = d[f]; break; }
@@ -1072,19 +947,16 @@
             savedAt:            new Date().toISOString()
         };
 
-        // Pull install date + postcode from our jobs cache to store alongside
         const cachedJob = allJobsCache.find(j => j.jobNumber === jobNum);
         if (cachedJob) {
             payload.installDate = cachedJob.bookedDate ? cachedJob.bookedDate.toISOString() : null;
             payload.postcode    = cachedJob.postcode || '';
         } else if (jobNum) {
-            // Fallback: try to read from verified job data if cache not loaded
             payload.installDate = null;
             payload.postcode    = '';
         }
 
         if (jobNum) {
-            // Upsert: look for existing doc with this jobNumber
             const q    = query(collection(window.db, 'CHH SFA'), where('jobNumber', '==', jobNum));
             const snap = await getDocs(q);
             if (!snap.empty) {
@@ -1110,14 +982,12 @@
         document.getElementById('step-save').style.display = '';
 
         try {
-            // Step 1: Load PDF
             setStep('step-parse', 'active');
             const arrayBuffer = await pdfFile.arrayBuffer();
             const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             const totalPages  = pdf.numPages;
             setStep('step-parse', 'done');
 
-            // Step 2: Address from page 1
             setStep('step-address', 'active');
             let address = 'Not found';
             if (totalPages >= 1) {
@@ -1141,7 +1011,6 @@
             }
             setStep('step-address', 'done');
 
-            // Step 3: Layout image from page 3
             setStep('step-layout', 'active');
             layoutDataUrl = '';
             if (totalPages >= 3) {
@@ -1151,7 +1020,6 @@
             }
             setStep('step-layout', 'done');
 
-            // Step 4: Box content from page 4
             setStep('step-boxes', 'active');
             let page4DataUrl = null;
             let page4RawText = '';
@@ -1166,7 +1034,6 @@
             }
             setStep('step-boxes', 'done');
 
-            // Step 5: Save to CHH SFA
             setStep('step-save', 'active');
             showSaveBanner('saving', '💾 Uploading images and saving to CHH SFA…');
             try {
@@ -1178,8 +1045,6 @@
                 await saveToCHH(address, savedLayoutUrl, savedPage4Url, page4RawText, jobNum);
                 setStep('step-save', 'done');
                 showSaveBanner('saved', `✅ Saved to CHH SFA collection${verifiedJobNum ? ' · Job #' + verifiedJobNum : ''}`);
-                // Refresh cache so submissions tab is up to date
-                await loadJobsForWeeks();
             } catch (saveErr) {
                 console.error('Save error:', saveErr);
                 setStep('step-save', 'error');
