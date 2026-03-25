@@ -18,6 +18,7 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
+            --kf: #B57BFF;
             --shadow: rgba(255, 107, 53, 0.3);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -37,8 +38,10 @@
             pointer-events: none; z-index: 0;
         }
         @keyframes bgDrift { 0%,100%{transform:translate(0,0);}50%{transform:translate(18px,-15px);} }
-        .container { max-width: 1100px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
-        header { margin-bottom: 2.5rem; animation: slideDown 0.6s ease-out; }
+
+        .container { max-width: 960px; margin: 0 auto; padding: 2rem; position: relative; z-index: 1; }
+
+        header { margin-bottom: 2rem; animation: slideDown 0.6s ease-out; }
         @keyframes slideDown { from{opacity:0;transform:translateY(-22px);}to{opacity:1;transform:translateY(0);} }
         .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem; }
         .logo {
@@ -54,21 +57,32 @@
         .back-btn:hover { border-color:var(--accent); }
         h1 { font-family:'Syne',sans-serif; font-size:2.2rem; font-weight:800; }
         .subtitle { color:var(--text-dim); font-size:0.88rem; margin-top:0.25rem; }
+
+        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
+
+        /* ── Tabs ─────────────────────────────────────────────────────────────── */
         .tabs {
-            display: flex; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap;
+            display: flex; gap: 0.5rem; margin-bottom: 2rem;
+            background: var(--dark-light); padding: 0.4rem; border-radius: 12px;
+            border: 2px solid var(--dark-lighter); animation: fadeUp 0.4s ease-out;
         }
-        .tab {
-            padding: 0.8rem 1.6rem; border-radius: 12px 12px 0 0;
-            background: var(--dark-light); color: var(--text-dim);
-            cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 600;
-            transition: all 0.2s; border: 2px solid transparent;
+        .tab-btn {
+            flex: 1; padding: 0.75rem 1.25rem; border-radius: 9px; border: none;
+            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+            cursor: pointer; transition: all 0.25s; background: transparent;
+            color: var(--text-dim);
         }
-        .tab.active {
-            background: var(--dark-lighter); color: var(--text);
-            border-bottom: 3px solid var(--accent);
+        .tab-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white; box-shadow: 0 4px 14px var(--shadow);
         }
 
-        /* Ripper styles */
+        /* ── Tab Panels ──────────────────────────────────────────────────────── */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; animation: fadeUp 0.35s ease-out; }
+
+        /* ── Job Number Input ─────────────────────────────────────────────────── */
         .job-number-bar {
             background: var(--dark-light); border: 2px solid var(--dark-lighter);
             border-radius: 14px; padding: 1.25rem 1.5rem;
@@ -104,9 +118,11 @@
             display: none; padding: 0.3rem 0.8rem; border-radius: 20px;
             font-size: 0.75rem; font-weight: 700; white-space: nowrap;
         }
-        .job-match-badge.found { display: inline-block; background: rgba(78,204,163,0.15); border: 1px solid var(--success); color: var(--success); }
+        .job-match-badge.found     { display: inline-block; background: rgba(78,204,163,0.15); border: 1px solid var(--success); color: var(--success); }
         .job-match-badge.not-found { display: inline-block; background: rgba(255,107,107,0.12); border: 1px solid var(--error); color: var(--error); }
-        .job-match-badge.checking { display: inline-block; background: rgba(0,217,255,0.1); border: 1px solid var(--accent); color: var(--accent); }
+        .job-match-badge.checking  { display: inline-block; background: rgba(0,217,255,0.1); border: 1px solid var(--accent); color: var(--accent); }
+
+        /* ── Upload Zone ──────────────────────────────────────────────────────── */
         .upload-zone {
             border: 2px dashed rgba(0,217,255,0.3); border-radius: 16px;
             padding: 3rem 2rem; text-align: center; background: var(--dark-light);
@@ -121,6 +137,7 @@
         .upload-sub { color: var(--text-dim); font-size: 0.85rem; pointer-events: none; }
         .upload-file-name { margin-top: 0.75rem; color: var(--success); font-size: 0.9rem; font-weight: 600; pointer-events: none; }
         #file-input { display: none; }
+
         .extract-btn {
             width: 100%; padding: 1.1rem;
             background: linear-gradient(135deg, var(--primary), var(--accent));
@@ -131,6 +148,7 @@
         .extract-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 24px var(--shadow); }
         .extract-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .extract-btn.visible { display: block; animation: fadeUp 0.3s ease-out; }
+
         .progress-area {
             display: none; background: var(--dark-light); border: 2px solid var(--dark-lighter);
             border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
@@ -143,8 +161,8 @@
         }
         .progress-step:last-child { border-bottom: none; }
         .progress-step.active { color: var(--accent); }
-        .progress-step.done { color: var(--success); }
-        .progress-step.error { color: var(--error); }
+        .progress-step.done   { color: var(--success); }
+        .progress-step.error  { color: var(--error); }
         .step-icon { font-size: 1rem; width: 20px; flex-shrink: 0; text-align: center; }
         .spinner {
             width: 16px; height: 16px; border: 2px solid rgba(0,217,255,0.3);
@@ -152,24 +170,29 @@
             animation: spin 0.7s linear infinite; flex-shrink: 0;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+
         .error-msg {
             background: rgba(255,107,107,0.1); border: 2px solid rgba(255,107,107,0.3);
             border-radius: 10px; padding: 1rem 1.2rem; color: var(--error); font-size: 0.88rem;
             margin-bottom: 1rem; display: none;
         }
         .error-msg.show { display: block; animation: fadeUp 0.3s ease; }
+
+        /* ── Save banner ────────────────────────────────────────────────────── */
         .save-banner {
             display: none; margin-bottom: 1.5rem; padding: 1rem 1.3rem;
             border-radius: 12px; font-size: 0.9rem; align-items: center; gap: 0.75rem;
             animation: fadeUp 0.4s ease;
         }
-        .save-banner.show { display: flex; }
-        .save-banner.saving { background: rgba(0,217,255,0.08); border: 2px solid rgba(0,217,255,0.3); color: var(--accent); }
-        .save-banner.saved { background: rgba(78,204,163,0.1); border: 2px solid rgba(78,204,163,0.4); color: var(--success); }
-        .save-banner.save-err { background: rgba(255,107,107,0.1); border: 2px solid rgba(255,107,107,0.3); color: var(--error); }
+        .save-banner.show      { display: flex; }
+        .save-banner.saving    { background: rgba(0,217,255,0.08); border: 2px solid rgba(0,217,255,0.3); color: var(--accent); }
+        .save-banner.saved     { background: rgba(78,204,163,0.1);  border: 2px solid rgba(78,204,163,0.4); color: var(--success); }
+        .save-banner.save-err  { background: rgba(255,107,107,0.1); border: 2px solid rgba(255,107,107,0.3); color: var(--error); }
         .save-spinner { width:16px;height:16px;border:2px solid rgba(0,217,255,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0; }
+
         .results-area { display: none; animation: fadeUp 0.5s ease-out; }
         .results-area.show { display: block; }
+
         .result-section {
             background: var(--dark-light); border: 2px solid var(--dark-lighter);
             border-radius: 14px; margin-bottom: 1.5rem; overflow: hidden;
@@ -178,7 +201,7 @@
             display: flex; align-items: center; gap: 0.75rem; padding: 1rem 1.3rem;
             background: rgba(255,255,255,0.02); border-bottom: 2px solid var(--dark-lighter);
         }
-        .result-header-icon { font-size: 1.2rem; }
+        .result-header-icon  { font-size: 1.2rem; }
         .result-header-title { font-family:'Syne',sans-serif; font-weight:700; font-size:1rem; color:var(--accent); }
         .result-header-badge {
             margin-left: auto; padding: 0.2rem 0.65rem;
@@ -186,19 +209,23 @@
             border-radius: 20px; font-size: 0.7rem; color: var(--accent);
         }
         .result-body { padding: 1.3rem; }
+
         .address-block { font-family:'Syne',sans-serif; font-size:1.05rem; line-height:1.8; color:var(--text); }
-        .address-line { display: block; }
+        .address-line  { display: block; }
+
         .layout-image-wrap { text-align:center; background:rgba(255,255,255,0.02); border-radius:10px; padding:1rem; }
         .layout-image-wrap img { max-width:100%; border-radius:8px; border:1px solid var(--dark-lighter); }
         .image-hint { color:var(--text-dim); font-size:0.78rem; margin-top:0.75rem; }
+
         .copy-row { display:flex; gap:0.6rem; margin-top:1rem; flex-wrap:wrap; }
         .copy-btn {
             background:var(--dark-lighter); border:1px solid rgba(255,255,255,0.1);
             color:var(--text-dim); padding:0.45rem 0.9rem; border-radius:7px;
             font-family:'JetBrains Mono',monospace; font-size:0.78rem; cursor:pointer; transition:all 0.2s;
         }
-        .copy-btn:hover { border-color:var(--accent); color:var(--accent); }
+        .copy-btn:hover  { border-color:var(--accent); color:var(--accent); }
         .copy-btn.copied { border-color:var(--success); color:var(--success); }
+
         .reset-btn {
             width:100%; padding:0.8rem; background:none; border:2px solid rgba(255,107,53,0.25);
             color:var(--text-dim); border-radius:10px; font-family:'JetBrains Mono',monospace;
@@ -206,59 +233,145 @@
         }
         .reset-btn:hover { border-color:var(--primary); color:var(--primary); }
 
-        /* Submissions styles */
-        .submissions-view { display: none; }
-        .submissions-view.active { display: block; animation: fadeUp 0.4s ease-out; }
+        .debug-toggle {
+            width:100%; padding:0.6rem 1rem; background:none;
+            border:1px solid rgba(255,255,255,0.07); color:var(--text-dim); border-radius:8px;
+            font-family:'JetBrains Mono',monospace; font-size:0.75rem;
+            cursor:pointer; transition:all 0.2s; margin-top:0.75rem; text-align:left;
+        }
+        .debug-toggle:hover { border-color:rgba(255,255,255,0.2); color:var(--text); }
+        .debug-panel {
+            display:none; margin-top:0.75rem; background:rgba(0,0,0,0.3); border-radius:8px;
+            padding:1rem; font-size:0.72rem; color:var(--text-dim); white-space:pre-wrap;
+            max-height:300px; overflow-y:auto; line-height:1.5;
+            border:1px solid rgba(255,255,255,0.06);
+        }
+        .debug-panel.show { display:block; }
+
+        /* ── View Submissions Panel ───────────────────────────────────────────── */
         .week-selector {
-            background: var(--dark-light); padding: 1.25rem 1.5rem;
-            border-radius: 14px; margin-bottom: 1.5rem;
-            display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            border-radius: 14px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;
+            animation: fadeUp 0.4s ease-out;
         }
-        .week-selector label { font-family: 'Syne', sans-serif; font-weight: 700; color: var(--secondary); }
-        select, button {
-            background: var(--dark-lighter); color: var(--text);
-            border: 2px solid var(--dark-lighter); padding: 0.65rem 1rem;
-            border-radius: 9px; font-family: inherit;
+        .week-selector label {
+            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.95rem;
+            color: var(--secondary); display: block; margin-bottom: 0.75rem;
         }
-        .jobs-list {
-            background: var(--dark-light); border-radius: 14px; overflow: hidden;
+        .week-grid {
+            display: flex; flex-wrap: wrap; gap: 0.5rem;
         }
-        .job-item {
-            padding: 1rem 1.5rem; border-bottom: 1px solid var(--dark-lighter);
-            display: flex; align-items: center; gap: 1rem; cursor: pointer;
-            transition: all 0.2s;
+        .week-btn {
+            padding: 0.55rem 1rem; border-radius: 8px; border: 2px solid var(--dark-lighter);
+            background: var(--dark-lighter); color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+            cursor: pointer; transition: all 0.2s;
         }
-        .job-item:hover { background: var(--dark-lighter); }
-        .job-item:last-child { border-bottom: none; }
-        .job-num { font-weight: 700; color: var(--accent); min-width: 140px; }
-        .postcode { color: var(--text-dim); }
-        .install-date { margin-left: auto; color: var(--success); font-size: 0.9rem; }
-        .modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center;
+        .week-btn:hover { border-color: var(--accent); color: var(--text); }
+        .week-btn.active {
+            background: linear-gradient(135deg, rgba(255,107,53,0.2), rgba(0,217,255,0.2));
+            border-color: var(--primary); color: var(--text);
         }
-        .modal-content {
-            background: var(--dark); max-width: 920px; width: 90%; border-radius: 16px;
-            overflow: hidden; max-height: 92vh; display: flex; flex-direction: column;
+
+        .submissions-loading {
+            text-align: center; padding: 3rem; color: var(--text-dim); font-size: 0.9rem;
         }
-        .modal-header {
-            padding: 1rem 1.5rem; background: var(--dark-light); display: flex;
-            justify-content: space-between; align-items: center;
+        .submissions-loading .spinner { margin: 0 auto 1rem; width: 28px; height: 28px; border-width: 3px; }
+
+        .submissions-list { display: none; }
+        .submissions-list.show { display: block; animation: fadeUp 0.35s ease-out; }
+
+        .submission-card {
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            border-radius: 14px; margin-bottom: 1rem; overflow: hidden;
+            transition: border-color 0.2s;
         }
-        .modal-body {
-            padding: 1.5rem; overflow-y: auto; flex: 1;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+        .submission-card:hover { border-color: rgba(0,217,255,0.3); }
+        .submission-card-header {
+            display: flex; align-items: center; gap: 1rem; padding: 1rem 1.3rem;
+            cursor: pointer; user-select: none; transition: background 0.2s;
         }
-        .modal-body img {
-            max-width: 100%; border-radius: 10px; border: 2px solid var(--dark-lighter);
+        .submission-card-header:hover { background: rgba(255,255,255,0.02); }
+        .submission-job-number {
+            font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.05rem;
+            color: var(--primary);
         }
-        .close-btn {
-            background: none; border: none; color: var(--text-dim); font-size: 1.8rem;
-            cursor: pointer;
+        .submission-meta { display: flex; gap: 1.2rem; flex-wrap: wrap; flex: 1; }
+        .submission-meta-item { font-size: 0.82rem; color: var(--text-dim); }
+        .submission-meta-item span { color: var(--text); font-weight: 600; }
+        .submission-chevron {
+            font-size: 0.8rem; color: var(--text-dim); transition: transform 0.25s; flex-shrink: 0;
         }
-        @keyframes fadeUp { from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);} }
-        @media (max-width: 768px) {
-            .modal-body { grid-template-columns: 1fr; }
+        .submission-card.open .submission-chevron { transform: rotate(180deg); }
+
+        .submission-images {
+            display: none; padding: 1.3rem; border-top: 2px solid var(--dark-lighter);
+            gap: 1.5rem;
+        }
+        .submission-card.open .submission-images { display: grid; grid-template-columns: 1fr 1fr; }
+        @media (max-width: 640px) { .submission-card.open .submission-images { grid-template-columns: 1fr; } }
+
+        .submission-img-block { display: flex; flex-direction: column; gap: 0.6rem; }
+        .submission-img-label {
+            font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem;
+            color: var(--accent); text-transform: uppercase; letter-spacing: 0.06em;
+        }
+        .submission-img-block img {
+            width: 100%; border-radius: 8px; border: 1px solid var(--dark-lighter);
+            background: rgba(0,0,0,0.2); cursor: pointer; transition: opacity 0.2s;
+        }
+        .submission-img-block img:hover { opacity: 0.9; }
+        .submission-img-placeholder {
+            width: 100%; height: 160px; border-radius: 8px; border: 1px dashed var(--dark-lighter);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-dim); font-size: 0.8rem;
+        }
+        .submission-download-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .dl-btn {
+            background: var(--dark-lighter); border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-dim); padding: 0.35rem 0.75rem; border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+            cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-block;
+        }
+        .dl-btn:hover { border-color: var(--success); color: var(--success); }
+
+        .submission-saved-at {
+            font-size: 0.75rem; color: var(--text-dim); padding: 0.5rem 1.3rem 1rem;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+
+        /* no submissions */
+        .no-submissions {
+            text-align: center; padding: 3rem; color: var(--text-dim);
+            background: var(--dark-light); border: 2px solid var(--dark-lighter);
+            border-radius: 14px;
+        }
+        .no-submissions .icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+
+        /* ── Lightbox ─────────────────────────────────────────────────────────── */
+        .lightbox {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92);
+            z-index: 9999; align-items: center; justify-content: center;
+            cursor: zoom-out; backdrop-filter: blur(6px);
+        }
+        .lightbox.show { display: flex; animation: fadeUp 0.2s ease-out; }
+        .lightbox img {
+            max-width: 92vw; max-height: 90vh; border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8); cursor: default;
+        }
+        .lightbox-close {
+            position: fixed; top: 1.5rem; right: 1.5rem;
+            background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.2);
+            color: white; width: 40px; height: 40px; border-radius: 50%;
+            font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .lightbox-close:hover { background: rgba(255,107,53,0.5); }
+
+        @media (max-width:600px) {
+            h1 { font-size:1.8rem; }
+            .job-number-bar { flex-direction: column; align-items: stretch; }
+            .tabs { flex-direction: column; }
         }
     </style>
 </head>
@@ -269,24 +382,27 @@
             <a href="index.html" class="logo">Pingu - Solar</a>
             <a href="index.html" class="back-btn">← Back</a>
         </div>
-        <h1>CHH SFA</h1>
-        <p class="subtitle">PDF Ripper → saves directly to CHH SFA collection • View Submissions grouped by Install Date week</p>
+        <h1>🏠 CHH SFA</h1>
+        <p class="subtitle">Upload a CHH SFA PDF — extracts the address, proposed layout image, and site assessment. Saved to the CHH SFA Firebase collection.</p>
     </header>
 
     <!-- Tabs -->
     <div class="tabs">
-        <div class="tab active" id="tab-ripper" onclick="switchTab(0)">📄 PDF Ripper</div>
-        <div class="tab" id="tab-submissions" onclick="switchTab(1)">📋 View Submissions</div>
+        <button class="tab-btn active" id="tab-upload-btn" onclick="switchTab('upload')">📄 Upload PDF</button>
+        <button class="tab-btn" id="tab-submissions-btn" onclick="switchTab('submissions')">📋 View Submissions</button>
     </div>
 
-    <!-- Ripper Tab -->
-    <div id="ripper-view">
+    <!-- ══ UPLOAD TAB ══════════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="tab-upload">
+
+        <!-- Job Number Link -->
         <div class="job-number-bar">
             <label>🔗 Link to Job:</label>
-            <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number e.g. J-A9C48150..." />
+            <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number e.g. J-A9C48150, or drop a PDF with the job number in its filename…" />
             <button class="job-verify-btn" id="job-verify-btn" onclick="verifyJobNumber()">Verify Job</button>
             <span class="job-match-badge" id="job-match-badge"></span>
         </div>
+
         <div class="upload-zone" id="upload-zone">
             <span class="upload-icon" id="upload-icon">📂</span>
             <div class="upload-title" id="upload-title">Drop your PDF here</div>
@@ -294,19 +410,25 @@
             <div class="upload-file-name" id="upload-file-name"></div>
             <input type="file" id="file-input" accept=".pdf,application/pdf" />
         </div>
+
         <div class="error-msg" id="error-msg"></div>
+
         <button class="extract-btn" id="extract-btn" onclick="startExtraction()">
             ⚡ Extract Data from PDF
         </button>
+
         <div class="progress-area" id="progress-area">
-            <div class="progress-step" id="step-parse"> <span class="step-icon">📖</span> Reading PDF text…</div>
+            <div class="progress-step" id="step-parse">  <span class="step-icon">📖</span> Reading PDF text…</div>
             <div class="progress-step" id="step-address"><span class="step-icon">📍</span> Finding address from page 1…</div>
             <div class="progress-step" id="step-layout"> <span class="step-icon">🗺️</span> Rendering layout image from page 3…</div>
-            <div class="progress-step" id="step-boxes"> <span class="step-icon">📦</span> Extracting box content from page 4…</div>
-            <div class="progress-step" id="step-save"> <span class="step-icon">💾</span> Saving to CHH SFA collection…</div>
+            <div class="progress-step" id="step-boxes">  <span class="step-icon">📦</span> Extracting box content from page 4…</div>
+            <div class="progress-step" id="step-save">   <span class="step-icon">💾</span> Saving to CHH SFA record…</div>
         </div>
+
         <div class="save-banner" id="save-banner"></div>
+
         <div class="results-area" id="results-area">
+
             <div class="result-section">
                 <div class="result-header">
                     <span class="result-header-icon">📍</span>
@@ -321,6 +443,7 @@
                     <input type="hidden" id="address-raw" />
                 </div>
             </div>
+
             <div class="result-section">
                 <div class="result-header">
                     <span class="result-header-icon">🗺️</span>
@@ -338,6 +461,7 @@
                     <p class="image-hint">Full page 3 rendered at high resolution · right-click image to save</p>
                 </div>
             </div>
+
             <div class="result-section">
                 <div class="result-header">
                     <span class="result-header-icon">📦</span>
@@ -345,36 +469,54 @@
                     <span class="result-header-badge">Page 4</span>
                 </div>
                 <div class="result-body">
-                    <div id="box-all" style="font-size:0.9rem;">—</div>
+                    <div class="box-card" style="grid-column:1/-1">
+                        <div class="box-text" id="box-all" style="font-size:0.9rem;">—</div>
+                    </div>
                     <div class="copy-row">
                         <button class="copy-btn" id="copy-boxes-btn" onclick="copyAllBoxes()">📋 Copy All Boxes</button>
                     </div>
+                    <button class="debug-toggle" onclick="document.getElementById('debug-p1').classList.toggle('show')">🔍 Show raw page 1 text (address troubleshooting)</button>
+                    <div class="debug-panel" id="debug-p1"></div>
+                    <button class="debug-toggle" onclick="document.getElementById('debug-p4').classList.toggle('show')" style="margin-top:0.4rem;">🔍 Show raw page 4 text (boxes troubleshooting)</button>
+                    <div class="debug-panel" id="debug-p4"></div>
                 </div>
             </div>
+
             <button class="reset-btn" onclick="resetAll()">↩ Upload Another PDF</button>
         </div>
     </div>
 
-    <!-- Submissions Tab -->
-    <div id="submissions-view" class="submissions-view">
-        <div class="week-selector">
-            <label>Week Commencing (based on Install Date):</label>
-            <select id="week-select" onchange="loadJobsForWeek()">
-                <!-- populated by JS -->
-            </select>
-            <button onclick="loadJobsForWeek()" style="background:linear-gradient(135deg,var(--secondary),var(--primary)); color:white; border:none; padding:0.65rem 1.4rem; border-radius:9px; font-weight:700;">Load Jobs</button>
+    <!-- ══ SUBMISSIONS TAB ═════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="tab-submissions">
+
+        <!-- Week Selector -->
+        <div class="week-selector" id="week-selector-wrap">
+            <label>📅 Filter by Week Commencing (Install Date)</label>
+            <div id="weeks-loading" style="color:var(--text-dim);font-size:0.85rem;">Loading weeks from jobs…</div>
+            <div class="week-grid" id="week-grid" style="display:none;"></div>
         </div>
 
-        <div class="jobs-list" id="jobs-list">
-            <!-- populated by JS -->
+        <div id="submissions-loading-area" style="display:none;">
+            <div class="submissions-loading">
+                <div class="spinner"></div>
+                Loading submissions…
+            </div>
         </div>
+
+        <div class="submissions-list" id="submissions-list"></div>
     </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <img id="lightbox-img" src="" alt="Full size" onclick="event.stopPropagation()" />
 </div>
 
 <!-- Firebase SDK -->
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-    import { getFirestore, collection, getDocs, query, where, orderBy, doc, setDoc }
+    import { getFirestore, collection, getDocs, query, where, doc, updateDoc, setDoc, orderBy, addDoc }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
     import { getStorage, ref, uploadString, getDownloadURL }
         from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
@@ -391,44 +533,340 @@
 
     try {
         const app = initializeApp(firebaseConfig);
-        window.db = getFirestore(app);
+        window.db      = getFirestore(app);
         window.storage = getStorage(app);
-        window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, setDoc, ref, uploadString, getDownloadURL };
-        console.log('✅ Firebase initialized for CHH SFA');
+        window.firebaseModules = { collection, getDocs, query, where, doc, updateDoc, setDoc, ref, uploadString, getDownloadURL, orderBy, addDoc };
+        console.log('✅ Firebase initialized');
+        // Kick off jobs load for week selector after DOM ready
+        window.addEventListener('DOMContentLoaded', () => { window.loadJobsForWeeks(); });
     } catch (e) {
         console.error('Firebase error:', e);
     }
 </script>
 
 <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-    let pdfFile = null;
-    let layoutDataUrl = '';
-    let rawPage1Lines = [];
-    let rawPage4Lines = [];
-    let verifiedJobId = null;
-    let verifiedJobNum = null;
+    let pdfFile         = null;
+    let layoutDataUrl   = '';
+    let rawPage1Lines   = [];
+    let rawPage4Lines   = [];
+    let verifiedJobId   = null;
+    let verifiedJobNum  = null;
+    let allJobsCache    = [];    // from Solar-jobs + jobs collections
+    let selectedWeekMs  = null; // timestamp of Mon of selected week
 
-    // Upload zone
-    const fileInput = document.getElementById('file-input');
+    /* ═════════════════════════════════════════════
+       TAB SWITCHING
+    ═════════════════════════════════════════════ */
+    window.switchTab = function(tab) {
+        document.getElementById('tab-upload').classList.toggle('active', tab === 'upload');
+        document.getElementById('tab-submissions').classList.toggle('active', tab === 'submissions');
+        document.getElementById('tab-upload-btn').classList.toggle('active', tab === 'upload');
+        document.getElementById('tab-submissions-btn').classList.toggle('active', tab === 'submissions');
+        if (tab === 'submissions' && allJobsCache.length === 0) {
+            loadJobsForWeeks();
+        }
+    };
+
+    /* ═════════════════════════════════════════════
+       DATE HELPERS
+    ═════════════════════════════════════════════ */
+    function parseDate(v) {
+        if (!v) return null;
+        if (typeof v === 'string' && v.includes('/')) {
+            const p = v.split('/');
+            if (p.length === 3) {
+                const d = new Date(+p[2], +p[1]-1, +p[0]);
+                if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+            }
+        }
+        const d = new Date(v);
+        if (!isNaN(d)) { d.setHours(0,0,0,0); return d; }
+        return null;
+    }
+
+    function getMondayOf(date) {
+        const d = new Date(date);
+        d.setHours(0,0,0,0);
+        const day = d.getDay(); // 0=Sun
+        const diff = (day === 0) ? -6 : 1 - day;
+        d.setDate(d.getDate() + diff);
+        return d;
+    }
+
+    function formatDateDisplay(d) {
+        if (!d) return 'N/A';
+        return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    }
+
+    function formatTimestamp(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return isNaN(d) ? '' : d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+    }
+
+    /* ═════════════════════════════════════════════
+       LOAD JOBS FOR WEEK SELECTOR
+       Mirrors adminviewjobs.html: reads Solar-jobs + jobs,
+       merges, extracts install dates + postcodes
+    ═════════════════════════════════════════════ */
+    window.loadJobsForWeeks = async function() {
+        if (!window.firebaseModules) {
+            setTimeout(loadJobsForWeeks, 600);
+            return;
+        }
+        document.getElementById('weeks-loading').style.display = '';
+        document.getElementById('week-grid').style.display     = 'none';
+
+        try {
+            const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
+
+            const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
+            const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
+
+            const processDoc = (docSnap, source) => {
+                const data = docSnap.data();
+                let bookedDate = null;
+                for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
+                    if (data[f]) { bookedDate = parseDate(data[f]); if (bookedDate) break; }
+                }
+                let postcode = data['Postcode'] || data['postcode'] || 'N/A';
+                const jobNumber = String(data['Job Number'] || 'N/A').trim();
+                return { id: docSnap.id, source, jobNumber, bookedDate, postcode };
+            };
+
+            const solarMap = new Map();
+            solarSnap.forEach(d => {
+                const job = processDoc(d, 'solar');
+                if (!solarMap.has(job.jobNumber)) solarMap.set(job.jobNumber, job);
+            });
+
+            const jobsMap = new Map();
+            jobsSnap.forEach(d => {
+                const job = processDoc(d, 'jobs');
+                if (!jobsMap.has(job.jobNumber)) jobsMap.set(job.jobNumber, job);
+            });
+
+            // Merge: solar wins for data, but jobs provides the same bookedDate/postcode
+            const merged = [];
+            solarMap.forEach((solarJob, jn) => {
+                const jobsJob = jobsMap.get(jn);
+                if (jobsJob) {
+                    // prefer jobs collection for install date if solar doesn't have one
+                    merged.push({
+                        ...solarJob,
+                        bookedDate: solarJob.bookedDate || jobsJob.bookedDate,
+                        postcode:   solarJob.postcode !== 'N/A' ? solarJob.postcode : jobsJob.postcode
+                    });
+                } else {
+                    merged.push(solarJob);
+                }
+            });
+            jobsMap.forEach((jobsJob, jn) => {
+                if (!solarMap.has(jn)) merged.push(jobsJob);
+            });
+
+            allJobsCache = merged;
+            buildWeekButtons(merged);
+
+        } catch(err) {
+            console.error(err);
+            document.getElementById('weeks-loading').textContent = 'Error loading jobs: ' + err.message;
+        }
+    };
+
+    function buildWeekButtons(jobs) {
+        const weekSet = new Set();
+        jobs.forEach(j => {
+            if (j.bookedDate) {
+                const mon = getMondayOf(j.bookedDate);
+                weekSet.add(mon.getTime());
+            }
+        });
+
+        const sorted = Array.from(weekSet).sort((a,b) => b - a); // newest first
+
+        if (!sorted.length) {
+            document.getElementById('weeks-loading').textContent = 'No install dates found in jobs.';
+            return;
+        }
+
+        const grid = document.getElementById('week-grid');
+        grid.innerHTML = sorted.map(ms => {
+            const d = new Date(ms);
+            const sun = new Date(ms); sun.setDate(sun.getDate() + 6);
+            const label = `w/c ${formatDateDisplay(d)}`;
+            return `<button class="week-btn" data-ms="${ms}" onclick="selectWeek(${ms})">${label}</button>`;
+        }).join('');
+
+        document.getElementById('weeks-loading').style.display = 'none';
+        grid.style.display = 'flex';
+    }
+
+    window.selectWeek = async function(ms) {
+        selectedWeekMs = ms;
+        // Highlight selected
+        document.querySelectorAll('.week-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.ms) === ms);
+        });
+        await loadSubmissionsForWeek(ms);
+    };
+
+    /* ═════════════════════════════════════════════
+       LOAD CHH SFA SUBMISSIONS FOR SELECTED WEEK
+    ═════════════════════════════════════════════ */
+    async function loadSubmissionsForWeek(weekStartMs) {
+        const loadingArea = document.getElementById('submissions-loading-area');
+        const listEl      = document.getElementById('submissions-list');
+        loadingArea.style.display = 'block';
+        listEl.classList.remove('show');
+        listEl.innerHTML = '';
+
+        try {
+            const { collection, getDocs } = window.firebaseModules;
+            const chhSnap = await getDocs(collection(window.db, 'CHH SFA'));
+            const allCHH = [];
+            chhSnap.forEach(d => { allCHH.push({ id: d.id, ...d.data() }); });
+
+            // Find jobs whose install date falls in this Mon–Sun window
+            const weekStart = new Date(weekStartMs); weekStart.setHours(0,0,0,0);
+            const weekEnd   = new Date(weekStartMs); weekEnd.setDate(weekEnd.getDate() + 6); weekEnd.setHours(23,59,59,999);
+
+            const jobsInWeek = allJobsCache.filter(j => {
+                if (!j.bookedDate) return false;
+                return j.bookedDate >= weekStart && j.bookedDate <= weekEnd;
+            });
+
+            // Build lookup: jobNumber → CHH SFA submission
+            const chhByJob = {};
+            allCHH.forEach(sub => {
+                const jn = sub.jobNumber || sub['jobNumber'] || '';
+                if (jn) chhByJob[jn.trim()] = sub;
+            });
+
+            loadingArea.style.display = 'none';
+
+            if (!jobsInWeek.length) {
+                listEl.innerHTML = `
+                    <div class="no-submissions">
+                        <span class="icon">📋</span>
+                        <p style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:0.5rem;">No Jobs This Week</p>
+                        <p>No jobs with install dates in this week were found.</p>
+                    </div>`;
+                listEl.classList.add('show');
+                return;
+            }
+
+            // Sort by booked date
+            jobsInWeek.sort((a,b) => (a.bookedDate||0) - (b.bookedDate||0));
+
+            listEl.innerHTML = jobsInWeek.map(job => {
+                const sub  = chhByJob[job.jobNumber] || null;
+                const hasSub = !!sub;
+                const savedAt = sub ? formatTimestamp(sub.savedAt || '') : '';
+
+                const layoutUrl    = sub ? (sub.proposedLayoutUrl  || '') : '';
+                const assessUrl    = sub ? (sub.siteAssessmentUrl  || '') : '';
+                const address      = sub ? (sub.address            || '—') : '—';
+
+                return `
+                <div class="submission-card" id="card-${escHtml(job.jobNumber)}">
+                    <div class="submission-card-header" onclick="toggleCard('${escHtml(job.jobNumber)}')">
+                        <div class="submission-job-number">#${escHtml(job.jobNumber)}</div>
+                        <div class="submission-meta">
+                            <div class="submission-meta-item">📮 Postcode: <span>${escHtml(job.postcode)}</span></div>
+                            <div class="submission-meta-item">📅 Install: <span>${formatDateDisplay(job.bookedDate)}</span></div>
+                            <div class="submission-meta-item">📄 SFA: <span style="color:${hasSub ? 'var(--success)' : 'var(--error)'}">${hasSub ? '✓ Submitted' : '✗ Not submitted'}</span></div>
+                            ${hasSub ? `<div class="submission-meta-item">📍 <span>${escHtml(address)}</span></div>` : ''}
+                        </div>
+                        <span class="submission-chevron">▼</span>
+                    </div>
+                    <div class="submission-images">
+                        <div class="submission-img-block">
+                            <div class="submission-img-label">🗺️ Proposed Layout (Page 3)</div>
+                            ${layoutUrl
+                                ? `<img src="${escHtml(layoutUrl)}" alt="Proposed Layout" loading="lazy" onclick="openLightbox('${escHtml(layoutUrl)}')" />
+                                   <div class="submission-download-row">
+                                       <a class="dl-btn" href="${escHtml(layoutUrl)}" target="_blank" download>⬇️ Download</a>
+                                       <a class="dl-btn" href="${escHtml(layoutUrl)}" target="_blank">🔗 Open</a>
+                                   </div>`
+                                : `<div class="submission-img-placeholder">${hasSub ? '⚠️ No layout image saved' : '— Not submitted yet —'}</div>`
+                            }
+                        </div>
+                        <div class="submission-img-block">
+                            <div class="submission-img-label">📦 Site Assessment (Page 4)</div>
+                            ${assessUrl
+                                ? `<img src="${escHtml(assessUrl)}" alt="Site Assessment" loading="lazy" onclick="openLightbox('${escHtml(assessUrl)}')" />
+                                   <div class="submission-download-row">
+                                       <a class="dl-btn" href="${escHtml(assessUrl)}" target="_blank" download>⬇️ Download</a>
+                                       <a class="dl-btn" href="${escHtml(assessUrl)}" target="_blank">🔗 Open</a>
+                                   </div>`
+                                : `<div class="submission-img-placeholder">${hasSub ? '⚠️ No assessment image saved' : '— Not submitted yet —'}</div>`
+                            }
+                        </div>
+                    </div>
+                    ${savedAt ? `<div class="submission-saved-at">Submitted: ${escHtml(savedAt)}</div>` : ''}
+                </div>`;
+            }).join('');
+
+            listEl.classList.add('show');
+
+        } catch(err) {
+            console.error(err);
+            loadingArea.style.display = 'none';
+            listEl.innerHTML = `<div class="no-submissions"><span class="icon">❌</span><p>Error loading submissions: ${escHtml(err.message)}</p></div>`;
+            listEl.classList.add('show');
+        }
+    }
+
+    window.toggleCard = function(jobNum) {
+        const card = document.getElementById('card-' + jobNum);
+        if (card) card.classList.toggle('open');
+    };
+
+    /* ═════════════════════════════════════════════
+       LIGHTBOX
+    ═════════════════════════════════════════════ */
+    window.openLightbox = function(src) {
+        document.getElementById('lightbox-img').src = src;
+        document.getElementById('lightbox').classList.add('show');
+        document.body.style.overflow = 'hidden';
+    };
+    window.closeLightbox = function() {
+        document.getElementById('lightbox').classList.remove('show');
+        document.getElementById('lightbox-img').src = '';
+        document.body.style.overflow = '';
+    };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+    /* ═════════════════════════════════════════════
+       UPLOAD ZONE WIRING
+    ═════════════════════════════════════════════ */
+    const fileInput  = document.getElementById('file-input');
     const uploadZone = document.getElementById('upload-zone');
 
     uploadZone.addEventListener('click', () => fileInput.click());
+
     ['dragenter','dragover','dragleave','drop'].forEach(evt => {
         uploadZone.addEventListener(evt, e => e.preventDefault());
         document.body.addEventListener(evt, e => e.preventDefault());
     });
+
     uploadZone.addEventListener('dragenter', () => uploadZone.classList.add('drag-over'));
-    uploadZone.addEventListener('dragover', () => uploadZone.classList.add('drag-over'));
+    uploadZone.addEventListener('dragover',  () => uploadZone.classList.add('drag-over'));
     uploadZone.addEventListener('dragleave', e => {
         if (!uploadZone.contains(e.relatedTarget)) uploadZone.classList.remove('drag-over');
     });
     uploadZone.addEventListener('drop', e => {
         uploadZone.classList.remove('drag-over');
         const f = e.dataTransfer.files[0];
-        if (f && f.type === 'application/pdf') handleFile(f);
-        else showError('Please drop a PDF file.');
+        if (f && f.type === 'application/pdf') {
+            handleFile(f);
+        } else {
+            showError('Please drop a PDF file.');
+        }
     });
     fileInput.addEventListener('change', e => {
         if (e.target.files[0]) handleFile(e.target.files[0]);
@@ -437,18 +875,20 @@
     function handleFile(f) {
         pdfFile = f;
         uploadZone.classList.add('has-file');
-        document.getElementById('upload-icon').textContent = '✅';
-        document.getElementById('upload-title').textContent = f.name;
+        document.getElementById('upload-icon').textContent      = '✅';
+        document.getElementById('upload-title').textContent     = f.name;
         document.getElementById('upload-file-name').textContent = (f.size / 1024 / 1024).toFixed(2) + ' MB';
         document.getElementById('extract-btn').classList.add('visible');
         hideError();
         resetResults();
+
         const jobInput = document.getElementById('job-number-input');
-        jobInput.value = '';
+        jobInput.value     = '';
         jobInput.className = 'job-number-input';
         document.getElementById('job-match-badge').className = 'job-match-badge';
-        verifiedJobId = null;
+        verifiedJobId  = null;
         verifiedJobNum = null;
+
         const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
         const match = nameNoExt.match(/\b(J-[A-Z0-9]{8})\b/i);
         if (match) {
@@ -457,33 +897,47 @@
         }
     }
 
-    async function verifyJobNumber() {
+    /* ═════════════════════════════════════════════
+       JOB VERIFICATION
+    ═════════════════════════════════════════════ */
+    window.verifyJobNumber = async function() {
         const num = document.getElementById('job-number-input').value.trim();
         if (!num) { showError('Please enter a job number to verify.'); return; }
-        const btn = document.getElementById('job-verify-btn');
+        const btn   = document.getElementById('job-verify-btn');
         const badge = document.getElementById('job-match-badge');
         const input = document.getElementById('job-number-input');
         btn.disabled = true; btn.textContent = '…';
         badge.className = 'job-match-badge checking'; badge.textContent = '⏳ Checking…';
         input.className = 'job-number-input verifying';
         try {
+            if (!window.firebaseModules) throw new Error('Firebase not ready');
             const { collection, getDocs, query, where } = window.firebaseModules;
-            const q = query(collection(window.db, 'jobs'), where('Job Number', '==', num));
-            const snap = await getDocs(q);
+            // Check jobs collection (like adminviewjobs.html)
+            let snap = await getDocs(query(collection(window.db, 'jobs'), where('Job Number', '==', num)));
+            // Fallback: Solar-jobs
             if (snap.empty) {
-                verifiedJobId = null;
+                snap = await getDocs(query(collection(window.db, 'Solar-jobs'), where('Job Number', '==', num)));
+            }
+            if (snap.empty) {
+                verifiedJobId  = null;
                 verifiedJobNum = null;
                 input.className = 'job-number-input no-match';
                 badge.className = 'job-match-badge not-found';
                 badge.textContent = '✗ Job not found';
             } else {
-                const jobDoc = snap.docs[0];
-                verifiedJobId = jobDoc.id;
+                const jobDoc   = snap.docs[0];
+                verifiedJobId  = jobDoc.id;
                 verifiedJobNum = num;
                 input.className = 'job-number-input matched';
                 badge.className = 'job-match-badge found';
                 const d = jobDoc.data();
-                badge.textContent = `✓ ${d['Name'] || num} · ${d['1st line of address'] || ''}`;
+                // Pull postcode and install date from adminviewjobs-style fields
+                let installDateStr = '';
+                for (const f of ['Booked Date','Install Date','Projected Completion Date','installedDate','bookingDate']) {
+                    if (d[f]) { installDateStr = d[f]; break; }
+                }
+                const postcode = d['Postcode'] || d['postcode'] || '';
+                badge.textContent = `✓ ${d['Name'] || num}${postcode ? ' · ' + postcode : ''}${installDateStr ? ' · Install: ' + installDateStr : ''}`;
             }
         } catch (err) {
             console.error(err);
@@ -493,12 +947,21 @@
         } finally {
             btn.disabled = false; btn.textContent = 'Verify Job';
         }
-    }
+    };
 
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('job-number-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') verifyJobNumber();
+        });
+    });
+
+    /* ═════════════════════════════════════════════
+       PDF EXTRACTION HELPERS
+    ═════════════════════════════════════════════ */
     async function getPageLines(page) {
-        const content = await page.getTextContent();
+        const content  = await page.getTextContent();
         const viewport = page.getViewport({ scale: 1 });
-        const items = [];
+        const items    = [];
         for (const item of content.items) {
             if (!item.str || !item.str.trim()) continue;
             const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
@@ -520,10 +983,11 @@
         return lines;
     }
 
-    async function renderPage(page, scale = 2.5) {
-        const vp = page.getViewport({ scale });
+    async function renderPage(page, scale) {
+        scale = scale || 2.5;
+        const vp     = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
-        canvas.width = vp.width;
+        canvas.width  = vp.width;
         canvas.height = vp.height;
         await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
         return canvas.toDataURL('image/jpeg', 0.92);
@@ -533,9 +997,9 @@
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
-                const cropH = Math.floor(img.height * 0.43);
+                const cropH  = Math.floor(img.height * 0.43);
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width; canvas.height = cropH;
+                canvas.width  = img.width; canvas.height = cropH;
                 canvas.getContext('2d').drawImage(img, 0, 0, img.width, cropH, 0, 0, img.width, cropH);
                 resolve(canvas.toDataURL('image/jpeg', 0.92));
             };
@@ -547,9 +1011,9 @@
         return new Promise(resolve => {
             const img = new Image();
             img.onload = () => {
-                const cropY = Math.floor(img.height * 0.45);
+                const cropY  = Math.floor(img.height * 0.45);
                 const canvas = document.createElement('canvas');
-                canvas.width = img.width; canvas.height = img.height - cropY;
+                canvas.width  = img.width; canvas.height = img.height - cropY;
                 canvas.getContext('2d').drawImage(img, 0, cropY, img.width, img.height - cropY, 0, 0, img.width, img.height - cropY);
                 resolve(canvas.toDataURL('image/jpeg', 0.92));
             };
@@ -557,13 +1021,15 @@
         });
     }
 
+    /* ═════════════════════════════════════════════
+       STEP PROGRESS HELPERS
+    ═════════════════════════════════════════════ */
     function setStep(id, state) {
-        const el = document.getElementById(id);
+        const el   = document.getElementById(id);
         if (!el) return;
         el.className = 'progress-step ' + state;
         const icon = el.querySelector('.step-icon');
-        if (!icon) return;
-        const sp = el.querySelector('.spinner');
+        const sp   = el.querySelector('.spinner');
         if (sp) sp.remove();
         if (state === 'active') {
             icon.style.display = 'none';
@@ -572,69 +1038,86 @@
             el.insertBefore(spinner, icon);
         } else {
             icon.style.display = '';
-            if (state === 'done') icon.textContent = '✅';
+            if (state === 'done')  icon.textContent = '✅';
             if (state === 'error') icon.textContent = '❌';
+            if (state === 'skip')  icon.textContent = '⏭️';
         }
     }
 
-    async function uploadLayoutImage(dataUrl, jobNum) {
+    /* ═════════════════════════════════════════════
+       FIREBASE STORAGE UPLOADS
+    ═════════════════════════════════════════════ */
+    async function uploadImage(dataUrl, pathInStorage) {
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
-        const base64 = dataUrl.split(',')[1];
-        const storagePath = `pdf-ripper/${jobNum || 'unknown'}/proposed-layout-${Date.now()}.jpg`;
-        const storageRef = ref(window.storage, storagePath);
+        const base64     = dataUrl.split(',')[1];
+        const storageRef = ref(window.storage, pathInStorage);
         await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
         return await getDownloadURL(storageRef);
     }
 
-    async function uploadPage4Image(dataUrl, jobNum) {
-        if (!window.firebaseModules || !dataUrl) return null;
-        const { ref, uploadString, getDownloadURL } = window.firebaseModules;
-        const base64 = dataUrl.split(',')[1];
-        const storagePath = `pdf-ripper/${jobNum || 'unknown'}/site-assessment-${Date.now()}.jpg`;
-        const storageRef = ref(window.storage, storagePath);
-        await uploadString(storageRef, base64, 'base64', { contentType: 'image/jpeg' });
-        return await getDownloadURL(storageRef);
-    }
-
-    // NEW: Save to CHH SFA collection (creates a new document)
-    async function saveToCHHSFA(address, layoutUrl, page4Url, rawPage4Text) {
+    /* ═════════════════════════════════════════════
+       SAVE TO FIRESTORE — CHH SFA collection
+    ═════════════════════════════════════════════ */
+    async function saveToCHH(address, layoutUrl, page4Url, rawPage4Text, jobNum) {
         if (!window.firebaseModules) return false;
-        const { collection, doc, setDoc } = window.firebaseModules;
-        const chhRef = collection(window.db, 'CHH SFA');
-        const newDoc = doc(chhRef); // auto-generated ID
+        const { collection, getDocs, query, where, doc, updateDoc, addDoc } = window.firebaseModules;
 
         const payload = {
-            'Job Number': verifiedJobNum || 'UNKNOWN',
-            'Address': address,
-            'Proposed Layout': layoutUrl || null,
-            'Site Assessment': page4Url || null,
-            'Site Assessment Text': rawPage4Text || '',
-            'SavedAt': new Date().toISOString(),
-            // Install Date / Postcode will be added manually later in admin if needed
+            jobNumber:          jobNum || '',
+            address:            address,
+            proposedLayoutUrl:  layoutUrl    || null,
+            siteAssessmentUrl:  page4Url     || null,
+            siteAssessmentText: rawPage4Text || '',
+            savedAt:            new Date().toISOString()
         };
 
-        await setDoc(newDoc, payload);
-        console.log('✅ Saved to CHH SFA collection with ID:', newDoc.id);
+        // Pull install date + postcode from our jobs cache to store alongside
+        const cachedJob = allJobsCache.find(j => j.jobNumber === jobNum);
+        if (cachedJob) {
+            payload.installDate = cachedJob.bookedDate ? cachedJob.bookedDate.toISOString() : null;
+            payload.postcode    = cachedJob.postcode || '';
+        } else if (jobNum) {
+            // Fallback: try to read from verified job data if cache not loaded
+            payload.installDate = null;
+            payload.postcode    = '';
+        }
+
+        if (jobNum) {
+            // Upsert: look for existing doc with this jobNumber
+            const q    = query(collection(window.db, 'CHH SFA'), where('jobNumber', '==', jobNum));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                await updateDoc(doc(window.db, 'CHH SFA', snap.docs[0].id), payload);
+            } else {
+                await addDoc(collection(window.db, 'CHH SFA'), payload);
+            }
+        } else {
+            await addDoc(collection(window.db, 'CHH SFA'), payload);
+        }
         return true;
     }
 
-    async function startExtraction() {
+    /* ═════════════════════════════════════════════
+       MAIN EXTRACTION
+    ═════════════════════════════════════════════ */
+    window.startExtraction = async function() {
         if (!pdfFile) return;
         hideError(); resetResults();
         const btn = document.getElementById('extract-btn');
         btn.disabled = true; btn.textContent = '⏳ Processing…';
         document.getElementById('progress-area').classList.add('show');
-        const saveStepEl = document.getElementById('step-save');
-        if (saveStepEl) saveStepEl.style.display = '';
+        document.getElementById('step-save').style.display = '';
 
         try {
+            // Step 1: Load PDF
             setStep('step-parse', 'active');
             const arrayBuffer = await pdfFile.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-            const totalPages = pdf.numPages;
+            const pdf         = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            const totalPages  = pdf.numPages;
             setStep('step-parse', 'done');
 
+            // Step 2: Address from page 1
             setStep('step-address', 'active');
             let address = 'Not found';
             if (totalPages >= 1) {
@@ -658,38 +1141,45 @@
             }
             setStep('step-address', 'done');
 
+            // Step 3: Layout image from page 3
             setStep('step-layout', 'active');
             layoutDataUrl = '';
             if (totalPages >= 3) {
-                const p3 = await pdf.getPage(3);
+                const p3          = await pdf.getPage(3);
                 const fullDataUrl = await renderPage(p3, 2.5);
-                layoutDataUrl = await cropBottomHalf(fullDataUrl);
+                layoutDataUrl     = await cropBottomHalf(fullDataUrl);
             }
             setStep('step-layout', 'done');
 
+            // Step 4: Box content from page 4
             setStep('step-boxes', 'active');
             let page4DataUrl = null;
             let page4RawText = '';
             if (totalPages >= 4) {
-                const p4 = await pdf.getPage(4);
+                const p4      = await pdf.getPage(4);
                 rawPage4Lines = await getPageLines(p4);
-                page4RawText = rawPage4Lines.join('\n');
-                const p4full2 = await renderPage(p4, 2.0);
-                page4DataUrl = await cropToY(p4full2);
+                page4RawText  = rawPage4Lines.join('\n');
+
+                const p4page  = await pdf.getPage(4);
+                const p4full2 = await renderPage(p4page, 2.0);
+                page4DataUrl  = await cropToY(p4full2);
             }
             setStep('step-boxes', 'done');
 
-            let savedLayoutUrl = null;
-            let savedPage4Url = null;
-
+            // Step 5: Save to CHH SFA
             setStep('step-save', 'active');
-            showSaveBanner('saving', '💾 Saving to CHH SFA collection…');
+            showSaveBanner('saving', '💾 Uploading images and saving to CHH SFA…');
             try {
-                if (layoutDataUrl) savedLayoutUrl = await uploadLayoutImage(layoutDataUrl, verifiedJobNum);
-                if (page4DataUrl) savedPage4Url = await uploadPage4Image(page4DataUrl, verifiedJobNum);
-                await saveToCHHSFA(address, savedLayoutUrl, savedPage4Url, page4RawText);
+                const jobNum = verifiedJobNum || (document.getElementById('job-number-input').value.trim() || 'unknown');
+                let savedLayoutUrl = null;
+                let savedPage4Url  = null;
+                if (layoutDataUrl) savedLayoutUrl = await uploadImage(layoutDataUrl, `chh-sfa/${jobNum}/proposed-layout-${Date.now()}.jpg`);
+                if (page4DataUrl)  savedPage4Url  = await uploadImage(page4DataUrl,  `chh-sfa/${jobNum}/site-assessment-${Date.now()}.jpg`);
+                await saveToCHH(address, savedLayoutUrl, savedPage4Url, page4RawText, jobNum);
                 setStep('step-save', 'done');
-                showSaveBanner('saved', `✅ Saved to CHH SFA collection! (Job: ${verifiedJobNum || 'new entry'})`);
+                showSaveBanner('saved', `✅ Saved to CHH SFA collection${verifiedJobNum ? ' · Job #' + verifiedJobNum : ''}`);
+                // Refresh cache so submissions tab is up to date
+                await loadJobsForWeeks();
             } catch (saveErr) {
                 console.error('Save error:', saveErr);
                 setStep('step-save', 'error');
@@ -697,94 +1187,98 @@
             }
 
             populateResults(address, layoutDataUrl, page4DataUrl, page4RawText);
+
         } catch (err) {
             console.error(err);
             showError('Extraction failed: ' + err.message);
+            ['step-parse','step-address','step-layout','step-boxes','step-save'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.classList.contains('active')) setStep(id, 'error');
+            });
         } finally {
             btn.disabled = false; btn.textContent = '⚡ Extract Data from PDF';
         }
-    }
+    };
 
+    /* ═════════════════════════════════════════════
+       POPULATE RESULTS UI
+    ═════════════════════════════════════════════ */
     function populateResults(address, layoutUrl, page4DataUrl, page4Text) {
         const addrEl = document.getElementById('result-address');
-        const lines = address.split('\n').filter(l => l.trim());
+        const lines  = address.split('\n').filter(l => l.trim());
         addrEl.innerHTML = lines.map(l => `<span class="address-line">${escHtml(l)}</span>`).join('');
         document.getElementById('address-raw').value = address;
 
         const img = document.getElementById('result-layout-img');
-        const ph = document.getElementById('layout-placeholder');
-        if (layoutUrl) { 
-            img.src = layoutUrl; 
-            img.style.display = 'block'; 
-            ph.style.display = 'none'; 
-        } else { 
-            ph.textContent = 'No page 3 found in this PDF.'; 
-        }
+        const ph  = document.getElementById('layout-placeholder');
+        if (layoutUrl) { img.src = layoutUrl; img.style.display = 'block'; ph.style.display = 'none'; }
+        else { ph.textContent = 'No page 3 found in this PDF.'; }
 
         setBox('box-all', page4DataUrl || page4Text || '');
+
+        const fmt = lines => lines.length
+            ? lines.map((l, i) => `${String(i+1).padStart(3,' ')} │ ${l}`).join('\n')
+            : 'No text found.';
+        document.getElementById('debug-p1').textContent = fmt(rawPage1Lines);
+        document.getElementById('debug-p4').textContent = fmt(rawPage4Lines);
+
         document.getElementById('results-area').classList.add('show');
     }
 
     function setBox(id, value) {
         const el = document.getElementById(id);
-        if (!el) return;
         if (!value || !value.trim()) {
-            el.innerHTML = '<span style="color:var(--text-dim);font-style:italic;font-size:0.82rem;">Not found</span>';
+            el.innerHTML = '<span style="color:var(--text-dim);font-style:italic;font-size:0.82rem;">Not found — expand raw text below to troubleshoot</span>';
         } else if (value.startsWith('data:image')) {
-            el.innerHTML = `<img src="${value}" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />`;
+            el.innerHTML = '<img src="' + value + '" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />';
         } else {
             el.textContent = value;
         }
     }
 
+    /* ═════════════════════════════════════════════
+       SAVE BANNER
+    ═════════════════════════════════════════════ */
     function showSaveBanner(type, msg) {
         const el = document.getElementById('save-banner');
-        el.className = `save-banner show ${type}`;
-        el.innerHTML = type === 'saving' 
-            ? `<div class="save-spinner"></div><span>${msg}</span>` 
+        el.className = 'save-banner show ' + type;
+        el.innerHTML = type === 'saving'
+            ? `<div class="save-spinner"></div><span>${msg}</span>`
             : `<span>${msg}</span>`;
     }
 
-    function escHtml(t) { 
-        const d = document.createElement('div'); 
-        d.textContent = t; 
-        return d.innerHTML; 
-    }
+    /* ═════════════════════════════════════════════
+       UTILITIES
+    ═════════════════════════════════════════════ */
+    function escHtml(t) { const d = document.createElement('div'); d.textContent = String(t ?? ''); return d.innerHTML; }
 
-    function copyText(btnId, sourceId) {
+    window.copyText = function(btnId, sourceId) {
         const text = document.getElementById(sourceId).value;
         navigator.clipboard.writeText(text).then(() => {
-            const btn = document.getElementById(btnId);
+            const btn  = document.getElementById(btnId);
             const orig = btn.textContent;
             btn.classList.add('copied'); btn.textContent = '✅ Copied!';
             setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 2000);
         });
-    }
+    };
 
-    function copyAllBoxes() {
-        const text = document.getElementById('box-all').textContent || document.getElementById('box-all').innerText;
+    window.copyAllBoxes = function() {
+        const text = document.getElementById('box-all').textContent;
         navigator.clipboard.writeText(text).then(() => {
             const btn = document.getElementById('copy-boxes-btn');
-            const orig = btn.textContent;
             btn.classList.add('copied'); btn.textContent = '✅ Copied!';
-            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 2000);
+            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '📋 Copy All Boxes'; }, 2000);
         });
-    }
+    };
 
-    function downloadLayout() {
+    window.downloadLayout = function() {
         if (!layoutDataUrl) return;
         const a = document.createElement('a');
         a.href = layoutDataUrl; a.download = 'proposed-layout.jpg'; a.click();
-    }
+    };
 
-    function showError(msg) { 
-        const el = document.getElementById('error-msg'); 
-        el.textContent = msg; 
-        el.classList.add('show'); 
-    }
-    function hideError() { 
-        document.getElementById('error-msg').classList.remove('show'); 
-    }
+    function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.classList.add('show'); }
+    function hideError()    { document.getElementById('error-msg').classList.remove('show'); }
 
     function resetResults() {
         document.getElementById('results-area').classList.remove('show');
@@ -802,180 +1296,21 @@
         layoutDataUrl = ''; rawPage1Lines = []; rawPage4Lines = [];
     }
 
-    function resetAll() {
+    window.resetAll = function() {
         resetResults();
         pdfFile = null;
         uploadZone.classList.remove('has-file');
-        document.getElementById('upload-icon').textContent = '📂';
-        document.getElementById('upload-title').textContent = 'Drop your PDF here';
+        document.getElementById('upload-icon').textContent      = '📂';
+        document.getElementById('upload-title').textContent     = 'Drop your PDF here';
         document.getElementById('upload-file-name').textContent = '';
         document.getElementById('extract-btn').classList.remove('visible');
         fileInput.value = '';
         hideError();
-        document.getElementById('job-number-input').value = '';
+        document.getElementById('job-number-input').value     = '';
         document.getElementById('job-number-input').className = 'job-number-input';
-        document.getElementById('job-match-badge').className = 'job-match-badge';
-        verifiedJobId = null;
+        document.getElementById('job-match-badge').className  = 'job-match-badge';
+        verifiedJobId  = null;
         verifiedJobNum = null;
-    }
-
-    // Tab Switching
-    function switchTab(n) {
-        document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
-        document.getElementById('ripper-view').style.display = n===0 ? 'block' : 'none';
-        const subView = document.getElementById('submissions-view');
-        subView.classList.toggle('active', n===1);
-        if (n === 1) initWeekSelector();
-    }
-
-    // Helper: Get Monday (Week Commencing) from any date
-    function getWeekCommencing(date) {
-        const d = new Date(date);
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
-        d.setDate(diff);
-        d.setHours(0, 0, 0, 0);
-        return d.toISOString().split('T')[0];
-    }
-
-    // Submissions: Week selector based on Install Date
-    async function initWeekSelector() {
-        const select = document.getElementById('week-select');
-        select.innerHTML = '<option value="">Loading weeks from Install Dates...</option>';
-
-        try {
-            const { collection, getDocs } = window.firebaseModules;
-            const snap = await getDocs(collection(window.db, 'CHH SFA'));
-
-            const weeks = new Set();
-            snap.forEach(docSnap => {
-                const data = docSnap.data();
-                let installDate = null;
-                const possibleFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
-                for (let f of possibleFields) {
-                    if (data[f]) {
-                        installDate = data[f];
-                        if (installDate && installDate.toDate) installDate = installDate.toDate();
-                        break;
-                    }
-                }
-                if (installDate) {
-                    const weekStr = getWeekCommencing(installDate);
-                    weeks.add(weekStr);
-                }
-            });
-
-            select.innerHTML = '<option value="">Select week (based on Install Date)...</option>';
-            Array.from(weeks).sort().reverse().forEach(w => {
-                const opt = document.createElement('option');
-                opt.value = w;
-                opt.textContent = new Date(w).toLocaleDateString('en-GB', { weekday:'short', year:'numeric', month:'short', day:'numeric' }) + ' (Mon)';
-                select.appendChild(opt);
-            });
-
-            if (weeks.size === 0) {
-                select.innerHTML = '<option value="">No Install Dates found in CHH SFA yet</option>';
-            }
-        } catch (e) {
-            console.error(e);
-            select.innerHTML = '<option value="">Error loading weeks — check console</option>';
-        }
-    }
-
-    async function loadJobsForWeek() {
-        const weekStr = document.getElementById('week-select').value;
-        if (!weekStr) return alert('Please select a week');
-
-        const listEl = document.getElementById('jobs-list');
-        listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">Loading jobs for the selected week...</div>';
-
-        try {
-            const { collection, getDocs } = window.firebaseModules;
-            const snap = await getDocs(collection(window.db, 'CHH SFA'));
-
-            listEl.innerHTML = '';
-
-            let found = 0;
-            snap.forEach(docSnap => {
-                const data = docSnap.data();
-                let installDate = null;
-                const possibleFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
-                for (let f of possibleFields) {
-                    if (data[f]) {
-                        installDate = data[f];
-                        if (installDate && installDate.toDate) installDate = installDate.toDate();
-                        break;
-                    }
-                }
-                if (!installDate) return;
-
-                const jobWeek = getWeekCommencing(installDate);
-                if (jobWeek !== weekStr) return;
-
-                found++;
-                const jobNum = data['Job Number'] || '—';
-                const postcode = data['Postcode'] || data['postcode'] || '—';
-                const installFormatted = new Date(installDate).toLocaleDateString('en-GB');
-
-                const div = document.createElement('div');
-                div.className = 'job-item';
-                div.innerHTML = `
-                    <div class="job-num">${jobNum}</div>
-                    <div class="postcode">${postcode}</div>
-                    <div class="install-date">${installFormatted}</div>
-                `;
-                div.onclick = () => showJobModal(data);
-                listEl.appendChild(div);
-            });
-
-            if (found === 0) {
-                listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">No jobs found for this week based on Install Date.</div>';
-            }
-        } catch (err) {
-            console.error(err);
-            listEl.innerHTML = `<div style="padding:3rem;color:var(--error);">Error: ${err.message}</div>`;
-        }
-    }
-
-    function showJobModal(data) {
-        const img1 = data['Proposed Layout'] || data['Layout Image'] || data['Image1'] || data['proposedLayoutUrl'] || '';
-        const img2 = data['Site Assessment'] || data['Page 4'] || data['Image2'] || data['siteAssessmentUrl'] || '';
-
-        const images = [img1, img2].filter(Boolean);
-
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.style.display = 'flex';
-
-        let imagesHTML = images.length 
-            ? images.map(src => `<img src="${src}" alt="Submission image" onerror="this.style.display='none'">`).join('')
-            : '<p style="grid-column:1/-1;color:var(--text-dim);text-align:center;padding:2rem;">No images found for this submission.</p>';
-
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <strong>Job ${data['Job Number'] || '—'} • ${data['Postcode'] || data['postcode'] || ''}</strong>
-                    <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
-                </div>
-                <div class="modal-body">
-                    ${imagesHTML}
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-
-        modal.addEventListener('click', e => {
-            if (e.target === modal) modal.remove();
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const jobInput = document.getElementById('job-number-input');
-        if (jobInput) jobInput.addEventListener('keydown', e => { if (e.key === 'Enter') verifyJobNumber(); });
-    });
-
-    window.onload = () => {
-        switchTab(0);
     };
 </script>
 </body>
