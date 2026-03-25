@@ -796,7 +796,7 @@ function renderMaterials() {
             <input type="checkbox" class="material-checkbox" ${checked ? 'checked' : ''}
                 onchange="toggleMat(${JSON.stringify(name)}, this.checked)" />
             <span class="material-name" onclick="toggleMatByName(${JSON.stringify(name)})">${esc(name)}</span>
-            <div class="mat-controls ${checked ? 'visible' : ''}">
+            <div class="mat-controls ${checked ? 'visible' : ''}" id="ctrl_${safeId}">
                 <input type="number" class="material-qty"
                     value="${esc(qty)}" min="0.1" step="0.1"
                     oninput="updateQty(${JSON.stringify(name)}, this.value)"
@@ -812,12 +812,13 @@ function renderMaterials() {
 function filterMaterials() { renderMaterials(); }
 
 function toggleMatByName(name) {
-    if (selections[name]) {
-        delete selections[name];
-    } else {
+    const isNowChecked = !selections[name];
+    if (isNowChecked) {
         selections[name] = { qty: '1', unit: 'unit' };
+    } else {
+        delete selections[name];
     }
-    renderMaterials();
+    applyToggleDOM(name, isNowChecked);
     updateSummary();
 }
 
@@ -827,8 +828,19 @@ function toggleMat(name, isChecked) {
     } else {
         delete selections[name];
     }
-    renderMaterials();
+    applyToggleDOM(name, isChecked);
     updateSummary();
+}
+
+function applyToggleDOM(name, isChecked) {
+    const safeId = 'mrow_' + name.replace(/[^a-z0-9]/gi, '_');
+    const row = document.getElementById(safeId);
+    if (!row) return;
+    const cb = row.querySelector('.material-checkbox');
+    const ctrl = row.querySelector('.mat-controls');
+    if (cb) cb.checked = isChecked;
+    if (ctrl) ctrl.classList.toggle('visible', isChecked);
+    row.classList.toggle('checked', isChecked);
 }
 
 function updateQty(name, val) {
