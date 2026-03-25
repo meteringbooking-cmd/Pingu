@@ -18,7 +18,6 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
-            --kf: #B57BFF;
             --shadow: rgba(255, 107, 53, 0.3);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -282,10 +281,9 @@
 
     <!-- Ripper Tab -->
     <div id="ripper-view">
-        <!-- Job Number Link -->
         <div class="job-number-bar">
             <label>🔗 Link to Job:</label>
-            <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number e.g. J-A9C48150, or drop a PDF with the job number in its filename…" />
+            <input type="text" id="job-number-input" class="job-number-input" placeholder="Enter job number e.g. J-A9C48150..." />
             <button class="job-verify-btn" id="job-verify-btn" onclick="verifyJobNumber()">Verify Job</button>
             <span class="job-match-badge" id="job-match-badge"></span>
         </div>
@@ -412,12 +410,11 @@
     let verifiedJobId = null;
     let verifiedJobNum = null;
 
-    // ── Upload zone wiring ────────────────────────────────────────────────────
+    // Upload zone
     const fileInput = document.getElementById('file-input');
     const uploadZone = document.getElementById('upload-zone');
 
     uploadZone.addEventListener('click', () => fileInput.click());
-
     ['dragenter','dragover','dragleave','drop'].forEach(evt => {
         uploadZone.addEventListener(evt, e => e.preventDefault());
         document.body.addEventListener(evt, e => e.preventDefault());
@@ -430,11 +427,8 @@
     uploadZone.addEventListener('drop', e => {
         uploadZone.classList.remove('drag-over');
         const f = e.dataTransfer.files[0];
-        if (f && f.type === 'application/pdf') {
-            handleFile(f);
-        } else {
-            showError('Please drop a PDF file.');
-        }
+        if (f && f.type === 'application/pdf') handleFile(f);
+        else showError('Please drop a PDF file.');
     });
     fileInput.addEventListener('change', e => {
         if (e.target.files[0]) handleFile(e.target.files[0]);
@@ -463,7 +457,6 @@
         }
     }
 
-    // ── Firebase job verification ─────────────────────────────────────────────
     async function verifyJobNumber() {
         const num = document.getElementById('job-number-input').value.trim();
         if (!num) { showError('Please enter a job number to verify.'); return; }
@@ -474,7 +467,6 @@
         badge.className = 'job-match-badge checking'; badge.textContent = '⏳ Checking…';
         input.className = 'job-number-input verifying';
         try {
-            if (!window.firebaseModules) throw new Error('Firebase not ready');
             const { collection, getDocs, query, where } = window.firebaseModules;
             const q = query(collection(window.db, 'jobs'), where('Job Number', '==', num));
             const snap = await getDocs(q);
@@ -503,7 +495,6 @@
         }
     }
 
-    // ── Extract positioned text items from a page, sorted top→bottom ─────────
     async function getPageLines(page) {
         const content = await page.getTextContent();
         const viewport = page.getViewport({ scale: 1 });
@@ -529,9 +520,7 @@
         return lines;
     }
 
-    // ── Render a page to a JPEG data URL ─────────────────────────────────────
-    async function renderPage(page, scale) {
-        scale = scale || 2.5;
+    async function renderPage(page, scale = 2.5) {
         const vp = page.getViewport({ scale });
         const canvas = document.createElement('canvas');
         canvas.width = vp.width;
@@ -568,7 +557,6 @@
         });
     }
 
-    // ── Step progress helpers ─────────────────────────────────────────────────
     function setStep(id, state) {
         const el = document.getElementById(id);
         if (!el) return;
@@ -586,11 +574,9 @@
             icon.style.display = '';
             if (state === 'done') icon.textContent = '✅';
             if (state === 'error') icon.textContent = '❌';
-            if (state === 'skip') icon.textContent = '⏭️';
         }
     }
 
-    // ── Upload layout image to Firebase Storage ───────────────────────────────
     async function uploadLayoutImage(dataUrl, jobNum) {
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
@@ -601,7 +587,6 @@
         return await getDownloadURL(storageRef);
     }
 
-    // ── Upload page 4 image to Firebase Storage ───────────────────────────────
     async function uploadPage4Image(dataUrl, jobNum) {
         if (!window.firebaseModules || !dataUrl) return null;
         const { ref, uploadString, getDownloadURL } = window.firebaseModules;
@@ -612,7 +597,6 @@
         return await getDownloadURL(storageRef);
     }
 
-    // ── Save extracted data to Firestore job record ───────────────────────────
     async function saveToJob(address, layoutUrl, page4Url, rawPage4Text) {
         if (!verifiedJobId || !window.firebaseModules) return false;
         const { doc, updateDoc } = window.firebaseModules;
@@ -631,7 +615,6 @@
         return true;
     }
 
-    // ── Main extraction ───────────────────────────────────────────────────────
     async function startExtraction() {
         if (!pdfFile) return;
         hideError(); resetResults();
@@ -701,7 +684,7 @@
                     if (page4DataUrl) savedPage4Url = await uploadPage4Image(page4DataUrl, verifiedJobNum);
                     await saveToJob(address, savedLayoutUrl, savedPage4Url, page4RawText);
                     setStep('step-save', 'done');
-                    showSaveBanner('saved', `✅ Saved to Job #${verifiedJobNum} — layout and site assessment available in Conduct Survey`);
+                    showSaveBanner('saved', `✅ Saved to Job #${verifiedJobNum}`);
                 } catch (saveErr) {
                     console.error('Save error:', saveErr);
                     setStep('step-save', 'error');
@@ -712,10 +695,6 @@
         } catch (err) {
             console.error(err);
             showError('Extraction failed: ' + err.message);
-            ['step-parse','step-address','step-layout','step-boxes','step-save'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el && el.classList.contains('active')) setStep(id, 'error');
-            });
         } finally {
             btn.disabled = false; btn.textContent = '⚡ Extract Data from PDF';
         }
@@ -738,12 +717,6 @@
         }
 
         setBox('box-all', page4DataUrl || page4Text || '');
-
-        const fmt = lines => lines.length
-            ? lines.map((l, i) => `${String(i+1).padStart(3,' ')} │ ${l}`).join('\n')
-            : 'No text found.';
-        // debug panels omitted for simplicity in this version
-
         document.getElementById('results-area').classList.add('show');
     }
 
@@ -753,7 +726,7 @@
         if (!value || !value.trim()) {
             el.innerHTML = '<span style="color:var(--text-dim);font-style:italic;font-size:0.82rem;">Not found</span>';
         } else if (value.startsWith('data:image')) {
-            el.innerHTML = '<img src="' + value + '" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />';
+            el.innerHTML = `<img src="${value}" style="max-width:100%;border-radius:6px;border:1px solid var(--dark-lighter);" />`;
         } else {
             el.textContent = value;
         }
@@ -761,9 +734,9 @@
 
     function showSaveBanner(type, msg) {
         const el = document.getElementById('save-banner');
-        el.className = 'save-banner show ' + type;
-        el.innerHTML = type === 'saving'
-            ? `<div class="save-spinner"></div><span>${msg}</span>`
+        el.className = `save-banner show ${type}`;
+        el.innerHTML = type === 'saving' 
+            ? `<div class="save-spinner"></div><span>${msg}</span>` 
             : `<span>${msg}</span>`;
     }
 
@@ -778,12 +751,8 @@
         navigator.clipboard.writeText(text).then(() => {
             const btn = document.getElementById(btnId);
             const orig = btn.textContent;
-            btn.classList.add('copied'); 
-            btn.textContent = '✅ Copied!';
-            setTimeout(() => { 
-                btn.classList.remove('copied'); 
-                btn.textContent = orig; 
-            }, 2000);
+            btn.classList.add('copied'); btn.textContent = '✅ Copied!';
+            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 2000);
         });
     }
 
@@ -792,21 +761,15 @@
         navigator.clipboard.writeText(text).then(() => {
             const btn = document.getElementById('copy-boxes-btn');
             const orig = btn.textContent;
-            btn.classList.add('copied'); 
-            btn.textContent = '✅ Copied!';
-            setTimeout(() => { 
-                btn.classList.remove('copied'); 
-                btn.textContent = orig; 
-            }, 2000);
+            btn.classList.add('copied'); btn.textContent = '✅ Copied!';
+            setTimeout(() => { btn.classList.remove('copied'); btn.textContent = orig; }, 2000);
         });
     }
 
     function downloadLayout() {
         if (!layoutDataUrl) return;
         const a = document.createElement('a');
-        a.href = layoutDataUrl; 
-        a.download = 'proposed-layout.jpg'; 
-        a.click();
+        a.href = layoutDataUrl; a.download = 'proposed-layout.jpg'; a.click();
     }
 
     function showError(msg) { 
@@ -831,9 +794,7 @@
             const sp = el.querySelector('.spinner');
             if (sp) sp.remove();
         });
-        layoutDataUrl = ''; 
-        rawPage1Lines = []; 
-        rawPage4Lines = [];
+        layoutDataUrl = ''; rawPage1Lines = []; rawPage4Lines = [];
     }
 
     function resetAll() {
@@ -853,27 +814,23 @@
         verifiedJobNum = null;
     }
 
-    // ── Tab Switching ───────────────────────────────────────────────────────
+    // Tab Switching
     function switchTab(n) {
         document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===n));
         document.getElementById('ripper-view').style.display = n===0 ? 'block' : 'none';
         const subView = document.getElementById('submissions-view');
         subView.classList.toggle('active', n===1);
-        if (n === 1 && document.getElementById('week-select').options.length <= 1) {
-            initWeekSelector();
-        }
+        if (n === 1) initWeekSelector();
     }
 
-    // ── Submissions Tab ─────────────────────────────────────────────────────
+    // Submissions Tab - Updated to pull Postcode and Install Date from your admin view style
     async function initWeekSelector() {
         const select = document.getElementById('week-select');
         select.innerHTML = '<option value="">Loading weeks...</option>';
-
         try {
             const { collection, getDocs, query, orderBy } = window.firebaseModules;
             const q = query(collection(window.db, 'CHH SFA'), orderBy('Week Commencing', 'desc'));
             const snap = await getDocs(q);
-
             const weeks = new Set();
             snap.forEach(docSnap => {
                 const data = docSnap.data();
@@ -884,38 +841,25 @@
                     if (dateStr) weeks.add(dateStr);
                 }
             });
-
             select.innerHTML = '<option value="">Select week commencing...</option>';
             Array.from(weeks).sort().reverse().forEach(w => {
                 const opt = document.createElement('option');
                 opt.value = w;
-                const date = new Date(w);
-                opt.textContent = date.toLocaleDateString('en-GB', { 
-                    weekday: 'short', 
-                    year: 'numeric', 
-                    month: 'short', 
-                    day: 'numeric' 
-                });
+                opt.textContent = new Date(w).toLocaleDateString('en-GB', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
                 select.appendChild(opt);
             });
-            if (weeks.size === 0) {
-                select.innerHTML = '<option value="">No weeks found in CHH SFA collection</option>';
-            }
         } catch (e) {
             console.error(e);
-            select.innerHTML = '<option value="">Error loading weeks — check console</option>';
+            select.innerHTML = '<option value="">Error loading weeks</option>';
         }
     }
 
     async function loadJobsForWeek() {
         const weekStr = document.getElementById('week-select').value;
-        if (!weekStr) {
-            alert('Please select a week commencing date');
-            return;
-        }
+        if (!weekStr) return alert('Please select a week');
 
         const listEl = document.getElementById('jobs-list');
-        listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">Loading jobs for the selected week...</div>';
+        listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">Loading jobs...</div>';
 
         try {
             const { collection, getDocs, query, where, orderBy } = window.firebaseModules;
@@ -925,31 +869,37 @@
             const endDate = new Date(startDate);
             endDate.setDate(endDate.getDate() + 7);
 
-            const q = query(
-                colRef, 
+            const q = query(colRef, 
                 where('Week Commencing', '>=', startDate),
                 where('Week Commencing', '<', endDate),
                 orderBy('Week Commencing')
             );
 
             const snap = await getDocs(q);
-
             listEl.innerHTML = '';
 
             if (snap.empty) {
-                listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">No jobs found for this week in the CHH SFA collection.</div>';
+                listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--text-dim);">No jobs found for this week.</div>';
                 return;
             }
 
             snap.forEach(docSnap => {
                 const data = docSnap.data();
-                const jobNum = data['Job Number'] || data['Job No'] || '—';
-                const postcode = data['Postcode'] || data['Post Code'] || data['Postcode '] || '—';
+                const jobNum = data['Job Number'] || '—';
+
+                // Postcode from your admin view fields
+                let postcode = data['Postcode'] || data['postcode'] || '—';
+
+                // Install Date from multiple possible fields (matching your admin view)
                 let installDate = '—';
-                if (data['Install Date'] || data['Installation Date'] || data['InstallDate']) {
-                    let d = data['Install Date'] || data['Installation Date'] || data['InstallDate'];
-                    if (d && d.toDate) d = d.toDate();
-                    installDate = new Date(d).toLocaleDateString('en-GB');
+                const dateFields = ['Install Date', 'Installation Date', 'Booked Date', 'bookedDate', 'InstallDate'];
+                for (let field of dateFields) {
+                    if (data[field]) {
+                        let d = data[field];
+                        if (d && d.toDate) d = d.toDate();
+                        installDate = new Date(d).toLocaleDateString('en-GB');
+                        break;
+                    }
                 }
 
                 const div = document.createElement('div');
@@ -964,7 +914,7 @@
             });
         } catch (err) {
             console.error(err);
-            listEl.innerHTML = `<div style="padding:3rem;color:var(--error);">Error loading jobs: ${err.message}<br><small>Check that the 'Week Commencing' field exists and is a valid date/timestamp.</small></div>`;
+            listEl.innerHTML = `<div style="padding:3rem;color:var(--error);">Error: ${err.message}</div>`;
         }
     }
 
@@ -985,7 +935,7 @@
         modal.innerHTML = `
             <div class="modal-content">
                 <div class="modal-header">
-                    <strong>Job ${data['Job Number'] || '—'} • ${data['Postcode'] || data['Post Code'] || ''}</strong>
+                    <strong>Job ${data['Job Number'] || '—'} • ${data['Postcode'] || data['postcode'] || ''}</strong>
                     <button class="close-btn" onclick="this.closest('.modal').remove()">×</button>
                 </div>
                 <div class="modal-body">
@@ -995,22 +945,17 @@
         `;
         document.body.appendChild(modal);
 
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', e => {
             if (e.target === modal) modal.remove();
         });
     }
 
-    // Enter key support for job number
+    // Enter key for job number
     document.addEventListener('DOMContentLoaded', () => {
         const jobInput = document.getElementById('job-number-input');
-        if (jobInput) {
-            jobInput.addEventListener('keydown', e => {
-                if (e.key === 'Enter') verifyJobNumber();
-            });
-        }
+        if (jobInput) jobInput.addEventListener('keydown', e => { if (e.key === 'Enter') verifyJobNumber(); });
     });
 
-    // Initial load
     window.onload = () => {
         switchTab(0);
     };
