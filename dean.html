@@ -292,12 +292,12 @@
 
         /* QTY + UNIT inline controls */
         .mat-controls {
-            display: none;
+            display: none !important;
             align-items: center;
             gap: 0.4rem;
             flex-shrink: 0;
         }
-        .mat-controls.visible { display: flex; }
+        .mat-controls.visible { display: flex !important; }
 
         .material-qty {
             width: 64px;
@@ -791,19 +791,16 @@ function renderMaterials() {
         const qty = sel ? sel.qty : '1';
         const unit = sel ? sel.unit : 'unit';
         const unitOpts = UNITS.map(u => `<option value="${u}" ${unit===u?'selected':''}>${u}</option>`).join('');
-        const safeId = 'mrow_' + name.replace(/[^a-z0-9]/gi, '_');
-        return `<div class="material-row ${checked ? 'checked' : ''}" id="${safeId}">
-            <input type="checkbox" class="material-checkbox" ${checked ? 'checked' : ''}
-                onchange="toggleMat(${JSON.stringify(name)}, this.checked)" />
-            <span class="material-name" onclick="toggleMatByName(${JSON.stringify(name)})">${esc(name)}</span>
-            <div class="mat-controls ${checked ? 'visible' : ''}" id="ctrl_${safeId}">
-                <input type="number" class="material-qty"
-                    value="${esc(qty)}" min="0.1" step="0.1"
-                    oninput="updateQty(${JSON.stringify(name)}, this.value)"
-                    onclick="event.stopPropagation()" />
-                <select class="material-unit"
-                    onchange="updateUnit(${JSON.stringify(name)}, this.value)"
-                    onclick="event.stopPropagation()">${unitOpts}</select>
+        const rowId = 'row_' + btoa(encodeURIComponent(name)).replace(/[^a-z0-9]/gi,'');
+        return `<div class="material-row ${checked ? 'checked' : ''}" id="${rowId}" onclick="handleRowClick(event, ${JSON.stringify(name)})">
+            <input type="checkbox" class="material-checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation()" onchange="handleCheckbox(event, ${JSON.stringify(name)})" />
+            <span class="material-name">${esc(name)}</span>
+            <div class="mat-controls ${checked ? 'visible' : ''}">
+                <input type="number" class="material-qty" value="${qty}" min="0.1" step="0.1"
+                    onclick="event.stopPropagation()"
+                    onchange="event.stopPropagation(); updateQty(${JSON.stringify(name)}, this.value)"
+                    oninput="event.stopPropagation(); updateQty(${JSON.stringify(name)}, this.value)" />
+                <select class="material-unit" onclick="event.stopPropagation()" onchange="event.stopPropagation(); updateUnit(${JSON.stringify(name)}, this.value)">${unitOpts}</select>
             </div>
         </div>`;
     }).join('');
@@ -811,37 +808,45 @@ function renderMaterials() {
 
 function filterMaterials() { renderMaterials(); }
 
-function toggleMatByName(name) {
-    const isNowChecked = !selections[name];
-    if (isNowChecked) {
-        selections[name] = { qty: '1', unit: 'unit' };
-    } else {
-        delete selections[name];
-    }
-    applyToggleDOM(name, isNowChecked);
-    updateSummary();
+function handleRowClick(event, name) {
+    // Only toggle if click was not on the qty/unit controls
+    const tag = event.target.tagName.toLowerCase();
+    if (tag === 'input' && event.target.type === 'number') return;
+    if (tag === 'select') return;
+    setMaterial(name, !selections[name]);
 }
 
-function toggleMat(name, isChecked) {
+function handleCheckbox(event, name) {
+    setMaterial(name, event.target.checked);
+}
+
+function setMaterial(name, isChecked) {
     if (isChecked) {
-        selections[name] = { qty: '1', unit: 'unit' };
+        if (!selections[name]) selections[name] = { qty: '1', unit: 'unit' };
     } else {
         delete selections[name];
     }
-    applyToggleDOM(name, isChecked);
+    // Update this row in place
+    const rowId = 'row_' + btoa(encodeURIComponent(name)).replace(/[^a-z0-9]/gi,'');
+    const row = document.getElementById(rowId);
+    if (row) {
+        row.classList.toggle('checked', isChecked);
+        const cb = row.querySelector('.material-checkbox');
+        if (cb) cb.checked = isChecked;
+        const ctrl = row.querySelector('.mat-controls');
+        if (ctrl) {
+            if (isChecked) {
+                ctrl.classList.add('visible');
+                ctrl.style.display = 'flex';
+            } else {
+                ctrl.classList.remove('visible');
+                ctrl.style.display = 'none';
+            }
+        }
+    }
     updateSummary();
 }
 
-function applyToggleDOM(name, isChecked) {
-    const safeId = 'mrow_' + name.replace(/[^a-z0-9]/gi, '_');
-    const row = document.getElementById(safeId);
-    if (!row) return;
-    const cb = row.querySelector('.material-checkbox');
-    const ctrl = row.querySelector('.mat-controls');
-    if (cb) cb.checked = isChecked;
-    if (ctrl) ctrl.classList.toggle('visible', isChecked);
-    row.classList.toggle('checked', isChecked);
-}
 
 function updateQty(name, val) {
     if (selections[name]) { selections[name].qty = val; updateSummary(); }
