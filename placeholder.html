@@ -724,12 +724,18 @@ window.searchJob = async function() {
             ['lead','engineer','installer']
         );
 
+        // Reformat date: replace any slashes with hyphens so EmailJS doesn't encode them
+        function cleanDate(d) {
+            if (!d || d === 'N/A') return d || 'N/A';
+            return String(d).replace(/\//g, '-');
+        }
+
         currentJob = {
-            jobNumber: pick(found, 'Job Number', 'job number', 'JobNumber', 'Job No', 'job no') || raw,
+            jobNumber:   pick(found, 'Job Number', 'job number', 'JobNumber', 'Job No', 'job no') || raw,
             name:        name        || 'N/A',
             address:     address     || '',
             postcode:    postcode    || 'N/A',
-            installDate: installDate || 'N/A',
+            installDate: cleanDate(installDate) || 'N/A',
             email:       email       || '',
             lead:        lead        || 'N/A',
         };
