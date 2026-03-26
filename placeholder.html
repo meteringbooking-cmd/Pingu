@@ -631,29 +631,35 @@ window.searchJob = async function() {
     try {
         const { collection, getDocs } = window.firebaseModules;
 
-        // Search Solar-jobs first
-        const solarSnap = await getDocs(collection(window.db, 'Solar-jobs'));
-        let found = null;
-        solarSnap.forEach(doc => {
-            if (!found) {
-                const d = doc.data();
-                if (String(d['Job Number']).trim() === raw) {
-                    found = { id: doc.id, ...d };
-                }
+        // Search BOTH collections simultaneously and merge so no field is missed
+        const [solarSnap, jobsSnap] = await Promise.all([
+            getDocs(collection(window.db, 'Solar-jobs')),
+            getDocs(collection(window.db, 'jobs'))
+        ]);
+
+        let solarFound = null;
+        solarSnap.forEach(d => {
+            if (!solarFound) {
+                const data = d.data();
+                if (String(data['Job Number']).trim() === raw) solarFound = { id: d.id, ...data };
             }
         });
 
-        // Fallback to jobs collection
-        if (!found) {
-            const jobsSnap = await getDocs(collection(window.db, 'jobs'));
-            jobsSnap.forEach(doc => {
-                if (!found) {
-                    const d = doc.data();
-                    if (String(d['Job Number']).trim() === raw) {
-                        found = { id: doc.id, ...d };
-                    }
-                }
-            });
+        let jobsFound = null;
+        jobsSnap.forEach(d => {
+            if (!jobsFound) {
+                const data = d.data();
+                if (String(data['Job Number']).trim() === raw) jobsFound = { id: d.id, ...data };
+            }
+        });
+
+        // Merge: jobs is the base (has Name, Email etc), Solar-jobs overlays on top
+        // This means Solar-jobs fields win where present, but jobs fills any gaps
+        let found = null;
+        if (solarFound && jobsFound) {
+            found = { ...jobsFound, ...solarFound };
+        } else {
+            found = solarFound || jobsFound;
         }
 
         if (!found) {
