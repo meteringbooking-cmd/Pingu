@@ -665,44 +665,67 @@ window.searchJob = async function() {
             return;
         }
 
-        // Parse date — try every common field name
-        let installDate = null;
-        for (const f of [
-            'Booked Date', 'Install Date', 'installedDate', 'bookingDate',
-            'Booked date', 'install date', 'Install date', 'Date', 'date',
-            'Job Date', 'job date', 'Scheduled Date', 'scheduled date'
-        ]) {
-            if (found[f]) { installDate = found[f]; break; }
+        // Helper — try a list of field names, return first match
+        function pick(obj, ...keys) {
+            for (const k of keys) {
+                if (obj[k] !== undefined && obj[k] !== null && String(obj[k]).trim() !== '') return String(obj[k]).trim();
+            }
+            return '';
         }
 
-        // Parse address — try every common field name
-        let address = '';
-        for (const f of [
-            'Address', 'address', 'Address Line 1', 'address line 1',
-            'Address Line1', 'AddressLine1', 'Street', 'street',
-            '1st Line of Address', '1st line of address', 'Line 1', 'line 1'
-        ]) {
-            if (found[f]) { address = found[f]; break; }
+        // Also try a case-insensitive scan of all keys as last resort
+        function pickLoose(obj, ...keywords) {
+            const entries = Object.entries(obj);
+            for (const kw of keywords) {
+                const lkw = kw.toLowerCase();
+                const match = entries.find(([k]) => k.toLowerCase().includes(lkw));
+                if (match && match[1] !== undefined && String(match[1]).trim() !== '') return String(match[1]).trim();
+            }
+            return '';
         }
 
-        // Parse email — try every common field name
-        let email = '';
-        for (const f of [
-            'Email', 'email', 'Email Address', 'email address',
-            'EmailAddress', 'emailAddress', 'E-mail', 'e-mail',
-            'Customer Email', 'customer email'
-        ]) {
-            if (found[f]) { email = found[f]; break; }
+        function resolve(obj, exactKeys, fallbackKeywords) {
+            return pick(obj, ...exactKeys) || pickLoose(obj, ...fallbackKeywords) || '';
         }
+
+        const installDate = resolve(found,
+            ['Booked Date','Install Date','installedDate','bookingDate','Booked date','install date','Install date','Date','date','Job Date','job date','Scheduled Date','scheduled date','BookedDate','scheduled'],
+            ['booked','install','date','scheduled']
+        );
+
+        const address = resolve(found,
+            ['Address','address','Address Line 1','address line 1','Address Line1','AddressLine1','Street','street','1st Line of Address','1st line of address','Line 1','line 1','Address1','address1'],
+            ['address','street','line 1']
+        );
+
+        const email = resolve(found,
+            ['Email','email','Email Address','email address','EmailAddress','emailAddress','E-mail','e-mail','Customer Email','customer email','CustomerEmail'],
+            ['email']
+        );
+
+        const name = resolve(found,
+            ['Name','name','Customer Name','customer name','CustomerName','Full Name','full name','Client Name','client name'],
+            ['name','client','customer']
+        );
+
+        const postcode = resolve(found,
+            ['Postcode','postcode','Post Code','post code','PostCode','ZIP','zip'],
+            ['postcode','post code','zip']
+        );
+
+        const lead = resolve(found,
+            ['Lead Engineer','Lead','lead','Engineer','engineer','Lead engineer','Assigned Engineer','assigned engineer','Installer','installer'],
+            ['lead','engineer','installer']
+        );
 
         currentJob = {
-            jobNumber: String(found['Job Number'] || raw),
-            name: found['Name'] || found['Customer Name'] || found['name'] || found['customer name'] || 'N/A',
-            address,
-            postcode: found['Postcode'] || found['postcode'] || found['Post Code'] || found['post code'] || 'N/A',
+            jobNumber: pick(found, 'Job Number', 'job number', 'JobNumber', 'Job No', 'job no') || raw,
+            name:        name        || 'N/A',
+            address:     address     || '',
+            postcode:    postcode    || 'N/A',
             installDate: installDate || 'N/A',
-            email,
-            lead: found['Lead Engineer'] || found['Lead'] || found['lead'] || found['Engineer'] || found['engineer'] || 'N/A',
+            email:       email       || '',
+            lead:        lead        || 'N/A',
         };
 
         document.getElementById('info-job-num').textContent  = currentJob.jobNumber;
