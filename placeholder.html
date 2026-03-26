@@ -852,17 +852,24 @@ window.submitOrder = async function() {
 
         // Build email body
         const orderLines = selected.map(s => `${s.category} | ${s.name} | Qty: ${s.quantity}`).join('\n');
+        // Decode any HTML entities (e.g. &#x2F; → /) before sending to EmailJS
+        function decodeEntities(str) {
+            const txt = document.createElement('textarea');
+            txt.innerHTML = String(str || '');
+            return txt.value;
+        }
+
         const emailParams = {
-            submitter_name: name,
-            job_number: currentJob.jobNumber,
-            customer_name: currentJob.name,
-            address: currentJob.address || 'N/A',
-            postcode: currentJob.postcode,
-            delivery_date: currentJob.installDate,
-            customer_email: currentJob.email || 'N/A',
-            lead_engineer: currentJob.lead,
-            order_details: orderLines,
-            total_items: selected.length,
+            submitter_name: decodeEntities(name),
+            job_number:     decodeEntities(currentJob.jobNumber),
+            customer_name:  decodeEntities(currentJob.name),
+            address:        decodeEntities(currentJob.address || 'N/A'),
+            postcode:       decodeEntities(currentJob.postcode),
+            delivery_date:  decodeEntities(currentJob.installDate),
+            customer_email: decodeEntities(currentJob.email || 'N/A'),
+            lead_engineer:  decodeEntities(currentJob.lead),
+            order_details:  orderLines,
+            total_items:    selected.length,
         };
 
         await emailjs.send('service_jovorbh', 'template_iigwlqg', emailParams);
