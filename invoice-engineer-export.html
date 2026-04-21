@@ -1,1 +1,478 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Export Engineer Invoices | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255,107,53,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0,217,255,0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255,200,87,0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0,0) rotate(0deg); }
+            33%       { transform: translate(30px,-30px) rotate(120deg); }
+            66%       { transform: translate(-20px,20px) rotate(240deg); }
+        }
+        .container { max-width: 1800px; margin: 0 auto; padding: 2rem; }
+        header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
+        @keyframes slideDown { from { opacity:0; transform:translateY(-30px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeInUp  { from { opacity:0; transform:translateY(30px);  } to { opacity:1; transform:translateY(0); } }
+        
+        .header-content { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-decoration: none;
+        }
+        .back-btn {
+            background: var(--dark-light); color: var(--text); text-decoration: none;
+            padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
+            transition: all 0.3s ease; border: 2px solid transparent;
+        }
+        .back-btn:hover { background: var(--dark-lighter); border-color: var(--primary); transform: translateX(-5px); }
+        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
+
+        .card {
+            background: var(--dark-light); border-radius: 16px; padding: 2rem;
+            border: 2px solid var(--dark-lighter); margin-bottom: 2rem; animation: fadeInUp 0.6s ease-out;
+        }
+        .card-title {
+            font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.8rem 1.5rem; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;
+            font-weight: 600; cursor: pointer; transition: all 0.3s ease; border: none;
+            display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--success), #3DB88E); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(78,204,163,0.4); }
+        .btn-secondary { background: var(--dark-lighter); color: var(--text); border: 2px solid var(--dark-lighter); }
+        .btn-secondary:hover { border-color: var(--primary); }
+
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
+        .filter-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .filter-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        .filter-input, .filter-select {
+            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
+            color: var(--text); padding: 0.8rem 1rem; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; transition: all 0.3s ease;
+        }
+        .filter-input:focus, .filter-select:focus { outline: none; border-color: var(--primary); }
+        .filter-select option { background: var(--dark-lighter); color: var(--text); }
+        .filter-actions { display: flex; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; flex-wrap: wrap; }
+        .filter-actions-left { display: flex; gap: 1rem; }
+
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--dark-lighter); margin-top: 1.5rem;
+        }
+        .stat-item { text-align: center; }
+        .stat-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .stat-value {
+            font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .table-container {
+            background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
+            border: 2px solid var(--dark-lighter); animation: fadeInUp 0.8s ease-out; overflow-x: auto;
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        thead { position: sticky; top: 0; background: var(--dark-light); z-index: 10; }
+        th {
+            font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
+            padding: 1rem; text-align: left; border-bottom: 2px solid var(--primary);
+        }
+        tbody tr { border-bottom: 1px solid var(--dark-lighter); transition: all 0.3s ease; }
+        tbody tr:hover { background: var(--dark-lighter); }
+        td { padding: 0.9rem 1rem; color: var(--text); font-size: 0.88rem; }
+        .job-number { font-weight: 700; color: var(--primary); }
+
+        .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge-yes { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
+        .badge-no  { background: rgba(255,107,107,0.18); color: var(--error);   border: 1px solid rgba(255,107,107,0.4); }
+        .badge-approved    { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
+        .badge-disapproved { background: rgba(255,107,107,0.18); color: var(--error);   border: 1px solid rgba(255,107,107,0.4); }
+        .badge-hold        { background: rgba(255,200,87,0.18);  color: var(--warning);  border: 1px solid rgba(255,200,87,0.4); }
+        .badge-pending     { background: rgba(154,154,176,0.15); color: var(--text-dim); border: 1px dashed rgba(154,154,176,0.35); }
+        .badge-type { background: rgba(0,217,255,0.12); color: var(--accent); border: 1px solid rgba(0,217,255,0.3); }
+        
+        .value-cell { color: var(--secondary); font-weight: 700; }
+        .notes-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); font-size: 0.82rem; }
+        .notes-cell:hover { white-space: normal; overflow: visible; background: var(--dark); padding: 0.5rem; border-radius: 4px; position: relative; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5);}
+
+        .toast {
+            position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light);
+            color: var(--text); padding: 1rem 1.5rem; border-radius: 8px;
+            border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 2000; animation: slideIn 0.3s ease-out; display: none;
+        }
+        .toast.show { display: block; }
+        .toast.error { border-color: var(--error); }
+        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
+        .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .filters-grid { grid-template-columns: 1fr; }
+            .filter-actions { flex-direction: column; }
+            .filter-actions-left { width: 100%; }
+            .btn-primary { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <div class="header-content">
+            <a href="index.html" class="logo">Pingu - Solar</a>
+            <a href="admin.html" class="back-btn">&#8592; Back to Admin</a>
+        </div>
+        <h1>Export Data</h1>
+        <p class="subtitle">Search by engineer and submission date &middot; Preview data below &middot; Export to XLSX</p>
+    </header>
+
+    <div class="card">
+        <div class="card-title">&#128269; Export Criteria</div>
+        <div class="filters-grid">
+            <div class="filter-group">
+                <label class="filter-label" for="f-engineer">Engineer</label>
+                <select id="f-engineer" class="filter-select" onchange="applyFilters()">
+                    <option value="">All Engineers</option>
+                    </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="f-start-date">Submitted From</label>
+                <input type="date" id="f-start-date" class="filter-input" oninput="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="f-end-date">Submitted To</label>
+                <input type="date" id="f-end-date" class="filter-input" oninput="applyFilters()">
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="f-approval">Approval Status</label>
+                <select id="f-approval" class="filter-select" onchange="applyFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="disapproved">Disapproved</option>
+                    <option value="hold">On Hold</option>
+                </select>
+            </div>
+        </div>
+        <div class="filter-actions">
+            <div class="filter-actions-left">
+                <button class="btn btn-secondary" onclick="clearFilters()">Clear Filters</button>
+            </div>
+            <button class="btn btn-primary" onclick="exportToExcel()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                Export to XLSX
+            </button>
+        </div>
+        <div class="stats-row">
+            <div class="stat-item"><div class="stat-label">Total Found</div><div class="stat-value" id="stat-filtered">0</div></div>
+            <div class="stat-item"><div class="stat-label">Total Value</div><div class="stat-value" id="stat-value">&pound;0</div></div>
+            <div class="stat-item"><div class="stat-label">Approved</div><div class="stat-value" id="stat-approved" style="background:linear-gradient(135deg,var(--success),#3DB88E);-webkit-background-clip:text;background-clip:text;">0</div></div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div class="card-title" style="margin-bottom: 1rem;">&#128065; Data Preview</div>
+        <div id="table-content">
+            <div class="loading">Loading records from Firebase&hellip;</div>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, query, orderBy } 
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain: "pingu-solar.firebaseapp.com",
+        projectId: "pingu-solar",
+        storageBucket: "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId: "1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId: "G-PFH059DZ64"
+    };
+
+    try {
+        const app = initializeApp(firebaseConfig);
+        window.db = getFirestore(app);
+        window.firebaseModules = { collection, getDocs, query, orderBy };
+        console.log('Firebase ready');
+        window.addEventListener('DOMContentLoaded', () => window.loadInvoices());
+    } catch (e) {
+        console.error('Firebase error', e);
+        document.getElementById('table-content').innerHTML = '<div class="empty-state">Firebase connection failed</div>';
+    }
+</script>
+
+<script>
+    let allInvoices = [];
+    let filteredInvoices = [];
+
+    // Utilities
+    function escapeHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = String(t != null ? t : '');
+        return d.innerHTML;
+    }
+    
+    function formatDate(v) {
+        if (!v) return 'N/A';
+        const d = new Date(v);
+        if (isNaN(d)) return v;
+        return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
+    }
+    
+    function showToast(msg, type = 'success') {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast show' + (type === 'error' ? ' error' : '');
+        setTimeout(() => t.classList.remove('show'), 3500);
+    }
+    
+    function approvalBadge(s) {
+        if (!s || s === 'pending') return '<span class="badge badge-pending">Pending</span>';
+        if (s === 'approved')    return '<span class="badge badge-approved">Approved</span>';
+        if (s === 'disapproved') return '<span class="badge badge-disapproved">Disapproved</span>';
+        if (s === 'hold')        return '<span class="badge badge-hold">On Hold</span>';
+        return '<span class="badge badge-pending">' + escapeHtml(s) + '</span>';
+    }
+    
+    function yesnoBadge(v) {
+        return v === 'yes'
+            ? '<span class="badge badge-yes">Yes</span>'
+            : v === 'no' ? '<span class="badge badge-no">No</span>'
+            : '<span style="color:var(--text-dim)">-</span>';
+    }
+
+    // Load Data
+    window.loadInvoices = async function() {
+        try {
+            const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
+            const snap = await getDocs(query(collection(window.db, 'Engineer Invoices'), ob('submittedAt', 'desc')));
+            
+            allInvoices = [];
+            let engineers = new Set();
+            
+            snap.forEach(d => {
+                const data = d.data();
+                allInvoices.push(Object.assign({ id: d.id }, data));
+                if (data.name) engineers.add(data.name.trim());
+            });
+            
+            filteredInvoices = allInvoices.slice();
+            
+            // Populate Engineer Dropdown
+            const engSelect = document.getElementById('f-engineer');
+            Array.from(engineers).sort().forEach(eng => {
+                const opt = document.createElement('option');
+                opt.value = eng;
+                opt.textContent = eng;
+                engSelect.appendChild(opt);
+            });
+
+            renderTable();
+            updateStats();
+        } catch (e) {
+            console.error(e);
+            document.getElementById('table-content').innerHTML =
+                '<div class="empty-state">Error loading invoices: ' + escapeHtml(e.message) + '</div>';
+        }
+    };
+
+    // Filters
+    window.applyFilters = function() {
+        const engineer = document.getElementById('f-engineer').value.toLowerCase();
+        const start    = document.getElementById('f-start-date').value;
+        const end      = document.getElementById('f-end-date').value;
+        const approval = document.getElementById('f-approval').value;
+
+        filteredInvoices = allInvoices.filter(inv => {
+            // Engineer match
+            if (engineer && (!inv.name || inv.name.toLowerCase() !== engineer)) return false;
+            
+            // Approval Match
+            if (approval) {
+                const s = inv.approvalStatus || 'pending';
+                if (s !== approval) return false;
+            }
+
+            // Submitted Date logic (Compare YYYY-MM-DD)
+            if (start || end) {
+                // Determine the submission date string, fallback to installDate if absent
+                const recordDateStr = inv.submittedAt || inv.uploadedAt; 
+                if (!recordDateStr) return false; // If there's no date, drop it from filtered date range
+
+                // Extract just the YYYY-MM-DD part from ISO string
+                const isoDate = recordDateStr.split('T')[0];
+                
+                if (start && isoDate < start) return false;
+                if (end && isoDate > end) return false;
+            }
+
+            return true;
+        });
+        
+        renderTable();
+        updateStats();
+    };
+
+    window.clearFilters = function() {
+        ['f-engineer','f-start-date','f-end-date','f-approval'].forEach(id => { 
+            document.getElementById(id).value = ''; 
+        });
+        filteredInvoices = allInvoices.slice();
+        renderTable();
+        updateStats();
+        showToast('Filters cleared');
+    };
+
+    // Render Preview
+    function renderTable() {
+        if (!filteredInvoices.length) {
+            document.getElementById('table-content').innerHTML =
+                '<div class="empty-state">' +
+                '<div style="font-size:3rem;margin-bottom:1rem;">&#128196;</div>' +
+                '<h3 style="font-family:\'Syne\',sans-serif;font-size:1.5rem;margin-bottom:.5rem;">No Invoices Found</h3>' +
+                '<p>No invoices match the current filters.</p>' +
+                '</div>';
+            return;
+        }
+        let rows = filteredInvoices.map(inv =>
+            '<tr>' +
+            '<td class="job-number">#' + escapeHtml(inv.jobNumber) + '</td>' +
+            '<td>' + escapeHtml(inv.name) + '</td>' +
+            '<td>' + formatDate(inv.submittedAt) + '</td>' +
+            '<td>' + escapeHtml(inv.postcode || '-') + '</td>' +
+            '<td><span class="badge badge-type">' + escapeHtml(inv.jobType) + '</span></td>' +
+            '<td>' + inv.days + '</td>' +
+            '<td class="value-cell">&pound;' + (inv.invoiceValue || 0).toFixed(2) + '</td>' +
+            '<td>' + approvalBadge(inv.approvalStatus) + '</td>' +
+            '<td class="notes-cell" title="' + escapeHtml(inv.notes) + '">' + (escapeHtml(inv.notes) || '-') + '</td>' +
+            '</tr>'
+        ).join('');
+
+        document.getElementById('table-content').innerHTML =
+            '<table><thead><tr>' +
+            '<th>Job #</th><th>Engineer</th><th>Submitted At</th><th>Postcode</th>' +
+            '<th>Job Type</th><th>Days</th><th>Value</th>' +
+            '<th>Approval</th><th>Notes</th>' +
+            '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    function updateStats() {
+        const val  = filteredInvoices.reduce((s,i) => s + (i.invoiceValue || 0), 0);
+        const appr = filteredInvoices.filter(i => i.approvalStatus === 'approved').length;
+        
+        document.getElementById('stat-filtered').textContent = filteredInvoices.length;
+        document.getElementById('stat-value').textContent    = '\u00a3' + val.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+        document.getElementById('stat-approved').textContent = appr;
+    }
+
+    // Export Logic via SheetJS
+    window.exportToExcel = function() {
+        if (!filteredInvoices.length) {
+            showToast('No records to export. Adjust filters.', 'error');
+            return;
+        }
+
+        // Map the filtered array into a clean format for Excel columns
+        const exportData = filteredInvoices.map(inv => ({
+            'Job Number': inv.jobNumber || '',
+            'Engineer Name': inv.name || '',
+            'Submitted At': inv.submittedAt ? new Date(inv.submittedAt).toLocaleString('en-GB') : '',
+            'Install Date': inv.installDate ? formatDate(inv.installDate) : '',
+            'Job Type': inv.jobType || '',
+            'Address': inv.address || '',
+            'Postcode': inv.postcode || '',
+            'Days': inv.days || '',
+            'Invoice Value (£)': Number((inv.invoiceValue || 0).toFixed(2)),
+            'Survey Complete': (inv.surveyComplete || '').toUpperCase(),
+            'Kraken Complete': (inv.krakenComplete || '').toUpperCase(),
+            'Approval Status': (inv.approvalStatus || 'pending').toUpperCase(),
+            'Approval Comments': inv.approvalComments || '',
+            'Approved At': inv.approvedAt ? new Date(inv.approvedAt).toLocaleString('en-GB') : '',
+            'Notes': inv.notes || ''
+        }));
+
+        try {
+            // Create a new workbook and worksheet
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Exported Invoices");
+
+            // Build dynamic filename based on filters
+            const engName = document.getElementById('f-engineer').value || 'All_Engineers';
+            const dateStr = new Date().toISOString().split('T')[0];
+            const filename = `Pingu_Invoices_${engName.replace(/\s+/g, '_')}_${dateStr}.xlsx`;
+
+            // Trigger download
+            XLSX.writeFile(workbook, filename);
+            showToast('Export successful!');
+        } catch (error) {
+            console.error("Export Error:", error);
+            showToast('Failed to generate Excel file.', 'error');
+        }
+    };
+</script>
+</body>
+</html>
