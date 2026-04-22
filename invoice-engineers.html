@@ -48,7 +48,8 @@
             33%       { transform: translate(30px,-30px) rotate(120deg); }
             66%       { transform: translate(-20px,20px) rotate(240deg); }
         }
-        .container { max-width: 1800px; margin: 0 auto; padding: 2rem; }
+        /* Increased width to fill page */
+        .container { max-width: 1920px; margin: 0 auto; padding: 2rem; }
         header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
         @keyframes slideDown { from { opacity:0; transform:translateY(-30px); } to { opacity:1; transform:translateY(0); } }
         @keyframes fadeInUp  { from { opacity:0; transform:translateY(30px);  } to { opacity:1; transform:translateY(0); } }
@@ -80,7 +81,7 @@
             margin-bottom: 1.5rem;
         }
 
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
         .form-group.full-width { grid-column: 1 / -1; }
         .form-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
@@ -141,7 +142,7 @@
             background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
             border: 2px solid var(--dark-lighter); animation: fadeInUp 0.8s ease-out; overflow-x: auto;
         }
-        table { width: 100%; border-collapse: collapse; min-width: 1200px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1300px; }
         thead { position: sticky; top: 0; background: var(--dark-light); z-index: 10; }
         th {
             font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
@@ -156,6 +157,7 @@
         .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         .badge-yes { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
         .badge-no  { background: rgba(255,107,107,0.18); color: var(--error);   border: 1px solid rgba(255,107,107,0.4); }
+        .badge-kraken { background: rgba(255, 200, 87, 0.12); color: var(--secondary); border: 1px solid rgba(255, 200, 87, 0.3); }
         .badge-approved    { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
         .badge-disapproved { background: rgba(255,107,107,0.18); color: var(--error);   border: 1px solid rgba(255,107,107,0.4); }
         .badge-hold        { background: rgba(255,200,87,0.18);  color: var(--warning);  border: 1px solid rgba(255,200,87,0.4); }
@@ -260,7 +262,6 @@
         <p class="subtitle">Submit and manage engineer invoices &middot; Approval tracked per submission &middot; Writes to Engineer Invoices collection</p>
     </header>
 
-    <!-- SUBMIT FORM -->
     <div class="card">
         <div class="card-title">&#128203; Submit New Invoice</div>
         <div class="form-grid">
@@ -310,11 +311,13 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="form-label">Complete on Kraken?</label>
-                <div class="toggle-group">
-                    <button class="toggle-btn yes" data-field="kraken" data-val="yes" onclick="setToggle('kraken','yes')">&#10003; Yes</button>
-                    <button class="toggle-btn no"  data-field="kraken" data-val="no"  onclick="setToggle('kraken','no')">&#10007; No</button>
-                </div>
+                <label class="form-label" for="inv-kraken-status">Kraken Status</label>
+                <select id="inv-kraken-status" class="form-select">
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Partial Complete">Partial Complete</option>
+                    <option value="Complete">Complete</option>
+                </select>
             </div>
             <div class="form-group full-width">
                 <label class="form-label" for="inv-notes">Notes</label>
@@ -324,7 +327,6 @@
         <button class="btn btn-primary" onclick="submitInvoice()">&#128190; Submit Invoice</button>
     </div>
 
-    <!-- FILTERS -->
     <div class="card">
         <div class="card-title">&#128269; Filter Invoices</div>
         <div class="filters-grid">
@@ -374,7 +376,6 @@
         </div>
     </div>
 
-    <!-- TABLE -->
     <div class="table-container">
         <div id="table-content">
             <div class="loading">Loading invoices from Firebase&hellip;</div>
@@ -384,7 +385,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- APPROVAL MODAL -->
 <div class="modal" id="approval-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -445,7 +445,7 @@
     let filteredInvoices = [];
     let currentEditId = null;
     let currentApproval = '';
-    const toggleState = { survey: '', kraken: '' };
+    const toggleState = { survey: '' };
 
     window.setToggle = function(field, val) {
         toggleState[field] = val;
@@ -485,6 +485,11 @@
             : v === 'no' ? '<span class="badge badge-no">No</span>'
             : '<span style="color:var(--text-dim)">-</span>';
     }
+    // New badge helper for Kraken Status
+    function krakenBadge(v) {
+        if (!v) return '<span style="color:var(--text-dim)">-</span>';
+        return '<span class="badge badge-kraken">' + escapeHtml(v) + '</span>';
+    }
 
     window.loadInvoices = async function() {
         try {
@@ -511,6 +516,7 @@
         const jobType     = document.getElementById('inv-job-type').value;
         const days        = document.getElementById('inv-days').value;
         const value       = document.getElementById('inv-value').value;
+        const krakenStat  = document.getElementById('inv-kraken-status').value;
         const notes       = document.getElementById('inv-notes').value.trim();
 
         if (!jobNumber || !name || !jobType || !value) {
@@ -525,7 +531,7 @@
             surveyComplete: toggleState.survey || '',
             days: parseFloat(days) || 1,
             invoiceValue: parseFloat(value) || 0,
-            krakenComplete: toggleState.kraken || '',
+            krakenStatus: krakenStat,
             notes,
             approvalStatus: 'pending',
             approvalComments: '',
@@ -549,7 +555,8 @@
         ['inv-job-number','inv-name','inv-address','inv-postcode','inv-install-date',
          'inv-job-type','inv-days','inv-value','inv-notes']
             .forEach(id => { document.getElementById(id).value = ''; });
-        toggleState.survey = ''; toggleState.kraken = '';
+        document.getElementById('inv-kraken-status').value = 'Not Started';
+        toggleState.survey = '';
         document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
     }
 
@@ -604,7 +611,7 @@
             '<td><span class="badge badge-type">' + escapeHtml(inv.jobType) + '</span></td>' +
             '<td>' + inv.days + '</td>' +
             '<td>' + yesnoBadge(inv.surveyComplete) + '</td>' +
-            '<td>' + yesnoBadge(inv.krakenComplete) + '</td>' +
+            '<td>' + krakenBadge(inv.krakenStatus) + '</td>' +
             '<td class="value-cell">&pound;' + (inv.invoiceValue || 0).toFixed(2) + '</td>' +
             '<td>' + approvalBadge(inv.approvalStatus) + '</td>' +
             '<td class="notes-cell" title="' + escapeHtml(inv.notes) + '">' + (escapeHtml(inv.notes) || '-') + '</td>' +
@@ -616,7 +623,7 @@
             '<table><thead><tr>' +
             '<th>Job #</th><th>Engineer</th><th>Address</th><th>Postcode</th>' +
             '<th>Install Date</th><th>Job Type</th><th>Days</th>' +
-            '<th>Survey</th><th>Kraken</th><th>Value</th>' +
+            '<th>Survey</th><th>Kraken Status</th><th>Value</th>' +
             '<th>Approval</th><th>Notes</th><th>Action</th>' +
             '</tr></thead><tbody>' + rows + '</tbody></table>';
     }
@@ -643,15 +650,15 @@
         currentApproval = inv.approvalStatus || 'pending';
 
         const fields = [
-            { label: 'Job Number',    value: '#' + inv.jobNumber,                              full: false },
-            { label: 'Engineer',      value: inv.name,                                          full: false },
+            { label: 'Job Number',    value: '#' + inv.jobNumber,                             full: false },
+            { label: 'Engineer',      value: inv.name,                                        full: false },
             { label: 'Address',       value: (inv.address || '-') + ', ' + (inv.postcode || '-'), full: false },
             { label: 'Install Date',  value: formatDate(inv.installDate),                       full: false },
             { label: 'Job Type',      value: inv.jobType,                                       full: false },
             { label: 'Days',          value: String(inv.days),                                  full: false },
             { label: 'Invoice Value', value: '\u00a3' + (inv.invoiceValue || 0).toFixed(2),    full: false },
             { label: 'Survey Done',   value: inv.surveyComplete === 'yes' ? '\u2713 Yes' : '\u2717 No', full: false },
-            { label: 'Kraken Done',   value: inv.krakenComplete  === 'yes' ? '\u2713 Yes' : '\u2717 No', full: false },
+            { label: 'Kraken Status', value: inv.krakenStatus || 'Not Started',               full: false },
             { label: 'Submitted',     value: formatDate(inv.submittedAt),                       full: false },
             { label: 'Notes',         value: inv.notes || '-',                                  full: true  },
         ];
