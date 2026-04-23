@@ -6,7 +6,6 @@
     <title>Job Timeline | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
@@ -180,7 +179,7 @@
         }
         @keyframes surveyUrgentPulse {
             0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5); }
-            50%       { opacity: 0.75; box-shadow: 0 0 0 3px rgba(255,107,107,0.9), 0 0 22px 8px rgba(255,107,107,0.7); }
+            50%        { opacity: 0.75; box-shadow: 0 0 0 3px rgba(255,107,107,0.9), 0 0 22px 8px rgba(255,107,107,0.7); }
         }
 
         .job-card.survey-pending {
@@ -349,7 +348,6 @@
                 </div>
             </div>
 
-            <!-- Survey status legend -->
             <div class="survey-legend">
                 <strong>Survey Key (jobs-collection entries, installs from 30 Mar 2026):</strong>
                 <div class="legend-swatch"><span class="swatch swatch-urgent"></span> 🚨 Urgent — no survey, install ≤10 days</div>
@@ -391,7 +389,6 @@
         </div>
     </div>
 
-    <!-- Status Modal -->
     <div class="modal" id="status-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -399,7 +396,6 @@
                 <button class="close-btn" onclick="closeStatusModal()">×</button>
             </div>
             <div class="modal-body">
-                <!-- Survey alert banner — shown conditionally -->
                 <div id="survey-alert" style="display:none;"></div>
 
                 <div class="detail-row"><div class="detail-label">Job Number</div><div class="detail-value" id="status-job-number"></div></div>
@@ -435,10 +431,10 @@
                 <div class="invoice-section" id="invoice-section" style="display: none;">
                     <h3 class="invoice-title" id="invoice-title">🏠 Job Completion Details</h3>
                     <div style="margin-bottom: 1.5rem;">
-                        <label class="notes-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
+                        <label class="notes-label" id="invoice-question-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <button class="day-btn" id="slate-yes-btn" onclick="selectSlateOption(true)" style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
-                            <button class="day-btn" id="slate-no-btn" onclick="selectSlateOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
+                            <button class="day-btn" id="invoice-yes-btn" onclick="selectInvoiceOption(true)" style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
+                            <button class="day-btn" id="invoice-no-btn" onclick="selectInvoiceOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
                         </div>
                     </div>
                     <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
@@ -470,7 +466,6 @@
         </div>
     </div>
 
-    <!-- Additional Costs Modal -->
     <div class="modal" id="additional-costs-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -538,7 +533,7 @@
         let timelineDates = [];
         let selectedCompletionDays = [];
         let pendingStatusChange = null;
-        let slateRoof = null;
+        let invoiceBoolAnswer = null; // Replaces slateRoof variable to handle dynamic answers
 
         // Survey cutoff: only jobs on/after this date need a survey
         const SURVEY_CUTOFF = new Date('2026-03-30');
@@ -557,71 +552,49 @@
         TEAM_GROUPING_START.setHours(0,0,0,0);
 
         const ENGINEER_TEAM_MAP = {
-            // Thomas Perry & Zak Haines → Seyi Oshin
             'thomas perry':        'Seyi Oshin',
             'tom perry':           'Seyi Oshin',
             'zak haines':          'Seyi Oshin',
-            // Craig Kick & Ant Halliday → Alex Jackson
             'craig kick':          'Alex Jackson',
             'ant halliday':        'Alex Jackson',
-            // Callum Taylor & Owen Miller → Kain Bell
             'callum taylor':       'Kain Bell',
             'owen miller':         'Kain Bell',
-            // Matthew Hudson, Liam Newall, Scott Bainbridge → Antonio Castillo
             'matthew hudson':      'Antonio Castillo',
             'liam newall':         'Antonio Castillo',
             'scott bainbridge':    'Antonio Castillo',
-            // Alex Chudiakov, Phil De Winter, Jay Gray → Graeme Haswell
             'alex chudiakov':      'Graeme Haswell',
             'phil de winter':      'Graeme Haswell',
             'jay gray':            'Graeme Haswell',
-            // Owen Middlemiss & Paul Johnson → Tony Middlemiss
             'owen middlemiss':     'Tony Middlemiss',
             'paul johnson':        'Tony Middlemiss',
-            // Cameron Bradley & Ashley Haithwaite → Trevor Savage
             'cameron bradley':     'Trevor Savage',
             'ashley haithwaite':   'Trevor Savage',
-            // Jerry Pinegar & Shaun Pearson → Jack Bates
             'jerry pinegar':       'Jack Bates',
             'shaun pearson':       'Jack Bates',
-            // Grady Nathaniel & Marvin Porteous → John Weight
             'grady nathaniel':     'John Weight',
             'marvin porteous':     'John Weight',
-            // Danny Pankhurst & Jason Sinden → Kieran Wood
             'danny pankhurst':     'Kieran Wood',
             'jason sinden':        'Kieran Wood',
-            // Marcain Woodard & James Stubbs → Liam Childs
             'marcain woodard':     'Liam Childs',
             'james stubbs':        'Liam Childs',
-            // Martin Wigan, Rhys Wigan, Scott Price, Colin Rourke, Mike Edwards → Paul Meadows
             'martin wigan':        'Paul Meadows',
             'rhys wigan':          'Paul Meadows',
             'scott price':         'Paul Meadows',
             'colin rourke':        'Paul Meadows',
             'mike edwards':        'Paul Meadows',
-            // Liam Harratt & Alfie Williams → Daniel Unwin
             'liam harratt':        'Daniel Unwin',
             'alfie williams':      'Daniel Unwin',
-            // Daniel Standeven, Logan Phelps, Jonah Loveridge → Dan Mann
             'daniel standeven':    'Dan Mann',
             'logan phelps':        'Dan Mann',
             'jonah loveridge':     'Dan Mann',
-            // Dan Rees, Matt Stark → Steven Hook
             'dan rees':            'Steven Hook',
-            'matt stark':           'Steven Hook',
-            // Brian Blewitt & Alex Naylor → Roger Hodgman
+            'matt stark':          'Steven Hook',
             'brian blewitt':       'Roger Hodgman',
             'alex naylor':         'Roger Hodgman',
-            // Charlie Hewitt & Harvey Seward → Neil Ledsham
             'charlie hewitt':      'Neil Ledsham',
             'harvey seward':       'Neil Ledsham',
         };
 
-        /**
-         * Returns the display engineer name for timeline grouping.
-         * From 6 Apr 2026 onward, sub-engineers are rolled up into their team lead.
-         * jobDate should be the job's parsedDate (a Date object or null).
-         */
         function resolveDisplayEngineer(engineerName, jobDate) {
             if (!jobDate || jobDate < TEAM_GROUPING_START) return engineerName;
             const key = (engineerName || '').toLowerCase().trim();
@@ -761,7 +734,6 @@
             try {
                 const { collection, getDocs, query, orderBy: ob } = window.firebaseModules;
 
-                /* 1. site-surveys */
                 const surveySnap = await getDocs(collection(window.db, 'site-surveys'));
                 surveyMap = {};
                 surveySnap.forEach(d => {
@@ -769,10 +741,7 @@
                     if (jn) surveyMap[String(jn).trim()] = true;
                 });
 
-                /* 2. Solar-jobs */
                 const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
-
-                /* 3. jobs collection */
                 const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
 
                 jobsSet = new Set();
@@ -792,12 +761,10 @@
                         }
                     }
 
-                    // Resolve original engineer name first, then apply team grouping
                     let originalEngineer = 'Unassigned';
                     for (const f of ['Lead','Lead Engineer','Engineer','engineer']) {
                         if (data[f]?.trim()) { originalEngineer = data[f].trim(); break; }
                     }
-                    // Apply team grouping from 6 Apr 2026
                     const engineer = resolveDisplayEngineer(originalEngineer, parsedDate);
 
                     const jobType   = data['Job Type'] || 'Standard';
@@ -849,7 +816,6 @@
                     }
                 });
 
-                // Filter to jobs that have a date
                 allJobs = allJobs.filter(j => j.parsedDate != null);
 
                 console.log(`✅ Loaded ${allJobs.length} jobs (solar+jobs merged), surveyMap keys: ${Object.keys(surveyMap).length}`);
@@ -914,20 +880,39 @@
             }
         }
 
-        window.selectSlateOption = function(isSlate) {
-            slateRoof = isSlate;
-            document.getElementById('slate-yes-btn').classList.toggle('selected',  isSlate);
-            document.getElementById('slate-no-btn').classList.toggle('selected',  !isSlate);
+        // Renamed from selectSlateOption to handle both Slate/Chargeable logic
+        window.selectInvoiceOption = function(isYes) {
+            invoiceBoolAnswer = isYes;
+            document.getElementById('invoice-yes-btn').classList.toggle('selected',  isYes);
+            document.getElementById('invoice-no-btn').classList.toggle('selected',  !isYes);
         }
 
         window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
-            slateRoof = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
+            
+            // Check job type to determine question logic
+            const jobType = (currentJob.jobType || currentJob['Job Type'] || '').trim();
+            const isRevisit = ['Aftercare', 'Revisit', 'Revisit Chargeable'].includes(jobType);
+
+            // Update Label Text
+            const questionLabel = document.getElementById('invoice-question-label');
+            if (questionLabel) {
+                questionLabel.textContent = isRevisit ? 'Is the job chargeable?' : 'Was the roof type slate?';
+            }
+
+            // Set initial value based on existing job data
+            if (isRevisit) {
+                invoiceBoolAnswer = currentJob.isChargeable !== undefined ? currentJob.isChargeable : null;
+            } else {
+                invoiceBoolAnswer = currentJob.slateRoof !== undefined ? currentJob.slateRoof : null;
+            }
+
             const invoiceSection = document.getElementById('invoice-section');
             const invoiceTitle   = document.getElementById('invoice-title');
             const submitBtn      = document.getElementById('submit-invoice-btn');
+            
             if (isShortNotice) {
                 invoiceSection.classList.add('short-notice-style');
                 invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
@@ -939,20 +924,32 @@
                 submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
                 submitBtn.textContent = '💾 Submit & Mark Complete';
             }
-            if      (slateRoof === true)  { document.getElementById('slate-yes-btn').classList.add('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
-            else if (slateRoof === false) { document.getElementById('slate-no-btn').classList.add('selected'); document.getElementById('slate-yes-btn').classList.remove('selected'); }
-            else { document.getElementById('slate-yes-btn').classList.remove('selected'); document.getElementById('slate-no-btn').classList.remove('selected'); }
+            
+            // Update button visual states
+            if      (invoiceBoolAnswer === true)  { document.getElementById('invoice-yes-btn').classList.add('selected'); document.getElementById('invoice-no-btn').classList.remove('selected'); }
+            else if (invoiceBoolAnswer === false) { document.getElementById('invoice-no-btn').classList.add('selected'); document.getElementById('invoice-yes-btn').classList.remove('selected'); }
+            else { document.getElementById('invoice-yes-btn').classList.remove('selected'); document.getElementById('invoice-no-btn').classList.remove('selected'); }
+            
             invoiceSection.style.display = 'block';
             setTimeout(() => { invoiceSection.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
         }
 
         window.submitInlineInvoice = async function() {
             if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
-            if (slateRoof === null) { showToast('Please select whether the roof type was slate', 'error'); return; }
+            
+            const jobType = (currentJob.jobType || currentJob['Job Type'] || '').trim();
+            const isRevisit = ['Aftercare', 'Revisit', 'Revisit Chargeable'].includes(jobType);
+
+            if (invoiceBoolAnswer === null) { 
+                showToast(`Please select whether ${isRevisit ? 'the job is chargeable' : 'the roof type was slate'}`, 'error'); 
+                return; 
+            }
+            
             const jobId       = currentJob.id;
             const jobNumber   = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
             const jobLength   = currentJob.jobLength || 1;
             const finalStatus = pendingStatusChange || 'Complete';
+            
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
@@ -962,14 +959,33 @@
                 else if (selectedCompletionDays.length)            completedDays = [...selectedCompletionDays];
                 else if (jobLength > 1)                            completedDays = Array.from({length:jobLength}, (_,i) => i+1);
                 else                                               completedDays = [1];
-                await updateDoc(jobRef, { 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), completedDays, slateRoof });
+                
+                const updatePayload = { 
+                    'Status Update': finalStatus, 
+                    completedTimestamp: new Date().toISOString(), 
+                    completedDays 
+                };
+
+                // Save to the correct field dynamically
+                if (isRevisit) {
+                    updatePayload.isChargeable = invoiceBoolAnswer;
+                } else {
+                    updatePayload.slateRoof = invoiceBoolAnswer;
+                }
+
+                await updateDoc(jobRef, updatePayload);
+                
                 const job = allJobs.find(j => j.id === jobId);
                 if (job) {
-                    Object.assign(job, { status: finalStatus, 'Status Update': finalStatus, completedTimestamp: new Date().toISOString(), slateRoof, completedDays });
+                    Object.assign(job, updatePayload);
+                    job.status = finalStatus; // local state alias
                     if (finalStatus === 'Complete') await sendJobCompletionEmail(job);
                 }
-                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Roof: ${slateRoof ? 'Slate' : 'Non-slate'}`, 'success');
-                pendingStatusChange = null; slateRoof = null;
+                
+                const typeStr = isRevisit ? (invoiceBoolAnswer ? 'Chargeable' : 'Not Chargeable') : (invoiceBoolAnswer ? 'Slate' : 'Non-slate');
+                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Info: ${typeStr}`, 'success');
+                
+                pendingStatusChange = null; invoiceBoolAnswer = null;
                 closeStatusModal();
                 setTimeout(() => { buildTimeline(); }, 300);
             } catch (error) {
@@ -1180,7 +1196,7 @@
             if (!job) return;
             currentJob = job;
             selectedCompletionDays = [...(job.completedDays || [])];
-            pendingStatusChange = null; slateRoof = null;
+            pendingStatusChange = null; invoiceBoolAnswer = null;
 
             document.getElementById('status-job-number').textContent  = job['Job Number'] || job.jobNumber || 'N/A';
             document.getElementById('status-source').textContent      = job.source ? job.source.toUpperCase() : 'SOLAR';
@@ -1190,7 +1206,6 @@
             document.getElementById('status-booked-date').textContent = formatDate(job.parsedDate) || 'N/A';
             document.getElementById('status-days').textContent        = job.jobLength || '1';
 
-            // Team lead vs original engineer display
             const isGrouped = job.originalEngineer && job.originalEngineer !== job.engineer;
             document.getElementById('status-lead').textContent = job.engineer || 'Unassigned';
 
@@ -1200,21 +1215,19 @@
                 origEngRow.parentElement.style.display = 'grid';
             } else {
                 origEngRow.textContent = job.originalEngineer || job.engineer || 'Unassigned';
-                // Still show the row; label says "Field Engineer"
                 origEngRow.parentElement.style.display = 'grid';
             }
 
             document.getElementById('status-team').textContent        = job['Team Number'] || job['Team'] || 'N/A';
             document.getElementById('status-panel').textContent       = job['Panel No.'] || job['Panel Number'] || 'N/A';
             document.getElementById('status-current').textContent     = job.status || 'Scheduled';
-            document.getElementById('job-notes').value   = job.notes   || '';
+            document.getElementById('job-notes').value   = job.notes  || '';
             document.getElementById('po-numbers').value  = job.poNumbers || '';
             document.getElementById('job-delays').value  = job.delays   || '';
 
             document.getElementById('po-timestamp').textContent = job.poNumbersUpdatedAt
                 ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}` : '';
 
-            // Survey alert banner
             const alertEl = document.getElementById('survey-alert');
             const ss       = getSurveyStatus(job);
             if (ss === 'urgent') {
@@ -1250,7 +1263,7 @@
             document.getElementById('invoice-section').classList.remove('short-notice-style');
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
             document.getElementById('survey-alert').style.display = 'none';
-            currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; slateRoof = null;
+            currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; invoiceBoolAnswer = null;
         }
 
         window.updateJobStatus = async function(newStatus) {
@@ -1258,7 +1271,7 @@
             pendingStatusChange = newStatus;
             if (newStatus === 'Complete' && currentJob.jobLength > 1)  { showCompletionSelector(); return; }
             if (newStatus === 'Complete' && currentJob.jobLength === 1) { showInlineInvoiceSection(false); return; }
-            if (newStatus === 'Short Notice Cancellation')              { showInlineInvoiceSection(true);  return; }
+            if (newStatus === 'Short Notice Cancellation')               { showInlineInvoiceSection(true);  return; }
             const jobId = currentJob.id;
             closeStatusModal();
             await updateJobStatusInDB(jobId, newStatus, null);
