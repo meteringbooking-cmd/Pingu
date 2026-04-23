@@ -887,16 +887,19 @@
             document.getElementById('invoice-no-btn').classList.toggle('selected',  !isYes);
         }
 
-        window.showInlineInvoiceSection = function(isShortNotice = false) {
+window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
             
-            // Check job type to determine question logic
-            const jobType = (currentJob.jobType || currentJob['Job Type'] || '').trim();
-            const isRevisit = ['Aftercare', 'Revisit', 'Revisit Chargeable'].includes(jobType);
+            // 1. Get job type and make it lowercase for foolproof matching
+            const jobTypeRaw = (currentJob.jobType || currentJob['Job Type'] || '').trim();
+            const jobTypeLower = jobTypeRaw.toLowerCase();
+            
+            // 2. Check if it's one of the Revisit/Aftercare types
+            const isRevisit = ['aftercare', 'revisit', 'revisit chargeable'].includes(jobTypeLower);
 
-            // Update Label Text
+            // 3. Update Label Text dynamically (Everything else gets "Was the roof type slate?")
             const questionLabel = document.getElementById('invoice-question-label');
             if (questionLabel) {
                 questionLabel.textContent = isRevisit ? 'Is the job chargeable?' : 'Was the roof type slate?';
@@ -937,8 +940,9 @@
         window.submitInlineInvoice = async function() {
             if (!currentJob) { showToast('Error: No job selected', 'error'); return; }
             
-            const jobType = (currentJob.jobType || currentJob['Job Type'] || '').trim();
-            const isRevisit = ['Aftercare', 'Revisit', 'Revisit Chargeable'].includes(jobType);
+            const jobTypeRaw = (currentJob.jobType || currentJob['Job Type'] || '').trim();
+            const jobTypeLower = jobTypeRaw.toLowerCase();
+            const isRevisit = ['aftercare', 'revisit', 'revisit chargeable'].includes(jobTypeLower);
 
             if (invoiceBoolAnswer === null) { 
                 showToast(`Please select whether ${isRevisit ? 'the job is chargeable' : 'the roof type was slate'}`, 'error'); 
