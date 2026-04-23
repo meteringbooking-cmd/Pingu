@@ -22,13 +22,13 @@
             --shadow: rgba(255, 107, 53, 0.3);
             --short-notice: #90ee90;
         }
-       
+        
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-       
+        
         body {
             font-family: 'JetBrains Mono', monospace;
             background: var(--dark);
@@ -37,7 +37,7 @@
             overflow-x: hidden;
             min-height: 100vh;
         }
-       
+        
         body::before {
             content: '';
             position: fixed;
@@ -53,29 +53,29 @@
             pointer-events: none;
             z-index: -1;
         }
-       
+        
         @keyframes float {
             0%, 100% { transform: translate(0, 0) rotate(0deg); }
             33% { transform: translate(30px, -30px) rotate(120deg); }
             66% { transform: translate(-20px, 20px) rotate(240deg); }
         }
-       
+        
         .container {
             max-width: 1800px;
             margin: 0 auto;
             padding: 2rem;
         }
-       
+        
         header {
             margin-bottom: 2rem;
             animation: slideDown 0.8s ease-out;
         }
-       
+        
         @keyframes slideDown {
             from { opacity: 0; transform: translateY(-30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-       
+        
         .header-content {
             display: flex;
             align-items: center;
@@ -83,7 +83,7 @@
             flex-wrap: wrap;
             gap: 1rem;
         }
-       
+        
         .logo {
             font-family: 'Syne', sans-serif;
             font-size: 2rem;
@@ -94,7 +94,7 @@
             background-clip: text;
             text-decoration: none;
         }
-       
+        
         .back-btn {
             background: var(--dark-light);
             color: var(--text);
@@ -105,20 +105,20 @@
             transition: all 0.3s ease;
             border: 2px solid transparent;
         }
-       
+        
         .back-btn:hover {
             background: var(--dark-lighter);
             border-color: var(--primary);
             transform: translateX(-5px);
         }
-       
+        
         h1 {
             font-family: 'Syne', sans-serif;
             font-size: 2.5rem;
             margin-bottom: 0.5rem;
             color: var(--text);
         }
-       
+        
         .subtitle {
             color: var(--text-dim);
             font-size: 0.95rem;
@@ -420,15 +420,15 @@
             animation: slideIn 0.3s ease-out;
             display: none;
         }
-       
+        
         .toast.show {
             display: block;
         }
-       
+        
         .toast.error {
             border-color: var(--error);
         }
-       
+        
         @keyframes slideIn {
             from { transform: translateX(400px); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -491,7 +491,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, where, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
-       
+        
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
             authDomain: "pingu-solar.firebaseapp.com",
@@ -501,13 +501,13 @@
             appId: "1:232764952866:web:5923b7f419de6355d6157b",
             measurementId: "G-PFH059DZ64"
         };
-       
+        
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.firebaseModules = { collection, getDocs, query, where, doc, updateDoc };
             console.log('✅ Firebase initialized');
-           
+            
             window.addEventListener('DOMContentLoaded', () => {
                 loadPendingJobs();
             });
@@ -525,10 +525,10 @@
         async function loadPendingJobs() {
             try {
                 const { collection, getDocs } = window.firebaseModules;
-               
+                
                 const jobsQuery = collection(window.db, 'Solar-jobs');
                 const querySnapshot = await getDocs(jobsQuery);
-               
+                
                 pendingJobs = [];
                 let completeCount = 0;
                 let shortNoticeCount = 0;
@@ -558,7 +558,7 @@
                         }
                     }
                 });
-               
+                
                 console.log(`✅ Found ${pendingJobs.length} jobs pending invoice submission`);
                 console.log(`📊 Total Complete: ${completeCount}, Short Notice: ${shortNoticeCount}`);
                 
@@ -568,7 +568,7 @@
                 document.getElementById('short-notice-count').textContent = shortNoticeCount;
                 
                 renderJobs();
-               
+                
             } catch (error) {
                 console.error('Error loading jobs:', error);
                 document.getElementById('jobs-container').innerHTML =
@@ -578,7 +578,7 @@
 
         function parseDate(dateStr) {
             if (!dateStr) return null;
-           
+            
             if (dateStr.includes('/')) {
                 const parts = dateStr.split('/');
                 if (parts.length === 3) {
@@ -591,12 +591,12 @@
                     }
                 }
             }
-           
+            
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) {
                 return parsed;
             }
-           
+            
             return null;
         }
 
@@ -657,16 +657,23 @@
             const lead = job['Lead'] || job['Lead Engineer'] || job['engineer'] || 'Unassigned';
             const postcode = job['Postcode'] || 'N/A';
             
-            // Handle slateRoof - it can be boolean or string "True"/"False"
-            let slateRoof = 'N/A';
-            if (job.slateRoof !== undefined && job.slateRoof !== null && job.slateRoof !== '') {
-                const roofValue = String(job.slateRoof).toLowerCase();
-                if (roofValue === 'true' || job.slateRoof === true) {
-                    slateRoof = '✓ Yes';
-                } else if (roofValue === 'false' || job.slateRoof === false) {
-                    slateRoof = '✗ No';
+            // Dynamic Label Check
+            const jobTypeLower = jobType.toLowerCase().trim();
+            const isRevisit = ['aftercare', 'revisit', 'revisit chargeable'].includes(jobTypeLower);
+            
+            const dynamicLabel = isRevisit ? 'Chargeable' : 'Slate Roof';
+            const dynamicValue = isRevisit ? job.isChargeable : job.slateRoof;
+
+            // Handle the boolean or string "True"/"False" formatting
+            let displayValue = 'N/A';
+            if (dynamicValue !== undefined && dynamicValue !== null && dynamicValue !== '') {
+                const valStr = String(dynamicValue).toLowerCase();
+                if (valStr === 'true' || dynamicValue === true) {
+                    displayValue = '✓ Yes';
+                } else if (valStr === 'false' || dynamicValue === false) {
+                    displayValue = '✗ No';
                 } else {
-                    slateRoof = String(job.slateRoof);
+                    displayValue = String(dynamicValue);
                 }
             }
 
@@ -706,8 +713,8 @@
                             <div class="detail-value">${escapeHtml(postcode)}</div>
                         </div>
                         <div class="job-detail">
-                            <div class="detail-label">Slate Roof</div>
-                            <div class="detail-value">${escapeHtml(slateRoof)}</div>
+                            <div class="detail-label">${escapeHtml(dynamicLabel)}</div>
+                            <div class="detail-value">${escapeHtml(displayValue)}</div>
                         </div>
                     </div>
 
@@ -747,8 +754,7 @@
                             <button class="add-cost-btn" onclick="addCostRow('${job.id}')">+ Add Cost</button>
                         </div>
                         <div id="costs-container-${job.id}">
-                            <!-- Cost items will be added here -->
-                        </div>
+                            </div>
                     </div>
 
                     <button class="submit-btn" onclick="submitJobFigures('${job.id}')">
@@ -895,7 +901,7 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.className = `toast show ${type === 'error' ? 'error' : ''}`;
-           
+            
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
