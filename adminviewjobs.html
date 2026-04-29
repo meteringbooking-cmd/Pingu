@@ -20,6 +20,8 @@
             --error: #FF6B6B;
             --warning: #FFC857;
             --shadow: rgba(255, 107, 53, 0.3);
+            --on-hold: #FFDE00; /* Pure bright yellow */
+            --short-notice: #90ee90; /* Matching Timeline SNC color */
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -45,8 +47,8 @@
         }
         @keyframes float {
             0%, 100% { transform: translate(0,0) rotate(0deg); }
-            33%       { transform: translate(30px,-30px) rotate(120deg); }
-            66%       { transform: translate(-20px,20px) rotate(240deg); }
+            33%        { transform: translate(30px,-30px) rotate(120deg); }
+            66%        { transform: translate(-20px,20px) rotate(240deg); }
         }
         .container { max-width: 1800px; margin: 0 auto; padding: 2rem; }
         header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
@@ -201,6 +203,8 @@
         .status-complete    { background: linear-gradient(135deg, var(--success), #3DB88E); color: white; }
         .status-aborted     { background: linear-gradient(135deg, var(--error), #E55A5A); color: white; }
         .status-cancelled   { background: linear-gradient(135deg, #FF3B3B, #C92A2A); color: white; }
+        .status-on-hold     { background: linear-gradient(135deg, var(--on-hold), #E6B800); color: var(--dark); border: 1px solid #CCA300;}
+        .status-short-notice{ background: linear-gradient(135deg, var(--short-notice), #5cb85c); color: var(--dark); border: 1px solid #4cae4c;}
         .status-pending     { background: linear-gradient(135deg, var(--warning), #E5B84F); color: var(--dark); }
         .status-none        { background: var(--dark-lighter); color: var(--text-dim); border: 1px solid var(--dark-lighter); }
 
@@ -340,7 +344,6 @@
                 <input type="date" id="filter-end-date" class="filter-input">
             </div>
 
-            <!-- Lead engineer multi-select -->
             <div class="filter-group">
                 <label class="filter-label">Lead Engineer</label>
                 <div class="multiselect-wrapper" id="lead-ms-wrap">
@@ -379,6 +382,8 @@
                     <option value="complete">Complete</option>
                     <option value="aborted">Aborted</option>
                     <option value="cancelled">Cancelled</option>
+                    <option value="on hold">On Hold</option>
+                    <option value="short notice cancellation">Short Notice Cancellation</option>
                     <option value="pending">Pending</option>
                 </select>
             </div>
@@ -438,7 +443,6 @@
 
 <div class="toast" id="toast"></div>
 
-<!-- Edit Modal -->
 <div class="modal" id="edit-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -475,6 +479,8 @@
                         <option value="complete">Complete</option>
                         <option value="aborted">Aborted</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="on hold">On Hold</option>
+                        <option value="short notice cancellation">Short Notice Cancellation</option>
                         <option value="pending">Pending</option>
                     </select>
                 </div>
@@ -514,7 +520,6 @@
     </div>
 </div>
 
-<!-- Additional Costs Modal -->
 <div class="modal" id="additional-costs-modal">
     <div class="modal-content">
         <div class="modal-header">
@@ -731,6 +736,8 @@
             'complete':    ['status-complete',   'Complete'],
             'aborted':     ['status-aborted',    'Aborted'],
             'cancelled':   ['status-cancelled',  'Cancelled'],
+            'on hold':     ['status-on-hold',    'On Hold'],
+            'short notice cancellation': ['status-short-notice', 'Short Notice Cancellation'],
             'pending':     ['status-pending',    'Pending']
         };
         const [cls, txt] = map[status] || ['status-none', status];
@@ -1062,6 +1069,18 @@
             const poChanged     = newPO !== (currentEditJob.poNumbers || '');
             const now           = new Date().toISOString();
 
+            // Format status directly to align beautifully with Timeline DB states
+            const dbStatusMap = {
+                'in-progress': 'In-Progress',
+                'complete': 'Complete',
+                'aborted': 'Aborted',
+                'cancelled': 'Cancelled',
+                'on hold': 'On Hold',
+                'short notice cancellation': 'Short Notice Cancellation',
+                'pending': 'Pending'
+            };
+            const formattedStatus = dbStatusMap[statusValue] || statusValue;
+
             const updateData = {
                 'Job Type':      document.getElementById('edit-job-type').value,
                 'Postcode':      document.getElementById('edit-postcode').value,
@@ -1071,7 +1090,7 @@
                 'Days':          parseInt(document.getElementById('edit-days').value) || 1,
                 'notes':         document.getElementById('edit-notes').value,
                 'poNumbers':     newPO,
-                'Status Update': statusValue
+                'Status Update': formattedStatus
             };
 
             if ((poChanged || !currentEditJob.poNumbersUpdatedAt) && newPO.trim())
