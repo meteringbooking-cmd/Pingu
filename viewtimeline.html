@@ -27,6 +27,7 @@
             --aborted: #FF6B6B;
             --cancelled: #9A9AB0;
             --short-notice: #90ee90;
+            --on-hold: #FFC857;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -164,6 +165,7 @@
         .job-card.status-aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
         .job-card.status-cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); }
         .job-card.status-short-notice-cancellation { background: linear-gradient(135deg, var(--short-notice), #90ee90); }
+        .job-card.status-on-hold     { background: linear-gradient(135deg, var(--on-hold), #F2A65A); }
 
         /* ── Survey overlays ── */
         .job-card.survey-urgent {
@@ -243,7 +245,8 @@
         .stat-value.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); -webkit-background-clip: text; background-clip: text; }
         .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);     -webkit-background-clip: text; background-clip: text; }
         .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F);   -webkit-background-clip: text; background-clip: text; }
-        .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);            -webkit-background-clip: text; background-clip: text; }
+        .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);             -webkit-background-clip: text; background-clip: text; }
+        .stat-value.on-hold     { background: linear-gradient(135deg, var(--on-hold), #F2A65A);      -webkit-background-clip: text; background-clip: text; }
         .stat-value.urgent      { background: linear-gradient(135deg, var(--error), #E55A5A);       -webkit-background-clip: text; background-clip: text; }
 
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
@@ -264,6 +267,7 @@
         .status-btn.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
         .status-btn.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
         .status-btn.cancelled   { background: linear-gradient(135deg, #FF3B3B, #C92A2A); border: 2px solid #FF6B6B; }
+        .status-btn.on-hold     { background: linear-gradient(135deg, var(--on-hold), #F2A65A); color: var(--dark); border: 2px solid #E5A93D; }
         .status-btn.short-notice{ background: linear-gradient(135deg, var(--short-notice), #90ee90); border: 2px solid #C77DFF; }
         .completion-selector { margin-top: 1.5rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 8px; }
         .completion-title { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-align: center; }
@@ -361,6 +365,7 @@
                 <div class="stat-item"><div class="stat-label">Days Shown</div><div class="stat-value" id="date-range">14</div></div>
                 <div class="stat-item"><div class="stat-label">✅ Complete</div><div class="stat-value complete" id="total-complete">0</div></div>
                 <div class="stat-item"><div class="stat-label">🔄 In-Progress</div><div class="stat-value in-progress" id="total-in-progress">0</div></div>
+                <div class="stat-item"><div class="stat-label">⏸️ On Hold</div><div class="stat-value on-hold" id="total-on-hold">0</div></div>
                 <div class="stat-item"><div class="stat-label">⚠️ Aborted</div><div class="stat-value aborted" id="total-aborted">0</div></div>
                 <div class="stat-item"><div class="stat-label">❌ Cancelled</div><div class="stat-value cancelled" id="total-cancelled">0</div></div>
                 <div class="stat-item"><div class="stat-label">🔔 SNC</div><div class="stat-value snc" id="total-snc">0</div></div>
@@ -416,7 +421,8 @@
                     <button class="status-btn complete" onclick="updateJobStatus('Complete')">✅ Complete</button>
                     <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">⚠️ Aborted</button>
                     <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">❌ Cancelled</button>
-                    <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')" style="grid-column: 1 / -1;">🔔 Short Notice Cancellation</button>
+                    <button class="status-btn on-hold" onclick="updateJobStatus('On Hold')">⏸️ On Hold</button>
+                    <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')">🔔 Short Notice Cancellation</button>
                 </div>
 
                 <div class="completion-selector" id="completion-selector" style="display: none;">
@@ -892,8 +898,7 @@ window.showInlineInvoiceSection = function(isShortNotice = false) {
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
             
-            // 1. Get job type and make it lowercase for foolproof matching
-// 1. Get job type
+            // 1. Get job type
 const jobTypeRaw = (currentJob.jobType || currentJob['Job Type'] || '').trim();
 const jobTypeLower = jobTypeRaw.toLowerCase();
 
@@ -1032,7 +1037,7 @@ if (questionLabel) {
                 engineerJobs[eng].push(job);
             });
 
-            let countComplete=0, countInProgress=0, countAborted=0, countCancelled=0, countSNC=0, countUrgent=0;
+            let countComplete=0, countInProgress=0, countAborted=0, countCancelled=0, countSNC=0, countUrgent=0, countOnHold=0;
             filteredJobs.forEach(job => {
                 const s  = job.status || 'Scheduled';
                 const ss = getSurveyStatus(job);
@@ -1041,10 +1046,11 @@ if (questionLabel) {
                 else if (s === 'Aborted')               countAborted++;
                 else if (s === 'Cancelled')             countCancelled++;
                 else if (s === 'Short Notice Cancellation') countSNC++;
+                else if (s === 'On Hold')               countOnHold++;
                 if (ss === 'urgent') countUrgent++;
             });
 
-            document.getElementById('total-jobs').textContent       = filteredJobs.length;
+            document.getElementById('total-jobs').textContent        = filteredJobs.length;
             document.getElementById('total-engineers').textContent   = Object.keys(engineerJobs).length;
             document.getElementById('date-range').textContent        = daysCount;
             document.getElementById('total-complete').textContent    = countComplete;
@@ -1052,6 +1058,7 @@ if (questionLabel) {
             document.getElementById('total-aborted').textContent     = countAborted;
             document.getElementById('total-cancelled').textContent   = countCancelled;
             document.getElementById('total-snc').textContent         = countSNC;
+            document.getElementById('total-on-hold').textContent     = countOnHold;
             document.getElementById('total-urgent').textContent      = countUrgent;
 
             if (Object.keys(engineerJobs).length === 0) {
@@ -1159,11 +1166,12 @@ if (questionLabel) {
                 const { job, row, col, span } = placement;
                 const status = job.status || 'Scheduled';
                 let statusClass = '';
-                if      (status === 'In-Progress')              statusClass = 'status-in-progress';
-                else if (status === 'Complete')                 statusClass = 'status-complete';
-                else if (status === 'Aborted')                  statusClass = 'status-aborted';
-                else if (status === 'Cancelled')                statusClass = 'status-cancelled';
+                if      (status === 'In-Progress')               statusClass = 'status-in-progress';
+                else if (status === 'Complete')                  statusClass = 'status-complete';
+                else if (status === 'Aborted')                   statusClass = 'status-aborted';
+                else if (status === 'Cancelled')                 statusClass = 'status-cancelled';
                 else if (status === 'Short Notice Cancellation') statusClass = 'status-short-notice-cancellation';
+                else if (status === 'On Hold')                   statusClass = 'status-on-hold';
 
                 const srvClass = surveyCardClass(job);
 
