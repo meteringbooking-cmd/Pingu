@@ -164,17 +164,11 @@
         .job-card.survey-urgent {
             border-color: rgba(255,107,107,0.9) !important;
             box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5);
-            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
         }
         .job-card.survey-urgent::after {
             content: '🚨';
             position: absolute; top: 2px; right: 3px;
             font-size: 0.7rem; z-index: 10; pointer-events: none;
-            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
-        }
-        @keyframes surveyUrgentPulse {
-            0%, 100% { opacity: 1; box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5); }
-            50%        { opacity: 0.75; box-shadow: 0 0 0 3px rgba(255,107,107,0.9), 0 0 22px 8px rgba(255,107,107,0.7); }
         }
 
         .job-card.survey-pending {
@@ -296,7 +290,6 @@
         .survey-alert-urgent {
             background: rgba(255,107,107,0.15); border: 2px solid rgba(255,107,107,0.7);
             color: var(--error);
-            animation: surveyUrgentPulse 1.2s ease-in-out infinite;
         }
         .survey-alert-pending {
             background: rgba(154,154,176,0.12); border: 1px dashed rgba(154,154,176,0.4);
@@ -754,8 +747,13 @@
                     }
 
                     let originalEngineer = 'Unassigned';
-                    for (const f of ['Lead','Lead Engineer','Engineer','engineer']) {
-                        if (data[f]?.trim()) { originalEngineer = data[f].trim(); break; }
+                    // Look specifically for Lead Engineer variations first, cleaning up any potential strings
+                    for (const f of ['Lead Engineer', 'lead engineer', 'Lead', 'Engineer', 'engineer']) {
+                        if (data[f] && typeof data[f] === 'string' && data[f].trim()) {
+                            // Removes any leading or trailing quotes that might be saved in Firebase
+                            originalEngineer = data[f].replace(/^["']|["']$/g, '').trim(); 
+                            break; 
+                        }
                     }
                     const engineer = resolveDisplayEngineer(originalEngineer, parsedDate);
 
