@@ -27,7 +27,7 @@
             --aborted: #FF6B6B;
             --cancelled: #9A9AB0;
             --short-notice: #90ee90;
-            --on-hold: #FFDE00; /* Shifted to a pure bright yellow */
+            --on-hold: #FFDE00;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -104,9 +104,7 @@
             margin-top: 1rem; font-size: 0.78rem; color: var(--text-dim);
         }
         .survey-legend strong { color: var(--text); margin-right: 0.3rem; }
-        .legend-swatch {
-            display: inline-flex; align-items: center; gap: 0.45rem;
-        }
+        .legend-swatch { display: inline-flex; align-items: center; gap: 0.45rem; }
         .swatch {
             width: 22px; height: 14px; border-radius: 4px; flex-shrink: 0;
             border: 2px solid transparent;
@@ -212,7 +210,6 @@
         }
         .source-jobs  { background: rgba(0,217,255,0.3);  color: #fff; }
         .source-solar { background: rgba(255,107,53,0.35); color: #fff; }
-        .source-both  { background: rgba(78,204,163,0.3);  color: #fff; }
 
         .job-card.multi-day { grid-column: span var(--span-days); }
         .job-arrow { position: relative; height: 4px; background: linear-gradient(90deg, var(--accent), var(--primary)); pointer-events: none; z-index: 3; display: flex; align-items: center; justify-content: flex-end; box-shadow: 0 2px 12px rgba(0, 217, 255, 0.6); }
@@ -327,7 +324,7 @@
                 <a href="admin.html" class="back-btn">← Back to Admin</a>
             </div>
             <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule — Solar-jobs &amp; Jobs collections merged · Survey alerts from 30 Mar 2026 · Team grouping from 6 Apr 2026</p>
+            <p class="subtitle">Visual schedule — Solar-jobs collection · Survey alerts from 30 Mar 2026 · Team grouping from 6 Apr 2026</p>
         </header>
 
         <div class="controls-card">
@@ -348,7 +345,7 @@
             </div>
 
             <div class="survey-legend">
-                <strong>Survey Key (jobs-collection entries, installs from 30 Mar 2026):</strong>
+                <strong>Survey Key (installs from 30 Mar 2026):</strong>
                 <div class="legend-swatch"><span class="swatch swatch-urgent"></span> 🚨 Urgent — no survey, install ≤10 days</div>
                 <div class="legend-swatch"><span class="swatch swatch-pending"></span> ⏳ Awaiting — no survey, install &gt;10 days</div>
                 <div class="legend-swatch"><span class="swatch swatch-ok"></span> Normal — survey done or not applicable</div>
@@ -534,15 +531,13 @@
         let timelineDates = [];
         let selectedCompletionDays = [];
         let pendingStatusChange = null;
-        let invoiceBoolAnswer = null; // Replaces slateRoof variable to handle dynamic answers
+        let invoiceBoolAnswer = null; 
 
         // Survey cutoff: only jobs on/after this date need a survey
         const SURVEY_CUTOFF = new Date('2026-03-30');
         SURVEY_CUTOFF.setHours(0,0,0,0);
 
-        // jobsSet   → job numbers present in the 'jobs' collection (survey required)
         // surveyMap → job numbers that have a submitted site-survey
-        let jobsSet   = new Set();
         let surveyMap = {};
 
         /* ══════════════════════════════════════════════
@@ -667,7 +662,6 @@
            SURVEY HELPERS
         ══════════════════════════════════════════════ */
         function getSurveyStatus(job) {
-            if (!jobsSet.has(job.jobNumber)) return 'na';
             const install = job.parsedDate;
             if (!install || install < SURVEY_CUTOFF) return 'na';
             if (surveyMap[job.jobNumber]) return 'complete';
@@ -743,9 +737,6 @@
                 });
 
                 const solarSnap = await getDocs(query(collection(window.db,'Solar-jobs'), ob('uploadDate','desc')));
-                const jobsSnap  = await getDocs(query(collection(window.db,'jobs'), ob('uploadDate','desc')));
-
-                jobsSet = new Set();
 
                 const processDoc = (docSnap, source) => {
                     const data = docSnap.data();
@@ -788,41 +779,17 @@
                     };
                 };
 
-                const solarMap = new Map();
-                solarSnap.forEach(d => {
-                    const job = processDoc(d, 'solar');
-                    if (!solarMap.has(job.jobNumber)) solarMap.set(job.jobNumber, job);
-                });
-
-                const jobsMapLocal = new Map();
-                jobsSnap.forEach(d => {
-                    const job = processDoc(d, 'jobs');
-                    jobsSet.add(job.jobNumber);
-                    if (!jobsMapLocal.has(job.jobNumber)) jobsMapLocal.set(job.jobNumber, job);
-                });
-
                 allJobs = [];
-
-                solarMap.forEach((solarJob, jn) => {
-                    if (jobsMapLocal.has(jn)) {
-                        allJobs.push({ ...solarJob, source: 'both' });
-                    } else {
-                        allJobs.push(solarJob);
-                    }
-                });
-
-                jobsMapLocal.forEach((jobsJob, jn) => {
-                    if (!solarMap.has(jn)) {
-                        allJobs.push(jobsJob);
-                    }
+                solarSnap.forEach(d => {
+                    allJobs.push(processDoc(d, 'solar'));
                 });
 
                 allJobs = allJobs.filter(j => j.parsedDate != null);
 
-                console.log(`✅ Loaded ${allJobs.length} jobs (solar+jobs merged), surveyMap keys: ${Object.keys(surveyMap).length}`);
+                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs, surveyMap keys: ${Object.keys(surveyMap).length}`);
 
                 const debugEl = document.getElementById('debug-info');
-                debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs from Solar-jobs + jobs collections. jobsSet: ${jobsSet.size} entries. Surveys done: ${Object.keys(surveyMap).length}.</strong>`;
+                debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs from Solar-jobs collection. Surveys done: ${Object.keys(surveyMap).length}.</strong>`;
                 debugEl.style.display = 'block';
                 setTimeout(() => { debugEl.style.display = 'none'; }, 8000);
 
@@ -841,7 +808,7 @@
             try {
                 const { doc, updateDoc } = window.firebaseModules;
                 const job = allJobs.find(j => j.id === jobId);
-                const collName = (job && job.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 const jobRef   = doc(window.db, collName, jobId);
                 const updateData = { 'Status Update': newStatus };
                 if (completedDays !== null) updateData.completedDays = completedDays;
@@ -881,7 +848,6 @@
             }
         }
 
-        // Renamed from selectSlateOption to handle both Slate/Chargeable logic
         window.selectInvoiceOption = function(isYes) {
             invoiceBoolAnswer = isYes;
             document.getElementById('invoice-yes-btn').classList.toggle('selected',  isYes);
@@ -907,7 +873,6 @@ if (questionLabel) {
     if (isRevisit) {
         questionLabel.textContent = 'Is the job chargeable?';
     } else {
-        // This catches Solar Install (and your other standard jobs)
         questionLabel.textContent = 'Was the roof type slate?';
     }
 }
@@ -963,7 +928,7 @@ if (questionLabel) {
             
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 const jobRef   = doc(window.db, collName, jobId);
                 let completedDays;
                 if      (currentJob._pendingCompletedDays?.length) completedDays = [...currentJob._pendingCompletedDays];
@@ -1088,7 +1053,7 @@ if (questionLabel) {
 
         function sourceBadgeHtml(src) {
             const map = { jobs:['source-jobs','Jobs'], solar:['source-solar','Solar'], both:['source-both','Both'] };
-            const [cls, label] = map[src] || ['source-jobs', src];
+            const [cls, label] = map[src] || ['source-solar', 'Solar'];
             return `<span class="job-source-badge ${cls}">${label}</span>`;
         }
 
@@ -1213,7 +1178,7 @@ if (questionLabel) {
             pendingStatusChange = null; invoiceBoolAnswer = null;
 
             document.getElementById('status-job-number').textContent  = job['Job Number'] || job.jobNumber || 'N/A';
-            document.getElementById('status-source').textContent      = job.source ? job.source.toUpperCase() : 'SOLAR';
+            document.getElementById('status-source').textContent      = 'SOLAR';
             document.getElementById('status-address').textContent     = job.address || job['Address'] || job['1st line of address'] || 'N/A';
             document.getElementById('status-postcode').textContent    = job['Postcode'] || 'N/A';
             document.getElementById('status-job-type').textContent    = job.jobType  || 'Standard';
@@ -1325,7 +1290,7 @@ if (questionLabel) {
             const jobId = currentJob.id;
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 await updateDoc(doc(window.db, collName, jobId), { 'Status Update':'In-Progress', completedDays: selectedCompletionDays });
                 const job = allJobs.find(j=>j.id===jobId);
                 if (job) { job.status='In-Progress'; job['Status Update']='In-Progress'; job.completedDays=selectedCompletionDays; }
@@ -1342,7 +1307,7 @@ if (questionLabel) {
             const now       = new Date().toISOString();
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 await updateDoc(doc(window.db, collName, currentJob.id), { poNumbers, poNumbersUpdatedAt: now });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) { job.poNumbers=poNumbers; job.poNumbersUpdatedAt=now; }
@@ -1356,7 +1321,7 @@ if (questionLabel) {
             if (!currentJob) return;
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 await updateDoc(doc(window.db, collName, currentJob.id), { notes: document.getElementById('job-notes').value });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) job.notes = document.getElementById('job-notes').value;
@@ -1371,7 +1336,7 @@ if (questionLabel) {
             const jobNumber = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 await updateDoc(doc(window.db, collName, currentJob.id), { delays, delaysUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) job.delays = delays;
@@ -1409,7 +1374,7 @@ if (questionLabel) {
             const materialsNotes = document.getElementById('materials-notes').value.trim();
             try {
                 const { doc, updateDoc } = window.firebaseModules;
-                const collName = (currentJob.source === 'jobs') ? 'jobs' : 'Solar-jobs';
+                const collName = 'Solar-jobs';
                 await updateDoc(doc(window.db, collName, currentJob.id), { materialsCost, materialsNotes, additionalCostsUpdatedAt: new Date().toISOString() });
                 const job = allJobs.find(j=>j.id===currentJob.id);
                 if (job) { job.materialsCost=materialsCost; job.materialsNotes=materialsNotes; }
