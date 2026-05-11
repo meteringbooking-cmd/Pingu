@@ -139,6 +139,14 @@
             font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 0.5rem;
             position: sticky; left: 0; z-index: 5;
         }
+        
+        /* ── Team Grouping Highlights ── */
+        .engineer-name.no-lead {
+            background: rgba(255, 107, 107, 0.15);
+            border: 2px solid rgba(255, 107, 107, 0.5);
+            color: #ff9999;
+        }
+        
         .engineer-icon { font-size: 1.3rem; }
         .timeline-grid { display: grid; gap: 1px; position: relative; }
         .day-column { background: var(--dark); border-radius: 4px; position: relative; transition: all 0.2s ease; }
@@ -368,7 +376,7 @@
             </div>
             <div class="debug-info" style="display: block; background: linear-gradient(135deg, rgba(255,200,87,0.1), rgba(255,107,53,0.1)); border: 2px solid var(--warning); margin-top: 1rem;">
                 <strong>👷 Team Grouping Active from 6 Apr 2026</strong><br>
-                <span style="font-size: 0.8rem;">Sub-engineers are grouped under their team lead on the timeline. The job modal shows both the team lead and original engineer name.</span>
+                <span style="font-size: 0.8rem;">Sub-engineers are grouped dynamically under their team lead based on the team database. Unassigned engineers are highlighted.</span>
             </div>
         </div>
 
@@ -535,59 +543,50 @@
 
         /* ══════════════════════════════════════════════
            ENGINEER TEAM GROUPING (from 6 Apr 2026)
-           Sub-engineers display under their team lead
+           Sub-engineers display under their team lead dynamically
         ══════════════════════════════════════════════ */
         const TEAM_GROUPING_START = new Date('2026-04-06');
         TEAM_GROUPING_START.setHours(0,0,0,0);
 
-        const ENGINEER_TEAM_MAP = {
-            'thomas perry':        'Seyi Oshin',
-            'tom perry':           'Seyi Oshin',
-            'zak haines':          'Seyi Oshin',
-            'craig kick':          'Alex Jackson',
-            'ant halliday':        'Alex Jackson',
-            'callum taylor':       'Kain Bell',
-            'owen miller':         'Kain Bell',
-            'matthew hudson':      'Antonio Castillo',
-            'liam newall':         'Antonio Castillo',
-            'scott bainbridge':    'Antonio Castillo',
-            'alex chudiakov':      'Graeme Haswell',
-            'phil de winter':      'Graeme Haswell',
-            'jay gray':            'Graeme Haswell',
-            'owen middlemiss':     'Tony Middlemiss',
-            'paul johnson':        'Tony Middlemiss',
-            'cameron bradley':     'Trevor Savage',
-            'ashley haithwaite':   'Trevor Savage',
-            'jerry pinegar':       'Jack Bates',
-            'shaun pearson':       'Jack Bates',
-            'grady nathaniel':     'John Weight',
-            'marvin porteous':     'John Weight',
-            'danny pankhurst':     'Kieran Wood',
-            'jason sinden':        'Kieran Wood',
-            'marcain woodard':     'Liam Childs',
-            'james stubbs':        'Liam Childs',
-            'martin wigan':        'Paul Meadows',
-            'rhys wigan':          'Paul Meadows',
-            'scott price':         'Paul Meadows',
-            'colin rourke':        'Paul Meadows',
-            'mike edwards':        'Paul Meadows',
-            'liam harratt':        'Daniel Unwin',
-            'alfie williams':      'Daniel Unwin',
-            'daniel standeven':    'Dan Mann',
-            'logan phelps':        'Dan Mann',
-            'jonah loveridge':     'Dan Mann',
-            'dan rees':            'Steven Hook',
-            'matt stark':          'Steven Hook',
-            'brian blewitt':       'Roger Hodgman',
-            'alex naylor':         'Roger Hodgman',
-            'charlie hewitt':      'Neil Ledsham',
-            'harvey seward':       'Neil Ledsham',
-        };
+        let dynamicTeamMap = {};
+        let knownLeads = new Set();
+
+        async function fetchTeamDatabase() {
+            try {
+                const { collection, getDocs } = window.firebaseModules;
+                const snap = await getDocs(collection(window.db, 'team-database'));
+                
+                dynamicTeamMap = {};
+                knownLeads = new Set();
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const leadName = data.lead?.name?.trim();
+                    
+                    if (leadName) {
+                        const leadKey = leadName.toLowerCase();
+                        knownLeads.add(leadKey);
+                        dynamicTeamMap[leadKey] = leadName; // Map lead to themselves
+                        
+                        // Map all sub-engineers to this lead
+                        (data.engineers || []).forEach(eng => {
+                            const engName = eng.name?.trim();
+                            if (engName) {
+                                dynamicTeamMap[engName.toLowerCase()] = leadName;
+                            }
+                        });
+                    }
+                });
+                console.log('✅ Dynamic team mapping loaded:', Object.keys(dynamicTeamMap).length, 'engineers mapped.');
+            } catch (error) {
+                console.error('❌ Error loading team database:', error);
+            }
+        }
 
         function resolveDisplayEngineer(engineerName, jobDate) {
             if (!jobDate || jobDate < TEAM_GROUPING_START) return engineerName;
             const key = (engineerName || '').toLowerCase().trim();
-            return ENGINEER_TEAM_MAP[key] || engineerName;
+            return dynamicTeamMap[key] || engineerName;
         }
 
         /* ══════════════════════════════════════════════
@@ -704,7 +703,7 @@
         /* ══════════════════════════════════════════════
            INIT
         ══════════════════════════════════════════════ */
-        window.initializeTimeline = function() {
+        window.initializeTimeline = async function() {
             const today        = new Date();
             const dayOfWeek    = today.getDay();
             const daysFromMon  = (dayOfWeek === 0) ? 6 : dayOfWeek - 1;
@@ -712,6 +711,9 @@
             prevMonday.setDate(today.getDate() - daysFromMon - 7);
             prevMonday.setHours(0,0,0,0);
             document.getElementById('start-date').valueAsDate = prevMonday;
+            
+            // Wait to fetch our dynamic teams before loading jobs
+            await fetchTeamDatabase();
             loadJobs();
         }
 
@@ -852,28 +854,28 @@
             document.getElementById('invoice-no-btn').classList.toggle('selected',  !isYes);
         }
 
-window.showInlineInvoiceSection = function(isShortNotice = false) {
+        window.showInlineInvoiceSection = function(isShortNotice = false) {
             if (!currentJob) return;
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
             document.getElementById('completion-selector').style.display = 'none';
             
             // 1. Get job type
-const jobTypeRaw = (currentJob.jobType || currentJob['Job Type'] || '').trim();
-const jobTypeLower = jobTypeRaw.toLowerCase();
+            const jobTypeRaw = (currentJob.jobType || currentJob['Job Type'] || '').trim();
+            const jobTypeLower = jobTypeRaw.toLowerCase();
 
-// 2. Explicitly define your job types
-const isRevisit = ['aftercare', 'revisit', 'revisit chargeable'].includes(jobTypeLower);
-const isSolarInstall = jobTypeLower.includes('solar install'); 
+            // 2. Explicitly define your job types
+            const isRevisit = ['aftercare', 'revisit', 'revisit chargeable'].includes(jobTypeLower);
+            const isSolarInstall = jobTypeLower.includes('solar install'); 
 
-// 3. Update Label Text dynamically
-const questionLabel = document.getElementById('invoice-question-label');
-if (questionLabel) {
-    if (isRevisit) {
-        questionLabel.textContent = 'Is the job chargeable?';
-    } else {
-        questionLabel.textContent = 'Was the roof type slate?';
-    }
-}
+            // 3. Update Label Text dynamically
+            const questionLabel = document.getElementById('invoice-question-label');
+            if (questionLabel) {
+                if (isRevisit) {
+                    questionLabel.textContent = 'Is the job chargeable?';
+                } else {
+                    questionLabel.textContent = 'Was the roof type slate?';
+                }
+            }
 
             // Set initial value based on existing job data
             if (isRevisit) {
@@ -1037,11 +1039,22 @@ if (questionLabel) {
                     }).join('')}</div>
                 </div>
                 <div class="timeline-body">
-                    ${Object.keys(engineerJobs).sort().map(engineer => `
+                    ${Object.keys(engineerJobs).sort().map(engineer => {
+                        // Check if this grouped name is actually a registered Lead Engineer
+                        const engKey = engineer.toLowerCase().trim();
+                        const hasLead = knownLeads.has(engKey);
+                        const highlightClass = hasLead ? '' : 'no-lead';
+                        const warningIcon = hasLead ? '' : ' <span style="font-size:0.8em;" title="No Lead Engineer Assigned">⚠️</span>';
+                        
+                        return `
                         <div class="engineer-row">
-                            <div class="engineer-name"><span class="engineer-icon">👤</span><span>${escapeHtml(engineer)}</span></div>
+                            <div class="engineer-name ${highlightClass}">
+                                <span class="engineer-icon">👤</span>
+                                <span>${escapeHtml(engineer)}${warningIcon}</span>
+                            </div>
                             <div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div>
-                        </div>`).join('')}
+                        </div>`;
+                    }).join('')}
                 </div>
             </div>`;
 
