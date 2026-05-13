@@ -193,6 +193,11 @@
             width: 100%;
         }
 
+        textarea.input-field {
+            resize: vertical;
+            min-height: 80px;
+        }
+
         .input-field:focus {
             outline: none;
             border-color: var(--primary);
@@ -260,6 +265,35 @@
             color: var(--text-dim);
             font-size: 0.85rem;
             min-width: 1rem;
+        }
+
+        /* Multi Job Section */
+        .multi-job-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .radio-label input[type="radio"] {
+            accent-color: var(--primary);
+            width: 1.2rem;
+            height: 1.2rem;
+            cursor: pointer;
         }
 
         /* Submit */
@@ -365,6 +399,7 @@
             color: var(--text);
             font-weight: 600;
             font-size: 0.9rem;
+            text-align: right;
         }
 
         .new-entry-btn {
@@ -555,6 +590,28 @@
                     </div>
                 </div>
 
+                <!-- Multi Job Section -->
+                <div class="multi-job-section">
+                    <div class="section-title">🏢 Job Applicability</div>
+                    <p class="input-label" style="margin-bottom: 1rem; color: var(--text);">Does the cable order just apply to the job stated at the top? <span>*</span></p>
+                    
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="single-job" value="yes" checked onchange="toggleMultiJob(this.value)">
+                            Yes, just this job
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="single-job" value="no" onchange="toggleMultiJob(this.value)">
+                            No, it applies to multiple jobs
+                        </label>
+                    </div>
+
+                    <div id="multi-job-input" class="input-group" style="display: none; margin-top: 1.25rem;">
+                        <label class="input-label" for="extra-jobs">Enter all additional job numbers the order relates to <span>*</span></label>
+                        <textarea id="extra-jobs" class="input-field" placeholder="e.g. 1235, 1236, 1237"></textarea>
+                    </div>
+                </div>
+
                 <!-- Submit -->
                 <div class="submit-section">
                     <button class="submit-btn" id="submit-btn" onclick="submitForm()">
@@ -616,11 +673,23 @@
             getField(id).classList.toggle('error', hasError);
         }
 
+        function toggleMultiJob(value) {
+            const extraInput = document.getElementById('multi-job-input');
+            if (value === 'no') {
+                extraInput.style.display = 'flex';
+            } else {
+                extraInput.style.display = 'none';
+                getField('extra-jobs').value = '';
+                setError('extra-jobs', false);
+            }
+        }
+
         function validateForm() {
             const name = getField('name').value.trim();
             const jobNumber = getField('job-number').value.trim();
             const door = getField('door').value.trim();
             const postcode = getField('postcode').value.trim();
+            const isSingleJob = document.querySelector('input[name="single-job"]:checked').value;
 
             let valid = true;
 
@@ -629,10 +698,15 @@
             if (!door) { setError('door', true); valid = false; } else setError('door', false);
             if (!postcode) { setError('postcode', true); valid = false; } else setError('postcode', false);
 
+            if (isSingleJob === 'no') {
+                const extraJobs = getField('extra-jobs').value.trim();
+                if (!extraJobs) { setError('extra-jobs', true); valid = false; } else setError('extra-jobs', false);
+            }
+
             // At least one cable must have a value > 0
             const anyFilled = CABLE_FIELDS.some(c => {
                 const v = getField(c.id).value.trim();
-                return v !== '' && !isNaN(v) && parseFloat(v) >= 0;
+                return v !== '' && !isNaN(v) && parseFloat(v) > 0;
             });
             if (!anyFilled) {
                 valid = false;
@@ -658,6 +732,9 @@
             const jobNumber = getField('job-number').value.trim();
             const door = getField('door').value.trim();
             const postcode = getField('postcode').value.trim().toUpperCase();
+            
+            const isSingleJob = document.querySelector('input[name="single-job"]:checked').value === 'yes';
+            const extraJobs = !isSingleJob ? getField('extra-jobs').value.trim() : '';
 
             const cables = {};
             CABLE_FIELDS.forEach(c => {
@@ -670,6 +747,8 @@
                 jobNumber,
                 doorNumber: door,
                 postcode,
+                isSingleJob,
+                extraJobs,
                 cables,
                 submittedAt: new Date().toISOString()
             };
@@ -681,15 +760,19 @@
 
                 // Build cable summary for email
                 const cableSummary = CABLE_FIELDS
+                    .filter(c => cables[c.id] > 0)
                     .map(c => `${c.label}: ${cables[c.id]}m`)
                     .join('\n');
 
                 try {
+                    // NOTE: You may want to update your EmailJS template to include the new 'extra_jobs' variable
                     await emailjs.send('service_556xeew', 'template_c1rcaoo', {
                         name,
                         job_number: jobNumber,
                         door_number: door,
                         postcode,
+                        is_single_job: isSingleJob ? 'Yes' : 'No',
+                        extra_jobs: extraJobs || 'N/A',
                         cable_summary: cableSummary,
                         submitted_at: new Date().toLocaleString('en-GB'),
                         document_id: docRef.id
@@ -700,7 +783,7 @@
                     showToast('Data saved — email notification failed', 'warning');
                 }
 
-                showSuccess({ name, jobNumber, door, postcode, cables });
+                showSuccess({ name, jobNumber, door, postcode, isSingleJob, extraJobs, cables });
 
             } catch (error) {
                 console.error('❌ Submission error:', error);
@@ -716,12 +799,23 @@
             const successState = document.getElementById('success-state');
             successState.classList.add('show');
 
-            let cableRows = CABLE_FIELDS.map(c => `
+            let cableRows = CABLE_FIELDS
+                .filter(c => data.cables[c.id] > 0)
+                .map(c => `
                 <div class="success-detail-row">
                     <span class="success-detail-label">${escapeHtml(c.label)}</span>
                     <span class="success-detail-value">${data.cables[c.id]}m</span>
                 </div>
             `).join('');
+            
+            let extraJobsRow = '';
+            if (!data.isSingleJob) {
+                extraJobsRow = `
+                <div class="success-detail-row" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                    <span class="success-detail-label">Additional Jobs</span>
+                    <span class="success-detail-value">${escapeHtml(data.extraJobs)}</span>
+                </div>`;
+            }
 
             document.getElementById('success-details').innerHTML = `
                 <div class="success-detail-row">
@@ -729,13 +823,15 @@
                     <span class="success-detail-value">${escapeHtml(data.name)}</span>
                 </div>
                 <div class="success-detail-row">
-                    <span class="success-detail-label">Job Number</span>
+                    <span class="success-detail-label">Primary Job Number</span>
                     <span class="success-detail-value">#${escapeHtml(data.jobNumber)}</span>
                 </div>
                 <div class="success-detail-row">
                     <span class="success-detail-label">Address</span>
                     <span class="success-detail-value">${escapeHtml(data.door)}, ${escapeHtml(data.postcode)}</span>
                 </div>
+                ${extraJobsRow}
+                <div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Cables</div>
                 ${cableRows}
             `;
 
@@ -746,10 +842,14 @@
             document.getElementById('form-wrapper').style.display = 'block';
             document.getElementById('success-state').classList.remove('show');
 
-            ['name', 'job-number', 'door', 'postcode'].forEach(id => {
+            ['name', 'job-number', 'door', 'postcode', 'extra-jobs'].forEach(id => {
                 getField(id).value = '';
                 setError(id, false);
             });
+            
+            // Reset radio buttons
+            document.querySelector('input[name="single-job"][value="yes"]').checked = true;
+            toggleMultiJob('yes');
 
             CABLE_FIELDS.forEach(c => {
                 getField(c.id).value = '';
