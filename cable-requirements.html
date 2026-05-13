@@ -267,6 +267,63 @@
             min-width: 1rem;
         }
 
+        /* Miscellaneous Section */
+        .misc-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+
+        .materials-section {
+            background: var(--dark-lighter);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .material-category { margin-bottom: 1.2rem; }
+        .material-category:last-child { margin-bottom: 0; }
+        .material-category details > summary {
+            font-family: 'Syne', sans-serif; font-size: 1.1rem; color: var(--accent);
+            cursor: pointer; padding: 0.9rem 1.2rem;
+            background: rgba(0, 217, 255, 0.1); border-radius: 10px;
+            list-style: none; user-select: none; transition: background 0.3s ease;
+        }
+        .material-category details > summary:hover { background: rgba(0, 217, 255, 0.15); }
+        .material-category details > summary::-webkit-details-marker { display: none; }
+        .material-category details > summary::before { content: '▶ '; margin-right: 0.4rem; font-size: 0.8rem; }
+        .material-category details[open] > summary::before { content: '▼ '; }
+        .material-items-wrap { padding-top: 0.5rem; }
+        .material-item {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 0.75rem 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .material-item:last-child { border-bottom: none; }
+        .material-item input[type="checkbox"] {
+            width: 18px; height: 18px; flex-shrink: 0;
+            accent-color: var(--accent); cursor: pointer;
+        }
+        .material-desc { flex: 1; font-size: 0.88rem; line-height: 1.4; cursor: pointer; color: var(--text); }
+        .quantity-wrapper { display: none; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+        .quantity-wrapper.show { display: flex; }
+        .quantity-input {
+            width: 80px; background: var(--dark); border: 1px solid var(--accent);
+            color: var(--text); padding: 0.45rem 0.6rem; border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 0.95rem;
+            -moz-appearance: textfield; text-align: right;
+        }
+        .quantity-input::-webkit-outer-spin-button,
+        .quantity-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .quantity-label { color: var(--text-dim); font-size: 0.82rem; white-space: nowrap; }
+        .material-pack-badge {
+            display: inline-block; margin-left: 0.5rem;
+            font-size: 0.62rem; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+            color: var(--accent); background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3); padding: 0.05rem 0.38rem;
+            border-radius: 4px; vertical-align: middle; white-space: nowrap;
+        }
+
         /* Multi Job Section */
         .multi-job-section {
             margin-top: 2rem;
@@ -400,6 +457,7 @@
             font-weight: 600;
             font-size: 0.9rem;
             text-align: right;
+            max-width: 60%;
         }
 
         .new-entry-btn {
@@ -468,7 +526,7 @@
             <div class="success-state" id="success-state">
                 <span class="success-icon">✅</span>
                 <div class="success-title">Submission Complete!</div>
-                <p class="success-msg">Your cable requirements have been saved and a confirmation email has been sent.</p>
+                <p class="success-msg">Your requirements have been saved and a confirmation email has been sent.</p>
                 <div class="success-details" id="success-details"></div>
                 <button class="new-entry-btn" onclick="resetForm()">+ Submit Another Entry</button>
             </div>
@@ -590,10 +648,29 @@
                     </div>
                 </div>
 
+                <!-- Miscellaneous Section -->
+                <div class="misc-section">
+                    <div class="section-title">📦 Miscellaneous Items</div>
+                    <div class="materials-section">
+                        <div class="material-category">
+                            <details open>
+                                <summary>Electrical</summary>
+                                <div class="material-items-wrap" id="electrical-items"></div>
+                            </details>
+                        </div>
+                        <div class="material-category">
+                            <details>
+                                <summary>Roof</summary>
+                                <div class="material-items-wrap" id="roof-items"></div>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Multi Job Section -->
                 <div class="multi-job-section">
                     <div class="section-title">🏢 Job Applicability</div>
-                    <p class="input-label" style="margin-bottom: 1rem; color: var(--text);">Does the cable order just apply to the job stated at the top? <span>*</span></p>
+                    <p class="input-label" style="margin-bottom: 1rem; color: var(--text);">Does this order just apply to the job stated at the top? <span>*</span></p>
                     
                     <div class="radio-group">
                         <label class="radio-label">
@@ -615,7 +692,7 @@
                 <!-- Submit -->
                 <div class="submit-section">
                     <button class="submit-btn" id="submit-btn" onclick="submitForm()">
-                        📤 Submit Cable Requirements
+                        📤 Submit Requirements
                     </button>
                 </div>
             </div>
@@ -665,6 +742,147 @@
             { id: 'cable-6mm-single-dc',   label: '6mm single DC cable' }
         ];
 
+        const electricalItems = [
+            {desc:"1 inch screws ( box ))", pack:"PK-200"},
+            {desc:"1.5 inch screws ( box )", pack:"PK-200"},
+            {desc:"2 inch screws ( box )", pack:"PK-200"},
+            {desc:"1000V INSULATION SHROUD BLANKET (900MM X 600MM)", pack:"EACH"},
+            {desc:"100amp 100ma RCD main switched isolator", pack:""},
+            {desc:"100mm x 50mm Warning Surge Protection Device Label", pack:"PK-10"},
+            {desc:"10mm Earth cable", pack:"RL-10m"},
+            {desc:"10mm SWA 3 core", pack:""},
+            {desc:"10mm2 3 Core CAT5 EV Cable Black 50m", pack:"RL-50m"},
+            {desc:"16mm SWA 3 core", pack:""},
+            {desc:"25mm conduit black plastic", pack:""},
+            {desc:"25mm Female Brass Bush", pack:"PK-100"},
+            {desc:"25mm IP68 Compression Glands Black", pack:"PK-10"},
+            {desc:"25mm Lockring", pack:"PK-100"},
+            {desc:"25mm Male Brass Bush", pack:"PK-100"},
+            {desc:"25mm male/female adaptors black plastic", pack:""},
+            {desc:"25mm SWA 3core", pack:""},
+            {desc:"32a Rotary Isolator - 3 Pole", pack:"EACH"},
+            {desc:"32mm conduit black plastic", pack:""},
+            {desc:"38mm x 25mm trunking", pack:"PK-3"},
+            {desc:"38MMx25MM External Bend", pack:"EACH"},
+            {desc:"38MMx25MM Flat Bend", pack:"EACH"},
+            {desc:"38MMx25MM Internal Bend", pack:"EACH"},
+            {desc:"40a Rotary Isolator - 3 Pole", pack:"EA"},
+            {desc:"4302P2254-02 22awg 2pair 430series 600v LSZH FireFighter IEC60332-3 24 Black Cable", pack:"RL-25m"},
+            {desc:"50 x 50 Trunking White PVC", pack:"EACH"},
+            {desc:"50x50 end Caps", pack:"EACH"},
+            {desc:"6mm DC Black Cable", pack:""},  
+            {desc:"6mm earth cable (50M)", pack:"RL-50m"},
+            {desc:"6mm PV ultra cable 2 core PV", pack:"RL-50m"},
+            {desc:"6mm Pv ultra cable 4 core", pack:"RL-50m"},
+            {desc:"6mm yellow fork crimps", pack:""},
+            {desc:"6mm2 3 Core CAT5 EV Cable Black", pack:"RL-50m"},
+            {desc:"Aico Optical and Heat alarm (230v)", pack:"EA"},
+            {desc:"Aico RF Module/RF Smart link", pack:"EA"},
+            {desc:"Atkore Koreflex 25mm Spiral reinforced 25mm pack Black (10m and 10 glands)", pack:"RL-10m"},
+            {desc:"Atkore Koreflex 32mm Conduit Contractor Pack Black (10m Reel and 10 Glands)", pack:"RL-10m"},
+            {desc:"CT Clamp fox accessories", pack:""},
+            {desc:"Disconnection Tool", pack:"EACH"},
+            {desc:"double pole isolator", pack:"EACH"},
+            {desc:"Engex 5mm yellow ring lug crimp", pack:"PK-100"},
+            {desc:"ENPHASE CONTROL PANEL", pack:"EACH"},
+            {desc:"enphase IQ cable branch terminator", pack:"EACH"},
+            {desc:"Enphase Q Cable Sealing Caps", pack:"EACH"},
+            {desc:"Fire Clips 50mm trunking", pack:"EACH"},
+            {desc:"Fire Resistant Cable Cleat 30.4mm-35mm metal black", pack:"PK-50"},
+            {desc:"HO7RNF 6MM 3 CORE", pack:"RL-50m"},
+            {desc:"IP65 box 600x400mm and Backplate", pack:"EA"},
+            {desc:"IQ Battery 5P Kit", pack:"EACH"},
+            {desc:"KMF switched fused isolator 60amp", pack:""},
+            {desc:"KMF switched fused isolator 80 amp", pack:""},
+            {desc:"M2 63A 4 pole rotary isolator switch IP67", pack:""},
+            {desc:"MCG 400 x 400 x 200 steel enclosure with mounting plate", pack:""},
+            {desc:"MCG IP66 Clear Lid Enclosure", pack:"EACH"},
+            {desc:"Membrane Kit", pack:"EACH"},
+            {desc:"Orbix self tapper (200 PER BOX)", pack:"PK-200"},
+            {desc:"Projoy DC isolator 32A 4 pole 2 string", pack:""},
+            {desc:"Proteus 1 input 1 output 100v DC SPD", pack:""},
+            {desc:"Proteus 6 way 100A Incomer Metal Clad Consumer With Type 2 SPD", pack:"EACH"},
+            {desc:"Proteus B10 Bi Directional RCBO Type A", pack:"EACH"},
+            {desc:"Proteus B20 Bi Directional RCBO Type A", pack:"EACH"},
+            {desc:"Proteus B25 Single Pole 10ka MCB", pack:""},
+            {desc:"Proteus B40 Bi Directional 40amp RCBO Type A", pack:""},
+            {desc:"Proteus B40a Single Pole 10ka MCB", pack:"EACH"},
+            {desc:"Proteus XL Double pole Bi Directional B curve 25Amp 10ka 30ma RCBO type A", pack:""},
+            {desc:"Proteus XL Double pole Bi Directional B curve 40Amp 10ka 30ma RCBO type A", pack:""},
+            {desc:"Red plugs (box)", pack:"BOX"},
+            {desc:"Schneider Sarel 241mm x 194mm x 107mm ABS Enclosure With Transparent Cover IP66", pack:"EACH"},
+            {desc:"Termination Plug", pack:"EACH"},
+            {desc:"TP Link", pack:""},
+            {desc:"Unicrimp 15.1mm - 17.8mm Cable clip (pack of 10)", pack:"PK-10"},
+            {desc:"Wiska COMBI 607/5/S 110mm x 110mm x 66mm PVC Adaptable Box Black IP66", pack:"EACH"},
+            {desc:"Zeroburn 16-21mm (pack 20)", pack:"PK-20"},
+            {desc:"Zeroburn black single P clips (pack of 50 x2) 8.7-9MM", pack:"PK-50"},
+            {desc:"Zeroburn Cable Clips 10 - 15mm Black", pack:"PK-20"},
+            {desc:"Zeroburn cable clips 22mm-26mm", pack:""},
+            {desc:"Proteus IP65 rated consumer unit 6 way with SPD and isolator", pack:""},
+            {desc:"Aico Ei650iRF RadioLINK+ Battery Powered Optical", pack:"EA"}
+        ];
+
+        const roofItems = [
+            { desc: "Roof Hook Rapid 2+Pro 45",                        code: "SLT-101001-020"   },
+            { desc: "Roof Hook Universal",                             code: "SLT-100001-000"   },
+            { desc: "RapFix attachment for ECO roof hooks",            code: "SLT-109008-003"   },
+            { desc: "Module Bearing profile Solo light - 3.55m",       code: "SLT-120005-0355"  },
+            { desc: "Connector Solo5 / Solo5 light / profiplus / FixZ-7 / Fiz-Z-15", code: "SLT-129002-002" },
+            { desc: "Plastic End Cap Solo Profi05 Black",              code: "SLT-129011-900"   },
+            { desc: "End Clamp Rapid 16 30-40mm Black",                code: "SLT-131101-901"   },
+            { desc: "Mid Clamp Rapid 16 30-40mm Black",                code: "SLT-131121-901"   },
+            { desc: "VA Flat Head TORX 8/80 Wood Screw (Singles)",     code: "SLT-943208-080"   },
+            { desc: "VA Flat Head TORX 8/100 Wood Screw (Singles)",    code: "SLT-943208-100"   },
+            { desc: "M8 × 20mm Screw",                                 code: "SLT-943000-025"   },
+            { desc: "M8 Nut",                                          code: "SLT-129010-008"   },
+            { desc: "KlickIn Component",                               code: "SLT-943914-008"   },
+            { desc: "Washer",                                          code: "SLT-943000-043"   },
+            { desc: "EricTile (Slate / Flat Concrete Roof Hook)",      code: "SLT-109019-024"   },
+            { desc: "Genius Slate Flashing Re-Fit Kit",                code: "GEN-SLATE"        },
+            { desc: "Genius Flashing Pan tile",                        code: "GEN-FT-TILE"      },
+            { desc: "Genius Flashing flexi flash profile Tile Kit",    code: "GEN-P-TILE"       },
+            { desc: "Bird deterrent 30m Solar panel bird Exclusion kit (Black Mesh)", code: "BIRD-MESH-BLKB" },
+            { desc: "Bird mesh clips",                                 code: "EG-FASTEN-CLIP-B" }
+        ];
+
+        // Render functions for Miscellaneous Items
+        function renderMaterials(containerId, items) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            let html = '';
+            items.forEach((item, i) => {
+                const uid = containerId + '-' + i;
+                const packBadge = item.pack ? `<span class="material-pack-badge">${item.pack}</span>` : '';
+                html += `<div class="material-item">
+                    <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}">
+                    <label for="chk-${uid}" class="material-desc">${item.desc}${packBadge}</label>
+                    <div class="quantity-wrapper" id="qw-${uid}">
+                        <span class="quantity-label">Qty:</span>
+                        <input type="number" class="quantity-input" id="qty-${uid}" min="0" value="0" step="1">
+                    </div>
+                </div>`;
+            });
+            container.innerHTML = html;
+            
+            // Add listeners to toggle quantity inputs
+            container.querySelectorAll('.material-checkbox').forEach(chk => {
+                const uid = chk.id.replace('chk-', '');
+                const qw = document.getElementById('qw-' + uid);
+                const qi = document.getElementById('qty-' + uid);
+                chk.addEventListener('change', () => {
+                    qw.classList.toggle('show', chk.checked);
+                    if (!chk.checked) qi.value = '0';
+                    else qi.value = '1'; // Default to 1 when checked
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderMaterials('electrical-items', electricalItems);
+            renderMaterials('roof-items', roofItems);
+        });
+
         function getField(id) {
             return document.getElementById(id);
         }
@@ -682,6 +900,24 @@
                 getField('extra-jobs').value = '';
                 setError('extra-jobs', false);
             }
+        }
+
+        // Collect Miscellaneous
+        function collectMiscellaneous() {
+            const lines = [];
+            const collectedItems = [];
+            ['electrical-items', 'roof-items'].forEach(cId => {
+                const type = cId === 'electrical-items' ? 'Electrical' : 'Roof';
+                document.querySelectorAll('#' + cId + ' .material-checkbox:checked').forEach(chk => {
+                    const uid = chk.id.replace('chk-', '');
+                    const qty = parseInt(document.getElementById('qty-' + uid).value) || 0;
+                    if (qty > 0) {
+                        lines.push(`• ${type}: ${chk.dataset.desc} (x${qty})`);
+                        collectedItems.push({ type, desc: chk.dataset.desc, qty });
+                    }
+                });
+            });
+            return { lines, collectedItems };
         }
 
         function validateForm() {
@@ -703,17 +939,21 @@
                 if (!extraJobs) { setError('extra-jobs', true); valid = false; } else setError('extra-jobs', false);
             }
 
-            // At least one cable must have a value > 0
-            const anyFilled = CABLE_FIELDS.some(c => {
+            // At least one cable OR one miscellaneous item must have a value > 0
+            const anyCables = CABLE_FIELDS.some(c => {
                 const v = getField(c.id).value.trim();
                 return v !== '' && !isNaN(v) && parseFloat(v) > 0;
             });
-            if (!anyFilled) {
+            
+            const { collectedItems } = collectMiscellaneous();
+            const anyMisc = collectedItems.length > 0;
+
+            if (!anyCables && !anyMisc) {
                 valid = false;
-                showToast('Please enter at least one cable length', 'error');
+                showToast('Please enter at least one cable length or miscellaneous item', 'error');
             }
 
-            if (!valid && anyFilled) {
+            if (!valid && (anyCables || anyMisc)) {
                 showToast('Please fill in all required fields', 'error');
             }
 
@@ -742,6 +982,8 @@
                 cables[c.id] = v !== '' ? parseFloat(v) : 0;
             });
 
+            const { lines: miscLines, collectedItems: miscItems } = collectMiscellaneous();
+
             const submissionData = {
                 name,
                 jobNumber,
@@ -750,6 +992,7 @@
                 isSingleJob,
                 extraJobs,
                 cables,
+                miscItems, // Added miscellaneous array
                 submittedAt: new Date().toISOString()
             };
 
@@ -759,13 +1002,18 @@
                 console.log('✅ Saved to Firebase, ID:', docRef.id);
 
                 // Build cable summary for email
-                const cableSummary = CABLE_FIELDS
+                let itemSummary = CABLE_FIELDS
                     .filter(c => cables[c.id] > 0)
                     .map(c => `${c.label}: ${cables[c.id]}m`)
                     .join('\n');
+                    
+                if (miscLines.length > 0) {
+                    itemSummary += '\n\nMiscellaneous Items:\n' + miscLines.join('\n');
+                }
+
+                if (!itemSummary) itemSummary = "No items specified.";
 
                 try {
-                    // NOTE: You may want to update your EmailJS template to include the new 'extra_jobs' variable
                     await emailjs.send('service_556xeew', 'template_c1rcaoo', {
                         name,
                         job_number: jobNumber,
@@ -773,7 +1021,7 @@
                         postcode,
                         is_single_job: isSingleJob ? 'Yes' : 'No',
                         extra_jobs: extraJobs || 'N/A',
-                        cable_summary: cableSummary,
+                        cable_summary: itemSummary,
                         submitted_at: new Date().toLocaleString('en-GB'),
                         document_id: docRef.id
                     });
@@ -783,14 +1031,14 @@
                     showToast('Data saved — email notification failed', 'warning');
                 }
 
-                showSuccess({ name, jobNumber, door, postcode, isSingleJob, extraJobs, cables });
+                showSuccess({ name, jobNumber, door, postcode, isSingleJob, extraJobs, cables, miscItems });
 
             } catch (error) {
                 console.error('❌ Submission error:', error);
                 showToast('Submission failed: ' + error.message, 'error');
                 btn.disabled = false;
                 btn.classList.remove('loading');
-                btn.textContent = '📤 Submit Cable Requirements';
+                btn.textContent = '📤 Submit Requirements';
             }
         }
 
@@ -816,6 +1064,20 @@
                     <span class="success-detail-value">${escapeHtml(data.extraJobs)}</span>
                 </div>`;
             }
+            
+            let miscRows = '';
+            if (data.miscItems && data.miscItems.length > 0) {
+                miscRows = `
+                <div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Miscellaneous</div>
+                ` + data.miscItems.map(m => `
+                <div class="success-detail-row">
+                    <span class="success-detail-label">${escapeHtml(m.type)}: ${escapeHtml(m.desc)}</span>
+                    <span class="success-detail-value">x${m.qty}</span>
+                </div>
+                `).join('');
+            }
+            
+            let cablesHeader = cableRows ? `<div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Cables</div>` : '';
 
             document.getElementById('success-details').innerHTML = `
                 <div class="success-detail-row">
@@ -831,8 +1093,9 @@
                     <span class="success-detail-value">${escapeHtml(data.door)}, ${escapeHtml(data.postcode)}</span>
                 </div>
                 ${extraJobsRow}
-                <div style="margin: 1.5rem 0 0.5rem 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Cables</div>
+                ${cablesHeader}
                 ${cableRows}
+                ${miscRows}
             `;
 
             showToast('✅ Submitted successfully!', 'success');
@@ -854,11 +1117,17 @@
             CABLE_FIELDS.forEach(c => {
                 getField(c.id).value = '';
             });
+            
+            // Reset misc items
+            document.querySelectorAll('.material-checkbox').forEach(chk => {
+                chk.checked = false;
+                chk.dispatchEvent(new Event('change')); // Trigger event to hide qty inputs
+            });
 
             const btn = document.getElementById('submit-btn');
             btn.disabled = false;
             btn.classList.remove('loading');
-            btn.textContent = '📤 Submit Cable Requirements';
+            btn.textContent = '📤 Submit Requirements';
         }
 
         function showToast(message, type = 'success') {
