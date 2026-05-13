@@ -177,7 +177,7 @@
             to { transform: rotate(360deg); } 
         }
 
-        /* Table Layout (Rows) */
+        /* Table Layout */
         .table-wrapper {
             background: var(--dark-light);
             border-radius: 12px;
@@ -247,14 +247,14 @@
             min-width: 150px;
         }
 
-        /* Cable Badges inside rows */
-        .cable-list {
+        /* Items Badges inside rows */
+        .item-list {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
         }
 
-        .cable-badge {
+        .item-badge {
             background: var(--dark-lighter);
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0.3rem 0.6rem;
@@ -262,11 +262,27 @@
             font-size: 0.8rem;
             display: inline-flex;
             gap: 0.4rem;
+            align-items: center;
         }
 
-        .cable-badge span.qty {
+        .item-badge.cable span.qty {
             color: var(--primary);
             font-weight: 700;
+        }
+
+        .item-badge.misc span.qty {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        
+        .item-type-tag {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.05);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
         }
 
         .multi-job-text {
@@ -289,14 +305,15 @@
         <header>
             <div class="logo-wrap">
                 <h1>📋 Order Dashboard</h1>
-                <p>Pingu - Solar Cable Requirements</p>
+                <p>Pingu - Solar Requirements</p>
             </div>
             <div class="header-controls">
                 <div class="search-wrapper">
                     <span class="search-icon">🔍</span>
                     <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Postcode...">
                 </div>
-                <a href="index.html" class="nav-btn">➕ New Order</a>
+                <!-- Make sure this links back to your main form page -->
+                <a href="cable-requirements.html" class="nav-btn">➕ New Order</a>
             </div>
         </header>
 
@@ -307,7 +324,7 @@
 
         <div id="empty-state" style="display: none;">
             <h2>No orders found</h2>
-            <p>Once cable requirements are submitted, they will appear here.</p>
+            <p>Once requirements are submitted, they will appear here.</p>
         </div>
 
         <div id="no-results-state" style="display: none;">
@@ -323,7 +340,7 @@
                         <th>Date Submitted</th>
                         <th>Technician</th>
                         <th>Address</th>
-                        <th>Cable Requirements</th>
+                        <th>Items Requested</th>
                         <th>Applicable Jobs</th>
                     </tr>
                 </thead>
@@ -339,7 +356,6 @@
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        // Same config from your submission form
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
             authDomain: "pingu-solar.firebaseapp.com",
@@ -395,7 +411,7 @@
             if (orders.length === 0) {
                 tableWrapper.style.display = 'none';
                 if (allOrders.length > 0) {
-                    noResults.style.display = 'block'; // Search yielded 0 results
+                    noResults.style.display = 'block'; 
                 }
                 return;
             }
@@ -404,20 +420,39 @@
             tableWrapper.style.display = 'block';
 
             orders.forEach((data) => {
-                // Build Cables Badges
-                let cablesHtml = '<div class="cable-list">';
-                let hasCables = false;
+                let itemsHtml = '<div class="item-list">';
+                let hasItems = false;
+
+                // 1. Process Cables
                 if (data.cables) {
                     for (const [id, length] of Object.entries(data.cables)) {
                         if (length > 0) {
-                            hasCables = true;
+                            hasItems = true;
                             const label = CABLE_LABELS[id] || id;
-                            cablesHtml += `<div class="cable-badge">${escapeHtml(label)} <span class="qty">${length}m</span></div>`;
+                            itemsHtml += `
+                                <div class="item-badge cable" title="Cable">
+                                    ${escapeHtml(label)} 
+                                    <span class="qty">${length}m</span>
+                                </div>`;
                         }
                     }
                 }
-                cablesHtml += '</div>';
-                if (!hasCables) cablesHtml = '<span style="color: var(--text-dim);">No cables specified</span>';
+
+                // 2. Process Miscellaneous Items
+                if (data.miscItems && data.miscItems.length > 0) {
+                    hasItems = true;
+                    data.miscItems.forEach(item => {
+                        itemsHtml += `
+                            <div class="item-badge misc" title="${escapeHtml(item.type)}">
+                                <span class="item-type-tag">${escapeHtml(item.type).substring(0, 4)}</span>
+                                ${escapeHtml(item.desc)} 
+                                <span class="qty">x${item.qty}</span>
+                            </div>`;
+                    });
+                }
+
+                itemsHtml += '</div>';
+                if (!hasItems) itemsHtml = '<span style="color: var(--text-dim);">No items specified</span>';
 
                 // Multi-Job Logic
                 const isMultiJob = data.isSingleJob === false;
@@ -436,7 +471,7 @@
                         ${escapeHtml(data.doorNumber || '')}<br>
                         <strong>${escapeHtml(data.postcode || '')}</strong>
                     </td>
-                    <td>${cablesHtml}</td>
+                    <td>${itemsHtml}</td>
                     <td>${applicabilityHtml}</td>
                 `;
                 tbody.appendChild(tr);
@@ -487,7 +522,6 @@
                 const postcode = (order.postcode || '').toLowerCase();
                 const extraJobs = (order.extraJobs || '').toLowerCase();
                 
-                // Returns true if the search term is found in job number, postcode, or extra jobs field
                 return jobNum.includes(searchTerm) || 
                        postcode.includes(searchTerm) || 
                        extraJobs.includes(searchTerm);
