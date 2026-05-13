@@ -18,7 +18,8 @@
             --text-dim: #9A9AB0;
             --success: #4ECCA3;
             --error: #FF6B6B;
-            --shadow: rgba(255, 107, 53, 0.15);
+            --warning: #FFC857;
+            --shadow: rgba(0, 0, 0, 0.2);
         }
 
         * {
@@ -59,8 +60,10 @@
             66% { transform: translate(-20px, 20px) rotate(240deg); }
         }
 
+        /* Expanded container to use more screen space */
         .container {
-            max-width: 1200px;
+            max-width: 1600px;
+            width: 100%;
             margin: 0 auto;
         }
 
@@ -69,7 +72,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             flex-wrap: wrap;
             gap: 1.5rem;
             padding-bottom: 1.5rem;
@@ -88,6 +91,46 @@
             font-size: 0.95rem;
         }
 
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        /* Search Bar */
+        .search-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            font-size: 1.2rem;
+            pointer-events: none;
+        }
+
+        .search-input {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            width: 300px;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(47, 47, 74, 0.9);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
+        }
+
         .nav-btn {
             background: var(--dark-lighter);
             color: var(--text);
@@ -100,6 +143,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            white-space: nowrap;
         }
 
         .nav-btn:hover {
@@ -108,13 +152,14 @@
         }
 
         /* Status States */
-        #loading, #empty-state {
+        #loading, #empty-state, #no-results-state {
             text-align: center;
             padding: 4rem 2rem;
             background: var(--dark-light);
-            border-radius: 16px;
+            border-radius: 12px;
             border: 2px dashed var(--dark-lighter);
             color: var(--text-dim);
+            margin-top: 2rem;
         }
 
         .spinner {
@@ -132,116 +177,109 @@
             to { transform: rotate(360deg); } 
         }
 
-        /* Orders Grid */
-        .orders-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .order-card {
+        /* Table Layout (Rows) */
+        .table-wrapper {
             background: var(--dark-light);
             border-radius: 12px;
-            padding: 1.5rem;
             border: 1px solid var(--dark-lighter);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .order-card:hover {
-            transform: translateY(-5px);
+            overflow-x: auto;
             box-shadow: 0 10px 30px var(--shadow);
-            border-color: rgba(255, 107, 53, 0.3);
+            display: none; /* Hidden until loaded */
         }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
         }
 
-        .job-id {
-            font-size: 1.25rem;
+        thead {
+            background: var(--dark-lighter);
+        }
+
+        th {
+            padding: 1.25rem 1rem;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+        }
+
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.95rem;
+            vertical-align: top;
+        }
+
+        tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Specific Table Cells */
+        .col-job {
             font-weight: 700;
             color: var(--accent);
             font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            white-space: nowrap;
         }
 
-        .date-badge {
+        .col-date {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .col-address {
+            min-width: 150px;
+        }
+
+        /* Cable Badges inside rows */
+        .cable-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .cable-badge {
             background: var(--dark-lighter);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 0.3rem 0.6rem;
             border-radius: 6px;
-            font-size: 0.75rem;
-            color: var(--text-dim);
-        }
-
-        .info-row {
-            margin-bottom: 0.75rem;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .info-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-dim);
-            letter-spacing: 0.05em;
-            margin-bottom: 0.2rem;
-        }
-
-        .info-value {
-            font-size: 0.95rem;
-            color: var(--text);
-        }
-
-        .multi-job-badge {
-            display: inline-block;
-            background: rgba(255, 200, 87, 0.15);
-            color: var(--warning);
-            border: 1px solid rgba(255, 200, 87, 0.3);
-            padding: 0.2rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            margin-top: 0.5rem;
-        }
-
-        .cables-section {
-            margin-top: auto;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .cables-title {
             font-size: 0.8rem;
-            font-family: 'Syne', sans-serif;
-            font-weight: 700;
+            display: inline-flex;
+            gap: 0.4rem;
+        }
+
+        .cable-badge span.qty {
             color: var(--primary);
-            text-transform: uppercase;
-            margin-bottom: 0.75rem;
-        }
-
-        .cable-item {
-            display: flex;
-            justify-content: space-between;
-            background: var(--dark-lighter);
-            padding: 0.5rem 0.8rem;
-            border-radius: 6px;
-            margin-bottom: 0.4rem;
-            font-size: 0.85rem;
-        }
-
-        .cable-item .qty {
             font-weight: 700;
-            color: var(--text);
         }
 
-        @media (max-width: 600px) {
+        .multi-job-text {
+            color: var(--warning);
+            font-size: 0.85rem;
+            display: block;
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 900px) {
+            .search-input { width: 100%; }
+            .header-controls { width: 100%; justify-content: flex-start; }
             body { padding: 1rem; }
-            .orders-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -253,8 +291,13 @@
                 <h1>📋 Order Dashboard</h1>
                 <p>Pingu - Solar Cable Requirements</p>
             </div>
-            <!-- Update this href to whatever you named your submission form HTML file -->
-            <a href="index.html" class="nav-btn">➕ New Order</a>
+            <div class="header-controls">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Postcode...">
+                </div>
+                <a href="index.html" class="nav-btn">➕ New Order</a>
+            </div>
         </header>
 
         <div id="loading">
@@ -267,7 +310,28 @@
             <p>Once cable requirements are submitted, they will appear here.</p>
         </div>
 
-        <div class="orders-grid" id="orders-grid"></div>
+        <div id="no-results-state" style="display: none;">
+            <h2>No matches found</h2>
+            <p>Try adjusting your search terms.</p>
+        </div>
+
+        <div class="table-wrapper" id="table-wrapper">
+            <table id="orders-table">
+                <thead>
+                    <tr>
+                        <th>Job #</th>
+                        <th>Date Submitted</th>
+                        <th>Technician</th>
+                        <th>Address</th>
+                        <th>Cable Requirements</th>
+                        <th>Applicable Jobs</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody">
+                    <!-- Rows injected here by JS -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Firebase -->
@@ -286,7 +350,6 @@
             measurementId: "G-PFH059DZ64"
         };
 
-        // Format mapping to make Firebase IDs look nice
         const CABLE_LABELS = {
             'cable-6mm-ev-ultra': '6mm EV Ultra',
             'cable-fire-fighter': 'Fire Fighter',
@@ -302,10 +365,11 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        
+        let allOrders = []; // Store all fetched orders for local searching
 
-        // Utility to format ISO dates to readable format
         function formatDate(isoString) {
-            if (!isoString) return 'Unknown Date';
+            if (!isoString) return '-';
             const date = new Date(isoString);
             return date.toLocaleDateString('en-GB', { 
                 day: 'numeric', month: 'short', year: 'numeric', 
@@ -313,7 +377,6 @@
             });
         }
 
-        // Utility to prevent XSS
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -321,9 +384,68 @@
             return div.innerHTML;
         }
 
+        // Renders the table rows based on an array of order objects
+        function renderTable(orders) {
+            const tbody = document.getElementById('orders-tbody');
+            const noResults = document.getElementById('no-results-state');
+            const tableWrapper = document.getElementById('table-wrapper');
+
+            tbody.innerHTML = '';
+
+            if (orders.length === 0) {
+                tableWrapper.style.display = 'none';
+                if (allOrders.length > 0) {
+                    noResults.style.display = 'block'; // Search yielded 0 results
+                }
+                return;
+            }
+
+            noResults.style.display = 'none';
+            tableWrapper.style.display = 'block';
+
+            orders.forEach((data) => {
+                // Build Cables Badges
+                let cablesHtml = '<div class="cable-list">';
+                let hasCables = false;
+                if (data.cables) {
+                    for (const [id, length] of Object.entries(data.cables)) {
+                        if (length > 0) {
+                            hasCables = true;
+                            const label = CABLE_LABELS[id] || id;
+                            cablesHtml += `<div class="cable-badge">${escapeHtml(label)} <span class="qty">${length}m</span></div>`;
+                        }
+                    }
+                }
+                cablesHtml += '</div>';
+                if (!hasCables) cablesHtml = '<span style="color: var(--text-dim);">No cables specified</span>';
+
+                // Multi-Job Logic
+                const isMultiJob = data.isSingleJob === false;
+                let applicabilityHtml = 'Single Job';
+                if (isMultiJob && data.extraJobs) {
+                    applicabilityHtml = `Multiple<br><span class="multi-job-text">${escapeHtml(data.extraJobs)}</span>`;
+                }
+
+                // Append Row
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="col-job">#${escapeHtml(data.jobNumber || 'N/A')}</td>
+                    <td class="col-date">${formatDate(data.submittedAt)}</td>
+                    <td>${escapeHtml(data.name || 'Unknown')}</td>
+                    <td class="col-address">
+                        ${escapeHtml(data.doorNumber || '')}<br>
+                        <strong>${escapeHtml(data.postcode || '')}</strong>
+                    </td>
+                    <td>${cablesHtml}</td>
+                    <td>${applicabilityHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Fetch Data from Firebase
         async function fetchOrders() {
             try {
-                // Query collection, sort by newest first
                 const q = query(collection(db, 'Cable Requirements'), orderBy('submittedAt', 'desc'));
                 const querySnapshot = await getDocs(q);
                 
@@ -334,62 +456,13 @@
                     return;
                 }
 
-                const grid = document.getElementById('orders-grid');
-                grid.innerHTML = '';
-
+                // Populate local array
                 querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    
-                    // Filter out cables that are 0 or empty
-                    let cablesHtml = '';
-                    if (data.cables) {
-                        for (const [id, length] of Object.entries(data.cables)) {
-                            if (length > 0) {
-                                const label = CABLE_LABELS[id] || id;
-                                cablesHtml += `
-                                    <div class="cable-item">
-                                        <span class="name">${escapeHtml(label)}</span>
-                                        <span class="qty">${length}m</span>
-                                    </div>
-                                `;
-                            }
-                        }
-                    }
-
-                    // Handle missing/legacy fields gracefully
-                    const isMultiJob = data.isSingleJob === false; // checks explicitly for false
-                    let extraJobsHtml = '';
-                    if (isMultiJob && data.extraJobs) {
-                        extraJobsHtml = `<div class="multi-job-badge">Also applies to: ${escapeHtml(data.extraJobs)}</div>`;
-                    }
-
-                    // Construct Card
-                    const card = document.createElement('div');
-                    card.className = 'order-card';
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <span class="job-id">Job #${escapeHtml(data.jobNumber || 'N/A')}</span>
-                            <span class="date-badge">${formatDate(data.submittedAt)}</span>
-                        </div>
-                        
-                        <div class="info-row">
-                            <span class="info-label">Technician / Name</span>
-                            <span class="info-value">${escapeHtml(data.name || 'Unknown')}</span>
-                        </div>
-
-                        <div class="info-row">
-                            <span class="info-label">Address</span>
-                            <span class="info-value">${escapeHtml(data.doorNumber || '')}, ${escapeHtml(data.postcode || '')}</span>
-                            ${extraJobsHtml}
-                        </div>
-
-                        <div class="cables-section">
-                            <div class="cables-title">Required Cables</div>
-                            ${cablesHtml || '<div class="cable-item" style="color: var(--text-dim); justify-content: center;">No cables specified</div>'}
-                        </div>
-                    `;
-                    grid.appendChild(card);
+                    allOrders.push(doc.data());
                 });
+
+                // Initial Render
+                renderTable(allOrders);
 
             } catch (error) {
                 console.error("Error fetching orders: ", error);
@@ -399,6 +472,29 @@
                 `;
             }
         }
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            
+            if (!searchTerm) {
+                renderTable(allOrders);
+                return;
+            }
+
+            const filteredOrders = allOrders.filter(order => {
+                const jobNum = (order.jobNumber || '').toLowerCase();
+                const postcode = (order.postcode || '').toLowerCase();
+                const extraJobs = (order.extraJobs || '').toLowerCase();
+                
+                // Returns true if the search term is found in job number, postcode, or extra jobs field
+                return jobNum.includes(searchTerm) || 
+                       postcode.includes(searchTerm) || 
+                       extraJobs.includes(searchTerm);
+            });
+
+            renderTable(filteredOrders);
+        });
 
         // Initialize fetch on load
         window.addEventListener('DOMContentLoaded', fetchOrders);
