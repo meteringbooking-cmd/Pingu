@@ -228,6 +228,20 @@
         .detail-row:last-child { border-bottom: none; }
         .detail-label { color: var(--text-dim); font-size: 0.85rem; }
         .detail-value { color: var(--text); font-weight: 500; }
+        
+        /* Checklist Styles */
+        .checklist-item { border-bottom: 1px solid var(--dark); padding: 1.2rem 0; }
+        .checklist-item:last-child { border-bottom: none; }
+        .checklist-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
+        .checklist-options { display: flex; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+        .checklist-radio { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem; }
+        .checklist-select-wrapper { margin-top: 0.8rem; padding: 1rem; background: var(--dark-light); border-radius: 8px; border-left: 3px solid var(--primary); display: none; }
+        .checklist-select-wrapper.show { display: block; animation: slideDown 0.3s ease; }
+        .cat-code-option { margin-bottom: 0.5rem; display: flex; align-items: start; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; }
+        .checklist-note { font-size: 0.8rem; color: var(--secondary); margin-bottom: 0.8rem; font-weight: 600; }
+        .file-upload-input { display: block; width: 100%; padding: 0.5rem; font-size: 0.8rem; color: var(--text-dim); background: var(--dark); border-radius: 6px; border: 1px dashed var(--text-dim); cursor: pointer; }
+        .calculated-outcome { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; font-weight: bold; text-align: center; font-size: 1.1rem; border: 2px solid var(--dark); }
+        
         .audit-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem; }
         .audit-btn { padding: 1.2rem; border: 2px solid transparent; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: white; text-align: center; }
         .audit-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
@@ -241,7 +255,7 @@
             width: 100%; background: var(--dark); border: 2px solid var(--dark);
             color: var(--text); padding: 1.2rem; border-radius: 10px;
             font-family: 'JetBrains Mono', monospace; font-size: 0.95rem;
-            min-height: 480px; resize: vertical; transition: all 0.3s ease; line-height: 1.5;
+            min-height: 200px; resize: vertical; transition: all 0.3s ease; line-height: 1.5;
         }
         .notes-textarea:focus { outline: none; border-color: var(--primary); }
         .auto-save-indicator { font-size: 0.75rem; color: var(--success); margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; }
@@ -272,6 +286,11 @@
         .scheduler-bar-label { font-size: 0.85rem; color: var(--text-dim); }
         .scheduler-bar-status { font-size: 1.2rem; font-weight: 700; }
         .scheduler-bar-btns { display: flex; gap: 0.5rem; }
+        
+        .email-send-group {
+            margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap; background: var(--dark-light); padding: 1.5rem; border-radius: 10px; border: 1px solid var(--dark);
+        }
+        .email-send-group input { flex: 1; min-width: 250px; }
 
         @media (max-width: 768px) {
             .container { padding: 1rem; }
@@ -280,8 +299,9 @@
             .audit-actions { grid-template-columns: 1fr; }
             .header-actions { flex-direction: column; align-items: flex-start; }
             .modal-content { padding: 1.5rem; max-width: 96%; }
-            .notes-textarea { min-height: 360px; }
+            .notes-textarea { min-height: 150px; }
             .detail-row { grid-template-columns: 130px 1fr; }
+            .email-send-group { flex-direction: column; }
         }
     </style>
 </head>
@@ -434,6 +454,24 @@
                     <div class="detail-row"><div class="detail-label">Data Source</div><div class="detail-value" id="modal-data-source"></div></div>
                     <div class="detail-row"><div class="detail-label">Current Audit Status</div><div class="detail-value" id="modal-current-status"></div></div>
                 </div>
+                
+                <!-- NEW: Dynamic Audit Questions Section -->
+                <div class="modal-section" id="audit-checklist-section">
+                    <h3>Audit Questionnaire</h3>
+                    <div id="audit-questions-container">
+                        <!-- Questions injected via JS -->
+                    </div>
+                    
+                    <div class="calculated-outcome" id="calculated-outcome" style="display:none;">
+                        Calculated Outcome: <span id="outcome-text">Pass</span>
+                    </div>
+
+                    <div class="email-send-group">
+                        <input type="email" id="audit-target-email" class="filter-input" placeholder="Enter email to send results...">
+                        <button class="btn btn-primary" onclick="submitAuditChecklist()" id="btn-send-checklist">✉️ Send Audit Email</button>
+                    </div>
+                </div>
+
                 <div class="modal-section">
                     <h3>Update Audit Status</h3>
                     <div class="audit-actions">
@@ -480,8 +518,12 @@
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, setDoc, where };
+            // Initializing with the NEW keys
             emailjs.init("ziLnha91scpGjFABh");
-            window.addEventListener('DOMContentLoaded', () => { window.loadAllJobs(); });
+            window.addEventListener('DOMContentLoaded', () => { 
+                window.loadAllJobs(); 
+                window.renderAuditChecklist();
+            });
         } catch (error) {
             console.error('Firebase error:', error);
             document.getElementById('jobs-grid').innerHTML =
@@ -500,6 +542,349 @@
         let autoSaveTimeout    = null;
         let isFiltered         = false;
         let showSurveyOnly     = false;
+
+        /* ═══════════════════════════════════════════════
+           AUDIT QUESTIONNAIRE DATA
+        ═══════════════════════════════════════════════ */
+        const auditQuestionsData = [
+            { id: "q1", text: "Earthing System", options: ["TT", "TN-S/SNE", "TN-CS/PME"], type: "select" },
+            { id: "q2", text: "Main equipotential bonding in place and adequate?", options: ["Yes", "No"], triggers: "No", note: "Need photos to prove bonding on both gas and water or prove plastic incomers." },
+            { id: "q3", text: "Have all DNO codes been reported accurately?", options: ["Yes", "No", "N/A"], triggers: "No", note: "Need clear pre photo of meter, cut out, any isolation, earthing type.", codes: [
+                { val: "CAT 1 - E1", text: "CAT 1 E1 - Missed an A code on distribution equipment (DNO)", cat: 1 },
+                { val: "CAT 3 - E33", text: "CAT 3 E33 - Missed an B/C code on distribution equipment (DNO)", cat: 3 }
+            ]},
+            { id: "q4", text: "Electric Meter Location?", options: ["Yes", "No"], triggers: "No", note: "Need pre photo of meter location. Must be clear full photo of meter point." },
+            { id: "q5", text: "Inverter/Battery location?", options: ["Yes", "No"], triggers: "No", note: "Need pre photo of inverter and battery location." },
+            { id: "q6", text: "PV consumer unit location?", options: ["Yes", "No"], triggers: "No", note: "Need pre photo of PVDB location." },
+            { id: "q7", text: "PV DB installed and terminated correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E5", text: "CAT 1 E5 - Reverse Polarity AC (Need connection photos & test results)", cat: 1 },
+                { val: "CAT 1 - E6", text: "CAT 1 E6 - Reverse Polarity DC (Need connection photos & test results)", cat: 1 },
+                { val: "CAT 1 - E7", text: "CAT 1 E7 - Equipment/Accessories do not protect to suitable IP rating", cat: 1 },
+                { val: "CAT 1 - E9", text: "CAT 1 E9 - Exposed Conductors (holes/blanks needed)", cat: 1 },
+                { val: "CAT 1 - EX1", text: "CAT 1 EX1 - Miscellaneous (supporting notes required)", cat: 1 },
+                { val: "CAT 1 - E19", text: "CAT 1 E19 - Installation fitted outside BS 7671 without OES approval", cat: 1 },
+                { val: "CAT 2 - E22", text: "CAT 2 E22 - Undersized cable installed", cat: 2 },
+                { val: "CAT 2 - E23", text: "CAT 2 E23 - Incorrect cable type installed", cat: 2 },
+                { val: "CAT 3 - E42", text: "CAT 3 E42 - No/Incorrect Glands/Bushes installed", cat: 3 }
+            ]},
+            { id: "q8", text: "Inverter and battery installed correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E5", text: "CAT 1 E5 - Reverse Polarity AC", cat: 1 },
+                { val: "CAT 1 - E6", text: "CAT 1 E6 - Reverse Polarity DC", cat: 1 },
+                { val: "CAT 1 - E7", text: "CAT 1 E7 - IP Rating unsuitable", cat: 1 },
+                { val: "CAT 1 - E12", text: "CAT 1 E12 - Engineer worked out of scope/competence", cat: 1 },
+                { val: "CAT 1 - E15", text: "CAT 1 E15 - Solar equipment installed using incorrect fixings", cat: 1 },
+                { val: "CAT 2 - E26", text: "CAT 2 E26 - Solar equipment not installed in correct location", cat: 2 }
+            ]},
+            { id: "q9", text: "Inverter and battery bonded together?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 1 - E12", text: "CAT 1 E12 - Engineer worked out of scope", cat: 1 },
+                { val: "CAT 2 - E27", text: "CAT 2 E27 - Bonding not up to standards", cat: 2 }
+            ]},
+            { id: "q10", text: "Check plug used before and after?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E40", text: "CAT 3 E40 - No socket polarity plug test / only one performed", cat: 3 }
+            ]},
+            { id: "q11", text: "Lock-off kit used?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 4 - E56", text: "CAT 4 E56 - No lock off kit used", cat: 4 }
+            ]},
+            { id: "q12", text: "DC supply cable installed neatly, correctly with warning labels?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 1 - E19", text: "CAT 1 E19 - Fitted outside BS 7671", cat: 1 },
+                { val: "CAT 1 - E20", text: "CAT 1 E20 - Fire rated clips not used/insufficient", cat: 1 },
+                { val: "CAT 2 - E21", text: "CAT 2 E21 - DC cable has no warning stickers", cat: 2 },
+                { val: "CAT 2 - E24", text: "CAT 2 E24 - Cable installed in incorrect zones", cat: 2 },
+                { val: "CAT 4 - E50", text: "CAT 4 E50 - DC cable not sticker enough for length", cat: 4 }
+            ]},
+            { id: "q13", text: "AC supply cable installed neatly & correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E20", text: "CAT 1 E20 - Fire rated clips not used/insufficient", cat: 1 },
+                { val: "CAT 4 - E54", text: "CAT 4 E54 - 230v sticker missing", cat: 4 }
+            ]},
+            { id: "q14", text: "AC/DC isolators in correct position and terminated correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E5", text: "CAT 1 E5 - Reverse Polarity AC", cat: 1 },
+                { val: "CAT 1 - E6", text: "CAT 1 E6 - Reverse Polarity DC", cat: 1 },
+                { val: "CAT 1 - E7", text: "CAT 1 E7 - IP rating unsuitable", cat: 1 },
+                { val: "CAT 1 - E9", text: "CAT 1 E9 - Exposed Conductors", cat: 1 },
+                { val: "CAT 1 - E10", text: "CAT 1 E10 - Loose terminations greater than 360 rotation", cat: 1 },
+                { val: "CAT 1 - E11", text: "CAT 1 E11 - Terminals overtightened/screw broken", cat: 1 },
+                { val: "CAT 1 - E13", text: "CAT 1 E13 - Signs of distress/overheating", cat: 1 },
+                { val: "CAT 3 - E34", text: "CAT 3 E34 - Incorrect ferrules/crimps used", cat: 3 },
+                { val: "CAT 3 - E42", text: "CAT 3 E42 - Incorrect Glands/Bushes", cat: 3 },
+                { val: "CAT 3 - E49", text: "CAT 3 E49 - Terminations not adequately tightened", cat: 3 }
+            ]},
+            { id: "q15", text: "Are MCBs/RCDs correct for install?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E16", text: "CAT 1 E16 - Incorrect protective device installed", cat: 1 },
+                { val: "CAT 3 - E43", text: "CAT 3 E43 - MCB, RCBO over/undersized", cat: 3 }
+            ]},
+            { id: "q16", text: "Correct cable selected for install?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 1 - E4", text: "CAT 1 E4 - Cable damaged", cat: 1 },
+                { val: "CAT 2 - E22", text: "CAT 2 E22 - Undersized cable", cat: 2 },
+                { val: "CAT 2 - E23", text: "CAT 2 E23 - Incorrect cable type", cat: 2 }
+            ]},
+            { id: "q17", text: "Fire rated fixing used?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E20", text: "CAT 1 E20 - Fire rated clips not used/insufficient", cat: 1 }
+            ]},
+            { id: "q18", text: "Has fire detection been installed?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 1 - E14", text: "CAT 1 E14 - Fire detection not fitted or incorrectly fitted", cat: 1 }
+            ]},
+            { id: "q19", text: "Battery cable terminated correctly?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 1 - E4", text: "CAT 1 E4 - Cable damaged", cat: 1 },
+                { val: "CAT 2 - E22", text: "CAT 2 E22 - Undersized cable", cat: 2 },
+                { val: "CAT 2 - E23", text: "CAT 2 E23 - Incorrect cable type", cat: 2 }
+            ]},
+            { id: "q20", text: "Correct ferrules/crimps used?", options: ["Yes", "No", "N/A"], triggers: "No", codes: [
+                { val: "CAT 3 - E34", text: "CAT 3 E34 - Incorrect ferrules/crimps", cat: 3 }
+            ]},
+            { id: "q21", text: "All holes filled with correct sealant?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E47", text: "CAT 3 E47 - No waterproof/fire sealant used", cat: 3 }
+            ]},
+            { id: "q22", text: "Correct glands used and fitted correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E42", text: "CAT 3 E42 - Incorrect Glands/Bushes", cat: 3 }
+            ]},
+            { id: "q23", text: "Do all enclosures provide correct degree of protection?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E7", text: "CAT 1 E7 - IP rating unsuitable", cat: 1 }
+            ]},
+            { id: "q24", text: "PV DB has all correct labelling (inc RCD test and periodic)?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 4 - E55", text: "CAT 4 E55 - Periodic and RCD test label missing", cat: 4 }
+            ]},
+            { id: "q25", text: "Installed inverter/battery has correct labelling?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E44", text: "CAT 3 E44 - Safety labelling missing", cat: 3 }
+            ]},
+            { id: "q26", text: "Henley blocks installed correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E5", text: "CAT 1 E5 - Reverse Polarity AC", cat: 1 },
+                { val: "CAT 1 - E9", text: "CAT 1 E9 - Exposed Conductors", cat: 1 },
+                { val: "CAT 1 - E17", text: "CAT 1 E17 - Single insulation visible outside enclosures", cat: 1 },
+                { val: "CAT 2 - E25", text: "CAT 2 E25 - Conductor only secured by one terminal screw", cat: 2 },
+                { val: "CAT 3 - E48", text: "CAT 3 E48 - No polarity identification on grey tails", cat: 3 }
+            ]},
+            { id: "q27", text: "CT clamp installed correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E39", text: "CAT 3 E39 - CT clamp incorrect location/not fitted", cat: 3 }
+            ]},
+            { id: "q28", text: "Solar on roof label at meter point?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E44", text: "CAT 3 E44 - Safety labelling missing", cat: 3 }
+            ]},
+            { id: "q29", text: "Are all test results within BS7671 limit?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 1 - E8", text: "CAT 1 E8 - Testing/results not to industry standards", cat: 1 },
+                { val: "CAT 3 - E41", text: "CAT 3 E41 - Testing results different to recorded details", cat: 3 },
+                { val: "CAT 4 - E51", text: "CAT 4 E51 - Testing on MFT using incorrect setting", cat: 4 },
+                { val: "CAT 2 - E31", text: "CAT 2 E31 - MCS forms are not complete/incorrect", cat: 2 }
+            ]},
+            { id: "q30", text: "Has PV array sheet been complete?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 2 - E29", text: "CAT 2 E29 - PV Array test not complete/incorrect", cat: 2 }
+            ]},
+            { id: "q31", text: "EIC complete and filled out correctly?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 2 - E30", text: "CAT 2 E30 - EIC is not complete/incorrect", cat: 2 },
+                { val: "CAT 2 - E31", text: "CAT 2 E31 - MCS forms not complete/incorrect", cat: 2 }
+            ]},
+            { id: "q32", text: "Have the MCS forms been completed?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 2 - E30", text: "CAT 2 E30 - EIC is not complete/incorrect", cat: 2 },
+                { val: "CAT 2 - E31", text: "CAT 2 E31 - MCS forms not complete/incorrect", cat: 2 }
+            ]},
+            { id: "q33", text: "Missing photos?", options: ["Yes", "No"], triggers: "No", codes: [
+                { val: "CAT 3 - E35", text: "CAT 3 E35 - Missing safety critical photos", cat: 3 },
+                { val: "CAT 4 - E53", text: "CAT 4 E53 - Missing non-safety critical photos", cat: 4 }
+            ]},
+            { id: "q34", text: "Is Kracken Field Complete?", options: ["Yes", "No"], triggers: "No", note: "If Kracken Field is not complete the install is not complete! Send email." }
+        ];
+
+        window.renderAuditChecklist = function() {
+            const container = document.getElementById('audit-questions-container');
+            let html = '';
+
+            auditQuestionsData.forEach((q, index) => {
+                let optionsHtml = '';
+                if(q.type === 'select') {
+                    optionsHtml = `<select id="${q.id}_val" class="filter-select" style="max-width:300px;"><option value="">Select option...</option>` + 
+                                  q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('') + `</select>`;
+                } else {
+                    optionsHtml = q.options.map(opt => `
+                        <label class="checklist-radio">
+                            <input type="radio" name="${q.id}" value="${opt}" onchange="handleChecklistChange('${q.id}', '${q.triggers}')"> ${opt}
+                        </label>
+                    `).join('');
+                }
+
+                let codesHtml = '';
+                if (q.codes) {
+                    codesHtml = q.codes.map(c => `
+                        <label class="cat-code-option">
+                            <input type="checkbox" class="cat-code-cb" value="${c.val}" data-cat="${c.cat}" onchange="recalculateOutcome()"> 
+                            <span>${c.text}</span>
+                        </label>
+                    `).join('');
+                }
+
+                let extraHtml = `
+                    <div id="${q.id}_extra" class="checklist-select-wrapper">
+                        ${q.note ? `<div class="checklist-note">ℹ️ ${q.note}</div>` : ''}
+                        ${codesHtml ? `<div style="margin-bottom:1rem;"><strong>Select Applicable Codes:</strong><br>${codesHtml}</div>` : ''}
+                        <div>
+                            <strong>Attach Photos:</strong>
+                            <input type="file" id="${q.id}_files" class="file-upload-input" accept="image/*" multiple>
+                        </div>
+                    </div>
+                `;
+
+                html += `
+                    <div class="checklist-item" id="item_${q.id}">
+                        <div class="checklist-title">${index + 1}. ${q.text}</div>
+                        <div class="checklist-options">${optionsHtml}</div>
+                        ${q.triggers ? extraHtml : ''}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        };
+
+        window.handleChecklistChange = function(qId, triggerVal) {
+            const extraDiv = document.getElementById(`${qId}_extra`);
+            if(!extraDiv) return;
+            const selected = document.querySelector(`input[name="${qId}"]:checked`);
+            if (selected && selected.value === triggerVal) {
+                extraDiv.classList.add('show');
+            } else {
+                extraDiv.classList.remove('show');
+                // Uncheck codes if hidden
+                const cbs = extraDiv.querySelectorAll('.cat-code-cb');
+                cbs.forEach(cb => cb.checked = false);
+            }
+            recalculateOutcome();
+        };
+
+        window.recalculateOutcome = function() {
+            const allCbs = document.querySelectorAll('.cat-code-cb:checked');
+            let highestCat = 0; // lower number is higher severity here (Cat 1 is worst)
+            
+            if (allCbs.length === 0) {
+                highestCat = 99; // Pass
+            } else {
+                highestCat = 99;
+                allCbs.forEach(cb => {
+                    const cat = parseInt(cb.getAttribute('data-cat'));
+                    if (cat < highestCat) highestCat = cat;
+                });
+            }
+
+            const outDiv = document.getElementById('calculated-outcome');
+            const outText = document.getElementById('outcome-text');
+            outDiv.style.display = 'block';
+
+            if (highestCat === 99) {
+                outText.textContent = "Pass (No CAT codes)";
+                outDiv.style.borderColor = "var(--success)";
+                outDiv.style.color = "var(--success)";
+            } else if (highestCat === 3 || highestCat === 4) {
+                outText.textContent = "Pass with non-conformances (PNC)";
+                outDiv.style.borderColor = "var(--warning)";
+                outDiv.style.color = "var(--warning)";
+            } else if (highestCat === 2) {
+                outText.textContent = "Policy Fail";
+                outDiv.style.borderColor = "var(--error)";
+                outDiv.style.color = "var(--error)";
+            } else if (highestCat === 1) {
+                outText.textContent = "Safety Fail";
+                outDiv.style.borderColor = "#FF0000";
+                outDiv.style.color = "#FF0000";
+            }
+        };
+
+        // Utility to compress images so EmailJS doesn't reject massive payloads
+        const compressImage = (file) => {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800;
+                        const scaleSize = MAX_WIDTH / img.width;
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Compress to 60% quality JPEG
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        };
+
+        window.submitAuditChecklist = async function() {
+            const targetEmail = document.getElementById('audit-target-email').value.trim();
+            if (!targetEmail) {
+                showToast("Please enter an email address to send the results", "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-send-checklist');
+            btn.innerHTML = "⏳ Compiling Email (Processing Images)...";
+            btn.disabled = true;
+
+            try {
+                let emailContent = `
+                    <div style="font-family:Arial,sans-serif;color:#333;padding:20px;background:#f5f5f5;">
+                        <div style="background:white;padding:30px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
+                            <h2 style="color:#FF6B35;">Job Audit Report - #${currentJob ? currentJob.jobNumber : 'Unknown'}</h2>
+                            <p><strong>Outcome:</strong> ${document.getElementById('outcome-text').textContent}</p>
+                            <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+                `;
+
+                for (let i = 0; i < auditQuestionsData.length; i++) {
+                    const q = auditQuestionsData[i];
+                    let response = '';
+                    
+                    if (q.type === 'select') {
+                        response = document.getElementById(`${q.id}_val`).value;
+                    } else {
+                        const checked = document.querySelector(`input[name="${q.id}"]:checked`);
+                        if (checked) response = checked.value;
+                    }
+
+                    if (response) {
+                        emailContent += `<div style="margin-bottom:20px;padding:15px;background:#f9f9f9;border-left:3px solid #ccc;">`;
+                        emailContent += `<h4 style="margin:0 0 10px 0;color:#222;">${i+1}. ${q.text}</h4>`;
+                        emailContent += `<p style="margin:0;"><strong>Answer:</strong> ${response}</p>`;
+
+                        if (response === q.triggers) {
+                            // Fetch Codes
+                            const extraDiv = document.getElementById(`${q.id}_extra`);
+                            if (extraDiv) {
+                                const checkedCodes = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked')).map(cb => cb.nextElementSibling.textContent);
+                                if (checkedCodes.length > 0) {
+                                    emailContent += `<p style="margin:10px 0 0 0;color:#d9534f;"><strong>Codes:</strong><br> - ${checkedCodes.join('<br> - ')}</p>`;
+                                }
+
+                                // Process Files
+                                const fileInput = document.getElementById(`${q.id}_files`);
+                                if (fileInput && fileInput.files.length > 0) {
+                                    emailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
+                                    for (let f = 0; f < fileInput.files.length; f++) {
+                                        const base64Img = await compressImage(fileInput.files[f]);
+                                        emailContent += `<img src="${base64Img}" style="max-width:300px;margin:5px;border:1px solid #ccc;border-radius:4px;" />`;
+                                    }
+                                    emailContent += `</div>`;
+                                }
+                            }
+                        }
+                        emailContent += `</div>`;
+                    }
+                }
+
+                emailContent += `</div></div>`;
+
+                // Fire EmailJS
+                await emailjs.send('service_4cq7fb3', 'template_6510scg', {
+                    to_email: targetEmail,
+                    job_number: currentJob ? currentJob.jobNumber : 'N/A',
+                    message_html: emailContent
+                });
+
+                showToast("Audit email sent successfully!", "success");
+            } catch (err) {
+                console.error("Error sending checklist email", err);
+                showToast("Failed to send email. Payload might be too large due to many photos.", "error");
+            } finally {
+                btn.innerHTML = "✉️ Send Audit Email";
+                btn.disabled = false;
+            }
+        };
 
         /* ═══════════════════════════════════════════════
            HELPERS
@@ -956,6 +1341,18 @@
             else if (job.auditStatus === 'in-progress')          s = 'Audit — In Progress';
             document.getElementById('modal-current-status').textContent = s;
 
+            // Reset checklist state
+            const rbs = document.querySelectorAll('.checklist-radio input');
+            rbs.forEach(rb => rb.checked = false);
+            const cbs = document.querySelectorAll('.cat-code-cb');
+            cbs.forEach(cb => cb.checked = false);
+            const extraDivs = document.querySelectorAll('.checklist-select-wrapper');
+            extraDivs.forEach(div => div.classList.remove('show'));
+            const files = document.querySelectorAll('.file-upload-input');
+            files.forEach(f => f.value = '');
+            document.getElementById('calculated-outcome').style.display = 'none';
+            document.getElementById('audit-target-email').value = '';
+
             document.getElementById('audit-notes').value = loadSavedNotes(job.id) || job.auditNotes || '';
             document.getElementById('audit-notes').oninput = function() {
                 if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
@@ -1012,6 +1409,7 @@
                 }[pendingAuditStatus] || pendingAuditStatus;
 
                 if (currentJob.status === 'complete' && pendingAuditStatus !== 'in-progress') {
+                    // Send main notification - separate to the detailed checklist report
                     await sendAuditNotificationEmail(currentJob, pendingAuditStatus, notes);
                 }
                 showToast(`Audit status updated to: ${lbl}`, 'success');
