@@ -214,10 +214,11 @@
         .modal.show { display: flex; }
         .modal-content {
             background: var(--dark-light); border-radius: 16px; padding: 2.4rem;
-            max-width: 1300px; /* Increased from 900px */
-            width: 95%; /* Make it span almost full width */
+            max-width: 1300px;
+            width: 95%;
             border: 2px solid var(--primary);
             max-height: 95vh; overflow-y: auto;
+            scroll-behavior: smooth;
         }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--dark-lighter); position: sticky; top: -2.4rem; background: var(--dark-light); z-index: 10; margin-top: -1rem; padding-top: 1rem; }
         .modal-title { font-family: 'Syne', sans-serif; font-size: 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
@@ -232,7 +233,7 @@
         .detail-value { color: var(--text); font-weight: 500; }
         
         /* Checklist Styles */
-        .checklist-item { border-bottom: 1px solid var(--dark); padding: 1.2rem 0; }
+        .checklist-item { border-bottom: 1px solid var(--dark); padding: 1.2rem 1rem; transition: all 0.3s ease; }
         .checklist-item:last-child { border-bottom: none; }
         .checklist-title { font-weight: 600; margin-bottom: 0.5rem; font-size: 0.95rem; }
         .checklist-options { display: flex; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; align-items: center; }
@@ -251,6 +252,13 @@
         .file-upload-input { display: block; width: 100%; padding: 0.5rem; font-size: 0.8rem; color: var(--text-dim); background: var(--dark); border-radius: 6px; border: 1px dashed var(--text-dim); cursor: pointer; margin-bottom: 0.5rem; }
         .calculated-outcome { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; font-weight: bold; text-align: center; font-size: 1.2rem; border: 2px solid var(--dark); background: var(--dark-light); }
         
+        /* Highlight for Unanswered Questions */
+        .error-highlight {
+            border-left: 4px solid var(--error) !important;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 6px;
+        }
+
         .audit-actions { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1rem; }
         .audit-btn { padding: 1.2rem; border: 2px solid transparent; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: white; text-align: center; }
         .audit-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.4); }
@@ -481,8 +489,9 @@
                     </div>
 
                     <div class="email-send-group">
-                        <input type="email" id="audit-target-email" class="filter-input" placeholder="Enter email to send results...">
-                        <button class="btn btn-primary" onclick="submitAuditChecklist()" id="btn-send-checklist">✉️ Send Audit Email</button>
+                        <!-- Changed type to "text" so HTML5 doesn't block commas -->
+                        <input type="text" id="audit-target-email" class="filter-input" placeholder="e.g. barry.dixon, joe.bloggs (auto-adds @next-gen.uk)">
+                        <button class="btn btn-primary" onclick="submitAuditChecklist()" id="btn-send-checklist">✉️ Save to Database & Send Email</button>
                     </div>
                 </div>
 
@@ -714,7 +723,8 @@
                 let optionsHtml = '';
                 if(q.type === 'select') {
                     // Applied checklist-dropdown class to make it bold and visible
-                    optionsHtml = `<select id="${q.id}_val" class="checklist-dropdown"><option value="">Select option...</option>` + 
+                    optionsHtml = `<select id="${q.id}_val" class="checklist-dropdown" onchange="handleChecklistChange('${q.id}', '${q.triggers}')">
+                                      <option value="">Select option...</option>` + 
                                   q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('') + `</select>`;
                 } else {
                     optionsHtml = q.options.map(opt => `
@@ -757,10 +767,22 @@
         };
 
         window.handleChecklistChange = function(qId, triggerVal) {
+            // Remove error highlight if they just answered it
+            const itemDiv = document.getElementById(`item_${qId}`);
+            if (itemDiv) itemDiv.classList.remove('error-highlight');
+
             const extraDiv = document.getElementById(`${qId}_extra`);
             if(!extraDiv) return;
-            const selected = document.querySelector(`input[name="${qId}"]:checked`);
-            if (selected && selected.value === triggerVal) {
+
+            let selectedVal = '';
+            if (document.getElementById(`${qId}_val`)) {
+                selectedVal = document.getElementById(`${qId}_val`).value;
+            } else {
+                const checked = document.querySelector(`input[name="${qId}"]:checked`);
+                if (checked) selectedVal = checked.value;
+            }
+
+            if (selectedVal === triggerVal) {
                 extraDiv.classList.add('show');
             } else {
                 extraDiv.classList.remove('show');
@@ -773,7 +795,7 @@
 
         window.recalculateOutcome = function() {
             const allCbs = document.querySelectorAll('.cat-code-cb:checked');
-            let highestCat = 0; // lower number is higher severity here (Cat 1 is worst)
+            let highestCat = 0; 
             
             if (allCbs.length === 0) {
                 highestCat = 99; // Pass
@@ -808,89 +830,134 @@
             }
         };
 
-        // Utility to upload image to Firebase Storage and get URL
         const uploadImageToFirebase = async (file, jobNumber) => {
             const { ref, uploadBytes, getDownloadURL } = window.firebaseStorageModules;
-            // Create a unique file name
             const fileName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-            // Save in a folder named after the job number
             const storageRef = ref(window.storage, `audit_evidence/${jobNumber}/${fileName}`);
-            
-            // Upload the file
             await uploadBytes(storageRef, file);
-            // Get the public URL
             return await getDownloadURL(storageRef);
         };
 
         window.submitAuditChecklist = async function() {
-            const targetEmail = document.getElementById('audit-target-email').value.trim();
-            if (!targetEmail) {
+            let rawEmails = document.getElementById('audit-target-email').value.trim();
+            if (!rawEmails) {
                 showToast("Please enter an email address to send the results", "error");
                 return;
             }
 
+            // SMART EMAIL FORMATTER (e.g. barry.dixon, joe.bloggs -> adds @next-gen.uk)
+            let formattedEmails = rawEmails.split(',').map(emailStr => {
+                let cleanEmail = emailStr.trim();
+                if (cleanEmail && !cleanEmail.includes('@')) {
+                    return cleanEmail + '@next-gen.uk';
+                }
+                return cleanEmail;
+            }).filter(e => e).join(', ');
+
+            // VALIDATION: Check if every question has an answer
+            let isValid = true;
+            let firstErrorElement = null;
+            document.querySelectorAll('.checklist-item').forEach(el => el.classList.remove('error-highlight'));
+
+            for (let i = 0; i < auditQuestionsData.length; i++) {
+                const q = auditQuestionsData[i];
+                let response = '';
+                
+                if (q.type === 'select') {
+                    response = document.getElementById(`${q.id}_val`).value;
+                } else {
+                    const checked = document.querySelector(`input[name="${q.id}"]:checked`);
+                    if (checked) response = checked.value;
+                }
+
+                if (!response) {
+                    const errorDiv = document.getElementById(`item_${q.id}`);
+                    errorDiv.classList.add('error-highlight');
+                    isValid = false;
+                    if (!firstErrorElement) firstErrorElement = errorDiv;
+                }
+            }
+
+            if (!isValid) {
+                showToast("Please answer all highlighted questions before sending.", "error");
+                if (firstErrorElement) {
+                    firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+                return;
+            }
+
             const btn = document.getElementById('btn-send-checklist');
-            btn.innerHTML = "⏳ Uploading Photos & Compiling Email...";
+            btn.innerHTML = "⏳ Saving Database & Compiling Email...";
             btn.disabled = true;
 
             const safeJobNumber = currentJob ? currentJob.jobNumber : 'Unknown';
+            const calculatedOutcome = document.getElementById('outcome-text').textContent;
 
             try {
                 let emailContent = `
                     <div style="font-family:Arial,sans-serif;color:#333;padding:20px;background:#f5f5f5;">
                         <div style="background:white;padding:30px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
                             <h2 style="color:#FF6B35;">Job Audit Report - #${escapeHtml(safeJobNumber)}</h2>
-                            <p><strong>Outcome:</strong> ${document.getElementById('outcome-text').textContent}</p>
+                            <p><strong>Outcome:</strong> ${calculatedOutcome}</p>
                             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
                 `;
+
+                // Object to store all the data we'll save into Firebase
+                let firebaseChecklistData = {};
 
                 for (let i = 0; i < auditQuestionsData.length; i++) {
                     const q = auditQuestionsData[i];
                     let response = '';
-                    
                     if (q.type === 'select') {
                         response = document.getElementById(`${q.id}_val`).value;
                     } else {
-                        const checked = document.querySelector(`input[name="${q.id}"]:checked`);
-                        if (checked) response = checked.value;
+                        response = document.querySelector(`input[name="${q.id}"]:checked`).value;
                     }
 
-                    if (response) {
-                        emailContent += `<div style="margin-bottom:20px;padding:15px;background:#f9f9f9;border-left:3px solid #ccc;">`;
-                        emailContent += `<h4 style="margin:0 0 10px 0;color:#222;">${i+1}. ${q.text}</h4>`;
-                        emailContent += `<p style="margin:0;"><strong>Answer:</strong> ${response}</p>`;
+                    // Prepare object for Firebase
+                    let questionSaveData = {
+                        questionText: q.text,
+                        answer: response,
+                        codesSelected: [],
+                        uploadedPhotos: []
+                    };
 
-                        if (response === q.triggers) {
-                            // Fetch Codes
-                            const extraDiv = document.getElementById(`${q.id}_extra`);
-                            if (extraDiv) {
-                                const checkedCodes = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked')).map(cb => cb.nextElementSibling.textContent);
-                                if (checkedCodes.length > 0) {
-                                    emailContent += `<p style="margin:10px 0 0 0;color:#d9534f;"><strong>Codes:</strong><br> - ${checkedCodes.join('<br> - ')}</p>`;
-                                }
+                    emailContent += `<div style="margin-bottom:20px;padding:15px;background:#f9f9f9;border-left:3px solid #ccc;">`;
+                    emailContent += `<h4 style="margin:0 0 10px 0;color:#222;">${i+1}. ${q.text}</h4>`;
+                    emailContent += `<p style="margin:0;"><strong>Answer:</strong> ${response}</p>`;
 
-                                // Process Files (Firebase Upload)
-                                const fileInput = document.getElementById(`${q.id}_files`);
-                                if (fileInput && fileInput.files.length > 0) {
-                                    emailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
-                                    for (let f = 0; f < fileInput.files.length; f++) {
-                                        // Upload to Firebase and get the live URL
-                                        const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
-                                        
-                                        // Use the live URL in the email
-                                        emailContent += `<a href="${liveUrl}" target="_blank">
-                                            <img src="${liveUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
-                                        </a>`;
-                                    }
-                                    emailContent += `</div>`;
+                    if (response === q.triggers) {
+                        const extraDiv = document.getElementById(`${q.id}_extra`);
+                        if (extraDiv) {
+                            const checkedCodes = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked')).map(cb => cb.nextElementSibling.textContent);
+                            if (checkedCodes.length > 0) {
+                                questionSaveData.codesSelected = checkedCodes; // Save to Firebase
+                                emailContent += `<p style="margin:10px 0 0 0;color:#d9534f;"><strong>Codes:</strong><br> - ${checkedCodes.join('<br> - ')}</p>`;
+                            }
+
+                            // Process Files (Firebase Upload)
+                            const fileInput = document.getElementById(`${q.id}_files`);
+                            if (fileInput && fileInput.files.length > 0) {
+                                emailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
+                                for (let f = 0; f < fileInput.files.length; f++) {
+                                    const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
+                                    
+                                    questionSaveData.uploadedPhotos.push(liveUrl); // Save URL to Firebase
+
+                                    emailContent += `<a href="${liveUrl}" target="_blank">
+                                        <img src="${liveUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
+                                    </a>`;
                                 }
+                                emailContent += `</div>`;
                             }
                         }
-                        emailContent += `</div>`;
                     }
+                    emailContent += `</div>`;
+                    
+                    // Assign to master firebase save object
+                    firebaseChecklistData[q.id] = questionSaveData;
                 }
 
-                // Add Additional Email Notes
                 const additionalNotes = document.getElementById('additional-email-notes').value.trim();
                 if (additionalNotes) {
                     emailContent += `
@@ -903,19 +970,30 @@
 
                 emailContent += `</div></div>`;
 
-                // Fire EmailJS
+                // 1. SAVE TO FIREBASE DATABASE
+                if (currentJob) {
+                    await writeSolarJob(currentJob, {
+                        auditChecklistData: firebaseChecklistData,
+                        auditChecklistOutcome: calculatedOutcome,
+                        additionalEmailNotes: additionalNotes,
+                        checklistSentTo: formattedEmails,
+                        checklistSentAt: new Date().toISOString()
+                    });
+                }
+
+                // 2. FIRE EMAILJS
                 await emailjs.send('service_4cq7fb3', 'template_6510scg', {
-                    to_email: targetEmail,
+                    to_email: formattedEmails,
                     job_number: safeJobNumber,
                     message_html: emailContent
                 });
 
-                showToast("Audit email sent successfully!", "success");
+                showToast(`Saved to database & sent to ${formattedEmails}`, "success");
             } catch (err) {
-                console.error("Error sending checklist email", err);
-                showToast("Failed to send email. Check console for errors.", "error");
+                console.error("Error saving/sending checklist", err);
+                showToast("Failed to process. Check console for errors.", "error");
             } finally {
-                btn.innerHTML = "✉️ Send Audit Email";
+                btn.innerHTML = "✉️ Save to Database & Send Email";
                 btn.disabled = false;
             }
         };
@@ -1383,6 +1461,9 @@
             const dropdown = document.getElementById('q1_val');
             if(dropdown) dropdown.value = '';
             
+            // Remove Highlights
+            document.querySelectorAll('.checklist-item').forEach(el => el.classList.remove('error-highlight'));
+
             const cbs = document.querySelectorAll('.cat-code-cb');
             cbs.forEach(cb => cb.checked = false);
             const extraDivs = document.querySelectorAll('.checklist-select-wrapper');
