@@ -406,7 +406,15 @@
                 <div class="detail-row"><div class="detail-label">Team Lead</div><div class="detail-value" id="status-lead"></div></div>
                 <div class="detail-row"><div class="detail-label">Field Engineer</div><div class="detail-value" id="status-original-engineer"></div></div>
                 <div class="detail-row"><div class="detail-label">Team Number</div><div class="detail-value" id="status-team"></div></div>
-                <div class="detail-row"><div class="detail-label">Panel Number</div><div class="detail-value" id="status-panel"></div></div>
+                
+                <div class="detail-row" style="align-items: center;">
+                    <div class="detail-label">Battery Type</div>
+                    <div class="detail-value" style="display: flex; gap: 0.5rem; align-items: stretch;">
+                        <input type="text" id="status-battery-type" class="control-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem; width: 100%; border-radius: 4px;" placeholder="Enter Battery Type...">
+                        <button onclick="saveBatteryType()" style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 4px; padding: 0 1rem; cursor: pointer; font-weight: 700; font-family: 'JetBrains Mono', monospace; transition: transform 0.2s;">Save</button>
+                    </div>
+                </div>
+
                 <div class="detail-row"><div class="detail-label">Current Status</div><div class="detail-value" id="status-current"></div></div>
 
                 <div class="status-buttons">
@@ -769,6 +777,7 @@
                         id: docSnap.id, source, ...data,
                         jobNumber, parsedDate, projectedCompletionDate,
                         jobLength, engineer, originalEngineer, jobType, status, completedDays,
+                        batteryType:        data['batteryType']        || data['Battery Type'] || '',
                         notes:              data['notes']              || '',
                         poNumbers:          data['poNumbers']          || '',
                         poNumbersUpdatedAt: data['poNumbersUpdatedAt'] || '',
@@ -1158,11 +1167,14 @@
                 const completionPercent = jobLength>1 && completedDays.length>0 ? (completedDays.length/jobLength)*100 : 0;
                 const textStyle         = span>1 ? 'white-space:normal;word-wrap:break-word;' : '';
 
+                // ADD BATTERY TO TILE DISPLAY HERE
+                const batteryDisplay = job.batteryType ? ` - ${job.batteryType}` : '';
+
                 html += `<div class="job-card ${statusClass} ${srvClass}" data-job-id="${job.id}"
                     style="grid-column:${col+1}/span ${span};grid-row:${row+1};">
                     ${completionPercent>0 && completionPercent<100 ? `<div class="completion-overlay" style="width:${completionPercent}%;"></div>` : ''}
                     ${sourceBadgeHtml(job.source)}
-                    <div class="job-number">#${escapeHtml(job['Job Number'] || job.jobNumber || 'N/A')}</div>
+                    <div class="job-number">#${escapeHtml(job['Job Number'] || job.jobNumber || 'N/A')}${escapeHtml(batteryDisplay)}</div>
                     <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
                     <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
 
@@ -1216,7 +1228,10 @@
             }
 
             document.getElementById('status-team').textContent        = job['Team Number'] || job['Team'] || 'N/A';
-            document.getElementById('status-panel').textContent       = job['Panel No.'] || job['Panel Number'] || 'N/A';
+            
+            // Set editable battery type
+            document.getElementById('status-battery-type').value      = job.batteryType || '';
+            
             document.getElementById('status-current').textContent     = job.status || 'Scheduled';
             document.getElementById('job-notes').value   = job.notes  || '';
             document.getElementById('po-numbers').value  = job.poNumbers || '';
@@ -1316,6 +1331,26 @@
                 closeStatusModal(); buildTimeline();
             } catch (error) {
                 showToast('Failed to update job completion', 'error');
+            }
+        }
+
+        // New function to save the directly editable Battery Type
+        window.saveBatteryType = async function() {
+            if (!currentJob) return;
+            const batteryType = document.getElementById('status-battery-type').value.trim();
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = 'Solar-jobs';
+                await updateDoc(doc(window.db, collName, currentJob.id), { batteryType: batteryType });
+                
+                const job = allJobs.find(j => j.id === currentJob.id);
+                if (job) { job.batteryType = batteryType; }
+                if (currentJob) { currentJob.batteryType = batteryType; }
+                
+                showToast('Battery Type saved successfully', 'success');
+                buildTimeline(); // Re-render the timeline to update the job card tile
+            } catch (error) {
+                showToast('Failed to save Battery Type', 'error');
             }
         }
 
