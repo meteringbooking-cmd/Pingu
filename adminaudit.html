@@ -915,13 +915,16 @@
 
                 if (!response) {
                     const errorDiv = document.getElementById(`item_${q.id}`);
-                    errorDiv.classList.add('error-highlight');
-                    isValid = false;
-                    if (!firstErrorElement) firstErrorElement = errorDiv;
+                    // ONLY highlight and enforce validation if we are trying to SEND the email
+                    if (sendEmail) {
+                        errorDiv.classList.add('error-highlight');
+                        isValid = false;
+                        if (!firstErrorElement) firstErrorElement = errorDiv;
+                    }
                 }
             }
 
-            if (!isValid) {
+            if (sendEmail && !isValid) {
                 showToast("Please answer all highlighted questions before processing.", "error");
                 if (firstErrorElement) {
                     firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -935,7 +938,7 @@
             if (sendEmail) {
                 btnSend.innerHTML = "⏳ Saving Database & Compiling Email...";
             } else {
-                btnSave.innerHTML = "⏳ Saving Database...";
+                btnSave.innerHTML = "⏳ Saving Progress...";
             }
             btnSave.disabled = true;
             btnSend.disabled = true;
@@ -959,21 +962,26 @@
                     const q = auditQuestionsData[i];
                     let response = '';
                     if (q.type === 'select') {
-                        response = document.getElementById(`${q.id}_val`).value;
+                        response = document.getElementById(`${q.id}_val`).value || '';
                     } else {
-                        response = document.querySelector(`input[name="${q.id}"]:checked`).value;
+                        const chk = document.querySelector(`input[name="${q.id}"]:checked`);
+                        response = chk ? chk.value : '';
                     }
+
+                    // Pre-load any existing uploaded photos so we don't overwrite them
+                    let existingPhotos = (currentJob && currentJob.auditChecklistData && currentJob.auditChecklistData[q.id]) 
+                                            ? currentJob.auditChecklistData[q.id].uploadedPhotos || [] 
+                                            : [];
 
                     // Prepare object for Firebase
                     let questionSaveData = {
                         questionText: q.text,
                         answer: response,
                         codesSelected: [],
-                        uploadedPhotos: []
+                        uploadedPhotos: [...existingPhotos] 
                     };
                     
-                    // We only want to include this question in the email if they answered the trigger value (typically 'No')
-                    let includeInEmail = (response === q.triggers);
+                    let includeInEmail = (response === q.triggers && response !== '');
                     let qEmailContent = "";
 
                     if (includeInEmail) {
@@ -982,7 +990,7 @@
                         qEmailContent += `<p style="margin:0;"><strong>Answer:</strong> ${response}</p>`;
                     }
 
-                    if (response === q.triggers) {
+                    if (response === q.triggers && response !== '') {
                         const extraDiv = document.getElementById(`${q.id}_extra`);
                         if (extraDiv) {
                             const checkedCbs = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked'));
@@ -1025,16 +1033,20 @@
                                     const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
                                     
                                     questionSaveData.uploadedPhotos.push(liveUrl); // Save URL to Firebase
-
-                                    if (includeInEmail) {
-                                        qEmailContent += `<a href="${liveUrl}" target="_blank">
-                                            <img src="${liveUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
-                                        </a>`;
-                                    }
                                 }
-                                if (includeInEmail) {
-                                    qEmailContent += `</div>`;
+                            }
+                            
+                            // Render ALL photos (old + newly uploaded) in email if required
+                            if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
+                                if (!fileInput || fileInput.files.length === 0) {
+                                    qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
                                 }
+                                questionSaveData.uploadedPhotos.forEach(photoUrl => {
+                                    qEmailContent += `<a href="${photoUrl}" target="_blank">
+                                        <img src="${photoUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
+                                    </a>`;
+                                });
+                                qEmailContent += `</div>`;
                             }
                         }
                     }
@@ -1069,6 +1081,12 @@
                         checklistSentTo: sendEmail ? formattedEmails : "Saved Only - Not Sent",
                         checklistSentAt: new Date().toISOString()
                     });
+
+                    // Update Local State so re-opening works immediately
+                    currentJob.auditChecklistData = firebaseChecklistData;
+                    currentJob.auditChecklistOutcome = calculatedOutcome;
+                    currentJob.additionalEmailNotes = additionalNotes;
+                    if (sendEmail) currentJob.checklistSentTo = formattedEmails;
                 }
 
                 // 2. FIRE EMAILJS
@@ -1080,7 +1098,7 @@
                     });
                     showToast(`Saved to database & sent to ${formattedEmails}`, "success");
                 } else {
-                    showToast("Checklist successfully saved to database.", "success");
+                    showToast("Progress successfully saved to database.", "success");
                 }
             } catch (err) {
                 console.error("Error saving/sending checklist", err);
@@ -1274,6 +1292,9 @@
                         status:             statusUpdate,
                         auditStatus:        data['auditStatus'] || 'pending',
                         auditNotes:         data['auditNotes'] || '',
+                        auditChecklistData: data['auditChecklistData'] || null, 
+                        additionalEmailNotes: data['additionalEmailNotes'] || '',
+                        checklistSentTo:    data['checklistSentTo'] || '',
                         auditDate:          data['auditDate'] ? parseDate(data['auditDate']) : null,
                         uploadDate:         data['uploadDate'] || '',
                         ...data
@@ -1515,7 +1536,7 @@
         };
 
         /* ═══════════════════════════════════════════════
-           AUDIT MODAL
+           AUDIT MODAL - RESTORING PROGRESS HERE
         ═══════════════════════════════════════════════ */
         window.openAuditModal = function(jobId) {
             const job = allJobs.find(j => j.id === jobId);
@@ -1568,6 +1589,53 @@
             document.getElementById('calculated-outcome').style.display = 'none';
             document.getElementById('audit-target-email').value = '';
             document.getElementById('additional-email-notes').value = '';
+
+            // --- RESTORE PREVIOUSLY SAVED AUDIT CHECKLIST PROGRESS ---
+            if (job.auditChecklistData) {
+                for (let qId in job.auditChecklistData) {
+                    let savedData = job.auditChecklistData[qId];
+                    if (savedData.answer) {
+                        let q = auditQuestionsData.find(x => x.id === qId);
+                        if (!q) continue;
+
+                        // Restore Inputs
+                        if (q.type === 'select') {
+                            let sel = document.getElementById(`${q.id}_val`);
+                            if (sel) sel.value = savedData.answer;
+                        } else {
+                            let rad = document.querySelector(`input[name="${q.id}"][value="${savedData.answer}"]`);
+                            if (rad) rad.checked = true;
+                        }
+
+                        // Trigger visual expansion logic
+                        handleChecklistChange(q.id, q.triggers);
+
+                        // If expanded, restore any previously checked CAT codes
+                        if (savedData.answer === q.triggers && savedData.codesSelected && savedData.codesSelected.length > 0) {
+                            const extraDiv = document.getElementById(`${q.id}_extra`);
+                            if (extraDiv) {
+                                const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
+                                checkboxes.forEach(cb => {
+                                    let txt = cb.nextElementSibling.textContent;
+                                    if (savedData.codesSelected.includes(txt)) {
+                                        cb.checked = true;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Restore general states & outcomes
+            recalculateOutcome();
+            
+            if (job.additionalEmailNotes) {
+                document.getElementById('additional-email-notes').value = job.additionalEmailNotes;
+            }
+            if (job.checklistSentTo && job.checklistSentTo !== "Saved Only - Not Sent") {
+                document.getElementById('audit-target-email').value = job.checklistSentTo;
+            }
 
             document.getElementById('audit-notes').value = loadSavedNotes(job.id) || job.auditNotes || '';
             document.getElementById('audit-notes').oninput = function() {
