@@ -522,7 +522,6 @@
         </header>
 
         <div class="form-card">
-            <!-- Success State -->
             <div class="success-state" id="success-state">
                 <span class="success-icon">✅</span>
                 <div class="success-title">Submission Complete!</div>
@@ -531,7 +530,6 @@
                 <button class="new-entry-btn" onclick="resetForm()">+ Submit Another Entry</button>
             </div>
 
-            <!-- Form -->
             <div id="form-wrapper">
                 <div class="section-title">📋 Your Details</div>
 
@@ -539,6 +537,13 @@
                     <div class="input-group">
                         <label class="input-label" for="name">Full Name <span>*</span></label>
                         <input type="text" id="name" class="input-field" placeholder="e.g. John Smith" autocomplete="name">
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="input-group">
+                        <label class="input-label" for="email">Email Address <span>*</span></label>
+                        <input type="email" id="email" class="input-field" placeholder="e.g. yourname@email.com" autocomplete="email">
                     </div>
                 </div>
 
@@ -560,7 +565,6 @@
                     </div>
                 </div>
 
-                <!-- Cable Requirements -->
                 <div class="cable-section">
                     <div class="section-title">🔌 Cable Requirements</div>
                     <div class="cable-list">
@@ -648,19 +652,16 @@
                     </div>
                 </div>
 
-                <!-- Miscellaneous Section -->
                 <div class="misc-section">
                     <div class="section-title">📦 Miscellaneous Items</div>
                     <div class="materials-section">
                         <div class="material-category">
-                            <!-- Removed the 'open' attribute here so it is closed by default -->
                             <details>
                                 <summary>Electrical</summary>
                                 <div class="material-items-wrap" id="electrical-items"></div>
                             </details>
                         </div>
                         <div class="material-category">
-                            <!-- Already closed by default -->
                             <details>
                                 <summary>Roof</summary>
                                 <div class="material-items-wrap" id="roof-items"></div>
@@ -669,7 +670,6 @@
                     </div>
                 </div>
 
-                <!-- Multi Job Section -->
                 <div class="multi-job-section">
                     <div class="section-title">🏢 Job Applicability</div>
                     <p class="input-label" style="margin-bottom: 1rem; color: var(--text);">Does this order just apply to the job stated at the top? <span>*</span></p>
@@ -691,7 +691,6 @@
                     </div>
                 </div>
 
-                <!-- Submit -->
                 <div class="submit-section">
                     <button class="submit-btn" id="submit-btn" onclick="submitForm()">
                         📤 Submit Requirements
@@ -703,7 +702,6 @@
 
     <div class="toast" id="toast"></div>
 
-    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
@@ -924,14 +922,19 @@
 
         function validateForm() {
             const name = getField('name').value.trim();
+            const email = getField('email').value.trim();
             const jobNumber = getField('job-number').value.trim();
             const door = getField('door').value.trim();
             const postcode = getField('postcode').value.trim();
             const isSingleJob = document.querySelector('input[name="single-job"]:checked').value;
 
+            // Simple email regex validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
             let valid = true;
 
             if (!name) { setError('name', true); valid = false; } else setError('name', false);
+            if (!email || !emailRegex.test(email)) { setError('email', true); valid = false; } else setError('email', false);
             if (!jobNumber) { setError('job-number', true); valid = false; } else setError('job-number', false);
             if (!door) { setError('door', true); valid = false; } else setError('door', false);
             if (!postcode) { setError('postcode', true); valid = false; } else setError('postcode', false);
@@ -956,7 +959,7 @@
             }
 
             if (!valid && (anyCables || anyMisc)) {
-                showToast('Please fill in all required fields', 'error');
+                showToast('Please fill in all required fields correctly', 'error');
             }
 
             return valid;
@@ -971,6 +974,7 @@
             btn.textContent = '⏳ Submitting...';
 
             const name = getField('name').value.trim();
+            const email = getField('email').value.trim();
             const jobNumber = getField('job-number').value.trim();
             const door = getField('door').value.trim();
             const postcode = getField('postcode').value.trim().toUpperCase();
@@ -988,6 +992,7 @@
 
             const submissionData = {
                 name,
+                email,
                 jobNumber,
                 doorNumber: door,
                 postcode,
@@ -1018,6 +1023,7 @@
                 try {
                     await emailjs.send('service_556xeew', 'template_c1rcaoo', {
                         name,
+                        user_email: email, // This binds the input email to the EmailJS template variable
                         job_number: jobNumber,
                         door_number: door,
                         postcode,
@@ -1033,7 +1039,7 @@
                     showToast('Data saved — email notification failed', 'warning');
                 }
 
-                showSuccess({ name, jobNumber, door, postcode, isSingleJob, extraJobs, cables, miscItems });
+                showSuccess({ name, email, jobNumber, door, postcode, isSingleJob, extraJobs, cables, miscItems });
 
             } catch (error) {
                 console.error('❌ Submission error:', error);
@@ -1087,6 +1093,10 @@
                     <span class="success-detail-value">${escapeHtml(data.name)}</span>
                 </div>
                 <div class="success-detail-row">
+                    <span class="success-detail-label">Email</span>
+                    <span class="success-detail-value">${escapeHtml(data.email)}</span>
+                </div>
+                <div class="success-detail-row">
                     <span class="success-detail-label">Primary Job Number</span>
                     <span class="success-detail-value">#${escapeHtml(data.jobNumber)}</span>
                 </div>
@@ -1107,7 +1117,7 @@
             document.getElementById('form-wrapper').style.display = 'block';
             document.getElementById('success-state').classList.remove('show');
 
-            ['name', 'job-number', 'door', 'postcode', 'extra-jobs'].forEach(id => {
+            ['name', 'email', 'job-number', 'door', 'postcode', 'extra-jobs'].forEach(id => {
                 getField(id).value = '';
                 setError(id, false);
             });
