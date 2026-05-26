@@ -271,7 +271,7 @@
             min-height: 200px; resize: vertical; transition: all 0.3s ease; line-height: 1.5;
         }
         .notes-textarea:focus { outline: none; border-color: var(--primary); }
-        .auto-save-indicator { font-size: 0.75rem; color: var(--success); margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; }
+        .auto-save-indicator { font-size: 0.75rem; color: var(--success); margin-top: 0.3rem; opacity: 0; transition: opacity 0.3s ease; font-weight: bold; }
         .auto-save-indicator.show { opacity: 1; }
         .confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.2rem; }
         .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light); color: var(--text); padding: 1rem 1.5rem; border-radius: 8px; border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; animation: slideIn 0.3s ease-out; display: none; }
@@ -466,13 +466,17 @@
                 </div>
                 
                 <div class="modal-section" id="audit-checklist-section">
-                    <h3>Audit Questionnaire</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                        <h3 style="margin: 0;">Audit Questionnaire</h3>
+                        <div class="auto-save-indicator" id="checklist-auto-save-indicator"></div>
+                    </div>
+                    
                     <div id="audit-questions-container">
                         </div>
                     
                     <div class="notes-section">
                         <label class="notes-label">Additional Notes for Email</label>
-                        <textarea id="additional-email-notes" class="notes-textarea" style="min-height: 120px;" placeholder="Add any extra notes to include in the email report..."></textarea>
+                        <textarea id="additional-email-notes" class="notes-textarea" style="min-height: 120px;" placeholder="Add any extra notes to include in the email report..." oninput="triggerAutoSave()"></textarea>
                     </div>
 
                     <div class="calculated-outcome" id="calculated-outcome" style="display:none;">
@@ -480,7 +484,7 @@
                     </div>
 
                     <div class="email-send-group">
-                        <input type="text" id="audit-target-email" class="filter-input" placeholder="e.g. barry.dixon (auto-adds @next-gen.uk)">
+                        <input type="text" id="audit-target-email" class="filter-input" placeholder="e.g. barry.dixon (auto-adds @next-gen.uk)" oninput="triggerAutoSave()">
                         <button class="btn btn-secondary" onclick="submitAuditChecklist(false)" id="btn-save-checklist">💾 Save Only (No Email)</button>
                         <button class="btn btn-primary" onclick="submitAuditChecklist(true)" id="btn-send-checklist">✉️ Save & Send Email</button>
                     </div>
@@ -562,6 +566,7 @@
         let currentJob     = null;
         let pendingAuditStatus = null;
         let autoSaveTimeout    = null;
+        let checklistAutoSaveTimeout = null;
         let isFiltered         = false;
         let showSurveyOnly     = false;
 
@@ -773,6 +778,50 @@
             { id: "q75", text: "Is Kracken Field Complete", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
+        window.triggerAutoSave = function() {
+            if (checklistAutoSaveTimeout) clearTimeout(checklistAutoSaveTimeout);
+            checklistAutoSaveTimeout = setTimeout(saveChecklistDraftLocally, 1000);
+        };
+
+        function saveChecklistDraftLocally() {
+            if (!currentJob) return;
+            let draft = {};
+            for (let i = 0; i < auditQuestionsData.length; i++) {
+                const q = auditQuestionsData[i];
+                if (q.isHeader) continue;
+                
+                let response = '';
+                if (q.type === 'select') {
+                    response = document.getElementById(`${q.id}_val`)?.value || '';
+                } else {
+                    const checked = document.querySelector(`input[name="${q.id}"]:checked`);
+                    response = checked ? checked.value : '';
+                }
+
+                let notes = document.getElementById(`${q.id}_notes`)?.value || '';
+                let codesSelected = [];
+                
+                const extraDiv = document.getElementById(`${q.id}_extra`);
+                if (extraDiv) {
+                    const checkedCbs = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked'));
+                    codesSelected = checkedCbs.map(cb => cb.nextElementSibling.textContent);
+                }
+                
+                draft[q.id] = { answer: response, notes: notes, codesSelected: codesSelected };
+            }
+            
+            // Also store emails and general additional notes
+            draft['email_target'] = document.getElementById('audit-target-email').value;
+            draft['additional_notes'] = document.getElementById('additional-email-notes').value;
+            
+            localStorage.setItem('audit_draft_' + currentJob.id, JSON.stringify(draft));
+            
+            const ind = document.getElementById('checklist-auto-save-indicator');
+            ind.textContent = "💾 Draft auto-saved locally";
+            ind.classList.add('show');
+            setTimeout(() => ind.classList.remove('show'), 2000);
+        }
+
         window.renderAuditChecklist = function() {
             const container = document.getElementById('audit-questions-container');
             let html = '';
@@ -786,14 +835,13 @@
 
                 let optionsHtml = '';
                 if(q.type === 'select') {
-                    // Applied checklist-dropdown class to make it bold and visible
-                    optionsHtml = `<select id="${q.id}_val" class="checklist-dropdown" onchange="handleChecklistChange('${q.id}', '${q.triggers}')">
+                    optionsHtml = `<select id="${q.id}_val" class="checklist-dropdown" onchange="handleChecklistChange('${q.id}', '${q.triggers}'); triggerAutoSave();">
                                       <option value="">Select option...</option>` + 
                                   q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('') + `</select>`;
                 } else {
                     optionsHtml = q.options.map(opt => `
                         <label class="checklist-radio">
-                            <input type="radio" name="${q.id}" value="${opt}" onchange="handleChecklistChange('${q.id}', '${q.triggers}')"> ${opt}
+                            <input type="radio" name="${q.id}" value="${opt}" onchange="handleChecklistChange('${q.id}', '${q.triggers}'); triggerAutoSave();"> ${opt}
                         </label>
                     `).join('');
                 }
@@ -802,7 +850,7 @@
                 if (q.codes) {
                     codesHtml = q.codes.map(c => `
                         <label class="cat-code-option">
-                            <input type="checkbox" class="cat-code-cb" value="${c.val}" data-cat="${c.cat}" data-action="${c.action || ''}" onchange="recalculateOutcome()"> 
+                            <input type="checkbox" class="cat-code-cb" value="${c.val}" data-cat="${c.cat}" data-action="${c.action || ''}" onchange="recalculateOutcome(); triggerAutoSave();"> 
                             <span>${c.text}</span>
                         </label>
                     `).join('');
@@ -812,6 +860,12 @@
                     <div id="${q.id}_extra" class="checklist-select-wrapper">
                         ${q.ifNoAction ? `<div class="checklist-note">⚠️ <strong>Action Required:</strong> ${q.ifNoAction}</div>` : ''}
                         ${codesHtml ? `<div style="margin-bottom:1rem;"><strong>Select Applicable Codes:</strong><br>${codesHtml}</div>` : ''}
+                        
+                        <div style="margin-bottom:1rem;">
+                            <strong>Specific Notes for this Question:</strong>
+                            <textarea id="${q.id}_notes" class="filter-input" style="min-height: 80px; margin-top: 0.5rem;" placeholder="Add specific notes or required actions here..." oninput="triggerAutoSave()"></textarea>
+                        </div>
+                        
                         <div>
                             <strong>Attach Evidence (Photos):</strong>
                             <input type="file" id="${q.id}_files" class="file-upload-input" accept="image/*" multiple>
@@ -854,9 +908,11 @@
                 extraDiv.classList.add('show');
             } else {
                 extraDiv.classList.remove('show');
-                // Uncheck codes if hidden
+                // Uncheck codes and clear notes if hidden
                 const cbs = extraDiv.querySelectorAll('.cat-code-cb');
                 cbs.forEach(cb => cb.checked = false);
+                const notes = document.getElementById(`${qId}_notes`);
+                if(notes) notes.value = '';
             }
             recalculateOutcome();
         };
@@ -1001,6 +1057,10 @@
                         response = chk ? chk.value : '';
                     }
 
+                    // Grab contextual notes
+                    const notesInput = document.getElementById(`${q.id}_notes`);
+                    const questionNotes = notesInput ? notesInput.value.trim() : '';
+
                     // Pre-load any existing uploaded photos so we don't overwrite them
                     let existingPhotos = (currentJob && currentJob.auditChecklistData && currentJob.auditChecklistData[q.id]) 
                                             ? currentJob.auditChecklistData[q.id].uploadedPhotos || [] 
@@ -1010,6 +1070,7 @@
                     let questionSaveData = {
                         questionText: q.text,
                         answer: response,
+                        notes: questionNotes,
                         codesSelected: [],
                         uploadedPhotos: [...existingPhotos] 
                     };
@@ -1054,6 +1115,11 @@
                                 if (includeInEmail) {
                                     qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong style="color:#d9534f;">Action Required:</strong> <span style="color:#555;font-size:0.9em;"><em>${q.ifNoAction}</em></span></div>`;
                                 }
+                            }
+
+                            // Append Contextual Notes to Email
+                            if (includeInEmail && questionNotes) {
+                                qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Auditor Notes:</strong><br><span style="color:#333;font-size:0.95em;white-space:pre-wrap;">${escapeHtml(questionNotes)}</span></div>`;
                             }
 
                             // Process Files (Firebase Upload)
@@ -1121,6 +1187,9 @@
                     currentJob.auditChecklistOutcome = calculatedOutcome;
                     currentJob.additionalEmailNotes = additionalNotes;
                     if (sendEmail) currentJob.checklistSentTo = formattedEmails;
+
+                    // Clear local draft upon successful cloud save
+                    localStorage.removeItem('audit_draft_' + currentJob.id);
                 }
 
                 // 2. FIRE EMAILJS
@@ -1620,11 +1689,13 @@
             extraDivs.forEach(div => div.classList.remove('show'));
             const files = document.querySelectorAll('.file-upload-input');
             files.forEach(f => f.value = '');
+            const notesTextareas = document.querySelectorAll('.filter-input[id$="_notes"]');
+            notesTextareas.forEach(t => t.value = '');
             document.getElementById('calculated-outcome').style.display = 'none';
             document.getElementById('audit-target-email').value = '';
             document.getElementById('additional-email-notes').value = '';
 
-            // --- RESTORE PREVIOUSLY SAVED AUDIT CHECKLIST PROGRESS ---
+            // --- RESTORE PREVIOUSLY SAVED AUDIT CHECKLIST PROGRESS FROM FIREBASE ---
             if (job.auditChecklistData) {
                 for (let qId in job.auditChecklistData) {
                     let savedData = job.auditChecklistData[qId];
@@ -1644,30 +1715,84 @@
                         // Trigger visual expansion logic
                         handleChecklistChange(q.id, q.triggers);
 
-                        // If expanded, restore any previously checked CAT codes
-                        if (savedData.answer === q.triggers && savedData.codesSelected && savedData.codesSelected.length > 0) {
-                            const extraDiv = document.getElementById(`${q.id}_extra`);
-                            if (extraDiv) {
-                                const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
-                                checkboxes.forEach(cb => {
-                                    let txt = cb.nextElementSibling.textContent;
-                                    if (savedData.codesSelected.includes(txt)) {
-                                        cb.checked = true;
-                                    }
-                                });
+                        // If expanded, restore any previously checked CAT codes and notes
+                        if (savedData.answer === q.triggers) {
+                            if (savedData.codesSelected && savedData.codesSelected.length > 0) {
+                                const extraDiv = document.getElementById(`${q.id}_extra`);
+                                if (extraDiv) {
+                                    const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
+                                    checkboxes.forEach(cb => {
+                                        let txt = cb.nextElementSibling.textContent;
+                                        if (savedData.codesSelected.includes(txt)) {
+                                            cb.checked = true;
+                                        }
+                                    });
+                                }
+                            }
+                            if (savedData.notes) {
+                                let specificNotes = document.getElementById(`${q.id}_notes`);
+                                if (specificNotes) specificNotes.value = savedData.notes;
                             }
                         }
                     }
                 }
             }
 
+            // --- RESTORE LOCAL DRAFT IF IT EXISTS OVER TOP OF FIREBASE ---
+            const localDraftStr = localStorage.getItem('audit_draft_' + job.id);
+            if (localDraftStr) {
+                try {
+                    const draft = JSON.parse(localDraftStr);
+                    for (let qId in draft) {
+                        let d = draft[qId];
+                        
+                        if (qId === 'email_target') { document.getElementById('audit-target-email').value = d; continue; }
+                        if (qId === 'additional_notes') { document.getElementById('additional-email-notes').value = d; continue; }
+                        
+                        if (d.answer) {
+                            let q = auditQuestionsData.find(x => x.id === qId);
+                            if (!q || q.isHeader) continue;
+                            
+                            if (q.type === 'select') {
+                                let sel = document.getElementById(`${q.id}_val`);
+                                if (sel) sel.value = d.answer;
+                            } else {
+                                let rad = document.querySelector(`input[name="${q.id}"][value="${d.answer}"]`);
+                                if (rad) rad.checked = true;
+                            }
+                            
+                            handleChecklistChange(q.id, q.triggers);
+                            
+                            if (d.answer === q.triggers) {
+                                if (d.codesSelected && d.codesSelected.length > 0) {
+                                    const extraDiv = document.getElementById(`${q.id}_extra`);
+                                    if (extraDiv) {
+                                        const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
+                                        checkboxes.forEach(cb => {
+                                            let txt = cb.nextElementSibling.textContent;
+                                            if (d.codesSelected.includes(txt)) cb.checked = true;
+                                        });
+                                    }
+                                }
+                                if (d.notes) {
+                                    let specificNotes = document.getElementById(`${q.id}_notes`);
+                                    if (specificNotes) specificNotes.value = d.notes;
+                                }
+                            }
+                        }
+                    }
+                } catch(e) {
+                    console.error("Error restoring local draft", e);
+                }
+            }
+
             // Restore general states & outcomes
             recalculateOutcome();
             
-            if (job.additionalEmailNotes) {
+            if (!localDraftStr && job.additionalEmailNotes) {
                 document.getElementById('additional-email-notes').value = job.additionalEmailNotes;
             }
-            if (job.checklistSentTo && job.checklistSentTo !== "Saved Only - Not Sent") {
+            if (!localDraftStr && job.checklistSentTo && job.checklistSentTo !== "Saved Only - Not Sent") {
                 document.getElementById('audit-target-email').value = job.checklistSentTo;
             }
 
