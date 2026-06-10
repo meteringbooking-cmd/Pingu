@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View Orders | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -22,11 +23,7 @@
             --shadow: rgba(0, 0, 0, 0.2);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'JetBrains Mono', monospace;
@@ -37,14 +34,11 @@
             padding: 2rem;
         }
 
-        /* Background Animation */
         body::before {
             content: '';
             position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
             background:
                 radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.05) 0%, transparent 50%),
                 radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.05) 0%, transparent 50%),
@@ -60,12 +54,7 @@
             66% { transform: translate(-20px, 20px) rotate(240deg); }
         }
 
-        /* Expanded container to use more screen space */
-        .container {
-            max-width: 1600px;
-            width: 100%;
-            margin: 0 auto;
-        }
+        .container { max-width: 1600px; width: 100%; margin: 0 auto; }
 
         /* Header */
         header {
@@ -86,10 +75,7 @@
             margin-bottom: 0.25rem;
         }
 
-        .logo-wrap p {
-            color: var(--text-dim);
-            font-size: 0.95rem;
-        }
+        .logo-wrap p { color: var(--text-dim); font-size: 0.95rem; }
 
         .header-controls {
             display: flex;
@@ -98,19 +84,8 @@
             flex-wrap: wrap;
         }
 
-        /* Search Bar */
-        .search-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            font-size: 1.2rem;
-            pointer-events: none;
-        }
+        .search-wrapper { position: relative; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 1rem; font-size: 1.2rem; pointer-events: none; }
 
         .search-input {
             background: var(--dark-light);
@@ -131,6 +106,47 @@
             box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
         }
 
+        /* Filter tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-tab {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text-dim);
+            padding: 0.5rem 1.25rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-tab:hover { border-color: var(--primary); color: var(--text); }
+
+        .filter-tab.active {
+            border-color: var(--primary);
+            background: rgba(255, 107, 53, 0.1);
+            color: var(--text);
+        }
+
+        .filter-tab .count {
+            background: var(--dark-lighter);
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .filter-tab.active .count { background: var(--primary); color: white; }
+
         .nav-btn {
             background: var(--dark-lighter);
             color: var(--text);
@@ -146,10 +162,7 @@
             white-space: nowrap;
         }
 
-        .nav-btn:hover {
-            border-color: var(--primary);
-            background: rgba(255, 107, 53, 0.1);
-        }
+        .nav-btn:hover { border-color: var(--primary); background: rgba(255, 107, 53, 0.1); }
 
         /* Status States */
         #loading, #empty-state, #no-results-state {
@@ -164,8 +177,7 @@
 
         .spinner {
             display: inline-block;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 4px solid var(--dark-lighter);
             border-top-color: var(--primary);
             border-radius: 50%;
@@ -173,29 +185,21 @@
             margin-bottom: 1rem;
         }
 
-        @keyframes spin { 
-            to { transform: rotate(360deg); } 
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Table Layout */
+        /* Table */
         .table-wrapper {
             background: var(--dark-light);
             border-radius: 12px;
             border: 1px solid var(--dark-lighter);
             overflow-x: auto;
             box-shadow: 0 10px 30px var(--shadow);
-            display: none; /* Hidden until loaded */
+            display: none;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            text-align: left;
-        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
 
-        thead {
-            background: var(--dark-lighter);
-        }
+        thead { background: var(--dark-lighter); }
 
         th {
             padding: 1.25rem 1rem;
@@ -216,19 +220,14 @@
             vertical-align: top;
         }
 
-        tr {
-            transition: background 0.2s ease;
-        }
+        tbody tr { transition: background 0.2s ease; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+        tbody tr:last-child td { border-bottom: none; }
 
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
+        /* Row states */
+        tbody tr.row-approved { background: rgba(78, 204, 163, 0.04); }
+        tbody tr.row-denied  { background: rgba(255, 107, 107, 0.04); opacity: 0.6; }
 
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Specific Table Cells */
         .col-job {
             font-weight: 700;
             color: var(--accent);
@@ -237,22 +236,72 @@
             white-space: nowrap;
         }
 
-        .col-date {
-            color: var(--text-dim);
-            font-size: 0.85rem;
+        .col-date { color: var(--text-dim); font-size: 0.85rem; white-space: nowrap; }
+        .col-address { min-width: 150px; }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
             white-space: nowrap;
         }
 
-        .col-address {
-            min-width: 150px;
+        .status-pending  { background: rgba(255, 200, 87, 0.12); color: var(--warning);  border: 1px solid rgba(255, 200, 87, 0.3); }
+        .status-approved { background: rgba(78, 204, 163, 0.12); color: var(--success);  border: 1px solid rgba(78, 204, 163, 0.3); }
+        .status-denied   { background: rgba(255, 107, 107, 0.12); color: var(--error);   border: 1px solid rgba(255, 107, 107, 0.3); }
+
+        /* Action buttons */
+        .action-cell { white-space: nowrap; }
+
+        .btn-approve, .btn-deny {
+            border: none;
+            padding: 0.55rem 1.1rem;
+            border-radius: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.03em;
         }
 
-        /* Items Badges inside rows */
-        .item-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
+        .btn-approve {
+            background: rgba(78, 204, 163, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(78, 204, 163, 0.4);
+            margin-right: 0.5rem;
         }
+
+        .btn-approve:hover:not(:disabled) {
+            background: var(--success);
+            color: var(--dark);
+        }
+
+        .btn-deny {
+            background: rgba(255, 107, 107, 0.12);
+            color: var(--error);
+            border: 1px solid rgba(255, 107, 107, 0.35);
+        }
+
+        .btn-deny:hover:not(:disabled) {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-approve:disabled, .btn-deny:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        /* Item badges */
+        .item-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
         .item-badge {
             background: var(--dark-lighter);
@@ -265,16 +314,9 @@
             align-items: center;
         }
 
-        .item-badge.cable span.qty {
-            color: var(--primary);
-            font-weight: 700;
-        }
+        .item-badge.cable span.qty { color: var(--primary); font-weight: 700; }
+        .item-badge.misc span.qty  { color: var(--accent);  font-weight: 700; }
 
-        .item-badge.misc span.qty {
-            color: var(--accent);
-            font-weight: 700;
-        }
-        
         .item-type-tag {
             font-size: 0.6rem;
             text-transform: uppercase;
@@ -285,12 +327,93 @@
             border-radius: 3px;
         }
 
-        .multi-job-text {
-            color: var(--warning);
-            font-size: 0.85rem;
-            display: block;
-            margin-top: 0.25rem;
+        .multi-job-text { color: var(--warning); font-size: 0.85rem; display: block; margin-top: 0.25rem; }
+
+        /* Toast */
+        .toast {
+            position: fixed; bottom: 2rem; right: 2rem;
+            background: var(--dark-light); color: var(--text);
+            padding: 1rem 1.5rem; border-radius: 8px;
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 2000; display: none; max-width: 360px;
+            animation: slideIn 0.3s ease-out;
         }
+
+        .toast.show { display: block; }
+        .toast.error   { border-color: var(--error); }
+        .toast.warning { border-color: var(--warning); }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Confirm modal */
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+
+        .modal {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            border-radius: 14px;
+            padding: 2rem;
+            max-width: 440px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal { transform: scale(1); }
+
+        .modal h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .modal p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+
+        .modal-cancel {
+            background: var(--dark-lighter);
+            color: var(--text-dim);
+            border: 1px solid transparent;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .modal-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+
+        .modal-confirm {
+            padding: 0.65rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-confirm.approve { background: var(--success); color: var(--dark); }
+        .modal-confirm.approve:hover { background: #3db88c; }
+        .modal-confirm.deny { background: var(--error); color: white; }
+        .modal-confirm.deny:hover { background: #e05555; }
 
         @media (max-width: 900px) {
             .search-input { width: 100%; }
@@ -310,27 +433,27 @@
             <div class="header-controls">
                 <div class="search-wrapper">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Postcode...">
+                    <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Name, Postcode...">
                 </div>
-                <!-- Make sure this links back to your main form page -->
                 <a href="cable-requirements.html" class="nav-btn">➕ New Order</a>
             </div>
         </header>
+
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all"    onclick="setFilter('all')">All <span class="count" id="count-all">0</span></button>
+            <button class="filter-tab"        data-filter="pending"  onclick="setFilter('pending')">⏳ Pending <span class="count" id="count-pending">0</span></button>
+            <button class="filter-tab"        data-filter="approved" onclick="setFilter('approved')">✅ Approved <span class="count" id="count-approved">0</span></button>
+            <button class="filter-tab"        data-filter="denied"   onclick="setFilter('denied')">❌ Denied <span class="count" id="count-denied">0</span></button>
+        </div>
 
         <div id="loading">
             <div class="spinner"></div>
             <p>Fetching latest orders...</p>
         </div>
 
-        <div id="empty-state" style="display: none;">
-            <h2>No orders found</h2>
-            <p>Once requirements are submitted, they will appear here.</p>
-        </div>
-
-        <div id="no-results-state" style="display: none;">
-            <h2>No matches found</h2>
-            <p>Try adjusting your search terms.</p>
-        </div>
+        <div id="empty-state"     style="display:none;"><h2>No orders found</h2><p>Once requirements are submitted, they will appear here.</p></div>
+        <div id="no-results-state" style="display:none;"><h2>No matches found</h2><p>Try adjusting your search or filter.</p></div>
 
         <div class="table-wrapper" id="table-wrapper">
             <table id="orders-table">
@@ -342,19 +465,33 @@
                         <th>Address</th>
                         <th>Items Requested</th>
                         <th>Applicable Jobs</th>
+                        <th>Status</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
-                <tbody id="orders-tbody">
-                    <!-- Rows injected here by JS -->
-                </tbody>
+                <tbody id="orders-tbody"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- Firebase -->
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">Confirm Action</h3>
+            <p id="modal-body">Are you sure?</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-confirm" id="modal-confirm-btn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
             apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
@@ -366,172 +503,307 @@
             measurementId: "G-PFH059DZ64"
         };
 
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        window.db = db;
+        window.firebaseUpdateDoc = updateDoc;
+        window.firebaseDoc       = doc;
+        window.firebaseColl      = collection;
+
         const CABLE_LABELS = {
-            'cable-6mm-ev-ultra': '6mm EV Ultra',
-            'cable-fire-fighter': 'Fire Fighter',
-            'cable-blue-brown-tails': 'Blue/Brown Tails',
-            'cable-earth-16mm': 'Earth 16mm',
-            'cable-earth-10mm': 'Earth 10mm',
-            'cable-h07-2m': 'H07 2m',
-            'cable-2core-pv-ultra': '2 Core PV Ultra',
-            'cable-10mm-ev': '10mm EV',
-            'cable-4core-pv': '4 Core PV',
-            'cable-6mm-single-dc': '6mm single DC cable'
+            'cable-6mm-ev-ultra':    '6mm EV Ultra',
+            'cable-fire-fighter':    'Fire Fighter',
+            'cable-blue-brown-tails':'Blue/Brown Tails',
+            'cable-earth-16mm':      'Earth 16mm',
+            'cable-earth-10mm':      'Earth 10mm',
+            'cable-h07-2m':          'H07 2m',
+            'cable-2core-pv-ultra':  '2 Core PV Ultra',
+            'cable-10mm-ev':         '10mm EV',
+            'cable-4core-pv':        '4 Core PV',
+            'cable-6mm-single-dc':   '6mm single DC cable'
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        let allOrders = []; // Store all fetched orders for local searching
+        let allOrders   = [];
+        let activeFilter = 'all';
+        let searchTerm   = '';
+
+        // Pending action state for modal
+        window._pendingAction = null;
 
         function formatDate(isoString) {
             if (!isoString) return '-';
-            const date = new Date(isoString);
-            return date.toLocaleDateString('en-GB', { 
-                day: 'numeric', month: 'short', year: 'numeric', 
-                hour: '2-digit', minute:'2-digit' 
+            return new Date(isoString).toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
             });
         }
 
         function escapeHtml(text) {
-            if (!text) return '';
+            if (text === null || text === undefined) return '';
             const div = document.createElement('div');
-            div.textContent = text;
+            div.textContent = String(text);
             return div.innerHTML;
         }
 
-        // Renders the table rows based on an array of order objects
+        function updateCounts(orders) {
+            const counts = { all: orders.length, pending: 0, approved: 0, denied: 0 };
+            orders.forEach(o => {
+                const s = o.status || 'pending';
+                if (counts[s] !== undefined) counts[s]++;
+            });
+            document.getElementById('count-all').textContent      = counts.all;
+            document.getElementById('count-pending').textContent  = counts.pending;
+            document.getElementById('count-approved').textContent = counts.approved;
+            document.getElementById('count-denied').textContent   = counts.denied;
+        }
+
+        function getFilteredOrders() {
+            return allOrders.filter(o => {
+                const status = o.status || 'pending';
+                const matchFilter = activeFilter === 'all' || status === activeFilter;
+                const matchSearch = !searchTerm ||
+                    (o.jobNumber  || '').toLowerCase().includes(searchTerm) ||
+                    (o.postcode   || '').toLowerCase().includes(searchTerm) ||
+                    (o.name       || '').toLowerCase().includes(searchTerm) ||
+                    (o.extraJobs  || '').toLowerCase().includes(searchTerm);
+                return matchFilter && matchSearch;
+            });
+        }
+
         function renderTable(orders) {
-            const tbody = document.getElementById('orders-tbody');
-            const noResults = document.getElementById('no-results-state');
+            const tbody        = document.getElementById('orders-tbody');
+            const noResults    = document.getElementById('no-results-state');
             const tableWrapper = document.getElementById('table-wrapper');
 
             tbody.innerHTML = '';
 
             if (orders.length === 0) {
                 tableWrapper.style.display = 'none';
-                if (allOrders.length > 0) {
-                    noResults.style.display = 'block'; 
-                }
+                noResults.style.display = allOrders.length > 0 ? 'block' : 'none';
                 return;
             }
 
             noResults.style.display = 'none';
             tableWrapper.style.display = 'block';
 
-            orders.forEach((data) => {
-                let itemsHtml = '<div class="item-list">';
-                let hasItems = false;
+            orders.forEach(data => {
+                const status = data.status || 'pending';
 
-                // 1. Process Cables
+                // Items HTML
+                let itemsHtml = '<div class="item-list">';
+                let hasItems  = false;
+
                 if (data.cables) {
                     for (const [id, length] of Object.entries(data.cables)) {
                         if (length > 0) {
                             hasItems = true;
-                            const label = CABLE_LABELS[id] || id;
-                            itemsHtml += `
-                                <div class="item-badge cable" title="Cable">
-                                    ${escapeHtml(label)} 
-                                    <span class="qty">${length}m</span>
-                                </div>`;
+                            itemsHtml += `<div class="item-badge cable">${escapeHtml(CABLE_LABELS[id] || id)} <span class="qty">${length}m</span></div>`;
                         }
                     }
                 }
 
-                // 2. Process Miscellaneous Items
                 if (data.miscItems && data.miscItems.length > 0) {
                     hasItems = true;
                     data.miscItems.forEach(item => {
-                        itemsHtml += `
-                            <div class="item-badge misc" title="${escapeHtml(item.type)}">
-                                <span class="item-type-tag">${escapeHtml(item.type).substring(0, 4)}</span>
-                                ${escapeHtml(item.desc)} 
-                                <span class="qty">x${item.qty}</span>
-                            </div>`;
+                        itemsHtml += `<div class="item-badge misc"><span class="item-type-tag">${escapeHtml(item.type).substring(0,4)}</span>${escapeHtml(item.desc)} <span class="qty">x${item.qty}</span></div>`;
                     });
                 }
 
                 itemsHtml += '</div>';
-                if (!hasItems) itemsHtml = '<span style="color: var(--text-dim);">No items specified</span>';
+                if (!hasItems) itemsHtml = '<span style="color:var(--text-dim)">No items specified</span>';
 
-                // Multi-Job Logic
+                // Applicability
                 const isMultiJob = data.isSingleJob === false;
-                let applicabilityHtml = 'Single Job';
-                if (isMultiJob && data.extraJobs) {
-                    applicabilityHtml = `Multiple<br><span class="multi-job-text">${escapeHtml(data.extraJobs)}</span>`;
-                }
+                const applicabilityHtml = isMultiJob && data.extraJobs
+                    ? `Multiple<br><span class="multi-job-text">${escapeHtml(data.extraJobs)}</span>`
+                    : 'Single Job';
 
-                // Append Row
+                // Status badge
+                const badgeClass = { pending: 'status-pending', approved: 'status-approved', denied: 'status-denied' }[status] || 'status-pending';
+                const badgeIcon  = { pending: '⏳', approved: '✅', denied: '❌' }[status] || '⏳';
+                const statusHtml = `<span class="status-badge ${badgeClass}">${badgeIcon} ${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+
+                // Action buttons — only enabled for pending
+                const isPending = status === 'pending';
+                const actionHtml = isPending
+                    ? `<div class="action-cell">
+                        <button class="btn-approve" onclick="requestApprove('${data._docId}', '${escapeHtml(data.jobNumber)}')">✅ Approve</button>
+                        <button class="btn-deny"    onclick="requestDeny('${data._docId}', '${escapeHtml(data.jobNumber)}')">❌ Deny</button>
+                       </div>`
+                    : `<div class="action-cell" style="color:var(--text-dim);font-size:0.85rem;">${status === 'approved' ? 'Email sent' : 'No action'}</div>`;
+
                 const tr = document.createElement('tr');
+                tr.className = status === 'approved' ? 'row-approved' : status === 'denied' ? 'row-denied' : '';
                 tr.innerHTML = `
                     <td class="col-job">#${escapeHtml(data.jobNumber || 'N/A')}</td>
                     <td class="col-date">${formatDate(data.submittedAt)}</td>
-                    <td>${escapeHtml(data.name || 'Unknown')}</td>
-                    <td class="col-address">
-                        ${escapeHtml(data.doorNumber || '')}<br>
-                        <strong>${escapeHtml(data.postcode || '')}</strong>
-                    </td>
+                    <td>${escapeHtml(data.name || 'Unknown')}<br><span style="color:var(--text-dim);font-size:0.8rem;">${escapeHtml(data.email || '')}</span></td>
+                    <td class="col-address">${escapeHtml(data.doorNumber || '')}<br><strong>${escapeHtml(data.postcode || '')}</strong></td>
                     <td>${itemsHtml}</td>
                     <td>${applicabilityHtml}</td>
-                `;
+                    <td>${statusHtml}</td>
+                    <td>${actionHtml}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        // Fetch Data from Firebase
         async function fetchOrders() {
             try {
                 const q = query(collection(db, 'Cable Requirements'), orderBy('submittedAt', 'desc'));
-                const querySnapshot = await getDocs(q);
-                
+                const snapshot = await getDocs(q);
+
                 document.getElementById('loading').style.display = 'none';
 
-                if (querySnapshot.empty) {
+                if (snapshot.empty) {
                     document.getElementById('empty-state').style.display = 'block';
                     return;
                 }
 
-                // Populate local array
-                querySnapshot.forEach((doc) => {
-                    allOrders.push(doc.data());
+                allOrders = [];
+                snapshot.forEach(docSnap => {
+                    allOrders.push({ ...docSnap.data(), _docId: docSnap.id });
                 });
 
-                // Initial Render
-                renderTable(allOrders);
+                updateCounts(allOrders);
+                renderTable(getFilteredOrders());
 
             } catch (error) {
-                console.error("Error fetching orders: ", error);
+                console.error('Error fetching orders:', error);
                 document.getElementById('loading').innerHTML = `
-                    <p style="color: var(--error);">❌ Failed to load orders.</p>
-                    <p style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-dim);">${error.message}</p>
-                `;
+                    <p style="color:var(--error)">❌ Failed to load orders.</p>
+                    <p style="font-size:0.8rem;margin-top:0.5rem;color:var(--text-dim)">${error.message}</p>`;
             }
         }
 
-        // Search functionality
-        document.getElementById('search-input').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase().trim();
-            
-            if (!searchTerm) {
-                renderTable(allOrders);
-                return;
+        // ---- Approve / Deny flow ----
+
+        window.requestApprove = function(docId, jobNumber) {
+            window._pendingAction = { type: 'approve', docId };
+            document.getElementById('modal-title').textContent = `Approve Order #${jobNumber}?`;
+            document.getElementById('modal-body').textContent  =
+                'This will mark the order as approved and send a confirmation email to the technician.';
+            const btn = document.getElementById('modal-confirm-btn');
+            btn.textContent = '✅ Approve & Send Email';
+            btn.className   = 'modal-confirm approve';
+            document.getElementById('modal-overlay').classList.add('show');
+        };
+
+        window.requestDeny = function(docId, jobNumber) {
+            window._pendingAction = { type: 'deny', docId };
+            document.getElementById('modal-title').textContent = `Deny Order #${jobNumber}?`;
+            document.getElementById('modal-body').textContent  =
+                'This will mark the order as denied. No email will be sent to the technician.';
+            const btn = document.getElementById('modal-confirm-btn');
+            btn.textContent = '❌ Deny Order';
+            btn.className   = 'modal-confirm deny';
+            document.getElementById('modal-overlay').classList.add('show');
+        };
+
+        window.closeModal = function() {
+            document.getElementById('modal-overlay').classList.remove('show');
+            window._pendingAction = null;
+        };
+
+        window.confirmAction = async function() {
+            const action = window._pendingAction;
+            if (!action) return;
+            closeModal();
+
+            const order = allOrders.find(o => o._docId === action.docId);
+            if (!order) return;
+
+            try {
+                const docRef = window.firebaseDoc(window.db, 'Cable Requirements', action.docId);
+
+                if (action.type === 'approve') {
+                    // 1. Update Firestore
+                    await window.firebaseUpdateDoc(docRef, {
+                        status: 'approved',
+                        approvedAt: new Date().toISOString()
+                    });
+
+                    // 2. Send email via EmailJS (same template as original)
+                    const CABLE_LABELS_LOCAL = {
+                        'cable-6mm-ev-ultra': '6mm EV Ultra', 'cable-fire-fighter': 'Fire Fighter',
+                        'cable-blue-brown-tails': 'Blue/Brown Tails', 'cable-earth-16mm': 'Earth 16mm',
+                        'cable-earth-10mm': 'Earth 10mm', 'cable-h07-2m': 'H07 2m',
+                        'cable-2core-pv-ultra': '2 Core PV Ultra', 'cable-10mm-ev': '10mm EV',
+                        'cable-4core-pv': '4 Core PV', 'cable-6mm-single-dc': '6mm single DC cable'
+                    };
+
+                    let itemSummary = Object.entries(order.cables || {})
+                        .filter(([, v]) => v > 0)
+                        .map(([id, v]) => `${CABLE_LABELS_LOCAL[id] || id}: ${v}m`)
+                        .join('\n');
+
+                    if (order.miscItems && order.miscItems.length > 0) {
+                        itemSummary += '\n\nMiscellaneous Items:\n' +
+                            order.miscItems.map(m => `• ${m.type}: ${m.desc} (x${m.qty})`).join('\n');
+                    }
+
+                    if (!itemSummary) itemSummary = 'No items specified.';
+
+                    try {
+                        await emailjs.send('service_556xeew', 'template_c1rcaoo', {
+                            name:          order.name,
+                            user_email:    order.email,
+                            job_number:    order.jobNumber,
+                            door_number:   order.doorNumber,
+                            postcode:      order.postcode,
+                            is_single_job: order.isSingleJob ? 'Yes' : 'No',
+                            extra_jobs:    order.extraJobs || 'N/A',
+                            cable_summary: itemSummary,
+                            submitted_at:  new Date(order.submittedAt).toLocaleString('en-GB'),
+                            document_id:   action.docId
+                        });
+                        showToast(`✅ Order #${order.jobNumber} approved — email sent`, 'success');
+                    } catch (emailErr) {
+                        console.warn('Email failed:', emailErr);
+                        showToast(`Order approved but email failed to send`, 'warning');
+                    }
+
+                    // Update local state
+                    order.status = 'approved';
+
+                } else {
+                    // Deny — update Firestore only, no email
+                    await window.firebaseUpdateDoc(docRef, {
+                        status: 'denied',
+                        deniedAt: new Date().toISOString()
+                    });
+                    order.status = 'denied';
+                    showToast(`❌ Order #${order.jobNumber} denied — no email sent`, 'warning');
+                }
+
+                updateCounts(allOrders);
+                renderTable(getFilteredOrders());
+
+            } catch (err) {
+                console.error('Action failed:', err);
+                showToast('Action failed: ' + err.message, 'error');
             }
+        };
 
-            const filteredOrders = allOrders.filter(order => {
-                const jobNum = (order.jobNumber || '').toLowerCase();
-                const postcode = (order.postcode || '').toLowerCase();
-                const extraJobs = (order.extraJobs || '').toLowerCase();
-                
-                return jobNum.includes(searchTerm) || 
-                       postcode.includes(searchTerm) || 
-                       extraJobs.includes(searchTerm);
+        // ---- Filter & Search ----
+
+        window.setFilter = function(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.filter === filter);
             });
+            renderTable(getFilteredOrders());
+        };
 
-            renderTable(filteredOrders);
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            searchTerm = e.target.value.toLowerCase().trim();
+            renderTable(getFilteredOrders());
         });
 
-        // Initialize fetch on load
-        window.addEventListener('DOMContentLoaded', fetchOrders);
+        window.addEventListener('DOMContentLoaded', () => {
+            emailjs.init('ziLnha91scpGjFABh');
+            fetchOrders();
+        });
     </script>
 </body>
 </html>
