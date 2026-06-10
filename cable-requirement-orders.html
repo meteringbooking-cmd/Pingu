@@ -416,6 +416,133 @@
         .modal-confirm.deny { background: var(--error); color: white; }
         .modal-confirm.deny:hover { background: #e05555; }
 
+        /* Edit modal */
+        .edit-modal {
+            max-width: 560px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .edit-modal h3 { margin-bottom: 0.4rem; }
+        .edit-modal .edit-subtitle { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.25rem; }
+
+        .edit-cable-list {
+            overflow-y: auto;
+            flex: 1;
+            margin-bottom: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .edit-cable-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+            padding: 0.65rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: opacity 0.2s ease;
+        }
+
+        .edit-cable-row.removed {
+            opacity: 0.35;
+        }
+
+        .edit-cable-row.removed .edit-qty-input {
+            text-decoration: line-through;
+            color: var(--text-dim);
+        }
+
+        .edit-cable-label {
+            font-size: 0.88rem;
+            color: var(--text);
+        }
+
+        .edit-qty-input {
+            width: 80px;
+            background: var(--dark);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .edit-qty-input:focus { outline: none; border-color: var(--primary); }
+        .edit-qty-input:disabled { border-color: var(--dark-lighter); color: var(--text-dim); }
+
+        .btn-remove-cable {
+            background: none;
+            border: 1px solid rgba(255,107,107,0.3);
+            color: var(--error);
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-remove-cable:hover { background: var(--error); color: white; border-color: var(--error); }
+
+        .btn-restore-cable {
+            background: none;
+            border: 1px solid rgba(78,204,163,0.3);
+            color: var(--success);
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .btn-restore-cable:hover { background: var(--success); color: var(--dark); border-color: var(--success); }
+
+        .btn-edit {
+            background: rgba(0, 217, 255, 0.08);
+            color: var(--accent);
+            border: 1px solid rgba(0, 217, 255, 0.25);
+            padding: 0.45rem 0.8rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+            display: block;
+            width: 100%;
+        }
+
+        .btn-edit:hover { background: rgba(0, 217, 255, 0.18); border-color: var(--accent); }
+
+        .edit-save-btn {
+            background: var(--accent);
+            color: var(--dark);
+            border: none;
+            padding: 0.65rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .edit-save-btn:hover { background: #00c4e8; }
+
         @media (max-width: 900px) {
             .search-input { width: 100%; }
             .header-controls { width: 100%; justify-content: flex-start; }
@@ -483,6 +610,19 @@
             <div class="modal-actions">
                 <button class="modal-cancel" onclick="closeModal()">Cancel</button>
                 <button class="modal-confirm" id="modal-confirm-btn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Cables Modal -->
+    <div class="modal-overlay" id="edit-modal-overlay">
+        <div class="modal edit-modal">
+            <h3 id="edit-modal-title">Edit Cable Requirements</h3>
+            <p class="edit-subtitle">Adjust quantities or remove items before approving. Changes are saved to the order.</p>
+            <div class="edit-cable-list" id="edit-cable-list"></div>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="edit-save-btn" onclick="saveEdits()">💾 Save Changes</button>
             </div>
         </div>
     </div>
@@ -632,6 +772,7 @@
                     ? `<div class="action-cell" style="color:var(--text-dim);font-size:0.8rem;">—</div>`
                     : status === 'pending'
                         ? `<div class="action-cell">
+                            <button class="btn-edit"    onclick="openEditModal('${data._docId}')">✏️ Edit Cables</button>
                             <button class="btn-approve" onclick="requestApprove('${data._docId}', '${escapeHtml(data.jobNumber)}')">✅ Approve</button>
                             <button class="btn-deny"    onclick="requestDeny('${data._docId}', '${escapeHtml(data.jobNumber)}')">❌ Deny</button>
                            </div>`
@@ -792,6 +933,129 @@
             } catch (err) {
                 console.error('Action failed:', err);
                 showToast('Action failed: ' + err.message, 'error');
+            }
+        };
+
+        // ---- Edit Cables Modal ----
+
+        const CABLE_LABELS_LIST = [
+            { id: 'cable-6mm-ev-ultra',    label: '6mm EV Ultra' },
+            { id: 'cable-fire-fighter',    label: 'Fire Fighter' },
+            { id: 'cable-blue-brown-tails',label: 'Blue/Brown Tails' },
+            { id: 'cable-earth-16mm',      label: 'Earth 16mm' },
+            { id: 'cable-earth-10mm',      label: 'Earth 10mm' },
+            { id: 'cable-h07-2m',          label: 'H07 2m' },
+            { id: 'cable-2core-pv-ultra',  label: '2 Core PV Ultra' },
+            { id: 'cable-10mm-ev',         label: '10mm EV' },
+            { id: 'cable-4core-pv',        label: '4 Core PV' },
+            { id: 'cable-6mm-single-dc',   label: '6mm single DC cable' }
+        ];
+
+        let _editDocId = null;
+        // Tracks per-cable removed state during editing: { cableId: true/false }
+        let _editRemovedState = {};
+
+        window.openEditModal = function(docId) {
+            const order = allOrders.find(o => o._docId === docId);
+            if (!order) return;
+
+            _editDocId = docId;
+            _editRemovedState = {};
+
+            document.getElementById('edit-modal-title').textContent = `Edit Cables — Job #${escapeHtml(order.jobNumber)}`;
+
+            const list = document.getElementById('edit-cable-list');
+            list.innerHTML = '';
+
+            // Only show cables that have a value > 0
+            const activeCables = CABLE_LABELS_LIST.filter(c => (order.cables[c.id] || 0) > 0);
+
+            if (activeCables.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-dim);font-size:0.9rem;">No cable items on this order.</p>';
+            } else {
+                activeCables.forEach(c => {
+                    _editRemovedState[c.id] = false;
+                    const row = document.createElement('div');
+                    row.className = 'edit-cable-row';
+                    row.id = `edit-row-${c.id}`;
+                    row.innerHTML = `
+                        <span class="edit-cable-label">${escapeHtml(c.label)}</span>
+                        <input type="number" class="edit-qty-input" id="edit-qty-${c.id}"
+                               value="${order.cables[c.id]}" min="0" step="0.5">
+                        <button class="btn-remove-cable" id="edit-toggle-${c.id}"
+                                onclick="toggleCableRemove('${c.id}')" title="Remove item">×</button>`;
+                    list.appendChild(row);
+                });
+            }
+
+            document.getElementById('edit-modal-overlay').classList.add('show');
+        };
+
+        window.toggleCableRemove = function(cableId) {
+            const isRemoved = _editRemovedState[cableId];
+            _editRemovedState[cableId] = !isRemoved;
+
+            const row = document.getElementById(`edit-row-${cableId}`);
+            const input = document.getElementById(`edit-qty-${cableId}`);
+            const btn = document.getElementById(`edit-toggle-${cableId}`);
+
+            if (!isRemoved) {
+                // Mark as removed
+                row.classList.add('removed');
+                input.disabled = true;
+                btn.className = 'btn-restore-cable';
+                btn.id = `edit-toggle-${cableId}`;
+                btn.title = 'Restore item';
+                btn.textContent = '↩';
+            } else {
+                // Restore
+                row.classList.remove('removed');
+                input.disabled = false;
+                btn.className = 'btn-remove-cable';
+                btn.title = 'Remove item';
+                btn.textContent = '×';
+            }
+        };
+
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal-overlay').classList.remove('show');
+            _editDocId = null;
+            _editRemovedState = {};
+        };
+
+        window.saveEdits = async function() {
+            if (!_editDocId) return;
+
+            const order = allOrders.find(o => o._docId === _editDocId);
+            if (!order) return;
+
+            // Build updated cables object
+            const updatedCables = { ...order.cables };
+
+            CABLE_LABELS_LIST.forEach(c => {
+                if (_editRemovedState[c.id] === true) {
+                    // Removed — set to 0
+                    updatedCables[c.id] = 0;
+                } else if (document.getElementById(`edit-qty-${c.id}`)) {
+                    // Updated quantity
+                    const val = parseFloat(document.getElementById(`edit-qty-${c.id}`).value) || 0;
+                    updatedCables[c.id] = val;
+                }
+            });
+
+            try {
+                const docRef = window.firebaseDoc(window.db, 'Cable Requirements', _editDocId);
+                await window.firebaseUpdateDoc(docRef, { cables: updatedCables });
+
+                // Update local state
+                order.cables = updatedCables;
+
+                closeEditModal();
+                renderTable(getFilteredOrders());
+                showToast('✏️ Cable requirements updated', 'success');
+            } catch (err) {
+                console.error('Save edits failed:', err);
+                showToast('Failed to save changes: ' + err.message, 'error');
             }
         };
 
