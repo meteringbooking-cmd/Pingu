@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cable Requirements | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -547,6 +548,8 @@
     </script>
 
     <script>
+        emailjs.init('ziLnha91scpGjFABh');
+
         const CABLE_FIELDS = [
             { id: 'cable-6mm-ev-ultra',    label: '6mm EV Ultra' },
             { id: 'cable-fire-fighter',     label: 'Fire Fighter' },
@@ -794,6 +797,20 @@
             try {
                 const { collection, addDoc } = window.firebaseModules;
                 await addDoc(collection(window.db, 'Cable Requirements'), submissionData);
+
+                // Notify admin that a new order has been submitted (no approval yet)
+                try {
+                    await emailjs.send('service_556xeew', 'template_yqv4ntd', {
+                        name,
+                        job_number:    jobNumber,
+                        door_number:   door,
+                        postcode,
+                        submitted_at:  new Date().toLocaleString('en-GB')
+                    });
+                } catch (emailErr) {
+                    console.warn('Notification email failed:', emailErr);
+                }
+
                 showSuccess({ name, email, jobNumber, door, postcode, isSingleJob, extraJobs, cables, miscItems });
             } catch (error) {
                 console.error('❌ Submission error:', error);
