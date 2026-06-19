@@ -667,6 +667,11 @@
         let isFiltered         = false;
         let showSurveyOnly     = false;
 
+        // ── BASE URL for engineer photo upload link in emails ──
+        // Update this to match wherever these files are hosted.
+        // e.g. 'https://yourdomain.com' or leave as relative for local use.
+        const UPLOAD_BASE_URL = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+
         /* ═══════════════════════════════════════════════
            AUDIT QUESTIONNAIRE DATA & ACTIONS
         ═══════════════════════════════════════════════ */
@@ -1322,11 +1327,29 @@
             const calculatedOutcome = document.getElementById('outcome-text').textContent;
 
             try {
+                // Build the engineer upload link for this job
+                const encodedJob = encodeURIComponent(safeJobNumber);
+                const uploadLink = `${UPLOAD_BASE_URL}engineer-photo-upload.html?job=${encodedJob}`;
+
                 let emailContent = `
                     <div style="font-family:Arial,sans-serif;color:#333;padding:20px;background:#f5f5f5;">
                         <div style="background:white;padding:30px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
                             <h2 style="color:#FF6B35;">Job Audit Report - #${escapeHtml(safeJobNumber)}</h2>
                             <p><strong>Outcome:</strong> ${calculatedOutcome}</p>
+                            <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+
+                            <!-- Engineer photo upload CTA -->
+                            <div style="background:#fff8f5;border:2px solid #FF6B35;border-radius:10px;padding:20px;margin:20px 0;text-align:center;">
+                                <p style="margin:0 0 6px 0;font-size:1rem;font-weight:700;color:#FF6B35;">📸 Action Required — Upload Your Photos</p>
+                                <p style="margin:0 0 16px 0;color:#555;font-size:0.9rem;">Please upload any missing or required photos using the button below.<br>Photos save automatically — no login needed.</p>
+                                <a href="${uploadLink}" target="_blank"
+                                   style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;
+                                          padding:12px 28px;border-radius:8px;font-weight:700;font-size:1rem;
+                                          letter-spacing:0.02em;">
+                                    📷 Upload Photos for Job #${escapeHtml(safeJobNumber)}
+                                </a>
+                                <p style="margin:14px 0 0;font-size:0.75rem;color:#999;">Or copy this link: <a href="${uploadLink}" style="color:#FF6B35;word-break:break-all;">${uploadLink}</a></p>
+                            </div>
                             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
                 `;
 
