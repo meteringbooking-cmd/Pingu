@@ -1143,83 +1143,8 @@
         };
 
         /* ═══════════════════════════════════════════════
-           ENGINEER PHOTO UPLOAD — instant upload
+           ENGINEER PHOTOS — viewer (admin side)
         ═══════════════════════════════════════════════ */
-        function initEngineerPhotoUpload() {
-            const dropZone   = document.getElementById('eng-photo-drop');
-            const mainInput  = document.getElementById('eng-photo-input');
-            const addInput   = document.getElementById('eng-photo-add-input');
-
-            // Drag-and-drop styling
-            dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
-            dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
-            dropZone.addEventListener('drop', e => {
-                e.preventDefault(); dropZone.classList.remove('drag-over');
-                handleEngineerFiles(e.dataTransfer.files);
-            });
-
-            mainInput.addEventListener('change', e => handleEngineerFiles(e.target.files));
-            addInput.addEventListener('change',  e => handleEngineerFiles(e.target.files));
-        }
-
-        async function handleEngineerFiles(fileList) {
-            if (!currentJob || !fileList || fileList.length === 0) return;
-            const grid   = document.getElementById('eng-photo-grid');
-            const addBtn = document.getElementById('eng-photo-add-btn');
-
-            for (const file of Array.from(fileList)) {
-                // Create a thumb card immediately with local preview
-                const thumbId = `eng-thumb-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-                const localUrl = URL.createObjectURL(file);
-
-                const thumb = document.createElement('div');
-                thumb.className = 'photo-thumb';
-                thumb.id = thumbId;
-                thumb.innerHTML = `
-                    <img src="${localUrl}" alt="Uploading...">
-                    <div class="photo-thumb-overlay"><a class="photo-thumb-view" href="${localUrl}" target="_blank">🔍</a></div>
-                    <span class="photo-thumb-status uploading">⏫ Uploading</span>
-                `;
-                grid.appendChild(thumb);
-
-                // Show the "Add More" button as soon as we start uploading
-                addBtn.style.display = 'inline-flex';
-                updateEngPhotoCount();
-
-                try {
-                    const liveUrl = await uploadImageToFirebase(file, currentJob.jobNumber);
-
-                    // Update the thumb to use the live Firebase URL
-                    const img = thumb.querySelector('img');
-                    const viewLink = thumb.querySelector('.photo-thumb-view');
-                    img.src = liveUrl;
-                    viewLink.href = liveUrl;
-                    URL.revokeObjectURL(localUrl);
-
-                    // Mark as done
-                    const statusEl = thumb.querySelector('.photo-thumb-status');
-                    statusEl.className = 'photo-thumb-status done';
-                    statusEl.textContent = '✅ Saved';
-
-                    // Persist to Firestore immediately
-                    const existing = currentJob.engineerPhotos || [];
-                    const updated  = [...existing, liveUrl];
-                    await writeSolarJob(currentJob, { engineerPhotos: updated });
-                    currentJob.engineerPhotos = updated;
-
-                    updateEngPhotoCount();
-                    showToast(`Photo uploaded & saved 📸`, 'success');
-
-                } catch (err) {
-                    console.error('Engineer photo upload failed', err);
-                    const statusEl = thumb.querySelector('.photo-thumb-status');
-                    statusEl.className = 'photo-thumb-status error';
-                    statusEl.textContent = '❌ Failed';
-                    showToast('Photo upload failed — check console', 'error');
-                }
-            }
-        }
-
         function updateEngPhotoCount() {
             const thumbs = document.querySelectorAll('#eng-photo-grid .photo-thumb').length;
             const badge  = document.getElementById('eng-photo-count');
@@ -1228,11 +1153,18 @@
         }
 
         function restoreEngineerPhotos(job) {
-            const photos = job.engineerPhotos || [];
-            const grid   = document.getElementById('eng-photo-grid');
-            const addBtn = document.getElementById('eng-photo-add-btn');
-            grid.innerHTML = '';
+            const photos    = job.engineerPhotos || [];
+            const grid      = document.getElementById('eng-photo-grid');
+            const noPhotos  = document.getElementById('eng-no-photos');
+            grid.innerHTML  = '';
 
+            if (photos.length === 0) {
+                noPhotos.style.display = 'block';
+                updateEngPhotoCount();
+                return;
+            }
+
+            noPhotos.style.display = 'none';
             photos.forEach(url => {
                 const thumb = document.createElement('div');
                 thumb.className = 'photo-thumb';
@@ -1244,10 +1176,9 @@
                 grid.appendChild(thumb);
             });
 
-            if (photos.length > 0) addBtn.style.display = 'inline-flex';
-            else addBtn.style.display = 'none';
             updateEngPhotoCount();
         }
+
 
         window.submitAuditChecklist = async function(sendEmail = true) {
             let rawEmails = document.getElementById('audit-target-email').value.trim();
@@ -2331,8 +2262,6 @@
             if (e.target.id === 'audit-modal') closeAuditModal();
         });
 
-        // Init the engineer photo upload zone on page load
-        initEngineerPhotoUpload();
     </script>
 </body>
 </html>
