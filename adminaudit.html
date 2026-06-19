@@ -303,6 +303,78 @@
         }
         .email-send-group input { flex: 1; min-width: 250px; font-size: 1rem; }
 
+        /* ── Engineer Photo Upload ── */
+        .photo-upload-section { margin-top: 0; }
+        .photo-drop-zone {
+            border: 2px dashed var(--primary); border-radius: 12px;
+            padding: 2rem 1.5rem; text-align: center;
+            cursor: pointer; transition: all 0.3s ease;
+            background: rgba(255,107,53,0.04);
+            position: relative;
+        }
+        .photo-drop-zone:hover, .photo-drop-zone.drag-over {
+            background: rgba(255,107,53,0.12); border-color: var(--accent);
+            transform: scale(1.005);
+        }
+        .photo-drop-zone input[type=file] {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .photo-drop-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+        .photo-drop-label { color: var(--text-dim); font-size: 0.95rem; }
+        .photo-drop-label strong { color: var(--primary); }
+        .photo-add-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            margin-top: 1rem; padding: 0.65rem 1.3rem;
+            background: var(--dark-lighter); border: 2px dashed var(--primary);
+            border-radius: 8px; color: var(--primary); font-family: 'JetBrains Mono',monospace;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.3s;
+            position: relative;
+        }
+        .photo-add-btn:hover { background: rgba(255,107,53,0.15); }
+        .photo-add-btn input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .photo-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.75rem; margin-top: 1.2rem;
+        }
+        .photo-thumb {
+            position: relative; border-radius: 8px; overflow: hidden;
+            aspect-ratio: 1; background: var(--dark); border: 2px solid var(--dark-lighter);
+            transition: all 0.3s;
+        }
+        .photo-thumb img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+            transition: transform 0.3s;
+        }
+        .photo-thumb:hover img { transform: scale(1.05); }
+        .photo-thumb-overlay {
+            position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .photo-thumb:hover .photo-thumb-overlay { opacity: 1; }
+        .photo-thumb-view {
+            color: white; font-size: 1.5rem; text-decoration: none;
+            background: rgba(255,107,53,0.85); padding: 0.4rem 0.7rem;
+            border-radius: 6px;
+        }
+        .photo-thumb-status {
+            position: absolute; top: 6px; right: 6px; font-size: 0.7rem;
+            padding: 0.2rem 0.45rem; border-radius: 4px; font-weight: 700;
+        }
+        .photo-thumb-status.uploading {
+            background: rgba(0,217,255,0.85); color: #000;
+            animation: pulse 1s infinite;
+        }
+        .photo-thumb-status.done { background: rgba(78,204,163,0.9); color: #000; }
+        .photo-thumb-status.error { background: rgba(255,107,107,0.9); color: white; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .photo-count-badge {
+            display: inline-flex; align-items: center; gap: 0.4rem;
+            background: rgba(78,204,163,0.15); border: 1px solid var(--success);
+            color: var(--success); padding: 0.3rem 0.7rem; border-radius: 20px;
+            font-size: 0.8rem; font-weight: 700; margin-left: 0.5rem;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .filters-grid { grid-template-columns: 1fr; }
@@ -313,6 +385,7 @@
             .notes-textarea { min-height: 150px; }
             .detail-row { grid-template-columns: 130px 1fr; }
             .email-send-group { flex-direction: column; }
+            .photo-grid { grid-template-columns: repeat(auto-fill, minmax(100px,1fr)); }
         }
     </style>
 </head>
@@ -488,6 +561,30 @@
                         <button class="btn btn-secondary" onclick="submitAuditChecklist(false)" id="btn-save-checklist">💾 Save Only (No Email)</button>
                         <button class="btn btn-primary" onclick="submitAuditChecklist(true)" id="btn-send-checklist">✉️ Save & Send Email</button>
                     </div>
+                </div>
+
+                <!-- ═══════════════════ ENGINEER PHOTO UPLOAD ═══════════════════ -->
+                <div class="modal-section" id="engineer-photo-section">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.2rem;flex-wrap:wrap;gap:0.5rem;">
+                        <h3 style="margin:0;">📸 Engineer Photo Upload
+                            <span class="photo-count-badge" id="eng-photo-count" style="display:none;">0 photos</span>
+                        </h3>
+                        <span style="font-size:0.8rem;color:var(--text-dim);">Photos upload instantly — no submit needed</span>
+                    </div>
+
+                    <div class="photo-drop-zone" id="eng-photo-drop">
+                        <input type="file" id="eng-photo-input" accept="image/*" multiple>
+                        <div class="photo-drop-icon">📷</div>
+                        <div class="photo-drop-label"><strong>Click or drag &amp; drop</strong> photos here</div>
+                        <div style="font-size:0.8rem;color:var(--text-dim);margin-top:0.4rem;">Supports JPG, PNG, HEIC &amp; more · Multiple files at once</div>
+                    </div>
+
+                    <div class="photo-grid" id="eng-photo-grid"></div>
+
+                    <label class="photo-add-btn" id="eng-photo-add-btn" style="display:none;">
+                        <input type="file" id="eng-photo-add-input" accept="image/*" multiple>
+                        ➕ Add More Photos
+                    </label>
                 </div>
 
                 <div class="modal-section" style="background: var(--dark-light); border: 1px solid var(--dark-lighter);">
@@ -1047,6 +1144,113 @@
             return await getDownloadURL(storageRef);
         };
 
+        /* ═══════════════════════════════════════════════
+           ENGINEER PHOTO UPLOAD — instant upload
+        ═══════════════════════════════════════════════ */
+        function initEngineerPhotoUpload() {
+            const dropZone   = document.getElementById('eng-photo-drop');
+            const mainInput  = document.getElementById('eng-photo-input');
+            const addInput   = document.getElementById('eng-photo-add-input');
+
+            // Drag-and-drop styling
+            dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+            dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', e => {
+                e.preventDefault(); dropZone.classList.remove('drag-over');
+                handleEngineerFiles(e.dataTransfer.files);
+            });
+
+            mainInput.addEventListener('change', e => handleEngineerFiles(e.target.files));
+            addInput.addEventListener('change',  e => handleEngineerFiles(e.target.files));
+        }
+
+        async function handleEngineerFiles(fileList) {
+            if (!currentJob || !fileList || fileList.length === 0) return;
+            const grid   = document.getElementById('eng-photo-grid');
+            const addBtn = document.getElementById('eng-photo-add-btn');
+
+            for (const file of Array.from(fileList)) {
+                // Create a thumb card immediately with local preview
+                const thumbId = `eng-thumb-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+                const localUrl = URL.createObjectURL(file);
+
+                const thumb = document.createElement('div');
+                thumb.className = 'photo-thumb';
+                thumb.id = thumbId;
+                thumb.innerHTML = `
+                    <img src="${localUrl}" alt="Uploading...">
+                    <div class="photo-thumb-overlay"><a class="photo-thumb-view" href="${localUrl}" target="_blank">🔍</a></div>
+                    <span class="photo-thumb-status uploading">⏫ Uploading</span>
+                `;
+                grid.appendChild(thumb);
+
+                // Show the "Add More" button as soon as we start uploading
+                addBtn.style.display = 'inline-flex';
+                updateEngPhotoCount();
+
+                try {
+                    const liveUrl = await uploadImageToFirebase(file, currentJob.jobNumber);
+
+                    // Update the thumb to use the live Firebase URL
+                    const img = thumb.querySelector('img');
+                    const viewLink = thumb.querySelector('.photo-thumb-view');
+                    img.src = liveUrl;
+                    viewLink.href = liveUrl;
+                    URL.revokeObjectURL(localUrl);
+
+                    // Mark as done
+                    const statusEl = thumb.querySelector('.photo-thumb-status');
+                    statusEl.className = 'photo-thumb-status done';
+                    statusEl.textContent = '✅ Saved';
+
+                    // Persist to Firestore immediately
+                    const existing = currentJob.engineerPhotos || [];
+                    const updated  = [...existing, liveUrl];
+                    await writeSolarJob(currentJob, { engineerPhotos: updated });
+                    currentJob.engineerPhotos = updated;
+
+                    updateEngPhotoCount();
+                    showToast(`Photo uploaded & saved 📸`, 'success');
+
+                } catch (err) {
+                    console.error('Engineer photo upload failed', err);
+                    const statusEl = thumb.querySelector('.photo-thumb-status');
+                    statusEl.className = 'photo-thumb-status error';
+                    statusEl.textContent = '❌ Failed';
+                    showToast('Photo upload failed — check console', 'error');
+                }
+            }
+        }
+
+        function updateEngPhotoCount() {
+            const thumbs = document.querySelectorAll('#eng-photo-grid .photo-thumb').length;
+            const badge  = document.getElementById('eng-photo-count');
+            badge.textContent = `${thumbs} photo${thumbs !== 1 ? 's' : ''}`;
+            badge.style.display = thumbs > 0 ? 'inline-flex' : 'none';
+        }
+
+        function restoreEngineerPhotos(job) {
+            const photos = job.engineerPhotos || [];
+            const grid   = document.getElementById('eng-photo-grid');
+            const addBtn = document.getElementById('eng-photo-add-btn');
+            grid.innerHTML = '';
+
+            photos.forEach(url => {
+                const thumb = document.createElement('div');
+                thumb.className = 'photo-thumb';
+                thumb.innerHTML = `
+                    <img src="${url}" alt="Engineer photo" loading="lazy">
+                    <div class="photo-thumb-overlay"><a class="photo-thumb-view" href="${url}" target="_blank">🔍</a></div>
+                    <span class="photo-thumb-status done">✅ Saved</span>
+                `;
+                grid.appendChild(thumb);
+            });
+
+            if (photos.length > 0) addBtn.style.display = 'inline-flex';
+            else addBtn.style.display = 'none';
+            updateEngPhotoCount();
+        }
+
         window.submitAuditChecklist = async function(sendEmail = true) {
             let rawEmails = document.getElementById('audit-target-email').value.trim();
             if (sendEmail && !rawEmails) {
@@ -1486,6 +1690,7 @@
                         checklistSentTo:    data['checklistSentTo'] || '',
                         auditDate:          data['auditDate'] ? parseDate(data['auditDate']) : null,
                         uploadDate:         data['uploadDate'] || '',
+                        engineerPhotos:     data['engineerPhotos'] || [],
                         ...data
                     };
                 };
@@ -1887,6 +2092,10 @@
                 autoSaveTimeout = setTimeout(autoSaveNotes, 1000);
             };
             document.getElementById('confirm-actions').style.display = 'none';
+
+            // Restore engineer photos already saved to this job
+            restoreEngineerPhotos(job);
+
             document.getElementById('audit-modal').classList.add('show');
         };
 
@@ -2105,6 +2314,9 @@
         document.getElementById('audit-modal').addEventListener('click', e => {
             if (e.target.id === 'audit-modal') closeAuditModal();
         });
+
+        // Init the engineer photo upload zone on page load
+        initEngineerPhotoUpload();
     </script>
 </body>
 </html>
