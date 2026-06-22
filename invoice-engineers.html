@@ -142,19 +142,25 @@
             background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
             border: 2px solid var(--dark-lighter); animation: fadeInUp 0.8s ease-out; overflow-x: auto;
         }
-        table { width: 100%; border-collapse: collapse; min-width: 1400px; }
+        table { width: 100%; border-collapse: collapse; min-width: 1500px; } /* Increased width to prevent squishing */
         thead { position: sticky; top: 0; background: var(--dark-light); z-index: 10; }
         th {
             font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent);
             padding: 1rem; text-align: left; border-bottom: 2px solid var(--primary);
+            white-space: nowrap; /* Prevent headers from wrapping awkwardly */
         }
         tbody tr { border-bottom: 1px solid var(--dark-lighter); transition: all 0.3s ease; }
         tbody tr:hover { background: var(--dark-lighter); }
-        td { padding: 0.9rem 1rem; color: var(--text); font-size: 0.88rem; }
+        td { 
+            padding: 0.9rem 1rem; 
+            color: var(--text); 
+            font-size: 0.88rem; 
+            vertical-align: middle; /* Ensures buttons and text align perfectly */
+        }
         .job-number { font-weight: 700; color: var(--primary); }
 
-        .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .badge { display: inline-block; padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
         .badge-yes { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
         .badge-no  { background: rgba(255,107,107,0.18); color: var(--error);   border: 1px solid rgba(255,107,107,0.4); }
         .badge-approved    { background: rgba(78,204,163,0.18); color: var(--success); border: 1px solid rgba(78,204,163,0.4); }
@@ -163,14 +169,18 @@
         .badge-pending     { background: rgba(154,154,176,0.15); color: var(--text-dim); border: 1px dashed rgba(154,154,176,0.35); }
         .badge-type { background: rgba(0,217,255,0.12); color: var(--accent); border: 1px solid rgba(0,217,255,0.3); }
         .badge-status { background: rgba(255,200,87,0.12); color: var(--secondary); border: 1px solid rgba(255,200,87,0.3); }
-        .value-cell { color: var(--secondary); font-weight: 700; }
+        .value-cell { color: var(--secondary); font-weight: 700; white-space: nowrap; }
         .notes-cell { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); font-size: 0.82rem; }
         .notes-cell:hover { white-space: normal; overflow: visible; }
 
         .edit-btn {
             background: linear-gradient(135deg, var(--accent), #00B8D9); color: white; border: none;
-            padding: 0.45rem 0.9rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
-            font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+            padding: 0.5rem 1rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;
+            white-space: nowrap; /* CRITICAL FIX: prevents button from squishing */
+            display: inline-block;
+            min-width: 90px;
+            text-align: center;
         }
         .edit-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,217,255,0.4); }
 
@@ -341,7 +351,6 @@
                 <label class="filter-label" for="f-name">Engineer Name</label>
                 <input type="text" id="f-name" class="filter-input" placeholder="Search by name&hellip;" oninput="applyFilters()">
             </div>
-            <!-- Added Postcode Search -->
             <div class="filter-group">
                 <label class="filter-label" for="f-postcode">Postcode</label>
                 <input type="text" id="f-postcode" class="filter-input" placeholder="Search by postcode&hellip;" oninput="applyFilters()">
@@ -574,7 +583,7 @@
 
     window.applyFilters = function() {
         const name     = document.getElementById('f-name').value.toLowerCase().trim();
-        const postcode = document.getElementById('f-postcode').value.toLowerCase().trim(); // New Postcode search
+        const postcode = document.getElementById('f-postcode').value.toLowerCase().trim();
         const type     = document.getElementById('f-job-type').value;
         const start    = document.getElementById('f-start-date').value;
         const end      = document.getElementById('f-end-date').value;
@@ -582,7 +591,6 @@
 
         filteredInvoices = allInvoices.filter(inv => {
             if (name && !inv.name.toLowerCase().includes(name)) return false;
-            // Check if postcode filter exists, and filter out those that don't match
             if (postcode && (!inv.postcode || !inv.postcode.toLowerCase().includes(postcode))) return false;
             if (type && inv.jobType !== type) return false;
             if (start && inv.installDate && inv.installDate < start) return false;
@@ -598,7 +606,6 @@
     };
 
     window.clearFilters = function() {
-        // Added 'f-postcode' to the clear list
         ['f-name', 'f-postcode', 'f-job-type', 'f-start-date', 'f-end-date', 'f-approval']
             .forEach(id => { document.getElementById(id).value = ''; });
         filteredInvoices = allInvoices.slice();
