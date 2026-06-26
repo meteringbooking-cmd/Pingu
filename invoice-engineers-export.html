@@ -57,7 +57,6 @@
         .export-preview { background: var(--dark-lighter); border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1.25rem; font-size: 0.85rem; color: var(--text-dim); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
         .export-preview strong { color: var(--accent); }
         .sheet-pill { display: inline-flex; align-items: center; gap: 0.35rem; background: rgba(0,217,255,0.1); border: 1px solid rgba(0,217,255,0.25); color: var(--accent); border-radius: 99px; padding: 0.15rem 0.65rem; font-size: 0.75rem; font-weight: 700; }
-        .sheet-pill.overall { background: rgba(78,204,163,0.1); border-color: rgba(78,204,163,0.25); color: var(--success); }
         .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--dark-lighter); margin-top: 1.5rem; }
         .stat-item { text-align: center; }
         .stat-label { color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.3rem; }
@@ -98,7 +97,7 @@
             <a href="admin.html" class="back-btn">&#8592; Back to Admin</a>
         </div>
         <h1>Export Data</h1>
-        <p class="subtitle">Filter by date range &middot; Preview grouped by engineer &middot; Exports one sheet per engineer + an Overall sheet</p>
+        <p class="subtitle">Filter by date range &middot; Preview grouped by engineer &middot; Exports individual files per engineer</p>
     </header>
 
     <div class="card">
@@ -131,7 +130,7 @@
         </div>
 
         <div class="export-preview">
-            <span>Export will contain:</span>
+            <span>Export will download individual files for:</span>
             <span id="sheet-pills"><span style="color:var(--text-dim)">Loading&hellip;</span></span>
         </div>
 
@@ -331,8 +330,7 @@
             container.innerHTML = '<span style="color:var(--text-dim)">No data</span>';
             return;
         }
-        let pills = '<span class="sheet-pill overall">&#10003; Overall</span> ';
-        pills += engineerNames.map(n => '<span class="sheet-pill">' + escapeHtml(safeSheetName(n)) + '</span>').join(' ');
+        let pills = engineerNames.map(n => '<span class="sheet-pill">' + escapeHtml(safeSheetName(n)) + '</span>').join(' ');
         container.innerHTML = pills;
     }
 
@@ -382,41 +380,36 @@
             return;
         }
         try {
-            const workbook = XLSX.utils.book_new();
             const groups   = groupByEngineer(filteredInvoices);
             const engineerNames = Object.keys(groups).sort();
+            
+            const start     = document.getElementById('f-start-date').value;
+            const end       = document.getElementById('f-end-date').value;
+            const datePart  = (start && end) ? (start + '_to_' + end) : start || end || new Date().toISOString().split('T')[0];
 
-            // Sheet 1: Overall — all records sorted by engineer then date
-            const overallData = [...filteredInvoices]
-                .sort((a, b) => (a.name || '').localeCompare(b.name || '') || (a.submittedAt || '').localeCompare(b.submittedAt || ''))
-                .map(toRow);
-            const wsOverall = XLSX.utils.json_to_sheet(overallData);
-            autoWidth(wsOverall, overallData);
-            XLSX.utils.book_append_sheet(workbook, wsOverall, 'Overall');
-
-            // One sheet per engineer
+            // Iterate over engineers and trigger download for each individually
             engineerNames.forEach(eng => {
+                const workbook = XLSX.utils.book_new();
+                
                 const rows = groups[eng]
                     .sort((a, b) => (a.submittedAt || '').localeCompare(b.submittedAt || ''))
                     .map(toRow);
+                    
                 const ws = XLSX.utils.json_to_sheet(rows);
                 autoWidth(ws, rows);
-                XLSX.utils.book_append_sheet(workbook, ws, safeSheetName(eng));
+                
+                XLSX.utils.book_append_sheet(workbook, ws, "Invoices");
+
+                const engPart   = eng ? eng.replace(/\s+/g,'_') : 'Unknown_Engineer';
+                const filename  = 'Pingu_Invoices_' + engPart + '_' + datePart + '.xlsx';
+
+                XLSX.writeFile(workbook, filename);
             });
 
-            // Dynamic filename
-            const start     = document.getElementById('f-start-date').value;
-            const end       = document.getElementById('f-end-date').value;
-            const engFilter = document.getElementById('f-engineer').value;
-            const datePart  = (start && end) ? (start + '_to_' + end) : start || end || new Date().toISOString().split('T')[0];
-            const engPart   = engFilter ? engFilter.replace(/\s+/g,'_') : 'All_Engineers';
-            const filename  = 'Pingu_Invoices_' + engPart + '_' + datePart + '.xlsx';
-
-            XLSX.writeFile(workbook, filename);
-            showToast('Exported ' + filteredInvoices.length + ' records across ' + (engineerNames.length + 1) + ' sheets ✓');
+            showToast('Exported ' + engineerNames.length + ' individual spreadsheets ✓');
         } catch (err) {
             console.error('Export error:', err);
-            showToast('Failed to generate Excel file.', 'error');
+            showToast('Failed to generate Excel files.', 'error');
         }
     };
 </script>
