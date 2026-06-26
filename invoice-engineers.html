@@ -730,6 +730,7 @@
             if (btn) btn.classList.add('active');
         }
         document.getElementById('modal-comments').value = inv.approvalComments || '';
+document.getElementById('modal-kraken-status').value = inv.krakenStatus || 'Not Started';
         const needsComments = currentApproval === 'disapproved' || currentApproval === 'hold';
         document.getElementById('comments-section').classList.toggle('show', needsComments);
         document.getElementById('approval-modal').classList.add('show');
@@ -764,10 +765,11 @@
         try {
             const { doc, updateDoc } = window.firebaseModules;
             await updateDoc(doc(window.db, 'Engineer Invoices', currentEditId), {
-                approvalStatus:   currentApproval,
-                approvalComments: comments,
-                approvedAt:       new Date().toISOString()
-            });
+    approvalStatus:   currentApproval,
+    approvalComments: comments,
+    approvedAt:       new Date().toISOString(),
+    krakenStatus:     document.getElementById('modal-kraken-status').value
+});
             showToast('Invoice marked as ' + currentApproval, 'success');
             closeApprovalModal();
             await loadInvoices();
