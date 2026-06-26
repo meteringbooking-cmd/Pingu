@@ -383,9 +383,8 @@
             const groups   = groupByEngineer(filteredInvoices);
             const engineerNames = Object.keys(groups).sort();
             
-            const start     = document.getElementById('f-start-date').value;
-            const end       = document.getElementById('f-end-date').value;
-            const datePart  = (start && end) ? (start + '_to_' + end) : start || end || new Date().toISOString().split('T')[0];
+            // Get today's date for the export file name
+            const exportDate = new Date().toISOString().split('T')[0];
 
             // Iterate over engineers and trigger download for each individually
             engineerNames.forEach(eng => {
@@ -401,7 +400,9 @@
                 XLSX.utils.book_append_sheet(workbook, ws, "Invoices");
 
                 const engPart   = eng ? eng.replace(/\s+/g,'_') : 'Unknown_Engineer';
-                const filename  = 'Pingu_Invoices_' + engPart + '_' + datePart + '.xlsx';
+                
+                // Set the filename using the current date
+                const filename  = 'Pingu_Invoices_' + engPart + '_' + exportDate + '.xlsx';
 
                 XLSX.writeFile(workbook, filename);
             });
