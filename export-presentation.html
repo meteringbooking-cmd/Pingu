@@ -164,7 +164,9 @@
             background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
             border: 2px solid var(--dark-lighter);
         }
-        .week-card.current { border-color: rgba(255, 107, 53, 0.4); }
+        .week-card.current  { border-color: rgba(255, 107, 53, 0.4); }
+        .week-card.previous { border-color: rgba(154, 154, 176, 0.4); }
+        .week-card.future   { border-color: rgba(0, 217, 255, 0.4); }
         .week-card.forecast { border-color: rgba(176, 110, 255, 0.4); }
         .week-card-header {
             display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem;
@@ -174,7 +176,9 @@
             font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 700;
             padding: 0.3rem 0.8rem; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.1em;
         }
-        .week-badge.current { background: rgba(255, 107, 53, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+        .week-badge.current  { background: rgba(255, 107, 53, 0.2);  color: var(--primary);  border: 1px solid var(--primary); }
+        .week-badge.previous { background: rgba(154, 154, 176, 0.2); color: var(--text-dim); border: 1px solid var(--text-dim); }
+        .week-badge.future   { background: rgba(0, 217, 255, 0.2);   color: var(--accent);   border: 1px solid var(--accent); }
         .week-badge.forecast { background: rgba(176, 110, 255, 0.2); color: var(--forecast); border: 1px solid var(--forecast); }
         .week-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); }
         .week-range { color: var(--text-dim); font-size: 0.8rem; }
@@ -305,7 +309,7 @@
             </div>
 
             <div class="stats-row" id="stats-row" style="display: none;">
-                <div class="stat-item"><div class="stat-label">Current Week</div><div class="stat-value" id="stat-current-total">0</div></div>
+                <div class="stat-item"><div class="stat-label" id="stat-current-label">Selected Week</div><div class="stat-value" id="stat-current-total">0</div></div>
                 <div class="stat-item"><div class="stat-label">✅ Complete</div><div class="stat-value complete" id="stat-complete">0</div></div>
                 <div class="stat-item"><div class="stat-label">🔄 In-Progress</div><div class="stat-value in-progress" id="stat-inprogress">0</div></div>
                 <div class="stat-item"><div class="stat-label">⏸️ On Hold</div><div class="stat-value on-hold" id="stat-onhold">0</div></div>
@@ -319,10 +323,10 @@
         <!-- Preview grid -->
         <div class="preview-grid" id="preview-grid" style="display: none;">
 
-            <!-- Current week -->
-            <div class="week-card current">
+            <!-- Selected week -->
+            <div class="week-card current" id="selected-week-card">
                 <div class="week-card-header">
-                    <span class="week-badge current">Current Week</span>
+                    <span class="week-badge current" id="selected-week-badge">Selected Week</span>
                     <div>
                         <div class="week-title" id="current-week-title">—</div>
                         <div class="week-range" id="current-week-range">—</div>
@@ -486,6 +490,18 @@
             return Array.from({length: 7}, (_, i) => addDays(monday, i));
         }
 
+        /* Returns { label, badgeClass, cardClass } based on how monday compares to this week */
+        function getWeekLabel(monday) {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const thisMonday = getMonday(today);
+            const diffWeeks = Math.round((monday - thisMonday) / (7 * 24 * 60 * 60 * 1000));
+            if (diffWeeks < -1)  return { label: '⏮ Previous Week',  badgeClass: 'previous', cardClass: 'previous' };
+            if (diffWeeks === -1) return { label: '◀ Previous Week', badgeClass: 'previous', cardClass: 'previous' };
+            if (diffWeeks === 0)  return { label: '📍 Current Week',  badgeClass: 'current',  cardClass: 'current'  };
+            if (diffWeeks === 1)  return { label: '▶ Next Week',      badgeClass: 'future',   cardClass: 'future'   };
+            return                       { label: '⏭ Future Week',    badgeClass: 'future',   cardClass: 'future'   };
+        }
+
         /* ══════════════════════════════════════════════
            FIREBASE LOAD
         ══════════════════════════════════════════════ */
@@ -633,6 +649,17 @@
            RENDER PREVIEW
         ══════════════════════════════════════════════ */
         function renderPreview() {
+            // Apply dynamic label to the selected (left) week card
+            const { label, badgeClass, cardClass } = getWeekLabel(currentWeekData.monday);
+            const badge = document.getElementById('selected-week-badge');
+            const card  = document.getElementById('selected-week-card');
+            badge.textContent = label;
+            badge.className = `week-badge ${badgeClass}`;
+            card.className  = `week-card ${cardClass}`;
+
+            // Update stats bar label to match
+            document.getElementById('stat-current-label').textContent = label;
+
             renderWeekCard('current', currentWeekData);
             renderWeekCard('forecast', forecastWeekData);
         }
