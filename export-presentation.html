@@ -864,15 +864,15 @@
 
         function addSlideHeader(pptx, slide, title, subtitle, isForecast = false) {
             // Background header bar
-            slide.addShape(pptx.shapes.RECTANGLE, { x:0, y:0, w:10, h:0.85,
+            slide.addShape('rect', { x:0, y:0, w:10, h:0.85,
                 fill:{color: isForecast ? '1A0E2E' : '1A1A2E'}, line:{color: isForecast ? '1A0E2E' : '1A1A2E'} });
 
-            // Orange-to-cyan gradient accent line
-            slide.addShape(pptx.shapes.RECTANGLE, { x:0, y:0.82, w:10, h:0.05,
-                fill:{type:'solid', color: isForecast ? 'B06EFF' : 'FF6B35'}, line:{color: isForecast ? 'B06EFF' : 'FF6B35'} });
+            // Accent line
+            slide.addShape('rect', { x:0, y:0.82, w:10, h:0.05,
+                fill:{color: isForecast ? 'B06EFF' : 'FF6B35'}, line:{color: isForecast ? 'B06EFF' : 'FF6B35'} });
 
             // Logo / brand
-            slide.addText('🌞 Pingu - Solar', { x:0.2, y:0.08, w:2.5, h:0.35,
+            slide.addText('Pingu - Solar', { x:0.2, y:0.08, w:2.5, h:0.35,
                 fontSize:13, bold:true, color:'FF6B35', fontFace:'Calibri' });
 
             // Title
@@ -884,13 +884,13 @@
                 fontSize:9, color: C.textDim, fontFace:'Calibri', align:'center' });
 
             // Badge
-            const badgeLabel = isForecast ? '📅 FORECAST' : '📊 CURRENT WEEK';
+            const badgeLabel = isForecast ? 'FORECAST' : 'CURRENT WEEK';
             slide.addText(badgeLabel, { x:8.2, y:0.1, w:1.6, h:0.28,
                 fontSize:8, bold:true, color: isForecast ? 'B06EFF' : C.primary, fontFace:'Calibri', align:'right' });
         }
 
         function addCommentaryBox(pptx, slide, x, y, w, h) {
-            slide.addShape(pptx.shapes.RECTANGLE, { x, y, w, h,
+            slide.addShape('rect', { x, y, w, h,
                 fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1} });
             slide.addText('Commentary', { x:x+0.15, y:y+0.12, w:w-0.3, h:0.25,
                 fontSize:9, bold:true, color:C.accent, fontFace:'Calibri' });
@@ -904,14 +904,14 @@
             slide.background = { color: C.dark };
 
             // Big dark panel
-            slide.addShape(pptx.shapes.RECTANGLE, { x:0, y:1.5, w:10, h:4,
+            slide.addShape('rect', { x:0, y:1.5, w:10, h:4,
                 fill:{color: C.darkLight}, line:{color: C.darkLight} });
 
-            // Decorative circles
-            slide.addShape(pptx.shapes.ELLIPSE, { x:-0.5, y:-0.5, w:3, h:3,
-                fill:{color:'FF6B3515'}, line:{color:'FF6B3530', width:2} });
-            slide.addShape(pptx.shapes.ELLIPSE, { x:7.5, y:5, w:3, h:3,
-                fill:{color:'00D9FF15'}, line:{color:'00D9FF30', width:2} });
+            // Decorative circles (6-char hex only — PPTX has no alpha channel)
+            slide.addShape('ellipse', { x:-0.5, y:-0.5, w:3, h:3,
+                fill:{color: C.darkLighter}, line:{color: C.primary, width:1} });
+            slide.addShape('ellipse', { x:7.5, y:5, w:3, h:3,
+                fill:{color: C.darkLighter}, line:{color: C.accent, width:1} });
 
             // Sun emoji / logo area
             slide.addText('🌞', { x:4.2, y:0.4, w:1.6, h:1, fontSize:50, align:'center' });
@@ -929,7 +929,7 @@
                 fontSize:13, color:C.forecast, fontFace:'Calibri', align:'center' });
 
             // Divider
-            slide.addShape(pptx.shapes.RECTANGLE, { x:3, y:4.05, w:4, h:0.04,
+            slide.addShape('rect', { x:3, y:4.05, w:4, h:0.04,
                 fill:{color: C.primary}, line:{color: C.primary} });
 
             // Footer info
@@ -952,8 +952,8 @@
             const colW = 2.2;
             items.forEach((item, i) => {
                 const x = 0.5 + i * colW;
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x, y:5.1, w:colW-0.2, h:1,
-                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.08 });
+                slide.addShape('roundRect', { x, y:5.1, w:colW-0.2, h:1,
+                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
                 slide.addText(item.value, { x, y:5.15, w:colW-0.2, h:0.55,
                     fontSize:28, bold:true, color:item.color, fontFace:'Calibri', align:'center' });
                 slide.addText(item.label, { x, y:5.68, w:colW-0.2, h:0.35,
@@ -986,8 +986,8 @@
             const kpiW = 1.7, kpiY = 1.05, kpiH = 1.2;
             statItems.forEach((s, i) => {
                 const x = 0.4 + i * (kpiW + 0.15);
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x, y:kpiY, w:kpiW, h:kpiH,
-                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.08 });
+                slide.addShape('roundRect', { x, y:kpiY, w:kpiW, h:kpiH,
+                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
                 slide.addText(s.value.toString(), { x, y:kpiY+0.12, w:kpiW, h:0.65,
                     fontSize:34, bold:true, color:s.color, fontFace:'Calibri', align:'center' });
                 slide.addText(s.label, { x, y:kpiY+0.78, w:kpiW, h:0.32,
@@ -1009,8 +1009,8 @@
             const sY = 2.55, sH = 0.95;
             statuses.forEach((s, i) => {
                 const x = 0.4 + i * (sW + 0.05);
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x, y:sY, w:sW, h:sH,
-                    fill:{type:'solid', color: C.darkLight}, line:{color: s.color, width:2}, rectRadius:0.06 });
+                slide.addShape('roundRect', { x, y:sY, w:sW, h:sH,
+                    fill:{color: C.darkLight}, line:{color: s.color, width:2}, rectRadius:0.1 });
                 slide.addText((byStatus[s.key]||0).toString(), { x, y:sY+0.07, w:sW, h:0.55,
                     fontSize:24, bold:true, color:s.color, fontFace:'Calibri', align:'center' });
                 slide.addText(s.label, { x, y:sY+0.6, w:sW, h:0.28,
@@ -1044,13 +1044,13 @@
                     fontSize:10, color:C.text, fontFace:'Calibri', valign:'middle' });
 
                 // Track
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:2.3, y:y+0.07, w:5.5, h:0.28,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.04 });
+                slide.addShape('roundRect', { x:2.3, y:y+0.07, w:5.5, h:0.28,
+                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.1 });
 
                 // Fill
                 if (barW > 0) {
-                    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:2.3, y:y+0.07, w:barW, h:0.28,
-                        fill:{color: c1}, line:{color: c1}, rectRadius:0.04 });
+                    slide.addShape('roundRect', { x:2.3, y:y+0.07, w:barW, h:0.28,
+                        fill:{color: c1}, line:{color: c1}, rectRadius:0.1 });
                 }
 
                 // Value
@@ -1087,7 +1087,7 @@
                 const pct = total > 0 ? ((count/total)*100).toFixed(1) : '0.0';
 
                 // Card
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x, y:cardY, w:colW, h:cardH,
+                slide.addShape('roundRect', { x, y:cardY, w:colW, h:cardH,
                     fill:{color: C.darkLighter}, line:{color: td.color, width:2}, rectRadius:0.1 });
 
                 // Icon
@@ -1118,7 +1118,7 @@
                     const count = byType[td.type] || 0;
                     const w = (count / total) * trackW;
                     if (w > 0.01) {
-                        slide.addShape(pptx.shapes.RECTANGLE, { x:xCursor, y:barY, w, h:barH,
+                        slide.addShape('rect', { x:xCursor, y:barY, w, h:barH,
                             fill:{color:td.color}, line:{color:td.color} });
                         if (w > 0.4) {
                             slide.addText(td.type.split(' ')[0], { x:xCursor, y:barY, w, h:barH,
@@ -1133,7 +1133,7 @@
             const legendY = 4.2;
             typeDetails.forEach((td, i) => {
                 const x = 0.4 + i * 1.9;
-                slide.addShape(pptx.shapes.RECTANGLE, { x, y:legendY, w:0.2, h:0.2,
+                slide.addShape('rect', { x, y:legendY, w:0.2, h:0.2,
                     fill:{color:td.color}, line:{color:td.color} });
                 slide.addText(`${td.type}: ${byType[td.type]||0}`, { x:x+0.28, y:legendY-0.02, w:1.55, h:0.25,
                     fontSize:9, color:C.text, fontFace:'Calibri' });
@@ -1181,13 +1181,13 @@
                     fontSize:10, color: count > 0 ? C.text : C.textDim, fontFace:'Calibri', valign:'middle' });
 
                 // Track
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:chartX, y:y+0.1, w:chartW, h:0.38,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.04 });
+                slide.addShape('roundRect', { x:chartX, y:y+0.1, w:chartW, h:0.38,
+                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.1 });
 
                 // Fill
                 if (barW > 0.01) {
-                    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:chartX, y:y+0.1, w:barW, h:0.38,
-                        fill:{color: s.color}, line:{color: s.color}, rectRadius:0.04 });
+                    slide.addShape('roundRect', { x:chartX, y:y+0.1, w:barW, h:0.38,
+                        fill:{color: s.color}, line:{color: s.color}, rectRadius:0.1 });
 
                     if (barW > 0.3) {
                         slide.addText(count.toString(), { x:chartX, y:y+0.1, w:barW, h:0.38,
@@ -1204,8 +1204,8 @@
             const compRate = total > 0 ? ((byStatus['Complete']||0)/total*100).toFixed(1) : '0.0';
             const crColor = parseFloat(compRate) >= 80 ? C.complete : parseFloat(compRate) >= 50 ? C.warning : C.error;
 
-            slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:0.25, y:5.62, w:9.5, h:0.9,
-                fill:{color: C.darkLighter}, line:{color: crColor, width:2}, rectRadius:0.08 });
+            slide.addShape('roundRect', { x:0.25, y:5.62, w:9.5, h:0.9,
+                fill:{color: C.darkLighter}, line:{color: crColor, width:2}, rectRadius:0.1 });
             slide.addText('Completion Rate:', { x:0.5, y:5.72, w:2.5, h:0.5,
                 fontSize:12, color:C.textDim, fontFace:'Calibri', valign:'middle' });
             slide.addText(compRate + '%', { x:2.8, y:5.68, w:2, h:0.58,
@@ -1252,8 +1252,8 @@
 
                 // Day header
                 const headerBg = isToday ? C.primary : isForecast ? '2A1A4A' : C.darkLighter;
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x, y:1.0, w:colW, h:0.55,
-                    fill:{color: headerBg}, line:{color: isToday ? C.primary : C.darkLighter}, rectRadius:0.06 });
+                slide.addShape('roundRect', { x, y:1.0, w:colW, h:0.55,
+                    fill:{color: headerBg}, line:{color: isToday ? C.primary : C.darkLighter}, rectRadius:0.1 });
                 slide.addText(dayName, { x, y:1.03, w:colW, h:0.25,
                     fontSize:11, bold:true, color: isToday ? C.white : C.text, fontFace:'Calibri', align:'center' });
                 slide.addText(dateStr, { x, y:1.27, w:colW, h:0.22,
@@ -1268,8 +1268,8 @@
                 const barTrackH = totalCount > 0 ? barMaxH * (totalCount / maxDay) : 0;
 
                 // Background track
-                slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, { x:x+0.15, y:chartBaseY-barMaxH, w:colW-0.3, h:barMaxH,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.04 });
+                slide.addShape('roundRect', { x:x+0.15, y:chartBaseY-barMaxH, w:colW-0.3, h:barMaxH,
+                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.05 });
 
                 // Stacked segments
                 if (totalCount > 0) {
@@ -1278,7 +1278,7 @@
                         const segH = barMaxH * (count / maxDay);
                         const color = typeColorMap[t] || C.textDim;
                         yStart -= segH;
-                        slide.addShape(pptx.shapes.RECTANGLE, { x:x+0.15, y:yStart, w:colW-0.3, h:segH,
+                        slide.addShape('rect', { x:x+0.15, y:yStart, w:colW-0.3, h:segH,
                             fill:{color}, line:{color} });
                         if (segH > 0.25) {
                             slide.addText(count.toString(), { x:x+0.15, y:yStart, w:colW-0.3, h:segH,
@@ -1302,7 +1302,7 @@
             );
             legendTypes.forEach((t, i) => {
                 const x = 0.4 + i * 2.2;
-                slide.addShape(pptx.shapes.RECTANGLE, { x, y:legendY, w:0.2, h:0.2,
+                slide.addShape('rect', { x, y:legendY, w:0.2, h:0.2,
                     fill:{color:typeColorMap[t]}, line:{color:typeColorMap[t]} });
                 slide.addText(t, { x:x+0.28, y:legendY-0.02, w:1.85, h:0.25,
                     fontSize:9, color:C.text, fontFace:'Calibri' });
