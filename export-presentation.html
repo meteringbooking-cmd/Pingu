@@ -862,40 +862,49 @@
             white:      'FFFFFF',
         };
 
+        // Slide dimensions: 10" wide × 7.5" tall (16:9 LAYOUT_16x9)
+        const SLIDE_W = 10, SLIDE_H = 7.5;
+        const HDR_H   = 0.62;  // header height
+        const PAD     = 0.25;  // left/right margin
+        const BODY_Y  = HDR_H + 0.12; // first usable Y after header
+
         function addSlideHeader(pptx, slide, title, subtitle, isForecast = false) {
-            // Background header bar
-            slide.addShape('rect', { x:0, y:0, w:10, h:0.85,
-                fill:{color: isForecast ? '1A0E2E' : '1A1A2E'}, line:{color: isForecast ? '1A0E2E' : '1A1A2E'} });
+            const bg = isForecast ? '1A0E2E' : '1A1A2E';
+            const ac = isForecast ? 'B06EFF' : 'FF6B35';
 
-            // Accent line
-            slide.addShape('rect', { x:0, y:0.82, w:10, h:0.05,
-                fill:{color: isForecast ? 'B06EFF' : 'FF6B35'}, line:{color: isForecast ? 'B06EFF' : 'FF6B35'} });
+            // Header bar
+            slide.addShape('rect', { x:0, y:0, w:SLIDE_W, h:HDR_H,
+                fill:{color:bg}, line:{color:bg} });
+            // Accent strip
+            slide.addShape('rect', { x:0, y:HDR_H-0.04, w:SLIDE_W, h:0.04,
+                fill:{color:ac}, line:{color:ac} });
 
-            // Logo / brand
-            slide.addText('Pingu - Solar', { x:0.2, y:0.08, w:2.5, h:0.35,
-                fontSize:13, bold:true, color:'FF6B35', fontFace:'Calibri' });
+            // Brand (left)
+            slide.addText('Pingu - Solar', { x:PAD, y:0.06, w:2, h:0.28,
+                fontSize:11, bold:true, color:'FF6B35', fontFace:'Calibri' });
 
-            // Title
-            slide.addText(title, { x:0.2, y:0.08, w:7, h:0.4,
-                fontSize:20, bold:true, color: isForecast ? 'B06EFF' : '00D9FF', fontFace:'Calibri', align:'center' });
+            // Title (centre)
+            slide.addText(title, { x:2, y:0.04, w:6, h:0.34,
+                fontSize:18, bold:true, color: isForecast ? 'B06EFF' : '00D9FF',
+                fontFace:'Calibri', align:'center' });
 
-            // Subtitle
-            slide.addText(subtitle, { x:0.2, y:0.48, w:9.6, h:0.28,
-                fontSize:9, color: C.textDim, fontFace:'Calibri', align:'center' });
+            // Subtitle (centre, smaller)
+            slide.addText(subtitle, { x:2, y:0.36, w:6, h:0.22,
+                fontSize:8, color:'9A9AB0', fontFace:'Calibri', align:'center' });
 
-            // Badge
-            const badgeLabel = isForecast ? 'FORECAST' : 'CURRENT WEEK';
-            slide.addText(badgeLabel, { x:8.2, y:0.1, w:1.6, h:0.28,
-                fontSize:8, bold:true, color: isForecast ? 'B06EFF' : C.primary, fontFace:'Calibri', align:'right' });
+            // Badge (right)
+            const badge = isForecast ? 'FORECAST' : 'CURRENT WEEK';
+            slide.addText(badge, { x:8, y:0.06, w:1.75, h:0.28,
+                fontSize:8, bold:true, color:ac, fontFace:'Calibri', align:'right' });
         }
 
         function addCommentaryBox(pptx, slide, x, y, w, h) {
             slide.addShape('rect', { x, y, w, h,
-                fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1} });
-            slide.addText('Commentary', { x:x+0.15, y:y+0.12, w:w-0.3, h:0.25,
-                fontSize:9, bold:true, color:C.accent, fontFace:'Calibri' });
-            slide.addText('[ Enter commentary here ]', { x:x+0.15, y:y+0.4, w:w-0.3, h:h-0.6,
-                fontSize:10, color:C.textDim, fontFace:'Calibri', italic:true, valign:'top' });
+                fill:{color:'2F2F4A'}, line:{color:'2A4A6A', width:1} });
+            slide.addText('Commentary', { x:x+0.12, y:y+0.08, w:w-0.24, h:0.2,
+                fontSize:8, bold:true, color:'00D9FF', fontFace:'Calibri' });
+            slide.addText('[ Enter commentary here ]', { x:x+0.12, y:y+0.3, w:w-0.24, h:h-0.38,
+                fontSize:9, color:'9A9AB0', fontFace:'Calibri', italic:true, valign:'top' });
         }
 
         /* ─── Slide 1: Title ─── */
@@ -903,61 +912,65 @@
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
 
-            // Big dark panel
-            slide.addShape('rect', { x:0, y:1.5, w:10, h:4,
+            // Centre panel
+            slide.addShape('rect', { x:0, y:1.8, w:SLIDE_W, h:3.6,
                 fill:{color: C.darkLight}, line:{color: C.darkLight} });
 
-            // Decorative circles (6-char hex only — PPTX has no alpha channel)
-            slide.addShape('ellipse', { x:-0.5, y:-0.5, w:3, h:3,
-                fill:{color: C.darkLighter}, line:{color: C.primary, width:1} });
-            slide.addShape('ellipse', { x:7.5, y:5, w:3, h:3,
-                fill:{color: C.darkLighter}, line:{color: C.accent, width:1} });
+            // Top accent bar
+            slide.addShape('rect', { x:0, y:1.8, w:SLIDE_W, h:0.07,
+                fill:{color: C.primary}, line:{color: C.primary} });
+            // Bottom accent bar
+            slide.addShape('rect', { x:0, y:5.4, w:SLIDE_W, h:0.07,
+                fill:{color: C.accent}, line:{color: C.accent} });
 
-            // Sun emoji / logo area
-            slide.addText('🌞', { x:4.2, y:0.4, w:1.6, h:1, fontSize:50, align:'center' });
+            // Title
+            slide.addText('Solar Weekly Performance Report', {
+                x:0.5, y:2.05, w:9, h:0.95,
+                fontSize:34, bold:true, color:C.text, fontFace:'Calibri', align:'center' });
 
-            // Main title
-            slide.addText('Solar Weekly\nPerformance Report', { x:1, y:1.6, w:8, h:1.5,
-                fontSize:36, bold:true, color:C.text, fontFace:'Syne,Calibri',
-                align:'center', lineSpacingMultiple:1.2 });
-
-            // Gradient-style sub-title trick: two overlapping text boxes
-            slide.addText(wcLabel, { x:2, y:3.15, w:6, h:0.45,
-                fontSize:16, bold:true, color:C.primary, fontFace:'Calibri', align:'center' });
-
-            slide.addText('& ' + nextLabel + ' Forecast', { x:2, y:3.55, w:6, h:0.35,
+            // Week labels
+            slide.addText(wcLabel, {
+                x:0.5, y:3.05, w:9, h:0.45,
+                fontSize:18, bold:true, color:C.primary, fontFace:'Calibri', align:'center' });
+            slide.addText('& ' + nextLabel + ' Forecast', {
+                x:0.5, y:3.5, w:9, h:0.35,
                 fontSize:13, color:C.forecast, fontFace:'Calibri', align:'center' });
 
-            // Divider
-            slide.addShape('rect', { x:3, y:4.05, w:4, h:0.04,
+            // Divider line
+            slide.addShape('rect', { x:3.5, y:3.95, w:3, h:0.03,
                 fill:{color: C.primary}, line:{color: C.primary} });
 
-            // Footer info
-            slide.addText('Generated: ' + new Date().toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }),
-                { x:1, y:4.3, w:8, h:0.3, fontSize:9, color:C.textDim, fontFace:'Calibri', align:'center' });
-
-            slide.addText('Pingu Solar  ·  Confidential', { x:1, y:4.6, w:8, h:0.3,
+            // Generated date
+            slide.addText('Generated: ' + new Date().toLocaleDateString('en-GB',
+                { weekday:'long', day:'2-digit', month:'long', year:'numeric' }),
+                { x:1, y:4.05, w:8, h:0.28,
+                  fontSize:9, color:C.textDim, fontFace:'Calibri', align:'center' });
+            slide.addText('Pingu Solar  ·  Confidential', {
+                x:1, y:4.33, w:8, h:0.28,
                 fontSize:9, color:C.textDim, fontFace:'Calibri', align:'center', italic:true });
 
-            // Stats preview at bottom
-            const total = currentWeekData.weekJobs.length;
+            // KPI strip at bottom
+            const total    = currentWeekData.weekJobs.length;
             const forecast = forecastWeekData.weekJobs.length;
             const complete = currentWeekData.byStatus['Complete'] || 0;
-            const items = [
-                { label:'Total Jobs (Current)', value: total.toString(), color: C.primary },
-                { label:'Forecast Jobs (Next)', value: forecast.toString(), color: C.forecast },
-                { label:'Completed This Week',  value: complete.toString(), color: C.complete },
-                { label:'Scheduled Ahead',      value: (forecastWeekData.byStatus['Scheduled']||0).toString(), color: C.accent },
+            const scheduled = forecastWeekData.byStatus['Scheduled'] || 0;
+            const kpis = [
+                { label:'Current Week Jobs', value:total,     color:C.primary   },
+                { label:'Forecast Jobs',     value:forecast,  color:C.forecast  },
+                { label:'Completed',         value:complete,  color:C.complete  },
+                { label:'Scheduled Ahead',   value:scheduled, color:C.accent    },
             ];
-            const colW = 2.2;
-            items.forEach((item, i) => {
-                const x = 0.5 + i * colW;
-                slide.addShape('roundRect', { x, y:5.1, w:colW-0.2, h:1,
-                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
-                slide.addText(item.value, { x, y:5.15, w:colW-0.2, h:0.55,
-                    fontSize:28, bold:true, color:item.color, fontFace:'Calibri', align:'center' });
-                slide.addText(item.label, { x, y:5.68, w:colW-0.2, h:0.35,
-                    fontSize:8, color:C.textDim, fontFace:'Calibri', align:'center' });
+            const kW = 2.3, kY = 5.6, kH = 1.65;
+            kpis.forEach((k, i) => {
+                const x = PAD + i * (kW + 0.1);
+                slide.addShape('roundRect', { x, y:kY, w:kW, h:kH,
+                    fill:{color:C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
+                slide.addText(k.value.toString(), {
+                    x, y:kY+0.18, w:kW, h:0.72,
+                    fontSize:32, bold:true, color:k.color, fontFace:'Calibri', align:'center' });
+                slide.addText(k.label, {
+                    x, y:kY+0.9, w:kW, h:0.55,
+                    fontSize:9, color:C.textDim, fontFace:'Calibri', align:'center', wrap:true });
             });
         }
 
@@ -966,100 +979,114 @@
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
 
-            const title = isForecast ? 'Forecast Overview' : 'Week Overview';
+            const title    = isForecast ? 'Forecast Overview' : 'Week Overview';
             const subtitle = isForecast
-                ? `${wcLabel}  ·  Scheduled jobs for next week`
+                ? `${wcLabel}  ·  Scheduled jobs for the coming week`
                 : `${wcLabel}  ·  Job volume, type & status summary`;
             addSlideHeader(pptx, slide, title, subtitle, isForecast);
 
             const { weekJobs, byType, byStatus } = data;
 
-            // ── Big KPI boxes (top row) ──
-            const statItems = [
-                { label:'Total Jobs',    value: weekJobs.length, color: isForecast ? C.forecast : C.primary },
-                { label:'Solar Installs',value: byType['Solar Install']||0, color:'FF8C5A' },
-                { label:'Surveys',       value: byType['Survey']||0,        color: C.accent },
-                { label:'Aftercare',     value: byType['Aftercare']||0,     color: C.complete },
-                { label:'Revisits',      value: byType['Revisit']||0,       color:'B06EFF' },
+            // ── KPI strip ──
+            const kpiDefs = [
+                { label:'Total',        value: weekJobs.length,          color: isForecast ? C.forecast : C.primary },
+                { label:'Solar Install',value: byType['Solar Install']||0, color:'FF8C5A' },
+                { label:'Survey',       value: byType['Survey']||0,        color: C.accent },
+                { label:'Aftercare',    value: byType['Aftercare']||0,     color: C.complete },
+                { label:'Revisit',      value: byType['Revisit']||0,       color:'B06EFF' },
+                { label:'Other',        value: byType['Other']||0,         color: C.textDim },
             ];
-
-            const kpiW = 1.7, kpiY = 1.05, kpiH = 1.2;
-            statItems.forEach((s, i) => {
-                const x = 0.4 + i * (kpiW + 0.15);
-                slide.addShape('roundRect', { x, y:kpiY, w:kpiW, h:kpiH,
-                    fill:{color: C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
-                slide.addText(s.value.toString(), { x, y:kpiY+0.12, w:kpiW, h:0.65,
-                    fontSize:34, bold:true, color:s.color, fontFace:'Calibri', align:'center' });
-                slide.addText(s.label, { x, y:kpiY+0.78, w:kpiW, h:0.32,
-                    fontSize:9, color:C.textDim, fontFace:'Calibri', align:'center' });
-            });
-
-            // ── Status breakdown (middle row) ──
-            const statuses = [
-                { label:'Scheduled',    key:'Scheduled',                 color: C.primary },
-                { label:'In Progress',  key:'In-Progress',               color: C.inProgress },
-                { label:'Complete',     key:'Complete',                  color: C.complete },
-                { label:'On Hold',      key:'On Hold',                   color: C.onHold },
-                { label:'Aborted',      key:'Aborted',                   color: C.aborted },
-                { label:'Cancelled',    key:'Cancelled',                 color: C.cancelled },
-                { label:'SNC',          key:'Short Notice Cancellation', color: C.snc },
-            ].filter(s => byStatus[s.key] > 0);
-
-            const sW = statuses.length > 0 ? Math.min(1.35, (9.2 / statuses.length)) : 1.3;
-            const sY = 2.55, sH = 0.95;
-            statuses.forEach((s, i) => {
-                const x = 0.4 + i * (sW + 0.05);
-                slide.addShape('roundRect', { x, y:sY, w:sW, h:sH,
-                    fill:{color: C.darkLight}, line:{color: s.color, width:2}, rectRadius:0.1 });
-                slide.addText((byStatus[s.key]||0).toString(), { x, y:sY+0.07, w:sW, h:0.55,
-                    fontSize:24, bold:true, color:s.color, fontFace:'Calibri', align:'center' });
-                slide.addText(s.label, { x, y:sY+0.6, w:sW, h:0.28,
+            const kW = 1.52, kY = BODY_Y + 0.05, kH = 1.0;
+            kpiDefs.forEach((k, i) => {
+                const x = PAD + i * (kW + 0.09);
+                slide.addShape('roundRect', { x, y:kY, w:kW, h:kH,
+                    fill:{color:C.darkLighter}, line:{color:'2A4A6A', width:1}, rectRadius:0.1 });
+                slide.addText(k.value.toString(), {
+                    x, y:kY+0.1, w:kW, h:0.56,
+                    fontSize:28, bold:true, color:k.color, fontFace:'Calibri', align:'center' });
+                slide.addText(k.label, {
+                    x, y:kY+0.66, w:kW, h:0.28,
                     fontSize:8, color:C.textDim, fontFace:'Calibri', align:'center' });
             });
 
-            // Section label
-            slide.addText('STATUS BREAKDOWN', { x:0.4, y:2.42, w:4, h:0.22,
-                fontSize:8, color:C.textDim, fontFace:'Calibri', bold:true });
+            // ── Status strip ──
+            const statusDefs = [
+                { label:'Scheduled',  key:'Scheduled',                 color: C.primary    },
+                { label:'In Progress',key:'In-Progress',               color: C.inProgress },
+                { label:'Complete',   key:'Complete',                  color: C.complete   },
+                { label:'On Hold',    key:'On Hold',                   color: C.onHold     },
+                { label:'Aborted',    key:'Aborted',                   color: C.aborted    },
+                { label:'Cancelled',  key:'Cancelled',                 color: C.cancelled  },
+                { label:'SNC',        key:'Short Notice Cancellation', color: C.snc        },
+            ].filter(s => (byStatus[s.key]||0) > 0);
 
-            // ── Pie-like donut chart using bar representation ──
-            slide.addText('JOB TYPE DISTRIBUTION', { x:0.4, y:3.72, w:5, h:0.22,
-                fontSize:8, color:C.textDim, fontFace:'Calibri', bold:true });
+            const sY = kY + kH + 0.18;
+            slide.addText('STATUS BREAKDOWN', {
+                x:PAD, y:sY-0.2, w:4, h:0.18,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri' });
 
-            const typeColors = {
-                'Solar Install': [C.primary, 'FF8C5A'],
-                'Survey':        [C.accent,  '00B8D9'],
-                'Aftercare':     [C.complete,'3DB88E'],
-                'Revisit':       ['B06EFF',  '9B5DE5'],
-                'Other':         [C.cancelled,'7A7A8F'],
-            };
-            const allTypes = Object.keys(byType).sort((a,b) => byType[b]-byType[a]);
-            const maxT = Math.max(...Object.values(byType), 1);
-
-            allTypes.forEach((t, i) => {
-                const y = 3.98 + i * 0.55;
-                const [c1] = typeColors[t] || [C.textDim, C.textDim];
-                const barW = 5.5 * (byType[t] / maxT);
-
-                slide.addText(t, { x:0.4, y, w:1.8, h:0.42,
-                    fontSize:10, color:C.text, fontFace:'Calibri', valign:'middle' });
-
-                // Track
-                slide.addShape('roundRect', { x:2.3, y:y+0.07, w:5.5, h:0.28,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.1 });
-
-                // Fill
-                if (barW > 0) {
-                    slide.addShape('roundRect', { x:2.3, y:y+0.07, w:barW, h:0.28,
-                        fill:{color: c1}, line:{color: c1}, rectRadius:0.1 });
-                }
-
-                // Value
-                slide.addText(byType[t].toString(), { x:8.0, y, w:0.7, h:0.42,
-                    fontSize:11, bold:true, color:C.text, fontFace:'Calibri', align:'center', valign:'middle' });
+            const sW = statusDefs.length > 0
+                ? Math.min(1.28, (SLIDE_W - PAD*2) / statusDefs.length - 0.06)
+                : 1.28;
+            const sH = 0.82;
+            statusDefs.forEach((s, i) => {
+                const x = PAD + i * (sW + 0.06);
+                slide.addShape('roundRect', { x, y:sY, w:sW, h:sH,
+                    fill:{color:C.darkLight}, line:{color:s.color, width:2}, rectRadius:0.1 });
+                slide.addText((byStatus[s.key]||0).toString(), {
+                    x, y:sY+0.05, w:sW, h:0.48,
+                    fontSize:22, bold:true, color:s.color, fontFace:'Calibri', align:'center' });
+                slide.addText(s.label, {
+                    x, y:sY+0.54, w:sW, h:0.24,
+                    fontSize:7, color:C.textDim, fontFace:'Calibri', align:'center' });
             });
 
-            // Commentary
-            addCommentaryBox(pptx, slide, 0.25, 6.6, 9.5, 0.95);
+            // ── Job type horizontal bars ──
+            const barSecY = sY + sH + 0.22;
+            slide.addText('JOB TYPE DISTRIBUTION', {
+                x:PAD, y:barSecY-0.2, w:5, h:0.18,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri' });
+
+            const typeColorMap = {
+                'Solar Install': C.primary,
+                'Survey':        C.accent,
+                'Aftercare':     C.complete,
+                'Revisit':       'B06EFF',
+                'Other':         C.cancelled,
+            };
+            const allTypes = Object.keys(byType).sort((a,b) => byType[b]-byType[a]);
+            const maxT     = Math.max(...Object.values(byType), 1);
+            const barTrackW = 6.0;
+            const rowH      = 0.46;
+
+            allTypes.forEach((t, i) => {
+                const y   = barSecY + i * rowH;
+                const c1  = typeColorMap[t] || C.textDim;
+                const barW = barTrackW * (byType[t] / maxT);
+
+                slide.addText(t, {
+                    x:PAD, y, w:2.0, h:rowH,
+                    fontSize:9, color:C.text, fontFace:'Calibri', valign:'middle' });
+
+                // Track
+                slide.addShape('roundRect', { x:2.35, y:y+0.09, w:barTrackW, h:0.28,
+                    fill:{color:C.darkLighter}, line:{color:C.darkLighter}, rectRadius:0.1 });
+                // Fill
+                if (barW > 0.05) {
+                    slide.addShape('roundRect', { x:2.35, y:y+0.09, w:barW, h:0.28,
+                        fill:{color:c1}, line:{color:c1}, rectRadius:0.1 });
+                }
+                // Value
+                slide.addText(byType[t].toString(), {
+                    x:8.45, y, w:0.6, h:rowH,
+                    fontSize:10, bold:true, color:C.text, fontFace:'Calibri', align:'center', valign:'middle' });
+            });
+
+            // Commentary at bottom
+            const commY = Math.max(barSecY + allTypes.length * rowH + 0.1, 6.55);
+            if (commY + 0.75 <= SLIDE_H) {
+                addCommentaryBox(pptx, slide, PAD, commY, SLIDE_W - PAD*2, SLIDE_H - commY - 0.08);
+            }
         }
 
         /* ─── Slide: Job Type Detail ─── */
@@ -1067,79 +1094,102 @@
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
 
-            addSlideHeader(pptx, slide, 'Job Type Breakdown', `${wcLabel}  ·  Volume by job category`, isForecast);
+            addSlideHeader(pptx, slide, 'Job Type Breakdown',
+                `${wcLabel}  ·  Volume by job category`, isForecast);
 
             const { byType, weekJobs } = data;
             const total = weekJobs.length;
 
             const typeDetails = [
-                { type:'Solar Install', color: C.primary,   icon:'☀️', desc:'Full solar PV installation' },
-                { type:'Survey',        color: C.accent,    icon:'🔍', desc:'Site survey and assessment' },
-                { type:'Aftercare',     color: C.complete,  icon:'🔧', desc:'Post-installation support' },
-                { type:'Revisit',       color:'B06EFF',     icon:'🔄', desc:'Return visit for remediation' },
-                { type:'Other',         color: C.textDim,   icon:'📋', desc:'Miscellaneous job types' },
-            ].filter(d => byType[d.type] > 0);
+                { type:'Solar Install', color:C.primary,  label:'Solar Install' },
+                { type:'Survey',        color:C.accent,   label:'Survey'        },
+                { type:'Aftercare',     color:C.complete, label:'Aftercare'     },
+                { type:'Revisit',       color:'B06EFF',   label:'Revisit'       },
+                { type:'Other',         color:C.textDim,  label:'Other'         },
+            ].filter(d => (byType[d.type]||0) > 0);
 
-            const colW = 1.7, startX = 0.4, cardY = 1.0, cardH = 2.0;
+            const n    = typeDetails.length || 1;
+            const gap  = 0.12;
+            const cW   = (SLIDE_W - PAD*2 - gap*(n-1)) / n;
+            const cY   = BODY_Y + 0.08;
+            const cH   = 2.5;
+
+            // Type cards
             typeDetails.forEach((td, i) => {
-                const x = startX + i * (colW + 0.2);
+                const x     = PAD + i * (cW + gap);
                 const count = byType[td.type] || 0;
-                const pct = total > 0 ? ((count/total)*100).toFixed(1) : '0.0';
+                const pct   = total > 0 ? ((count/total)*100).toFixed(1) : '0.0';
 
-                // Card
-                slide.addShape('roundRect', { x, y:cardY, w:colW, h:cardH,
-                    fill:{color: C.darkLighter}, line:{color: td.color, width:2}, rectRadius:0.1 });
+                slide.addShape('roundRect', { x, y:cY, w:cW, h:cH,
+                    fill:{color:C.darkLighter}, line:{color:td.color, width:2}, rectRadius:0.1 });
 
-                // Icon
-                slide.addText(td.icon, { x, y:cardY+0.15, w:colW, h:0.5, fontSize:24, align:'center' });
+                // Large count number
+                slide.addText(count.toString(), {
+                    x, y:cY+0.28, w:cW, h:0.88,
+                    fontSize:44, bold:true, color:td.color, fontFace:'Calibri', align:'center' });
 
-                // Count
-                slide.addText(count.toString(), { x, y:cardY+0.65, w:colW, h:0.65,
-                    fontSize:38, bold:true, color:td.color, fontFace:'Calibri', align:'center' });
-
-                // Type label
-                slide.addText(td.type, { x, y:cardY+1.28, w:colW, h:0.3,
-                    fontSize:9, bold:true, color:C.text, fontFace:'Calibri', align:'center' });
+                // Label
+                slide.addText(td.label, {
+                    x, y:cY+1.18, w:cW, h:0.35,
+                    fontSize:10, bold:true, color:C.text, fontFace:'Calibri', align:'center' });
 
                 // Percentage
-                slide.addText(pct + '%', { x, y:cardY+1.6, w:colW, h:0.28,
-                    fontSize:11, color:td.color, fontFace:'Calibri', align:'center' });
+                slide.addText(pct + '% of total', {
+                    x, y:cY+1.55, w:cW, h:0.3,
+                    fontSize:9, color:td.color, fontFace:'Calibri', align:'center' });
+
+                // Mini bar showing proportion
+                const bW = (cW - 0.3) * (count / Math.max(...Object.values(byType), 1));
+                slide.addShape('rect', { x:x+0.15, y:cY+2.1, w:cW-0.3, h:0.14,
+                    fill:{color:C.darkLight}, line:{color:C.darkLight} });
+                if (bW > 0.02) {
+                    slide.addShape('rect', { x:x+0.15, y:cY+2.1, w:bW, h:0.14,
+                        fill:{color:td.color}, line:{color:td.color} });
+                }
             });
 
-            // Donut-style ring chart (simulated with bar chart)
-            slide.addText('PROPORTION OF TOTAL JOBS', { x:0.4, y:3.25, w:9.2, h:0.25,
-                fontSize:8, color:C.textDim, fontFace:'Calibri', bold:true, align:'center' });
+            // Stacked proportion bar
+            const propLabelY = cY + cH + 0.25;
+            slide.addText('PROPORTION OF TOTAL', {
+                x:PAD, y:propLabelY-0.22, w:SLIDE_W-PAD*2, h:0.2,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri', align:'center' });
 
-            // Horizontal stacked bar
+            const barY = propLabelY, barH = 0.42, trackW = SLIDE_W - PAD*2;
             if (total > 0) {
-                let xCursor = 0.4;
-                const barH = 0.45, barY = 3.55, trackW = 9.2;
+                let xCursor = PAD;
                 typeDetails.forEach(td => {
                     const count = byType[td.type] || 0;
-                    const w = (count / total) * trackW;
-                    if (w > 0.01) {
+                    const w     = (count / total) * trackW;
+                    if (w > 0.02) {
                         slide.addShape('rect', { x:xCursor, y:barY, w, h:barH,
                             fill:{color:td.color}, line:{color:td.color} });
-                        if (w > 0.4) {
-                            slide.addText(td.type.split(' ')[0], { x:xCursor, y:barY, w, h:barH,
-                                fontSize:8, color:'000000', fontFace:'Calibri', align:'center', valign:'middle', bold:true });
+                        if (w > 0.5) {
+                            slide.addText(td.label.split(' ')[0], {
+                                x:xCursor, y:barY, w, h:barH,
+                                fontSize:8, bold:true, color:'000000',
+                                fontFace:'Calibri', align:'center', valign:'middle' });
                         }
                         xCursor += w;
                     }
                 });
             }
 
-            // Legend
-            const legendY = 4.2;
+            // Legend row
+            const legY = barY + barH + 0.15;
             typeDetails.forEach((td, i) => {
-                const x = 0.4 + i * 1.9;
-                slide.addShape('rect', { x, y:legendY, w:0.2, h:0.2,
+                const x = PAD + i * 2.0;
+                slide.addShape('rect', { x, y:legY+0.03, w:0.18, h:0.18,
                     fill:{color:td.color}, line:{color:td.color} });
-                slide.addText(`${td.type}: ${byType[td.type]||0}`, { x:x+0.28, y:legendY-0.02, w:1.55, h:0.25,
+                slide.addText(`${td.label}: ${byType[td.type]||0}`, {
+                    x:x+0.25, y:legY, w:1.68, h:0.25,
                     fontSize:9, color:C.text, fontFace:'Calibri' });
             });
 
-            addCommentaryBox(pptx, slide, 0.25, 4.65, 9.5, 2.75);
+            // Commentary
+            const commY2 = legY + 0.35;
+            if (commY2 + 0.65 <= SLIDE_H) {
+                addCommentaryBox(pptx, slide, PAD, commY2, SLIDE_W-PAD*2, SLIDE_H - commY2 - 0.08);
+            }
         }
 
         /* ─── Slide: Status Detail ─── */
@@ -1147,73 +1197,95 @@
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
 
-            addSlideHeader(pptx, slide, 'Status Breakdown', `${wcLabel}  ·  Job progression & completion analysis`, isForecast);
+            addSlideHeader(pptx, slide, 'Status Breakdown',
+                `${wcLabel}  ·  Job progression & completion analysis`, isForecast);
 
             const { byStatus, weekJobs } = data;
             const total = weekJobs.length;
 
             const statDefs = [
-                { key:'Scheduled',                 label:'Scheduled',    color: C.primary,    icon:'📅' },
-                { key:'In-Progress',               label:'In Progress',  color: C.inProgress, icon:'🔄' },
-                { key:'Complete',                  label:'Complete',     color: C.complete,   icon:'✅' },
-                { key:'On Hold',                   label:'On Hold',      color: C.onHold,     icon:'⏸️' },
-                { key:'Aborted',                   label:'Aborted',      color: C.aborted,    icon:'⚠️' },
-                { key:'Cancelled',                 label:'Cancelled',    color: C.cancelled,  icon:'❌' },
-                { key:'Short Notice Cancellation', label:'SNC',          color: C.snc,        icon:'🔔' },
+                { key:'Scheduled',                 label:'Scheduled',   color:C.primary,    icon:'Scheduled'   },
+                { key:'In-Progress',               label:'In Progress', color:C.inProgress, icon:'In Progress' },
+                { key:'Complete',                  label:'Complete',    color:C.complete,   icon:'Complete'    },
+                { key:'On Hold',                   label:'On Hold',     color:C.onHold,     icon:'On Hold'     },
+                { key:'Aborted',                   label:'Aborted',     color:C.aborted,    icon:'Aborted'     },
+                { key:'Cancelled',                 label:'Cancelled',   color:C.cancelled,  icon:'Cancelled'   },
+                { key:'Short Notice Cancellation', label:'SNC',         color:C.snc,        icon:'SNC'         },
             ];
 
-            const maxVal = Math.max(...statDefs.map(s => byStatus[s.key]||0), 1);
+            const maxVal  = Math.max(...statDefs.map(s => byStatus[s.key]||0), 1);
+            const chartX  = 2.0;
+            const chartW  = SLIDE_W - chartX - PAD - 1.4;  // leave room for pct label
+            const rowH    = 0.66;
+            const startY  = BODY_Y + 0.1;
 
-            // Horizontal bar chart
-            slide.addText('JOB STATUS DISTRIBUTION', { x:0.4, y:0.97, w:9.2, h:0.25,
-                fontSize:8, color:C.textDim, fontFace:'Calibri', bold:true });
-
-            const chartX = 1.8, chartW = 6.5, rowH = 0.62, startY = 1.28;
+            slide.addText('STATUS', {
+                x:PAD, y:startY-0.02, w:1.7, h:0.2,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri' });
+            slide.addText('JOBS (% OF TOTAL)', {
+                x:chartX+chartW+0.08, y:startY-0.02, w:1.4, h:0.2,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri' });
 
             statDefs.forEach((s, i) => {
-                const y = startY + i * rowH;
+                const y     = startY + i * rowH;
                 const count = byStatus[s.key] || 0;
-                const barW = chartW * (count / maxVal);
-                const pct = total > 0 ? ((count/total)*100).toFixed(1) : '0.0';
+                const barW  = chartW * (count / maxVal);
+                const pct   = total > 0 ? ((count/total)*100).toFixed(1) : '0.0';
 
-                // Label
-                slide.addText(`${s.icon} ${s.label}`, { x:0.25, y:y+0.08, w:1.5, h:0.42,
-                    fontSize:10, color: count > 0 ? C.text : C.textDim, fontFace:'Calibri', valign:'middle' });
+                // Row bg stripe (alternating)
+                if (i % 2 === 0) {
+                    slide.addShape('rect', { x:PAD, y:y+0.02, w:SLIDE_W-PAD*2, h:rowH-0.04,
+                        fill:{color:'20203A'}, line:{color:'20203A'} });
+                }
+
+                // Status label
+                slide.addText(s.label, {
+                    x:PAD, y:y+0.12, w:1.7, h:0.42,
+                    fontSize:11, color: count > 0 ? C.text : C.textDim,
+                    fontFace:'Calibri', valign:'middle', bold: count > 0 });
 
                 // Track
-                slide.addShape('roundRect', { x:chartX, y:y+0.1, w:chartW, h:0.38,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.1 });
+                slide.addShape('roundRect', { x:chartX, y:y+0.16, w:chartW, h:0.34,
+                    fill:{color:C.darkLighter}, line:{color:C.darkLighter}, rectRadius:0.1 });
 
                 // Fill
-                if (barW > 0.01) {
-                    slide.addShape('roundRect', { x:chartX, y:y+0.1, w:barW, h:0.38,
-                        fill:{color: s.color}, line:{color: s.color}, rectRadius:0.1 });
-
-                    if (barW > 0.3) {
-                        slide.addText(count.toString(), { x:chartX, y:y+0.1, w:barW, h:0.38,
-                            fontSize:11, bold:true, color:'000000', fontFace:'Calibri', align:'right', valign:'middle' });
+                if (barW > 0.02) {
+                    slide.addShape('roundRect', { x:chartX, y:y+0.16, w:barW, h:0.34,
+                        fill:{color:s.color}, line:{color:s.color}, rectRadius:0.1 });
+                    if (barW > 0.35) {
+                        slide.addText(count.toString(), {
+                            x:chartX+0.05, y:y+0.16, w:barW-0.1, h:0.34,
+                            fontSize:10, bold:true, color:'000000',
+                            fontFace:'Calibri', align:'right', valign:'middle' });
                     }
                 }
 
-                // Percentage
-                slide.addText(`${count} (${pct}%)`, { x:chartX+chartW+0.12, y:y+0.1, w:1.2, h:0.38,
-                    fontSize:9, color: count > 0 ? s.color : C.textDim, fontFace:'Calibri', valign:'middle' });
+                // Count + pct
+                slide.addText(`${count}  (${pct}%)`, {
+                    x:chartX+chartW+0.1, y:y+0.16, w:1.3, h:0.34,
+                    fontSize:9, color: count > 0 ? s.color : C.textDim,
+                    fontFace:'Calibri', valign:'middle' });
             });
 
-            // Completion rate highlight
+            // Completion rate banner
             const compRate = total > 0 ? ((byStatus['Complete']||0)/total*100).toFixed(1) : '0.0';
-            const crColor = parseFloat(compRate) >= 80 ? C.complete : parseFloat(compRate) >= 50 ? C.warning : C.error;
+            const crColor  = parseFloat(compRate) >= 80 ? C.complete
+                           : parseFloat(compRate) >= 50 ? C.warning : C.error;
+            const bannerY  = startY + statDefs.length * rowH + 0.12;
 
-            slide.addShape('roundRect', { x:0.25, y:5.62, w:9.5, h:0.9,
-                fill:{color: C.darkLighter}, line:{color: crColor, width:2}, rectRadius:0.1 });
-            slide.addText('Completion Rate:', { x:0.5, y:5.72, w:2.5, h:0.5,
-                fontSize:12, color:C.textDim, fontFace:'Calibri', valign:'middle' });
-            slide.addText(compRate + '%', { x:2.8, y:5.68, w:2, h:0.58,
-                fontSize:28, bold:true, color:crColor, fontFace:'Calibri', align:'center' });
-            slide.addText(`${byStatus['Complete']||0} of ${total} jobs completed this week`, { x:4.9, y:5.72, w:4.6, h:0.5,
-                fontSize:11, color:C.textDim, fontFace:'Calibri', italic:true, valign:'middle' });
-
-            addCommentaryBox(pptx, slide, 0.25, 6.6, 9.5, 0.95);
+            if (bannerY + 0.72 <= SLIDE_H - 0.08) {
+                slide.addShape('roundRect', { x:PAD, y:bannerY, w:SLIDE_W-PAD*2, h:0.72,
+                    fill:{color:C.darkLighter}, line:{color:crColor, width:2}, rectRadius:0.1 });
+                slide.addText('Completion Rate:', {
+                    x:PAD+0.2, y:bannerY+0.12, w:2.4, h:0.48,
+                    fontSize:12, color:C.textDim, fontFace:'Calibri', valign:'middle' });
+                slide.addText(compRate + '%', {
+                    x:2.8, y:bannerY+0.06, w:2, h:0.6,
+                    fontSize:26, bold:true, color:crColor, fontFace:'Calibri', align:'center' });
+                slide.addText(`${byStatus['Complete']||0} of ${total} jobs completed this week`, {
+                    x:4.9, y:bannerY+0.12, w:4.7, h:0.48,
+                    fontSize:10, color:C.textDim, fontFace:'Calibri', italic:true, valign:'middle' });
+            }
         }
 
         /* ─── Slide: Daily Breakdown ─── */
@@ -1222,10 +1294,11 @@
             slide.background = { color: C.dark };
 
             const title = isForecast ? 'Forecast Daily Schedule' : 'Daily Job Breakdown';
-            addSlideHeader(pptx, slide, title, `${wcLabel}  ·  Jobs scheduled per day (Mon–Fri)`, isForecast);
+            addSlideHeader(pptx, slide, title,
+                `${wcLabel}  ·  Jobs per day (Mon–Fri)`, isForecast);
 
-            const { daily, dailyByType, monday } = data;
-            const weekDays = daily.slice(0,5);
+            const { daily, dailyByType } = data;
+            const weekDays = daily.slice(0, 5);
 
             const typeColorMap = {
                 'Solar Install': C.primary,
@@ -1234,84 +1307,104 @@
                 'Revisit':       'B06EFF',
             };
 
-            const maxDay = Math.max(...weekDays.map(d => d.count), 1);
-            const colW = 1.7, colH_max = 3.0, startX = 0.4, chartBaseY = 4.4;
+            const maxDay    = Math.max(...weekDays.map(d => d.count), 1);
+            const n         = 5;
+            const gap       = 0.12;
+            const colW      = (SLIDE_W - PAD*2 - gap*(n-1)) / n;  // ~1.82" per col
+            const dayHdrH   = 0.52;
+            const dayHdrY   = BODY_Y + 0.08;
+            const barMaxH   = 4.4;   // max bar height in inches
+            const barBaseY  = dayHdrY + dayHdrH + barMaxH;  // bottom of bar area
+            const countLblH = 0.38;
+            const countLblY = dayHdrY + dayHdrH + 0.06;
 
-            // Axes label
-            slide.addText('DAILY VOLUME', { x:0.25, y:0.97, w:2, h:0.25,
-                fontSize:8, color:C.textDim, fontFace:'Calibri', bold:true });
+            // Column header label
+            slide.addText('JOBS', {
+                x:PAD, y:dayHdrY-0.2, w:1, h:0.18,
+                fontSize:7, bold:true, color:C.textDim, fontFace:'Calibri' });
 
             weekDays.forEach((day, i) => {
-                const x = startX + i * (colW + 0.2);
-                const today = new Date(); today.setHours(0,0,0,0);
-                const isToday = sameDay(day.date, today);
-                const isPast = day.date < today && !isToday;
+                const x        = PAD + i * (colW + gap);
+                const today    = new Date(); today.setHours(0,0,0,0);
+                const isToday  = sameDay(day.date, today);
+                const dayName  = DAYS[day.date.getDay()===0 ? 6 : day.date.getDay()-1];
+                const dateStr  = fmtShort(day.date);
+                const hdrBg    = isToday ? C.primary : isForecast ? '2A1A4A' : C.darkLighter;
+                const hdrLine  = isToday ? C.primary : C.darkLighter;
 
-                const dayName = DAYS[day.date.getDay()===0?6:day.date.getDay()-1];
-                const dateStr = fmtShort(day.date);
+                // Day header pill
+                slide.addShape('roundRect', { x, y:dayHdrY, w:colW, h:dayHdrH,
+                    fill:{color:hdrBg}, line:{color:hdrLine}, rectRadius:0.1 });
+                slide.addText(dayName, {
+                    x, y:dayHdrY+0.04, w:colW, h:0.25,
+                    fontSize:11, bold:true, color:isToday ? C.white : C.text,
+                    fontFace:'Calibri', align:'center' });
+                slide.addText(dateStr, {
+                    x, y:dayHdrY+0.28, w:colW, h:0.2,
+                    fontSize:8, color:isToday ? 'FFCC88' : C.textDim,
+                    fontFace:'Calibri', align:'center' });
 
-                // Day header
-                const headerBg = isToday ? C.primary : isForecast ? '2A1A4A' : C.darkLighter;
-                slide.addShape('roundRect', { x, y:1.0, w:colW, h:0.55,
-                    fill:{color: headerBg}, line:{color: isToday ? C.primary : C.darkLighter}, rectRadius:0.1 });
-                slide.addText(dayName, { x, y:1.03, w:colW, h:0.25,
-                    fontSize:11, bold:true, color: isToday ? C.white : C.text, fontFace:'Calibri', align:'center' });
-                slide.addText(dateStr, { x, y:1.27, w:colW, h:0.22,
-                    fontSize:8, color: isToday ? 'FFCC88' : C.textDim, fontFace:'Calibri', align:'center' });
-
-                // Stacked bar
-                const barMaxH = colH_max;
-                const dayTypes = Object.keys(dailyByType[i]?.byType || {}).sort((a,b)=> (dailyByType[i].byType[b]||0) - (dailyByType[i].byType[a]||0));
-                let yStart = chartBaseY;
-                let totalDrawn = 0;
                 const totalCount = day.count;
-                const barTrackH = totalCount > 0 ? barMaxH * (totalCount / maxDay) : 0;
+
+                // Total count label (above bar)
+                slide.addText(totalCount.toString(), {
+                    x, y:countLblY, w:colW, h:countLblH,
+                    fontSize:22, bold:true,
+                    color: isForecast ? C.forecast : C.primary,
+                    fontFace:'Calibri', align:'center' });
+                slide.addText('jobs', {
+                    x, y:countLblY + countLblH - 0.04, w:colW, h:0.22,
+                    fontSize:8, color:C.textDim, fontFace:'Calibri', align:'center' });
 
                 // Background track
-                slide.addShape('roundRect', { x:x+0.15, y:chartBaseY-barMaxH, w:colW-0.3, h:barMaxH,
-                    fill:{color: C.darkLighter}, line:{color: C.darkLighter}, rectRadius:0.05 });
+                const trackY = countLblY + countLblH + 0.26;
+                const trackH = barBaseY - trackY;
+                slide.addShape('roundRect', {
+                    x:x+0.12, y:trackY, w:colW-0.24, h:trackH,
+                    fill:{color:C.darkLighter}, line:{color:C.darkLighter}, rectRadius:0.05 });
 
-                // Stacked segments
+                // Stacked segments (draw from bottom up)
                 if (totalCount > 0) {
+                    const dayTypes = Object.keys(dailyByType[i]?.byType || {})
+                        .sort((a,b) => (dailyByType[i].byType[b]||0) - (dailyByType[i].byType[a]||0));
+                    let yBottom = barBaseY;
                     dayTypes.forEach(t => {
-                        const count = dailyByType[i].byType[t] || 0;
-                        const segH = barMaxH * (count / maxDay);
+                        const cnt  = dailyByType[i].byType[t] || 0;
+                        const segH = trackH * (cnt / maxDay);
                         const color = typeColorMap[t] || C.textDim;
-                        yStart -= segH;
-                        slide.addShape('rect', { x:x+0.15, y:yStart, w:colW-0.3, h:segH,
+                        yBottom -= segH;
+                        slide.addShape('rect', {
+                            x:x+0.12, y:yBottom, w:colW-0.24, h:segH,
                             fill:{color}, line:{color} });
-                        if (segH > 0.25) {
-                            slide.addText(count.toString(), { x:x+0.15, y:yStart, w:colW-0.3, h:segH,
-                                fontSize:10, bold:true, color:'000000', fontFace:'Calibri', align:'center', valign:'middle' });
+                        if (segH > 0.28) {
+                            slide.addText(cnt.toString(), {
+                                x:x+0.12, y:yBottom, w:colW-0.24, h:segH,
+                                fontSize:10, bold:true, color:'000000',
+                                fontFace:'Calibri', align:'center', valign:'middle' });
                         }
-                        totalDrawn += count;
                     });
                 }
-
-                // Total label above bar
-                slide.addText(totalCount.toString(), { x:x+0.1, y:chartBaseY - barMaxH - 0.38, w:colW-0.2, h:0.35,
-                    fontSize:20, bold:true, color: isForecast ? C.forecast : C.primary, fontFace:'Calibri', align:'center' });
-                slide.addText('jobs', { x:x+0.1, y:chartBaseY - barMaxH - 0.05, w:colW-0.2, h:0.22,
-                    fontSize:8, color:C.textDim, fontFace:'Calibri', align:'center' });
             });
 
-            // Legend
-            const legendY = chartBaseY + 0.15;
-            const legendTypes = Object.keys(typeColorMap).filter(t =>
-                daily.slice(0,5).some((_, i) => (dailyByType[i]?.byType[t]||0) > 0)
-            );
-            legendTypes.forEach((t, i) => {
-                const x = 0.4 + i * 2.2;
-                slide.addShape('rect', { x, y:legendY, w:0.2, h:0.2,
+            // Legend row
+            const legY = barBaseY + 0.14;
+            const usedTypes = Object.keys(typeColorMap).filter(t =>
+                weekDays.some((_, i) => (dailyByType[i]?.byType[t]||0) > 0));
+            usedTypes.forEach((t, i) => {
+                const x = PAD + i * 2.35;
+                slide.addShape('rect', { x, y:legY+0.04, w:0.18, h:0.18,
                     fill:{color:typeColorMap[t]}, line:{color:typeColorMap[t]} });
-                slide.addText(t, { x:x+0.28, y:legendY-0.02, w:1.85, h:0.25,
+                slide.addText(t, { x:x+0.25, y:legY, w:2.0, h:0.26,
                     fontSize:9, color:C.text, fontFace:'Calibri' });
             });
 
-            // Week total
+            // Week total (right-aligned)
             const weekTotal = weekDays.reduce((s,d) => s+d.count, 0);
-            slide.addText(`Week Total: ${weekTotal} jobs`, { x:7, y:legendY-0.02, w:2.7, h:0.25,
-                fontSize:10, bold:true, color: isForecast ? C.forecast : C.primary, fontFace:'Calibri', align:'right' });
+            slide.addText(`Week Total: ${weekTotal} jobs`, {
+                x:SLIDE_W-3.2, y:legY, w:3.0, h:0.26,
+                fontSize:10, bold:true,
+                color: isForecast ? C.forecast : C.primary,
+                fontFace:'Calibri', align:'right' });
         }
 
         /* ══════════════════════════════════════════════
