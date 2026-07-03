@@ -588,6 +588,9 @@
                         <button class="audit-btn unable" onclick="setAuditStatus('unable')">❌ Unable to Audit</button>
                         <button class="audit-btn in-progress" onclick="setAuditStatus('in-progress')">🔄 Audit - In Progress</button>
                     </div>
+                    <button class="btn btn-primary" onclick="generateAuditPDF()" style="width: 100%; margin-top: 1rem; padding: 1rem; font-size: 1.1rem; border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.3s ease;">
+                        📄 Generate PDF
+                    </button>
                     <div class="notes-section">
                         <label class="notes-label" for="audit-notes" style="color: var(--secondary);">Internal Audit Notes (do not send this)</label>
                         <textarea id="audit-notes" class="notes-textarea" placeholder="Add internal notes about the audit..."></textarea>
@@ -2262,6 +2265,76 @@
             if (e.target.id === 'audit-modal') closeAuditModal();
         });
 
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        function generateAuditPDF() {
+            const element = document.querySelector('.modal-body');
+            
+            const selectorsToHide = [
+                '.email-send-group', 
+                '.audit-actions', 
+                '.confirm-actions', 
+                'button[onclick="generateAuditPDF()"]',
+                '.auto-save-indicator',
+                '.close-btn'
+            ];
+            
+            const saveNotesBtn = element.querySelector('button[onclick="saveNotesOnly()"]');
+            
+            const hiddenElements = [];
+            selectorsToHide.forEach(selector => {
+                element.querySelectorAll(selector).forEach(el => {
+                    hiddenElements.push({ el, origDisplay: el.style.display });
+                    el.style.display = 'none';
+                });
+            });
+            if (saveNotesBtn) {
+                hiddenElements.push({ el: saveNotesBtn, origDisplay: saveNotesBtn.style.display });
+                saveNotesBtn.style.display = 'none';
+            }
+
+            const textareas = element.querySelectorAll('textarea');
+            const originalStyles = [];
+            textareas.forEach(ta => {
+                originalStyles.push({ el: ta, height: ta.style.height, overflow: ta.style.overflow });
+                ta.style.height = 'auto';
+                ta.style.height = (ta.scrollHeight + 5) + 'px';
+                ta.style.overflow = 'hidden';
+            });
+            
+            const jobNumText = document.getElementById('modal-job-number').innerText.trim() || 'Job';
+            const opt = {
+                margin:       [0.5, 0.5, 0.5, 0.5],
+                filename:     `${jobNumText} - Job Audit.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, windowWidth: element.scrollWidth },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            if (typeof showToast === 'function') showToast('Generating PDF... Please wait', 'success');
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                hiddenElements.forEach(item => {
+                    item.el.style.display = item.origDisplay;
+                });
+                originalStyles.forEach(item => {
+                    item.el.style.height = item.height;
+                    item.el.style.overflow = item.overflow;
+                });
+                if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
+            }).catch(err => {
+                console.error('PDF Generation Error:', err);
+                if (typeof showToast === 'function') showToast('Error generating PDF', 'error');
+                hiddenElements.forEach(item => {
+                    item.el.style.display = item.origDisplay;
+                });
+                originalStyles.forEach(item => {
+                    item.el.style.height = item.height;
+                    item.el.style.overflow = item.overflow;
+                });
+            });
+        }
     </script>
 </body>
 </html>
