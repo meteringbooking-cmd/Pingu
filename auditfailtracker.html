@@ -6,6 +6,7 @@
     <title>Fail Code Analysis Dashboard</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
     <style>
         * {
             margin: 0;
@@ -692,6 +693,13 @@
                     <option value="all">All Teams</option>
                 </select>
             </div>
+            
+            <div class="control-group" id="exportBtnContainer" style="display: none;">
+                <label>Export</label>
+                <button onclick="exportToPowerPoint()" style="background: linear-gradient(135deg, #FF6B6B 0%, #C0392B 100%);">
+                    📊 Export to PPT
+                </button>
+            </div>
         </div>
 
         <div class="fail-code-filter" id="teamNumberFilter" style="display: none;">
@@ -918,6 +926,7 @@
         };
 
         let allData = [];
+        let filteredData = [];
         let chart = null;
         const tooltip = document.getElementById('tooltip');
         let selectedCodes = new Set(FAIL_CODES);
@@ -1114,6 +1123,7 @@
                 document.getElementById('mainContent').style.display = 'none';
                 document.getElementById('stats').style.display = 'none';
                 document.getElementById('topPerformers').style.display = 'none';
+                document.getElementById('exportBtnContainer').style.display = 'none';
                 return;
             }
 
@@ -1125,7 +1135,7 @@
             const endDate = document.getElementById('endDate').valueAsDate;
             const selectedTeam = document.getElementById('teamFilter').value;
 
-            const filtered = allData.filter(row => {
+            filteredData = allData.filter(row => {
                 const rowDate = parseDate(row['Date received']);
                 const dateMatch = (!startDate || !endDate || !rowDate) || 
                                  (rowDate >= startDate && rowDate <= endDate);
@@ -1134,10 +1144,12 @@
                 return dateMatch && teamMatch && teamNumberMatch;
             });
 
-            updateStats(filtered, startDate, endDate);
-            updateChart(filtered);
-            updateOccurrenceTable(filtered);
-            updateTopPerformers(filtered);
+            updateStats(filteredData, startDate, endDate);
+            updateChart(filteredData);
+            updateOccurrenceTable(filteredData);
+            updateTopPerformers(filteredData);
+            
+            document.getElementById('exportBtnContainer').style.display = 'block';
         }
 
         function updateStats(data, startDate, endDate) {
@@ -1575,6 +1587,179 @@
             document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
                 item.classList.remove('highlighted');
             });
+        }
+
+        async function exportToPowerPoint() {
+            if (filteredData.length === 0) return;
+            
+            const btn = document.querySelector('#exportBtnContainer button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Generating...';
+            btn.disabled = true;
+
+            try {
+                let pres = new PptxGenJS();
+                pres.layout = 'LAYOUT_16x9';
+                
+                const bgDark = '0F0F23';
+                const accentLight = 'A8C0FF';
+                const textWhite = 'FFFFFF';
+                const cardBg = '1A1A3A';
+
+                pres.defineSlideMaster({
+                    title: 'MASTER_SLIDE',
+                    background: { color: bgDark },
+                    objects: [
+                        { rect: { x: 0, y: 0, w: '100%', h: 0.8, fill: { color: cardBg } } },
+                        { text: { text: 'Fail Code Analysis Dashboard', options: { x: 0.5, y: 0.15, w: 5, h: 0.5, color: accentLight, fontSize: 16, fontFace: 'Inter', bold: true } } },
+                        { text: { text: new Date().toLocaleDateString(), options: { x: 8.5, y: 0.15, w: 1, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
+                    ]
+                });
+                
+                let slide1 = pres.addSlide();
+                slide1.background = { color: bgDark };
+                slide1.addShape(pres.ShapeType.ellipse, { x: -1, y: 1, w: 4, h: 4, fill: { color: '7877C6' }, transparency: 70 });
+                slide1.addShape(pres.ShapeType.ellipse, { x: 7, y: 3, w: 5, h: 5, fill: { color: '4A56E2' }, transparency: 70 });
+                
+                slide1.addText('📊 Fail Code Analysis', {
+                    x: 1, y: 2.2, w: 8, h: 1, 
+                    fontSize: 48, color: accentLight, bold: true, align: 'center', fontFace: 'Inter'
+                });
+                
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const dateStr = startDate && endDate ? `${startDate} to ${endDate}` : 'All Time Data';
+                
+                slide1.addText(`Date Range: ${dateStr}`, {
+                    x: 1, y: 3.2, w: 8, h: 0.5,
+                    fontSize: 20, color: 'AAAAAA', align: 'center', fontFace: 'Inter'
+                });
+
+                const totalIncidents = filteredData.length;
+                let totalFailCodes = 0;
+                filteredData.forEach(row => {
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) totalFailCodes++;
+                    }
+                });
+                const uniqueTeams = new Set(filteredData.map(r => r['Team']).filter(Boolean)).size;
+                
+                const revisitsRequired = filteredData.filter(r => 
+                    r['Revisit required?'] && r['Revisit required?'].toLowerCase() === 'yes'
+                ).length;
+                const revisitsCompleted = filteredData.filter(r => 
+                    r['Revisit completed'] && r['Revisit completed'].toLowerCase() === 'yes'
+                ).length;
+
+                let slide2 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slide2.addText('Executive Summary', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                const addStatBox = (slide, title, value, subtext, x) => {
+                    slide.addShape(pres.ShapeType.roundRect, { x, y: 2, w: 2.2, h: 2, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText(title, { x, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: 'AAAAAA', fontSize: 14, fontFace: 'Inter' });
+                    slide.addText(value, { x, y: 2.6, w: 2.2, h: 0.8, align: 'center', color: accentLight, fontSize: 40, bold: true, fontFace: 'Inter' });
+                    if (subtext) {
+                        slide.addText(subtext, { x, y: 3.4, w: 2.2, h: 0.3, align: 'center', color: '888888', fontSize: 11, fontFace: 'Inter' });
+                    }
+                };
+
+                addStatBox(slide2, 'Total Incidents', String(totalIncidents), '', 0.5);
+                addStatBox(slide2, 'Total Fail Codes', String(totalFailCodes), '', 2.9);
+                addStatBox(slide2, 'Teams Involved', String(uniqueTeams), '', 5.3);
+                addStatBox(slide2, 'Revisits', `${revisitsCompleted}/${revisitsRequired}`, 'Completed / Required', 7.7);
+
+                let slide3 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slide3.addText('Top Fail Codes Frequency', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                const failCodeCounts = {};
+                FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+                filteredData.forEach(row => {
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) {
+                            failCodeCounts[code]++;
+                        }
+                    }
+                });
+                
+                const topCodes = FAIL_CODES
+                    .filter(code => selectedCodes.has(code))
+                    .map(code => ({ code, count: failCodeCounts[code] }))
+                    .filter(item => item.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 15);
+                    
+                if (topCodes.length > 0) {
+                    slide3.addChart(pres.ChartType.bar, [{
+                        name: 'Count',
+                        labels: topCodes.map(c => c.code),
+                        values: topCodes.map(c => c.count)
+                    }], {
+                        x: 0.5, y: 1.8, w: 9, h: 3.5,
+                        barDir: 'col',
+                        chartColors: ['667EEA'],
+                        valAxisLabelColor: textWhite,
+                        valAxisLabelFontSize: 12,
+                        catAxisLabelColor: accentLight,
+                        catAxisLabelFontSize: 12,
+                        showValue: true,
+                        dataLabelColor: textWhite,
+                        valGridLine: { color: '333355', style: 'dash' }
+                    });
+                } else {
+                    slide3.addText('No fail codes match current filters.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
+                }
+
+                let slide4 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slide4.addText('Top Performers by Fail Codes', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                const performerData = {};
+                filteredData.forEach(row => {
+                    const name = row['Team'] || 'Unknown';
+                    if (!performerData[name]) performerData[name] = 0;
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) {
+                            performerData[name]++;
+                        }
+                    }
+                });
+                
+                const sortedPerformers = Object.entries(performerData)
+                    .filter(([name, count]) => count > 0)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10);
+                    
+                if (sortedPerformers.length > 0) {
+                    slide4.addChart(pres.ChartType.bar, [{
+                        name: 'Fail Codes',
+                        labels: sortedPerformers.map(p => p[0]),
+                        values: sortedPerformers.map(p => p[1])
+                    }], {
+                        x: 0.5, y: 1.8, w: 9, h: 3.5,
+                        barDir: 'bar',
+                        chartColors: ['764BA2'],
+                        valAxisLabelColor: textWhite,
+                        valAxisLabelFontSize: 12,
+                        catAxisLabelColor: accentLight,
+                        catAxisLabelFontSize: 12,
+                        showValue: true,
+                        dataLabelColor: textWhite,
+                        valGridLine: { color: '333355', style: 'dash' }
+                    });
+                } else {
+                    slide4.addText('No data for teams.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
+                }
+
+                await pres.writeFile({ fileName: 'FailCodeAnalysis_Report.pptx' });
+            } catch (err) {
+                console.error(err);
+                alert('Error generating PowerPoint. Check console.');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
 
         // Initialize with no data message
