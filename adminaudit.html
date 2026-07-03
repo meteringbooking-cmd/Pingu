@@ -2257,94 +2257,158 @@
         });
 
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script>
-        function generateAuditPDF() {
-            const element = document.querySelector('.modal-body');
-            
-            const selectorsToHide = [
-                '.email-send-group', 
-                '.audit-actions', 
-                '.confirm-actions', 
-                'button[onclick="generateAuditPDF()"]',
-                '.auto-save-indicator',
-                '.close-btn'
-            ];
-            
-            const saveNotesBtn = element.querySelector('button[onclick="saveNotesOnly()"]');
-            
-            const hiddenElements = [];
-            selectorsToHide.forEach(selector => {
-                element.querySelectorAll(selector).forEach(el => {
-                    hiddenElements.push({ el, origDisplay: el.style.display });
-                    el.style.display = 'none';
-                });
+        async function getBase64ImageFromUrl(imageUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+                    resolve(dataURL);
+                };
+                img.onerror = () => {
+                    resolve(null);
+                };
+                img.src = imageUrl;
             });
-            if (saveNotesBtn) {
-                hiddenElements.push({ el: saveNotesBtn, origDisplay: saveNotesBtn.style.display });
-                saveNotesBtn.style.display = 'none';
+        }
+
+        async function generateAuditPDF() {
+            if (!currentJob) {
+                if (typeof showToast === 'function') showToast('No job selected', 'error');
+                return;
             }
 
-            const textareas = element.querySelectorAll('textarea');
-            const originalStyles = [];
-            textareas.forEach(ta => {
-                originalStyles.push({ el: ta, height: ta.style.height, overflow: ta.style.overflow });
-                ta.style.height = 'auto';
-                ta.style.height = (ta.scrollHeight + 5) + 'px';
-                ta.style.overflow = 'hidden';
-            });
-            
-            const modalContent = element.closest('.modal-content');
-            const origOverflow = modalContent ? modalContent.style.overflow : '';
-            const origMaxHeight = modalContent ? modalContent.style.maxHeight : '';
-            if (modalContent) {
-                modalContent.style.overflow = 'visible';
-                modalContent.style.maxHeight = 'none';
-            }
-            const origWidth = element.style.width;
-            element.style.width = '800px';
-            
+            if (typeof showToast === 'function') showToast('Fetching images & generating PDF...', 'success');
+
             const jobNumText = document.getElementById('modal-job-number').innerText.trim() || 'Job';
-            const opt = {
-                margin:       [0.5, 0.5, 0.5, 0.5],
-                filename:     `${jobNumText} - Job Audit.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            const safeJobNumber = currentJob.jobNumber || 'Unknown';
+            const outcomeText = document.getElementById('outcome-text') ? document.getElementById('outcome-text').innerText : '';
+            
+            const content = [];
+
+            content.push({ text: `Job Audit Report - #${safeJobNumber}`, style: 'header' });
+            content.push({ text: `Outcome: ${outcomeText}`, style: 'subheader', margin: [0, 0, 0, 15] });
+
+            content.push({
+                table: {
+                    widths: ['*', '*'],
+                    body: [
+                        [{ text: 'Job Number', bold: true }, safeJobNumber],
+                        [{ text: 'Postcode', bold: true }, currentJob.postcode || ''],
+                        [{ text: 'Engineer', bold: true }, currentJob.engineer || ''],
+                        [{ text: 'Job Type', bold: true }, currentJob.jobType || ''],
+                        [{ text: 'Audit Status', bold: true }, currentJob.auditStatus || '']
+                    ]
+                },
+                margin: [0, 0, 0, 20]
+            });
+
+            if (!currentJob.auditChecklistData) {
+                content.push({ text: 'No audit data saved for this job. Please save the form first.', margin: [0, 10, 0, 10], italics: true });
+            } else {
+                let qNum = 1;
+                for (const q of auditQuestionsData) {
+                    if (q.isHeader) {
+                        content.push({ text: q.text, style: 'sectionHeader', margin: [0, 15, 0, 8] });
+                        continue;
+                    }
+
+                    const savedData = currentJob.auditChecklistData[q.id];
+                    if (savedData && savedData.answer) {
+                        content.push({ text: `${qNum}. ${q.text}`, bold: true, margin: [0, 10, 0, 2] });
+                        content.push({ text: `Answer: ${savedData.answer}`, margin: [0, 0, 0, 5], color: '#333333' });
+
+                        if (savedData.notes) {
+                            content.push({ text: `Auditor Notes: ${savedData.notes}`, margin: [0, 0, 0, 5], italics: true, color: '#555555' });
+                        }
+
+                        if (savedData.codesSelected && savedData.codesSelected.length > 0) {
+                            content.push({ text: 'Selected Codes:', bold: true, fontSize: 10, margin: [0, 0, 0, 2] });
+                            content.push({
+                                ul: savedData.codesSelected.map(code => ({ text: code, fontSize: 10, color: '#d9534f' })),
+                                margin: [0, 0, 0, 5]
+                            });
+                        }
+
+                        if (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0) {
+                            content.push({ text: 'Attached Evidence:', bold: true, fontSize: 10, margin: [0, 5, 0, 2] });
+                            
+                            const imageColumns = [];
+                            for (const photoUrl of savedData.uploadedPhotos) {
+                                const base64 = await getBase64ImageFromUrl(photoUrl);
+                                if (base64) {
+                                    imageColumns.push({
+                                        image: base64,
+                                        width: 200,
+                                        margin: [0, 0, 10, 10]
+                                    });
+                                }
+                            }
+                            
+                            if (imageColumns.length > 0) {
+                                for (let i = 0; i < imageColumns.length; i += 2) {
+                                    content.push({
+                                        columns: imageColumns.slice(i, i + 2),
+                                        margin: [0, 0, 0, 5]
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    qNum++;
+                }
+            }
+
+            const engPhotos = currentJob.engineerPhotos || [];
+            if (engPhotos.length > 0) {
+                content.push({ text: 'Engineer Submitted Photos', style: 'sectionHeader', margin: [0, 20, 0, 10], pageBreak: 'before' });
+                
+                const engImageColumns = [];
+                for (const photoUrl of engPhotos) {
+                    const base64 = await getBase64ImageFromUrl(photoUrl);
+                    if (base64) {
+                        engImageColumns.push({
+                            image: base64,
+                            width: 200,
+                            margin: [0, 0, 10, 10]
+                        });
+                    }
+                }
+                
+                if (engImageColumns.length > 0) {
+                    for (let i = 0; i < engImageColumns.length; i += 2) {
+                        content.push({
+                            columns: engImageColumns.slice(i, i + 2),
+                            margin: [0, 0, 0, 5]
+                        });
+                    }
+                }
+            }
+
+            const styles = {
+                header: { fontSize: 20, bold: true, color: '#FF6B35' },
+                subheader: { fontSize: 14, bold: true, color: '#333333' },
+                sectionHeader: { fontSize: 16, bold: true, color: '#222222', decoration: 'underline' }
             };
 
-            if (typeof showToast === 'function') showToast('Generating PDF... Please wait', 'success');
-            
-            html2pdf().set(opt).from(element).save().then(() => {
-                hiddenElements.forEach(item => {
-                    item.el.style.display = item.origDisplay;
-                });
-                originalStyles.forEach(item => {
-                    item.el.style.height = item.height;
-                    item.el.style.overflow = item.overflow;
-                });
-                if (modalContent) {
-                    modalContent.style.overflow = origOverflow;
-                    modalContent.style.maxHeight = origMaxHeight;
+            const docDefinition = {
+                content: content,
+                styles: styles,
+                defaultStyle: {
+                    fontSize: 11
                 }
-                element.style.width = origWidth;
-                if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
-            }).catch(err => {
-                console.error('PDF Generation Error:', err);
-                if (typeof showToast === 'function') showToast('Error generating PDF', 'error');
-                hiddenElements.forEach(item => {
-                    item.el.style.display = item.origDisplay;
-                });
-                originalStyles.forEach(item => {
-                    item.el.style.height = item.height;
-                    item.el.style.overflow = item.overflow;
-                });
-                if (modalContent) {
-                    modalContent.style.overflow = origOverflow;
-                    modalContent.style.maxHeight = origMaxHeight;
-                }
-                element.style.width = origWidth;
-            });
+            };
+
+            pdfMake.createPdf(docDefinition).download(`${jobNumText} - Job Audit.pdf`);
+            if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
         }
     </script>
 </body>
