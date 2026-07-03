@@ -413,16 +413,7 @@
         <div class="filters-card">
             <h2>🔎 Search &amp; Filter</h2>
 
-            <div class="scheduler-bar">
-                <div class="scheduler-bar-info">
-                    <div class="scheduler-bar-label">📧 Email Scheduler Status</div>
-                    <div class="scheduler-bar-status" id="email-scheduler-status">Inactive</div>
-                </div>
-                <div class="scheduler-bar-btns">
-                    <button class="btn btn-primary" onclick="startEmailScheduler()" id="start-scheduler-btn" style="padding: 0.6rem 1rem; font-size: 0.85rem;">▶️ Start Scheduler</button>
-                    <button class="btn btn-secondary" onclick="stopEmailScheduler()" id="stop-scheduler-btn" disabled style="padding: 0.6rem 1rem; font-size: 0.85rem;">⏸️ Stop</button>
-                </div>
-            </div>
+
 
             <div class="filters-grid">
                 <div class="filter-group">
@@ -2303,12 +2294,22 @@
                 ta.style.overflow = 'hidden';
             });
             
+            const modalContent = element.closest('.modal-content');
+            const origOverflow = modalContent ? modalContent.style.overflow : '';
+            const origMaxHeight = modalContent ? modalContent.style.maxHeight : '';
+            if (modalContent) {
+                modalContent.style.overflow = 'visible';
+                modalContent.style.maxHeight = 'none';
+            }
+            const origWidth = element.style.width;
+            element.style.width = '800px';
+            
             const jobNumText = document.getElementById('modal-job-number').innerText.trim() || 'Job';
             const opt = {
                 margin:       [0.5, 0.5, 0.5, 0.5],
                 filename:     `${jobNumText} - Job Audit.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, windowWidth: element.scrollWidth },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
                 jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
             };
 
@@ -2322,6 +2323,11 @@
                     item.el.style.height = item.height;
                     item.el.style.overflow = item.overflow;
                 });
+                if (modalContent) {
+                    modalContent.style.overflow = origOverflow;
+                    modalContent.style.maxHeight = origMaxHeight;
+                }
+                element.style.width = origWidth;
                 if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
             }).catch(err => {
                 console.error('PDF Generation Error:', err);
@@ -2333,6 +2339,11 @@
                     item.el.style.height = item.height;
                     item.el.style.overflow = item.overflow;
                 });
+                if (modalContent) {
+                    modalContent.style.overflow = origOverflow;
+                    modalContent.style.maxHeight = origMaxHeight;
+                }
+                element.style.width = origWidth;
             });
         }
     </script>
