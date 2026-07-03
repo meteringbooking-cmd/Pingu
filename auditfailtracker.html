@@ -1612,7 +1612,7 @@
                     objects: [
                         { rect: { x: 0, y: 0, w: '100%', h: 0.8, fill: { color: cardBg } } },
                         { text: { text: 'Fail Code Analysis Dashboard', options: { x: 0.5, y: 0.15, w: 5, h: 0.5, color: accentLight, fontSize: 16, fontFace: 'Inter', bold: true } } },
-                        { text: { text: new Date().toLocaleDateString('en-GB'), options: { x: 8.5, y: 0.15, w: 1, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
+                        { text: { text: new Date().toLocaleDateString('en-GB'), options: { x: 7.0, y: 0.15, w: 2.5, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
                     ]
                 });
                 
@@ -1621,7 +1621,7 @@
                 slide1.addShape(pres.ShapeType.ellipse, { x: -1, y: 1, w: 4, h: 4, fill: { color: '7877C6' }, transparency: 70 });
                 slide1.addShape(pres.ShapeType.ellipse, { x: 7, y: 3, w: 5, h: 5, fill: { color: '4A56E2' }, transparency: 70 });
                 
-                slide1.addText('📊 Fail Code Analysis', {
+                slide1.addText('Fail Code Analysis', {
                     x: 1, y: 2.2, w: 8, h: 1, 
                     fontSize: 48, color: accentLight, bold: true, align: 'center', fontFace: 'Inter'
                 });
@@ -1717,28 +1717,123 @@
                     slide3.addText('No fail codes match current filters.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
                 }
 
-                let slide4 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
-                slide4.addText('Top Performers by Severity', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
-                
+                // Compute Top 10 Performers Data for Individual Slides + Overall
                 const performerData = {};
                 filteredData.forEach(row => {
                     const name = row['Team'] || 'Unknown';
-                    if (!performerData[name]) performerData[name] = { total: 0, red: 0, amber: 0, purple: 0, green: 0 };
+                    if (!performerData[name]) {
+                        performerData[name] = { 
+                            totalIncidents: 0, 
+                            totalCodes: 0, 
+                            red: 0, amber: 0, purple: 0, green: 0,
+                            revisitsReq: 0, revisitsComp: 0,
+                            codeCounts: {}
+                        };
+                    }
+                    
+                    performerData[name].totalIncidents++;
+                    
+                    if (row['Revisit required?'] && row['Revisit required?'].toLowerCase() === 'yes') {
+                        performerData[name].revisitsReq++;
+                    }
+                    if (row['Revisit completed'] && row['Revisit completed'].toLowerCase() === 'yes') {
+                        performerData[name].revisitsComp++;
+                    }
+                    
                     for (let i = 1; i <= 12; i++) {
                         const code = row[`Fail Code ${i}`];
                         if (code && selectedCodes.has(code)) {
-                            performerData[name].total++;
+                            performerData[name].totalCodes++;
                             const color = FAIL_CODE_COLORS[code] || 'purple';
                             performerData[name][color]++;
+                            performerData[name].codeCounts[code] = (performerData[name].codeCounts[code] || 0) + 1;
                         }
                     }
                 });
                 
                 const sortedPerformers = Object.entries(performerData)
-                    .filter(([name, data]) => data.total > 0)
-                    .sort((a, b) => b[1].total - a[1].total)
-                    .slice(0, 8);
+                    .filter(([name, data]) => data.totalCodes > 0)
+                    .sort((a, b) => b[1].totalCodes - a[1].totalCodes)
+                    .slice(0, 10);
                     
+                // Generate Individual Slides for Top 10
+                sortedPerformers.forEach(([teamName, tData]) => {
+                    let slide = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                    slide.addText(`Team Analysis: ${teamName}`, { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 28, color: textWhite, bold: true, fontFace: 'Inter' });
+                    
+                    // Stats boxes for the team
+                    slide.addShape(pres.ShapeType.roundRect, { x: 0.5, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Total Fail Codes', { x: 0.5, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.totalCodes), { x: 0.5, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+                    
+                    slide.addShape(pres.ShapeType.roundRect, { x: 2.9, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Incidents with Fails', { x: 2.9, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.totalIncidents), { x: 2.9, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+                    
+                    slide.addShape(pres.ShapeType.roundRect, { x: 5.3, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Revisits Required', { x: 5.3, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.revisitsReq), { x: 5.3, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+
+                    // Severity breakdown chart (donut)
+                    const donutLabels = [];
+                    const donutValues = [];
+                    const donutColors = [];
+                    if (tData.red > 0) { donutLabels.push('Red'); donutValues.push(tData.red); donutColors.push('FF4757'); }
+                    if (tData.amber > 0) { donutLabels.push('Amber'); donutValues.push(tData.amber); donutColors.push('FFA502'); }
+                    if (tData.purple > 0) { donutLabels.push('Purple'); donutValues.push(tData.purple); donutColors.push('A29BFE'); }
+                    if (tData.green > 0) { donutLabels.push('Green'); donutValues.push(tData.green); donutColors.push('2ECC71'); }
+                    
+                    if (donutValues.length > 0) {
+                        slide.addChart(pres.ChartType.doughnut, [{
+                            name: 'Severity',
+                            labels: donutLabels,
+                            values: donutValues
+                        }], {
+                            x: 0.5, y: 2.9, w: 3, h: 2.5,
+                            showLegend: true, legendPos: 'b', legendColor: textWhite, legendFontSize: 10,
+                            chartColors: donutColors,
+                            dataLabelColor: textWhite,
+                            showValue: true,
+                            holeSize: 50
+                        });
+                    }
+
+                    // Table for top fail codes
+                    const tCodes = Object.entries(tData.codeCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5);
+                        
+                    if (tCodes.length > 0) {
+                        const tableRows = [
+                            [
+                                { text: 'Code', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } },
+                                { text: 'Count', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } },
+                                { text: 'Description', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } }
+                            ]
+                        ];
+                        
+                        tCodes.forEach(([code, count]) => {
+                            tableRows.push([
+                                { text: code, options: { color: textWhite, border: { pt: 1, color: '333355' } } },
+                                { text: String(count), options: { color: textWhite, border: { pt: 1, color: '333355' } } },
+                                { text: FAIL_CODE_DESCRIPTIONS[code] || 'No description available', options: { color: 'AAAAAA', border: { pt: 1, color: '333355' } } }
+                            ]);
+                        });
+                        
+                        slide.addTable(tableRows, {
+                            x: 3.8, y: 2.9, w: 5.7, colW: [0.8, 0.7, 4.2],
+                            fill: { color: cardBg },
+                            fontSize: 10,
+                            fontFace: 'Inter',
+                            border: { pt: 1, color: '333355' }
+                        });
+                    }
+                });
+
+                // Overall Top 10 Slide
+                let slideOverall = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slideOverall.addText('Overall Top Performers by Severity', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
                 if (sortedPerformers.length > 0) {
                     const pLabels = sortedPerformers.map(p => p[0]);
                     const redData = sortedPerformers.map(p => p[1].red);
@@ -1746,7 +1841,7 @@
                     const purpleData = sortedPerformers.map(p => p[1].purple);
                     const greenData = sortedPerformers.map(p => p[1].green);
 
-                    slide4.addChart(pres.ChartType.bar, [
+                    slideOverall.addChart(pres.ChartType.bar, [
                         { name: 'Red Codes', labels: pLabels, values: redData },
                         { name: 'Amber Codes', labels: pLabels, values: amberData },
                         { name: 'Purple Codes', labels: pLabels, values: purpleData },
@@ -1768,7 +1863,7 @@
                         valGridLine: { color: '333355', style: 'dash' }
                     });
                 } else {
-                    slide4.addText('No data for teams.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
+                    slideOverall.addText('No data for teams.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
                 }
 
                 await pres.writeFile({ fileName: 'FailCodeAnalysis_Report.pptx' });
