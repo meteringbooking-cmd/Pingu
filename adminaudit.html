@@ -395,6 +395,7 @@
             <div class="header-content">
                 <a href="index.html" class="logo">Pingu - Solar</a>
                 <div class="header-actions">
+                    <button class="btn btn-primary" onclick="openExportModal()" style="padding: 0.7rem 1.2rem; font-size: 0.85rem; margin-right: 0.5rem;">📊 Export Report</button>
                     <button class="survey-toggle-btn" id="survey-toggle-btn" onclick="toggleSurveyMode()">
                         <span class="toggle-dot"></span>
                         🔭 Show Solar Surveys Only
@@ -506,6 +507,26 @@
 
         <div class="jobs-grid" id="jobs-grid">
             <div class="loading">Loading jobs from Firebase...</div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 class="modal-title">Export KPI Report</h2>
+                <button class="close-btn" onclick="closeExportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-dim); margin-bottom: 1rem;">Select a Week Commencing date. The report will include 7 days of data starting from this Monday.</p>
+                <div class="filter-group">
+                    <label class="filter-label">Week Commencing (Monday)</label>
+                    <input type="date" id="export-wc-date" class="filter-input" onchange="snapToMonday(this)">
+                </div>
+                <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                    <button class="btn btn-primary" onclick="generateExportCSV()">Generate Spreadsheet</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2457,6 +2478,178 @@
             pdfMake.createPdf(docDefinition).download(`${jobNumText} - Job Audit.pdf`);
             if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
         }
+
+        function openExportModal() {
+            const modal = document.getElementById('export-modal');
+            const dateInput = document.getElementById('export-wc-date');
+            
+            const today = new Date();
+            const day = today.getDay();
+            const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+            const thisMonday = new Date(today.setDate(diffToMonday));
+            const lastMonday = new Date(thisMonday);
+            lastMonday.setDate(lastMonday.getDate() - 7);
+            
+            // Format to YYYY-MM-DD local time
+            const offset = lastMonday.getTimezoneOffset();
+            const localLastMonday = new Date(lastMonday.getTime() - (offset*60*1000));
+            dateInput.value = localLastMonday.toISOString().split('T')[0];
+            
+            modal.classList.add('show');
+        }
+
+        function closeExportModal() {
+            document.getElementById('export-modal').classList.remove('show');
+        }
+
+        function snapToMonday(input) {
+            if (!input.value) return;
+            const date = new Date(input.value);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            date.setDate(diff);
+            
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset*60*1000));
+            input.value = localDate.toISOString().split('T')[0];
+        }
+
+        function generateExportCSV() {
+            const dateInput = document.getElementById('export-wc-date').value;
+            if (!dateInput) {
+                if (typeof showToast === 'function') showToast('Please select a date', 'error');
+                return;
+            }
+
+            const wcStart = new Date(dateInput);
+            wcStart.setHours(0, 0, 0, 0);
+            
+            const wcEnd = new Date(wcStart);
+            wcEnd.setDate(wcEnd.getDate() + 6);
+            wcEnd.setHours(23, 59, 59, 999);
+
+            let installsCompleted = 0;
+            let auditsCompleted = 0;
+            let passCount = 0;
+            let pncCount = 0;
+            let cat1 = 0;
+            let cat2 = 0;
+            let cat3 = 0;
+            let cat4 = 0;
+
+            allJobs.forEach(job => {
+                // Installs completed logic
+                if (job.status === 'complete' && job.jobType) {
+                    const jt = job.jobType.toLowerCase();
+                    if (jt.includes('solar') || jt.includes('battery')) {
+                        if (job.completionDate) {
+                            const compDate = new Date(job.completionDate);
+                            if (compDate >= wcStart && compDate <= wcEnd) {
+                                installsCompleted++;
+                            }
+                        }
+                    }
+                }
+
+                // Audits logic
+                if (job.auditStatus && job.auditStatus !== 'pending') {
+                    if (job.auditDate) {
+                        const audDate = new Date(job.auditDate);
+                        if (audDate >= wcStart && audDate <= wcEnd) {
+                            auditsCompleted++;
+                            
+                            if (job.auditStatus === 'pass' || job.auditStatus === 'no issue') {
+                                passCount++;
+                            } else if (job.auditStatus === 'complete-with-issues' || job.auditStatus === 'PNC') {
+                                pncCount++;
+                            }
+
+                            // Count CATs for this audited job
+                            if (job.auditChecklistData) {
+                                Object.values(job.auditChecklistData).forEach(qData => {
+                                    if (qData.codesSelected) {
+                                        qData.codesSelected.forEach(code => {
+                                            if (code.startsWith('CAT 1')) cat1++;
+                                            if (code.startsWith('CAT 2')) cat2++;
+                                            if (code.startsWith('CAT 3')) cat3++;
+                                            if (code.startsWith('CAT 4')) cat4++;
+                                        });
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Calculate KPIs
+            const totalPass = passCount + pncCount;
+            const totalCat = cat1 + cat2 + cat3 + cat4;
+            
+            const auditsOverInstalls = installsCompleted > 0 ? (auditsCompleted / installsCompleted) : 0;
+            const passPercent = auditsCompleted > 0 ? (passCount / auditsCompleted) : 0;
+            const pncPercent = auditsCompleted > 0 ? (pncCount / auditsCompleted) : 0;
+            const totalPassPercent = auditsCompleted > 0 ? (totalPass / auditsCompleted) : 0;
+            const totalFailPercent = auditsCompleted > 0 ? ((auditsCompleted - totalPass) / auditsCompleted) : 0;
+
+            const formatPercent = (val) => `${(val * 100).toFixed(1)}%`;
+
+            // Build CSV rows
+            const headers = [
+                "WC date", "Installs Completed", "Audits Completed", "Non Intrusive Post Complete",
+                "Intrusive Post Complete", "WIP", "DPC", "Pass", "PNC", "Policy Fails", "Safety fails",
+                "Combined passes", "Combined fails", "CAT 1", "CAT 2", "CAT 3", "CAT 4", "Total CAT",
+                "Audits/Install %", "Pass %", "PNC %", "PF %", "SF %", "Total Pass %", "Total Fail %", "CAT per Aduit %"
+            ];
+
+            const rowData = [
+                wcStart.toLocaleDateString('en-GB'),
+                installsCompleted,
+                auditsCompleted,
+                "", // D
+                "", // E
+                "", // F
+                "", // G
+                passCount, // H
+                pncCount, // I
+                "", // J
+                "", // K
+                totalPass, // L
+                "", // M
+                cat1, // N
+                cat2, // O
+                cat3, // P
+                cat4, // Q
+                totalCat, // R
+                formatPercent(auditsOverInstalls), // S
+                formatPercent(passPercent), // T
+                formatPercent(pncPercent), // U
+                "", // V
+                "", // W
+                formatPercent(totalPassPercent), // X
+                formatPercent(totalFailPercent), // Y
+                ""  // Z
+            ];
+
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n"
+                + rowData.join(",");
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Pingu_Weekly_Report_${dateInput}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            closeExportModal();
+            if (typeof showToast === 'function') showToast('Spreadsheet downloaded successfully!', 'success');
+        }
+
+        document.getElementById('export-modal').addEventListener('click', e => {
+            if (e.target.id === 'export-modal') closeExportModal();
+        });
     </script>
 </body>
 </html>
