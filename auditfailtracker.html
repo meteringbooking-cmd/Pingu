@@ -1612,7 +1612,7 @@
                     objects: [
                         { rect: { x: 0, y: 0, w: '100%', h: 0.8, fill: { color: cardBg } } },
                         { text: { text: 'Fail Code Analysis Dashboard', options: { x: 0.5, y: 0.15, w: 5, h: 0.5, color: accentLight, fontSize: 16, fontFace: 'Inter', bold: true } } },
-                        { text: { text: new Date().toLocaleDateString(), options: { x: 8.5, y: 0.15, w: 1, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
+                        { text: { text: new Date().toLocaleDateString('en-GB'), options: { x: 8.5, y: 0.15, w: 1, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
                     ]
                 });
                 
@@ -1626,9 +1626,15 @@
                     fontSize: 48, color: accentLight, bold: true, align: 'center', fontFace: 'Inter'
                 });
                 
+                const formatUKDate = (dateStr) => {
+                    if (!dateStr) return '';
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('en-GB');
+                };
+                
                 const startDate = document.getElementById('startDate').value;
                 const endDate = document.getElementById('endDate').value;
-                const dateStr = startDate && endDate ? `${startDate} to ${endDate}` : 'All Time Data';
+                const dateStr = startDate && endDate ? `${formatUKDate(startDate)} to ${formatUKDate(endDate)}` : 'All Time Data';
                 
                 slide1.addText(`Date Range: ${dateStr}`, {
                     x: 1, y: 3.2, w: 8, h: 0.5,
@@ -1656,18 +1662,18 @@
                 slide2.addText('Executive Summary', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
                 
                 const addStatBox = (slide, title, value, subtext, x) => {
-                    slide.addShape(pres.ShapeType.roundRect, { x, y: 2, w: 2.2, h: 2, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
-                    slide.addText(title, { x, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: 'AAAAAA', fontSize: 14, fontFace: 'Inter' });
-                    slide.addText(value, { x, y: 2.6, w: 2.2, h: 0.8, align: 'center', color: accentLight, fontSize: 40, bold: true, fontFace: 'Inter' });
+                    slide.addShape(pres.ShapeType.roundRect, { x, y: 2.1, w: 2.1, h: 1.8, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText(title, { x, y: 2.3, w: 2.1, h: 0.4, align: 'center', color: 'AAAAAA', fontSize: 13, fontFace: 'Inter' });
+                    slide.addText(value, { x, y: 2.7, w: 2.1, h: 0.7, align: 'center', color: accentLight, fontSize: 36, bold: true, fontFace: 'Inter' });
                     if (subtext) {
-                        slide.addText(subtext, { x, y: 3.4, w: 2.2, h: 0.3, align: 'center', color: '888888', fontSize: 11, fontFace: 'Inter' });
+                        slide.addText(subtext, { x, y: 3.4, w: 2.1, h: 0.3, align: 'center', color: '888888', fontSize: 10, fontFace: 'Inter' });
                     }
                 };
 
                 addStatBox(slide2, 'Total Incidents', String(totalIncidents), '', 0.5);
-                addStatBox(slide2, 'Total Fail Codes', String(totalFailCodes), '', 2.9);
-                addStatBox(slide2, 'Teams Involved', String(uniqueTeams), '', 5.3);
-                addStatBox(slide2, 'Revisits', `${revisitsCompleted}/${revisitsRequired}`, 'Completed / Required', 7.7);
+                addStatBox(slide2, 'Total Fail Codes', String(totalFailCodes), '', 2.8);
+                addStatBox(slide2, 'Teams Involved', String(uniqueTeams), '', 5.1);
+                addStatBox(slide2, 'Revisits', `${revisitsCompleted}/${revisitsRequired}`, 'Completed / Required', 7.4);
 
                 let slide3 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
                 slide3.addText('Top Fail Codes Frequency', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
@@ -1712,40 +1718,53 @@
                 }
 
                 let slide4 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
-                slide4.addText('Top Performers by Fail Codes', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                slide4.addText('Top Performers by Severity', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
                 
                 const performerData = {};
                 filteredData.forEach(row => {
                     const name = row['Team'] || 'Unknown';
-                    if (!performerData[name]) performerData[name] = 0;
+                    if (!performerData[name]) performerData[name] = { total: 0, red: 0, amber: 0, purple: 0, green: 0 };
                     for (let i = 1; i <= 12; i++) {
                         const code = row[`Fail Code ${i}`];
                         if (code && selectedCodes.has(code)) {
-                            performerData[name]++;
+                            performerData[name].total++;
+                            const color = FAIL_CODE_COLORS[code] || 'purple';
+                            performerData[name][color]++;
                         }
                     }
                 });
                 
                 const sortedPerformers = Object.entries(performerData)
-                    .filter(([name, count]) => count > 0)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 10);
+                    .filter(([name, data]) => data.total > 0)
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 8);
                     
                 if (sortedPerformers.length > 0) {
-                    slide4.addChart(pres.ChartType.bar, [{
-                        name: 'Fail Codes',
-                        labels: sortedPerformers.map(p => p[0]),
-                        values: sortedPerformers.map(p => p[1])
-                    }], {
+                    const pLabels = sortedPerformers.map(p => p[0]);
+                    const redData = sortedPerformers.map(p => p[1].red);
+                    const amberData = sortedPerformers.map(p => p[1].amber);
+                    const purpleData = sortedPerformers.map(p => p[1].purple);
+                    const greenData = sortedPerformers.map(p => p[1].green);
+
+                    slide4.addChart(pres.ChartType.bar, [
+                        { name: 'Red Codes', labels: pLabels, values: redData },
+                        { name: 'Amber Codes', labels: pLabels, values: amberData },
+                        { name: 'Purple Codes', labels: pLabels, values: purpleData },
+                        { name: 'Green Codes', labels: pLabels, values: greenData }
+                    ], {
                         x: 0.5, y: 1.8, w: 9, h: 3.5,
-                        barDir: 'bar',
-                        chartColors: ['764BA2'],
+                        barDir: 'col',
+                        barGrouping: 'stacked',
+                        chartColors: ['FF4757', 'FFA502', 'A29BFE', '2ECC71'],
                         valAxisLabelColor: textWhite,
                         valAxisLabelFontSize: 12,
                         catAxisLabelColor: accentLight,
                         catAxisLabelFontSize: 12,
                         showValue: true,
                         dataLabelColor: textWhite,
+                        showLegend: true,
+                        legendPos: 'b',
+                        legendColor: textWhite,
                         valGridLine: { color: '333355', style: 'dash' }
                     });
                 } else {
