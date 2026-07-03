@@ -2316,53 +2316,61 @@
             
             const content = [];
 
-            content.push({ text: 'Pingu - Audit', style: 'mainHeader', margin: [0, 0, 0, 5] });
-            content.push({ text: `Job Audit Report - #${safeJobNumber}`, style: 'header' });
-            content.push({ text: `Outcome: ${outcomeText}`, style: 'subheader', margin: [0, 0, 0, 15] });
+            content.push({ text: 'PINGU SOLAR', style: 'superHeader', margin: [0, 0, 0, 5] });
+            content.push({ text: `Audit Report - #${safeJobNumber}`, style: 'mainHeader', margin: [0, 0, 0, 15] });
 
             content.push({
                 table: {
                     widths: ['*', '*'],
                     body: [
-                        [{ text: 'Job Number', bold: true }, safeJobNumber],
-                        [{ text: 'Postcode', bold: true }, currentJob.postcode || ''],
-                        [{ text: 'Engineer', bold: true }, currentJob.engineer || ''],
-                        [{ text: 'Job Type', bold: true }, currentJob.jobType || ''],
-                        [{ text: 'Audit Status', bold: true }, currentJob.auditStatus || '']
+                        [{ text: 'Job Details', colSpan: 2, style: 'tableHeader', alignment: 'center' }, {}],
+                        [{ text: 'Job Number', bold: true, color: '#444' }, safeJobNumber],
+                        [{ text: 'Postcode', bold: true, color: '#444' }, currentJob.postcode || ''],
+                        [{ text: 'Engineer', bold: true, color: '#444' }, currentJob.engineer || ''],
+                        [{ text: 'Job Type', bold: true, color: '#444' }, currentJob.jobType || ''],
+                        [{ text: 'Audit Status', bold: true, color: '#444' }, currentJob.auditStatus || ''],
+                        [{ text: 'Outcome', bold: true, color: '#444' }, { text: outcomeText, bold: true, color: outcomeText.includes('Fail') ? '#d9534f' : '#28a745' }]
                     ]
                 },
-                margin: [0, 0, 0, 20]
+                layout: {
+                    hLineWidth: function (i, node) { return (i === 0 || i === node.table.body.length) ? 2 : 1; },
+                    vLineWidth: function (i, node) { return (i === 0 || i === node.table.widths.length) ? 2 : 1; },
+                    hLineColor: function (i, node) { return '#e0e0e0'; },
+                    vLineColor: function (i, node) { return '#e0e0e0'; },
+                    fillColor: function (rowIndex) { return (rowIndex === 0) ? '#FF6B35' : (rowIndex % 2 === 0 ? '#fcfcfc' : null); }
+                },
+                margin: [0, 0, 0, 25]
             });
 
             if (!currentJob.auditChecklistData) {
-                content.push({ text: 'No audit data saved for this job. Please save the form first.', margin: [0, 10, 0, 10], italics: true });
+                content.push({ text: 'No audit data saved for this job. Please save the form first.', margin: [0, 10, 0, 10], italics: true, alignment: 'center', color: '#999' });
             } else {
                 let qNum = 1;
                 for (const q of auditQuestionsData) {
                     if (q.isHeader) {
-                        content.push({ text: q.text, style: 'sectionHeader', margin: [0, 15, 0, 8] });
+                        content.push({ text: q.text.toUpperCase(), style: 'sectionHeader', margin: [0, 20, 0, 10] });
                         continue;
                     }
 
                     const savedData = currentJob.auditChecklistData[q.id];
                     if (savedData && savedData.answer) {
-                        content.push({ text: `${qNum}. ${q.text}`, bold: true, margin: [0, 10, 0, 2] });
-                        content.push({ text: `Answer: ${savedData.answer}`, margin: [0, 0, 0, 5], color: '#333333' });
+                        content.push({ text: `${qNum}. ${q.text}`, style: 'questionText' });
+                        content.push({ text: `Answer: ${savedData.answer}`, style: 'answerText' });
 
                         if (savedData.notes) {
-                            content.push({ text: `Auditor Notes: ${savedData.notes}`, margin: [0, 0, 0, 5], italics: true, color: '#555555' });
+                            content.push({ text: `Auditor Notes:\n${savedData.notes}`, style: 'notesText' });
                         }
 
                         if (savedData.codesSelected && savedData.codesSelected.length > 0) {
-                            content.push({ text: 'Selected Codes:', bold: true, fontSize: 10, margin: [0, 0, 0, 2] });
+                            content.push({ text: 'Selected Codes:', style: 'codesHeader' });
                             content.push({
-                                ul: savedData.codesSelected.map(code => ({ text: code, fontSize: 10, color: '#d9534f' })),
-                                margin: [0, 0, 0, 5]
+                                ul: savedData.codesSelected.map(code => ({ text: code, fontSize: 9, color: '#d9534f' })),
+                                margin: [15, 0, 0, 8]
                             });
                         }
 
                         if (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0) {
-                            content.push({ text: 'Attached Evidence:', bold: true, fontSize: 10, margin: [0, 5, 0, 2] });
+                            content.push({ text: 'Attached Evidence:', style: 'codesHeader' });
                             
                             const imageColumns = [];
                             for (const photoUrl of savedData.uploadedPhotos) {
@@ -2370,21 +2378,23 @@
                                 if (base64) {
                                     imageColumns.push({
                                         image: base64,
-                                        width: 120,
+                                        width: 140,
                                         margin: [0, 0, 10, 10]
                                     });
                                 }
                             }
                             
                             if (imageColumns.length > 0) {
-                                for (let i = 0; i < imageColumns.length; i += 2) {
+                                for (let i = 0; i < imageColumns.length; i += 3) {
                                     content.push({
-                                        columns: imageColumns.slice(i, i + 2),
-                                        margin: [0, 0, 0, 5]
+                                        columns: imageColumns.slice(i, i + 3),
+                                        margin: [15, 0, 0, 5]
                                     });
                                 }
                             }
                         }
+                        
+                        content.push({ canvas: [{ type: 'line', x1: 0, y1: 0, x2: 515, y2: 0, lineWidth: 0.5, lineColor: '#eeeeee' }], margin: [0, 10, 0, 15] });
                     }
                     qNum++;
                 }
@@ -2392,7 +2402,7 @@
 
             const engPhotos = currentJob.engineerPhotos || [];
             if (engPhotos.length > 0) {
-                content.push({ text: 'Engineer Submitted Photos', style: 'sectionHeader', margin: [0, 20, 0, 10], pageBreak: 'before' });
+                content.push({ text: 'ENGINEER SUBMITTED PHOTOS', style: 'sectionHeader', margin: [0, 20, 0, 15], pageBreak: 'before' });
                 
                 const engImageColumns = [];
                 for (const photoUrl of engPhotos) {
@@ -2400,16 +2410,16 @@
                     if (base64) {
                         engImageColumns.push({
                             image: base64,
-                            width: 120,
+                            width: 160,
                             margin: [0, 0, 10, 10]
                         });
                     }
                 }
                 
                 if (engImageColumns.length > 0) {
-                    for (let i = 0; i < engImageColumns.length; i += 2) {
+                    for (let i = 0; i < engImageColumns.length; i += 3) {
                         content.push({
-                            columns: engImageColumns.slice(i, i + 2),
+                            columns: engImageColumns.slice(i, i + 3),
                             margin: [0, 0, 0, 5]
                         });
                     }
@@ -2417,17 +2427,30 @@
             }
 
             const styles = {
-                mainHeader: { fontSize: 28, bold: true, color: '#FF6B35', alignment: 'center' },
-                header: { fontSize: 18, bold: true, color: '#222222' },
-                subheader: { fontSize: 14, bold: true, color: '#555555' },
-                sectionHeader: { fontSize: 16, bold: true, color: '#222222', decoration: 'underline' }
+                superHeader: { fontSize: 26, bold: true, color: '#FF6B35', alignment: 'center', characterSpacing: 1 },
+                mainHeader: { fontSize: 16, color: '#555555', alignment: 'center', marginBottom: 20 },
+                tableHeader: { fontSize: 13, bold: true, color: '#ffffff', margin: [0, 4, 0, 4] },
+                sectionHeader: { fontSize: 14, bold: true, color: '#FF6B35', margin: [0, 15, 0, 8], characterSpacing: 1 },
+                questionText: { fontSize: 11, bold: true, color: '#222', margin: [0, 0, 0, 4] },
+                answerText: { fontSize: 10, bold: true, color: '#0066cc', margin: [15, 0, 0, 6] },
+                notesText: { fontSize: 9.5, italics: true, color: '#666', margin: [15, 0, 0, 8] },
+                codesHeader: { fontSize: 9.5, bold: true, color: '#444', margin: [15, 0, 0, 2] }
             };
 
             const docDefinition = {
                 content: content,
                 styles: styles,
+                footer: function(currentPage, pageCount) {
+                    return {
+                        columns: [
+                            { text: 'Pingu Solar - Job Audit Report', alignment: 'left', color: '#999', margin: [40, 10, 0, 0], fontSize: 8 },
+                            { text: `Page ${currentPage.toString()} of ${pageCount}`, alignment: 'right', color: '#999', margin: [0, 10, 40, 0], fontSize: 8 }
+                        ]
+                    };
+                },
                 defaultStyle: {
-                    fontSize: 11
+                    fontSize: 10,
+                    lineHeight: 1.3
                 }
             };
 
