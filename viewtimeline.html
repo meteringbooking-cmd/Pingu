@@ -308,6 +308,11 @@
             color: var(--success);
         }
 
+        .reason-btn { text-align: left; padding: 0.6rem 1rem; width: 100%; }
+        .reason-sections-container::-webkit-scrollbar { width: 6px; }
+        .reason-sections-container::-webkit-scrollbar-track { background: var(--dark); }
+        .reason-sections-container::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
         @media (max-width: 768px) {
             .container { padding: 1rem; }
             .timeline-wrapper { min-width: 800px; }
@@ -427,6 +432,65 @@
                     </div>
                 </div>
 
+                <div class="completion-selector" id="reason-selector" style="display: none;">
+                    <div class="completion-title" id="reason-selector-title">Select Reason</div>
+                    <div class="reason-sections-container" style="display: grid; grid-template-columns: 1fr; gap: 1rem; max-height: 350px; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem;">
+                        <!-- Scaffold -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Scaffold</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('S1 - Not Erected')">S1 - Not Erected</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('S2 Needs Modified/ Altered')">S2 - Needs Modified/ Altered</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('S3 New Scaff tag signed as out of date')">S3 - New Scaff tag signed as out of date</button>
+                            </div>
+                        </div>
+                        <!-- Delivery -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Delivery</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('D1 - Wrong Delivery')">D1 - Wrong Delivery</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('D2 Late Delivery')">D2 - Late Delivery</button>
+                            </div>
+                        </div>
+                        <!-- Customer -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Customer</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('C1 Cancelled')">C1 - Cancelled</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('C2 Design Query')">C2 - Design Query</button>
+                            </div>
+                        </div>
+                        <!-- Labour -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Labour</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('L1 Hasn\'t turned up at all')">L1 - Hasn't turned up at all</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('L2 Late to site')">L2 - Late to site</button>
+                            </div>
+                        </div>
+                        <!-- Planning/Design -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Planning/Design</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('P1 FSA Wrong')">P1 - FSA Wrong</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('P2 Material List wrong')">P2 - Material List wrong</button>
+                                <button class="day-btn reason-btn" onclick="selectReason('P3 Wrong install Information')">P3 - Wrong install Information</button>
+                            </div>
+                        </div>
+                        <!-- Technical Delay -->
+                        <div class="reason-group">
+                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Section Technical Delay</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
+                                <button class="day-btn reason-btn" onclick="selectReason('Technical Delay')">Technical Delay</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="completion-actions">
+                        <button class="action-btn cancel" onclick="hideReasonSelector()">Cancel</button>
+                        <button class="action-btn confirm" onclick="confirmStatusWithReason()" style="background: linear-gradient(135deg, var(--warning), var(--primary));">Confirm</button>
+                    </div>
+                </div>
+
                 <div class="invoice-section" id="invoice-section" style="display: none;">
                     <h3 class="invoice-title" id="invoice-title">🏠 Job Completion Details</h3>
                     <div style="margin-bottom: 1.5rem;">
@@ -533,6 +597,7 @@
         let selectedCompletionDays = [];
         let pendingStatusChange = null;
         let invoiceBoolAnswer = null; 
+        let selectedReason = null;
 
         // Survey cutoff: only jobs on/after this date need a survey
         const SURVEY_CUTOFF = new Date('2026-03-30');
@@ -1253,12 +1318,29 @@
             document.getElementById('invoice-section').classList.remove('short-notice-style');
             document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
             document.getElementById('survey-alert').style.display = 'none';
-            currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; invoiceBoolAnswer = null;
+            if (document.getElementById('reason-selector')) {
+                document.getElementById('reason-selector').style.display = 'none';
+            }
+            currentJob = null; selectedCompletionDays = []; pendingStatusChange = null; invoiceBoolAnswer = null; selectedReason = null;
+        }
+
+        function isSolarInstallOrBatteryOnlyJob(job) {
+            if (!job) return false;
+            const jobTypeRaw = (job.jobType || job['Job Type'] || '').trim();
+            const jobTypeLower = jobTypeRaw.toLowerCase();
+            return jobTypeLower.includes('solar pv install') || jobTypeLower.includes('battery install');
         }
 
         window.updateJobStatus = async function(newStatus) {
             if (!currentJob) return;
             pendingStatusChange = newStatus;
+
+            const isSolarOrBattery = isSolarInstallOrBatteryOnlyJob(currentJob);
+            if ((newStatus === 'Aborted' || newStatus === 'Cancelled') && isSolarOrBattery) {
+                showReasonSelector(newStatus);
+                return;
+            }
+
             if (newStatus === 'Complete' && currentJob.jobLength > 1)  { showCompletionSelector(); return; }
             if (newStatus === 'Complete' && currentJob.jobLength === 1) { showInlineInvoiceSection(false); return; }
             if (newStatus === 'Short Notice Cancellation')               { showInlineInvoiceSection(true);  return; }
@@ -1266,6 +1348,107 @@
             closeStatusModal();
             await updateJobStatusInDB(jobId, newStatus, null);
             buildTimeline();
+        }
+
+        window.showReasonSelector = function(newStatus) {
+            if (!currentJob) return;
+            pendingStatusChange = newStatus;
+            selectedReason = null;
+            
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'none');
+            document.getElementById('completion-selector').style.display = 'none';
+            document.getElementById('invoice-section').style.display = 'none';
+            
+            const titleEl = document.getElementById('reason-selector-title');
+            if (titleEl) {
+                titleEl.textContent = `Select Reason to mark as ${newStatus}`;
+            }
+
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+            
+            const selector = document.getElementById('reason-selector');
+            selector.style.display = 'block';
+            setTimeout(() => { selector.scrollIntoView({ behavior:'smooth', block:'center' }); }, 100);
+        }
+
+        window.hideReasonSelector = function() {
+            document.getElementById('reason-selector').style.display = 'none';
+            document.querySelectorAll('.status-buttons').forEach(el => el.style.display = 'grid');
+            pendingStatusChange = null;
+            selectedReason = null;
+        }
+
+        window.selectReason = function(reason) {
+            selectedReason = reason;
+            document.querySelectorAll('.reason-btn').forEach(btn => {
+                btn.classList.toggle('selected', btn.textContent.trim() === reason);
+            });
+        }
+
+        window.confirmStatusWithReason = async function() {
+            if (!currentJob || !pendingStatusChange) return;
+            if (!selectedReason) {
+                showToast('Please select a reason first', 'error');
+                return;
+            }
+
+            const jobId = currentJob.id;
+            const newStatus = pendingStatusChange;
+            const reason = selectedReason;
+            const jobNumber = currentJob['Job Number'] || currentJob.jobNumber || 'N/A';
+
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                const collName = 'Solar-jobs';
+                const jobRef = doc(window.db, collName, jobId);
+                
+                const updatePayload = {
+                    'Status Update': newStatus,
+                    statusReason: reason,
+                    delays: reason,
+                    delaysUpdatedAt: new Date().toISOString()
+                };
+
+                if (newStatus === 'Aborted') {
+                    updatePayload.abortReason = reason;
+                } else if (newStatus === 'Cancelled') {
+                    updatePayload.cancellationReason = reason;
+                }
+
+                await updateDoc(jobRef, updatePayload);
+
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    Object.assign(job, updatePayload);
+                    job.status = newStatus;
+                }
+
+                showToast(`Job #${jobNumber} marked as ${newStatus} with reason: ${reason}`, 'success');
+                
+                // Also trigger Google Sheets sync
+                showToast('Syncing delay to Google Sheets...', 'success');
+                const shareData = {
+                    jobNumber,
+                    postcode:  currentJob['Postcode'] || 'N/A',
+                    startDate: currentJob['Booked Date'] || formatDate(currentJob.parsedDate),
+                    finishDate:currentJob['Projected Completion Date'] || '',
+                    delays: reason
+                };
+                const success = await updateGoogleSheet(shareData);
+                if (success) {
+                    showToast('✅ Google Sheets sync complete!', 'success');
+                } else {
+                    showToast('⚠️ Google Sheets sync failed (saved in Firebase)', 'error');
+                }
+
+                closeStatusModal();
+                buildTimeline();
+            } catch (error) {
+                console.error('Error setting job status with reason:', error);
+                showToast('Failed to update job status', 'error');
+            }
         }
 
         window.showCompletionSelector = function() {
