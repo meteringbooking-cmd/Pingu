@@ -207,7 +207,7 @@
         .empty-state { text-align: center; padding: 4rem 2rem; color: var(--text-dim); }
         .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; padding: 2rem; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15,15,25,0.95); z-index: 1000; align-items: center; justify-content: center; padding: 2rem; }
         .modal.show { display: flex; }
         .modal-content {
             background: var(--dark-light); border-radius: 16px; padding: 2.4rem;
@@ -1120,41 +1120,45 @@
             recalculateOutcome();
         };
 
+        let outcomeDebounce = null;
         window.recalculateOutcome = function() {
-            const allCbs = document.querySelectorAll('.cat-code-cb:checked');
-            let highestCat = 0; 
-            
-            if (allCbs.length === 0) {
-                highestCat = 99; // Pass
-            } else {
-                highestCat = 99;
-                allCbs.forEach(cb => {
-                    const cat = parseInt(cb.getAttribute('data-cat'));
-                    if (cat < highestCat) highestCat = cat;
-                });
-            }
+            if (outcomeDebounce) clearTimeout(outcomeDebounce);
+            outcomeDebounce = setTimeout(() => {
+                const allCbs = document.querySelectorAll('.cat-code-cb:checked');
+                let highestCat = 0; 
+                
+                if (allCbs.length === 0) {
+                    highestCat = 99; // Pass
+                } else {
+                    highestCat = 99;
+                    allCbs.forEach(cb => {
+                        const cat = parseInt(cb.getAttribute('data-cat'));
+                        if (cat < highestCat) highestCat = cat;
+                    });
+                }
 
-            const outDiv = document.getElementById('calculated-outcome');
-            const outText = document.getElementById('outcome-text');
-            outDiv.style.display = 'block';
+                const outDiv = document.getElementById('calculated-outcome');
+                const outText = document.getElementById('outcome-text');
+                outDiv.style.display = 'block';
 
-            if (highestCat === 99) {
-                outText.textContent = "Pass (No CAT codes)";
-                outDiv.style.borderColor = "var(--success)";
-                outDiv.style.color = "var(--success)";
-            } else if (highestCat === 3 || highestCat === 4) {
-                outText.textContent = "Pass with non-conformances (PNC)";
-                outDiv.style.borderColor = "var(--warning)";
-                outDiv.style.color = "var(--warning)";
-            } else if (highestCat === 2) {
-                outText.textContent = "Policy Fail";
-                outDiv.style.borderColor = "var(--error)";
-                outDiv.style.color = "var(--error)";
-            } else if (highestCat === 1) {
-                outText.textContent = "Safety Fail";
-                outDiv.style.borderColor = "#FF0000";
-                outDiv.style.color = "#FF0000";
-            }
+                if (highestCat === 99) {
+                    outText.textContent = "Pass (No CAT codes)";
+                    outDiv.style.borderColor = "var(--success)";
+                    outDiv.style.color = "var(--success)";
+                } else if (highestCat === 3 || highestCat === 4) {
+                    outText.textContent = "Pass with non-conformances (PNC)";
+                    outDiv.style.borderColor = "var(--warning)";
+                    outDiv.style.color = "var(--warning)";
+                } else if (highestCat === 2) {
+                    outText.textContent = "Policy Fail";
+                    outDiv.style.borderColor = "var(--error)";
+                    outDiv.style.color = "var(--error)";
+                } else if (highestCat === 1) {
+                    outText.textContent = "Safety Fail";
+                    outDiv.style.borderColor = "#FF0000";
+                    outDiv.style.color = "#FF0000";
+                }
+            }, 50);
         };
 
         const uploadImageToFirebase = async (file, jobNumber) => {
