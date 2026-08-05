@@ -1066,16 +1066,13 @@
                 }
 
                 let alwaysHtml = `
-                    <div style="margin-top:1rem; padding-top: 0.8rem; border-top: 1px dashed var(--dark-lighter);">
-                        <div style="margin-bottom:0.8rem;">
-                            <strong style="color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase;">Specific Notes (Optional):</strong>
-                            <textarea id="${q.id}_notes" class="filter-input" style="min-height: 60px; margin-top: 0.4rem;" placeholder="Add any notes here..." oninput="triggerAutoSave()"></textarea>
+                    <details id="${q.id}_details" style="margin-top:0.75rem;">
+                        <summary style="cursor: pointer; color: var(--primary); font-size: 0.85rem; font-weight: 600; list-style: none; user-select: none;">+ Add Notes or Photos</summary>
+                        <div style="padding: 0.8rem 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 0.5rem; border-left: 2px solid var(--primary);">
+                            <textarea id="${q.id}_notes" class="filter-input" style="min-height: 50px; margin-bottom: 0.8rem; font-size: 0.85rem; padding: 0.6rem;" placeholder="Add specific notes (Optional)..." oninput="triggerAutoSave()"></textarea>
+                            <input type="file" id="${q.id}_files" class="file-upload-input" style="margin: 0; padding: 0.4rem; background: var(--dark-lighter); border: 1px dashed var(--text-dim); font-size: 0.75rem;" accept="image/*" multiple>
                         </div>
-                        <div>
-                            <strong style="color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase;">Attach Evidence (Optional):</strong>
-                            <input type="file" id="${q.id}_files" class="file-upload-input" style="margin-top: 0.4rem;" accept="image/*" multiple>
-                        </div>
-                    </div>
+                    </details>
                 `;
 
                 // Adjust text style if marked bold
@@ -1978,7 +1975,19 @@
                         // Trigger visual expansion logic
                         handleChecklistChange(q.id, q.triggers);
 
-                        // If expanded, restore any previously checked CAT codes and notes
+                        // Restore notes regardless of trigger value
+                        if (savedData.notes) {
+                            let specificNotes = document.getElementById(`${q.id}_notes`);
+                            if (specificNotes) specificNotes.value = savedData.notes;
+                        }
+                        
+                        // Open the details accordion if they had notes or photos
+                        if (savedData.notes || (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0)) {
+                            let detailsEl = document.getElementById(`${q.id}_details`);
+                            if (detailsEl) detailsEl.open = true;
+                        }
+
+                        // If expanded, restore any previously checked CAT codes
                         if (savedData.answer === q.triggers) {
                             if (savedData.codesSelected && savedData.codesSelected.length > 0) {
                                 const extraDiv = document.getElementById(`${q.id}_extra`);
@@ -1991,10 +2000,6 @@
                                         }
                                     });
                                 }
-                            }
-                            if (savedData.notes) {
-                                let specificNotes = document.getElementById(`${q.id}_notes`);
-                                specificNotes.value = savedData.notes;
                             }
                         }
                     }
@@ -2026,6 +2031,13 @@
                             
                             handleChecklistChange(q.id, q.triggers);
                             
+                            if (d.notes) {
+                                let specificNotes = document.getElementById(`${q.id}_notes`);
+                                if (specificNotes) specificNotes.value = d.notes;
+                                let detailsEl = document.getElementById(`${q.id}_details`);
+                                if (detailsEl) detailsEl.open = true;
+                            }
+
                             if (d.answer === q.triggers) {
                                 if (d.codesSelected && d.codesSelected.length > 0) {
                                     const extraDiv = document.getElementById(`${q.id}_extra`);
@@ -2036,10 +2048,6 @@
                                             if (d.codesSelected.includes(txt)) cb.checked = true;
                                         });
                                     }
-                                }
-                                if (d.notes) {
-                                    let specificNotes = document.getElementById(`${q.id}_notes`);
-                                    if (specificNotes) specificNotes.value = d.notes;
                                 }
                             }
                         }
