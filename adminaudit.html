@@ -523,6 +523,10 @@
                     <label class="filter-label">Week Commencing (Monday)</label>
                     <input type="date" id="export-wc-date" class="filter-input" onchange="snapToMonday(this)">
                 </div>
+                <div class="filter-group" style="margin-top: 1rem;">
+                    <label class="filter-label">Omit Job Numbers (comma separated)</label>
+                    <input type="text" id="export-omit-jobs" class="filter-input" placeholder="e.g. J-1234, J-5678">
+                </div>
                 <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
                     <button class="btn btn-primary" onclick="generateExportCSV()">Generate Spreadsheet</button>
                 </div>
@@ -2537,7 +2541,14 @@
             let cat3 = 0;
             let cat4 = 0;
 
+            const omitInput = document.getElementById('export-omit-jobs').value || '';
+            const omitJobs = omitInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+
             allJobs.forEach(job => {
+                if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) {
+                    return; // Skip omitted jobs
+                }
+
                 // Installs completed logic
                 if (job.status === 'complete' && job.jobType) {
                     const jt = job.jobType.toLowerCase();
