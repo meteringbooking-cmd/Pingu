@@ -237,7 +237,7 @@
             <a href="index.html" class="back-btn">← Back</a>
         </div>
         <h1>📄 PDF Ripper</h1>
-        <p class="subtitle">Upload a solar survey PDF — extracts the address, proposed layout image, and site assessment boxes. Optionally link to a job number to save directly to that job.</p>
+        <p class="subtitle">Upload a solar survey PDF — extracts the address, proposed layout image, and site assessment boxes. Optionally link to a job number (checked against both the <strong>Jobs</strong> and <strong>Solar-jobs</strong> collections) to save directly to that job.</p>
     </header>
 
     <!-- Job Number Link -->
@@ -369,8 +369,10 @@
     let layoutDataUrl = '';
     let rawPage1Lines = [];
     let rawPage4Lines = [];
-    let verifiedJobId  = null;
-    let verifiedJobNum = null;
+    let verifiedJobId   = null;   // doc id in Solar-jobs (existing or to-be-created)
+    let verifiedJobNum  = null;
+    let verifiedSource  = null;   // 'solar' | 'jobs' | 'both'
+    let verifiedSeedData = null;  // fields to seed into Solar-jobs when source === 'jobs'
 
     // ── Upload zone wiring ────────────────────────────────────────────────────
     const fileInput  = document.getElementById('file-input');
@@ -421,8 +423,10 @@
         jobInput.value     = '';
         jobInput.className = 'job-number-input';
         document.getElementById('job-match-badge').className = 'job-match-badge';
-        verifiedJobId  = null;
-        verifiedJobNum = null;
+        verifiedJobId    = null;
+        verifiedJobNum   = null;
+        verifiedSource   = null;
+        verifiedSeedData = null;
 
         const nameNoExt = f.name.replace(/\.pdf$/i, '').trim();
         const match = nameNoExt.match(/\b(J-[A-Z0-9]{8})\b/i);
@@ -432,7 +436,7 @@
         }
     }
 
-    // ── Firebase job verification ─────────────────────────────────────────────
+    // ── Firebase job verification (checks BOTH Jobs and Solar-jobs) ──────────
     async function verifyJobNumber() {
         const num = document.getElementById('job-number-input').value.trim();
         if (!num) { showError('Please enter a job number to verify.'); return; }
@@ -445,22 +449,54 @@
         try {
             if (!window.firebaseModules) throw new Error('Firebase not ready');
             const { collection, getDocs, query, where } = window.firebaseModules;
-            const q    = query(collection(window.db, 'jobs'), where('Job Number', '==', num));
-            const snap = await getDocs(q);
-            if (snap.empty) {
-                verifiedJobId  = null;
-                verifiedJobNum = null;
+
+            const solarQ = query(collection(window.db, 'Solar-jobs'), where('Job Number', '==', num));
+            const jobsQ  = query(collection(window.db, 'jobs'),       where('Job Number', '==', num));
+            const [solarSnap, jobsSnap] = await Promise.all([getDocs(solarQ), getDocs(jobsQ)]);
+
+            if (solarSnap.empty && jobsSnap.empty) {
+                verifiedJobId    = null;
+                verifiedJobNum   = null;
+                verifiedSource   = null;
+                verifiedSeedData = null;
                 input.className = 'job-number-input no-match';
                 badge.className = 'job-match-badge not-found';
                 badge.textContent = '✗ Job not found';
             } else {
-                const jobDoc   = snap.docs[0];
-                verifiedJobId  = jobDoc.id;
                 verifiedJobNum = num;
                 input.className = 'job-number-input matched';
                 badge.className = 'job-match-badge found';
-                const d = jobDoc.data();
-                badge.textContent = `✓ ${d['Name'] || num} · ${d['1st line of address'] || ''}`;
+
+                if (!solarSnap.empty) {
+                    // Solar-jobs record exists — this is always the write target
+                    const solarDoc = solarSnap.docs[0];
+                    verifiedJobId    = solarDoc.id;
+                    verifiedSource   = jobsSnap.empty ? 'solar' : 'both';
+                    verifiedSeedData = null;
+                    const d = solarDoc.data();
+                    const srcLabel = verifiedSource === 'both' ? 'Jobs + Solar-jobs' : 'Solar-jobs';
+                    badge.textContent = `✓ ${d['Name'] || num} · ${d['1st line of address'] || ''} (${srcLabel})`;
+                } else {
+                    // Only in 'jobs' — a matching Solar-jobs record will be created/seeded on save
+                    const jobsDoc = jobsSnap.docs[0];
+                    const d = jobsDoc.data();
+                    verifiedJobId  = jobsDoc.id;
+                    verifiedSource = 'jobs';
+                    verifiedSeedData = {
+                        'Job Number':    d['Job Number']    || num,
+                        'Postcode':      d['Postcode']      || '',
+                        'Job Type':      d['Job Type']      || '',
+                        'Lead':          d['Lead Engineer'] || d['Lead'] || '',
+                        'Lead Engineer': d['Lead Engineer'] || d['Lead'] || '',
+                        'Team':          d['Team']          || '',
+                        'Booked Date':   d['Booked Date']   || '',
+                        'Days':          d['Days']          || 1,
+                        uploadDate:      d['uploadDate']    || new Date().toISOString(),
+                        _migratedFromJobs: true,
+                        _migratedAt: new Date().toISOString()
+                    };
+                    badge.textContent = `✓ ${d['Name'] || num} · ${d['1st line of address'] || d['Postcode'] || ''} (Jobs only — will create Solar-jobs record)`;
+                }
             }
         } catch (err) {
             console.error(err);
@@ -586,12 +622,15 @@
         return await getDownloadURL(storageRef);
     }
 
-    // ── Save extracted data to Firestore job record ───────────────────────────
+    // ── Save extracted data to the job record ──────────────────────────────────
+    // Always writes to Solar-jobs (the canonical collection). If the job number
+    // was only found in the 'jobs' collection, a new Solar-jobs record is
+    // seeded with its core fields (same doc id) before the pdfRipper data is added.
     async function saveToJob(address, layoutUrl, page4Url, rawPage4Text) {
         if (!verifiedJobId || !window.firebaseModules) return false;
-        const { doc, updateDoc } = window.firebaseModules;
-        const jobRef  = doc(window.db, 'jobs', verifiedJobId);
-        const payload = {
+        const { doc, updateDoc, setDoc } = window.firebaseModules;
+        const solarRef = doc(window.db, 'Solar-jobs', verifiedJobId);
+        const pdfRipperPayload = {
             pdfRipper: {
                 address:            address,
                 proposedLayoutUrl:  layoutUrl     || null,
@@ -601,7 +640,13 @@
                 jobNumber:          verifiedJobNum
             }
         };
-        await updateDoc(jobRef, payload);
+
+        if (verifiedSource === 'jobs' && verifiedSeedData) {
+            // No existing Solar-jobs doc — create/seed one, merging in the pdfRipper data
+            await setDoc(solarRef, { ...verifiedSeedData, ...pdfRipperPayload }, { merge: true });
+        } else {
+            await updateDoc(solarRef, pdfRipperPayload);
+        }
         return true;
     }
 
@@ -684,7 +729,10 @@
                     if (page4DataUrl)  savedPage4Url  = await uploadPage4Image(page4DataUrl, verifiedJobNum);
                     await saveToJob(address, savedLayoutUrl, savedPage4Url, page4RawText);
                     setStep('step-save', 'done');
-                    showSaveBanner('saved', `✅ Saved to Job #${verifiedJobNum} — layout and site assessment available in Conduct Survey`);
+                    const savedMsg = verifiedSource === 'jobs'
+                        ? `✅ Created Solar-jobs record for Job #${verifiedJobNum} and saved layout + site assessment`
+                        : `✅ Saved to Job #${verifiedJobNum} — layout and site assessment available in Conduct Survey`;
+                    showSaveBanner('saved', savedMsg);
                 } catch (saveErr) {
                     console.error('Save error:', saveErr);
                     setStep('step-save', 'error');
@@ -809,8 +857,10 @@
         document.getElementById('job-number-input').value     = '';
         document.getElementById('job-number-input').className = 'job-number-input';
         document.getElementById('job-match-badge').className  = 'job-match-badge';
-        verifiedJobId  = null;
-        verifiedJobNum = null;
+        verifiedJobId    = null;
+        verifiedJobNum   = null;
+        verifiedSource   = null;
+        verifiedSeedData = null;
     }
 </script>
 </body>
