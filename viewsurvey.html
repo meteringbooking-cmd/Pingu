@@ -527,7 +527,7 @@ window.closeLightbox = closeLightbox;
 document.addEventListener('keydown', e => { if(e.key==='Escape') closeLightbox(); });
 
 // ══════════════════════════════════════════════════════
-//  PDF RIPPER — fetch from jobs collection & render
+//  PDF RIPPER — fetch from Solar-jobs (primary) / jobs (fallback) & render
 // ══════════════════════════════════════════════════════
 async function loadAndRenderPdfRipper(jobNumber) {
     const container = document.getElementById('pdf-ripper-display');
@@ -541,20 +541,25 @@ async function loadAndRenderPdfRipper(jobNumber) {
 
         let pdfRipperData = null;
 
-        // Primary lookup — field name is 'Job Number' (with spaces, capital letters)
-        try {
-            const q    = query(collection(window.db, 'jobs'), where('Job Number', '==', jobNumber));
-            const snap = await getDocs(q);
-            if (!snap.empty) pdfRipperData = snap.docs[0].data().pdfRipper || null;
-        } catch(e) { console.warn('jobs "Job Number" query failed:', e.message); }
+        // PDF Ripper always writes to Solar-jobs (creating/seeding the record if the
+        // job only lived in 'jobs'), so Solar-jobs is checked first. 'jobs' is kept
+        // as a fallback for any older records saved before that change. Each
+        // collection is tried with both the spaced 'Job Number' field and the
+        // lowercase 'jobNumber' field, since different pages have written either.
+        const lookups = [
+            ['Solar-jobs', 'Job Number'],
+            ['Solar-jobs', 'jobNumber'],
+            ['jobs',       'Job Number'],
+            ['jobs',       'jobNumber'],
+        ];
 
-        // Fallback — lowercase jobNumber field
-        if (!pdfRipperData) {
+        for (const [col, field] of lookups) {
+            if (pdfRipperData) break;
             try {
-                const q2    = query(collection(window.db, 'jobs'), where('jobNumber', '==', jobNumber));
-                const snap2 = await getDocs(q2);
-                if (!snap2.empty) pdfRipperData = snap2.docs[0].data().pdfRipper || null;
-            } catch(e) { console.warn('jobs "jobNumber" query failed:', e.message); }
+                const q    = query(collection(window.db, col), where(field, '==', jobNumber));
+                const snap = await getDocs(q);
+                if (!snap.empty) pdfRipperData = snap.docs[0].data().pdfRipper || null;
+            } catch(e) { console.warn(`${col} "${field}" query failed:`, e.message); }
         }
 
         if (!pdfRipperData) {
@@ -901,9 +906,8 @@ function viewDocument(index) {
     document.getElementById('survey-viewer').classList.add('active');
     window.scrollTo(0,0);
 
-    // Async: load PDF ripper data from jobs collection
+    // Async: load PDF ripper data from Solar-jobs (primary) / jobs (fallback)
     // The survey data may store jobNumber as 'jobNumber' (lowercase)
-    // The jobs collection stores it as 'Job Number' (spaced) — handled inside loadAndRenderPdfRipper
     const jobNum = currentDocument.data.jobNumber || currentDocument.data['Job Number'] || '';
     loadAndRenderPdfRipper(jobNum);
 }
