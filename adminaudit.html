@@ -991,47 +991,68 @@
             { id: "q78", text: "Is Kracken Field Complete", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
-        window.clearFiles = function(qId) {
-            const input = document.getElementById(`${qId}_files`);
-            if (input) {
-                input.dt = new DataTransfer();
-                input.files = input.dt.files;
-                updateFileNamesDisplay(qId);
-            }
-        };
-
-        window.updateFileNamesDisplay = function(qId) {
-            const input = document.getElementById(`${qId}_files`);
-            const display = document.getElementById(`${qId}_file_names`);
-            if (input && display) {
-                if (input.files.length > 0) {
-                    display.innerHTML = `
-                        <div style="margin-bottom: 0.4rem; color: var(--primary);">` + 
-                        Array.from(input.files).map(f => f.name).join('<br>') +
-                        `</div>
-                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid var(--text-dim);" onclick="event.stopPropagation(); window.clearFiles('${qId}')">Clear Selected</button>
-                    `;
-                } else {
-                    display.innerHTML = '';
-                }
-            }
+        window.deleteUploadedPhoto = function(qId, urlIndex) {
+            if (!currentJob || !currentJob.auditChecklistData || !currentJob.auditChecklistData[qId] || !currentJob.auditChecklistData[qId].uploadedPhotos) return;
+            currentJob.auditChecklistData[qId].uploadedPhotos.splice(urlIndex, 1);
+            updateFileNamesDisplay(qId);
             triggerAutoSave();
         };
 
-        window.updateFileNames = function(qId) {
-            const input = document.getElementById(`${qId}_files`);
-            if (input) {
-                if (!input.dt) input.dt = new DataTransfer();
-                for (let i = 0; i < input.files.length; i++) {
-                    let exists = false;
-                    for (let j = 0; j < input.dt.files.length; j++) {
-                         if (input.dt.files[j].name === input.files[i].name) exists = true;
-                    }
-                    if (!exists) input.dt.items.add(input.files[i]);
+        window.updateFileNamesDisplay = function(qId) {
+            const previewEl = document.getElementById(`${qId}_photo_preview`);
+            if (previewEl && currentJob && currentJob.auditChecklistData && currentJob.auditChecklistData[qId]) {
+                const photos = currentJob.auditChecklistData[qId].uploadedPhotos || [];
+                if (photos.length > 0) {
+                    previewEl.innerHTML = photos.map((url, idx) => `
+                        <div style="position:relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--dark-lighter);">
+                            <a href="${url}" target="_blank">
+                                <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Saved photo" />
+                            </a>
+                            <button onclick="event.stopPropagation(); window.deleteUploadedPhoto('${qId}', ${idx})" style="position: absolute; top: 0; right: 0; background: rgba(255,0,0,0.8); color: white; border: none; width: 20px; height: 20px; font-size: 10px; cursor: pointer; border-bottom-left-radius: 4px; display: flex; align-items: center; justify-content: center;">X</button>
+                        </div>
+                    `).join('');
+                } else {
+                    previewEl.innerHTML = '';
                 }
-                input.files = input.dt.files;
-                updateFileNamesDisplay(qId);
+            } else if (previewEl) {
+                previewEl.innerHTML = '';
             }
+        };
+
+        window.updateFileNames = async function(qId) {
+            const input = document.getElementById(`${qId}_files`);
+            if (!input || !currentJob || input.files.length === 0) return;
+            
+            if (!currentJob.auditChecklistData) currentJob.auditChecklistData = {};
+            if (!currentJob.auditChecklistData[qId]) currentJob.auditChecklistData[qId] = { uploadedPhotos: [] };
+            if (!currentJob.auditChecklistData[qId].uploadedPhotos) currentJob.auditChecklistData[qId].uploadedPhotos = [];
+
+            const files = Array.from(input.files);
+            const previewEl = document.getElementById(`${qId}_photo_preview`);
+            
+            let uploadingHtml = '';
+            for (let i = 0; i < files.length; i++) {
+                uploadingHtml += `
+                    <div style="position:relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px dashed var(--primary); display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2);">
+                        <span style="font-size: 0.6rem; color: var(--primary);">⏳</span>
+                    </div>
+                `;
+            }
+            if (previewEl) previewEl.insertAdjacentHTML('beforeend', uploadingHtml);
+            
+            for (let i = 0; i < files.length; i++) {
+                try {
+                    const liveUrl = await uploadImageToFirebase(files[i], currentJob.jobNumber);
+                    currentJob.auditChecklistData[qId].uploadedPhotos.push(liveUrl);
+                } catch (e) {
+                    if (typeof showToast === 'function') showToast('Failed to upload a photo', 'error');
+                }
+            }
+            
+            input.value = ''; // Reset input to allow same file re-selection
+            
+            updateFileNamesDisplay(qId);
+            triggerAutoSave();
         };
 
         window.handleDrop = function(e, inputId) {
@@ -1410,7 +1431,7 @@
                         uploadedPhotos: [...existingPhotos] 
                     };
                     
-                    let includeInEmail = ((response === q.triggers && response !== '') || questionNotes || questionSaveData.uploadedPhotos.length > 0 || (fileInput && fileInput.files.length > 0));
+                    let includeInEmail = ((response === q.triggers && response !== '') || questionNotes || questionSaveData.uploadedPhotos.length > 0);
                     let qEmailContent = "";
 
                     if (includeInEmail) {
@@ -1459,23 +1480,9 @@
                         qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Auditor Notes:</strong><br><span style="color:#333;font-size:0.95em;white-space:pre-wrap;">${escapeHtml(questionNotes)}</span></div>`;
                     }
 
-                    // Process Files (Firebase Upload) (always)
-                    const fileInput = document.getElementById(`${q.id}_files`);
-                    if (fileInput && fileInput.files.length > 0) {
-                        if (includeInEmail) {
-                            qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
-                        }
-                        for (let f = 0; f < fileInput.files.length; f++) {
-                            const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
-                            questionSaveData.uploadedPhotos.push(liveUrl); // Save URL to Firebase
-                        }
-                    }
-                    
-                    // Render ALL photos (old + newly uploaded) in email if required
+                    // Render ALL photos in email if required
                     if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
-                        if (!fileInput || fileInput.files.length === 0) {
-                            qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
-                        }
+                        qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
                         questionSaveData.uploadedPhotos.forEach(photoUrl => {
                             qEmailContent += `<a href="${photoUrl}" target="_blank">
                                 <img src="${photoUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
@@ -2066,16 +2073,7 @@
                             if (detailsEl) detailsEl.open = true;
                             
                             if (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0) {
-                                let previewEl = document.getElementById(`${q.id}_photo_preview`);
-                                if (previewEl) {
-                                    previewEl.innerHTML = savedData.uploadedPhotos.map(url => `
-                                        <div style="position:relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--dark-lighter);">
-                                            <a href="${url}" target="_blank">
-                                                <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Saved photo" />
-                                            </a>
-                                        </div>
-                                    `).join('');
-                                }
+                                updateFileNamesDisplay(q.id);
                             }
                         }
 
@@ -2645,6 +2643,8 @@
             let auditsCompleted = 0;
             let passCount = 0;
             let pncCount = 0;
+            let policyFailsCount = 0;
+            let safetyFailsCount = 0;
             let cat1 = 0;
             let cat2 = 0;
             let cat3 = 0;
@@ -2661,7 +2661,7 @@
                 // Installs completed logic
                 if (job.status === 'complete' && job.jobType) {
                     const jt = job.jobType.toLowerCase();
-                    if (jt.includes('solar') || jt.includes('battery')) {
+                    if (jt.includes('install') || jt.includes('battery')) {
                         if (job.completionDate) {
                             const compDate = new Date(job.completionDate);
                             if (compDate >= wcStart && compDate <= wcEnd) {
@@ -2678,24 +2678,40 @@
                         if (audDate >= wcStart && audDate <= wcEnd) {
                             auditsCompleted++;
                             
-                            if (job.auditStatus === 'pass' || job.auditStatus === 'no issue') {
-                                passCount++;
-                            } else if (job.auditStatus === 'complete-with-issues' || job.auditStatus === 'PNC') {
-                                pncCount++;
-                            }
+                            let hasCat1 = false;
+                            let hasCat2 = false;
+                            let hasCat3 = false;
+                            let hasCat4 = false;
 
-                            // Count CATs for this audited job
+                            // Scan CATs for this audited job
                             if (job.auditChecklistData) {
                                 Object.values(job.auditChecklistData).forEach(qData => {
                                     if (qData.codesSelected) {
                                         qData.codesSelected.forEach(code => {
-                                            if (code.startsWith('CAT 1')) cat1++;
-                                            if (code.startsWith('CAT 2')) cat2++;
-                                            if (code.startsWith('CAT 3')) cat3++;
-                                            if (code.startsWith('CAT 4')) cat4++;
+                                            if (code.startsWith('CAT 1')) hasCat1 = true;
+                                            if (code.startsWith('CAT 2')) hasCat2 = true;
+                                            if (code.startsWith('CAT 3')) hasCat3 = true;
+                                            if (code.startsWith('CAT 4')) hasCat4 = true;
                                         });
                                     }
                                 });
+                            }
+
+                            // 1. Total individual jobs for each CAT code
+                            if (hasCat1) cat1++;
+                            if (hasCat2) cat2++;
+                            if (hasCat3) cat3++;
+                            if (hasCat4) cat4++;
+
+                            // 2. Mutually exclusive Outcome Bucket (highest severity first)
+                            if (hasCat1) {
+                                safetyFailsCount++;
+                            } else if (hasCat2) {
+                                policyFailsCount++;
+                            } else if (hasCat3 || hasCat4) {
+                                pncCount++;
+                            } else {
+                                passCount++;
                             }
                         }
                     }
@@ -2704,13 +2720,16 @@
 
             // Calculate KPIs
             const totalPass = passCount + pncCount;
+            const totalFail = policyFailsCount + safetyFailsCount;
             const totalCat = cat1 + cat2 + cat3 + cat4;
             
             const auditsOverInstalls = installsCompleted > 0 ? (auditsCompleted / installsCompleted) : 0;
             const passPercent = auditsCompleted > 0 ? (passCount / auditsCompleted) : 0;
             const pncPercent = auditsCompleted > 0 ? (pncCount / auditsCompleted) : 0;
+            const pfPercent = auditsCompleted > 0 ? (policyFailsCount / auditsCompleted) : 0;
+            const sfPercent = auditsCompleted > 0 ? (safetyFailsCount / auditsCompleted) : 0;
             const totalPassPercent = auditsCompleted > 0 ? (totalPass / auditsCompleted) : 0;
-            const totalFailPercent = auditsCompleted > 0 ? ((auditsCompleted - totalPass) / auditsCompleted) : 0;
+            const totalFailPercent = auditsCompleted > 0 ? (totalFail / auditsCompleted) : 0;
 
             const formatPercent = (val) => `${(val * 100).toFixed(1)}%`;
 
@@ -2732,10 +2751,10 @@
                 "", // G
                 passCount, // H
                 pncCount, // I
-                "", // J
-                "", // K
+                policyFailsCount, // J
+                safetyFailsCount, // K
                 totalPass, // L
-                "", // M
+                totalFail, // M
                 cat1, // N
                 cat2, // O
                 cat3, // P
@@ -2744,8 +2763,8 @@
                 formatPercent(auditsOverInstalls), // S
                 formatPercent(passPercent), // T
                 formatPercent(pncPercent), // U
-                "", // V
-                "", // W
+                formatPercent(pfPercent), // V
+                formatPercent(sfPercent), // W
                 formatPercent(totalPassPercent), // X
                 formatPercent(totalFailPercent), // Y
                 ""  // Z
