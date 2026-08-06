@@ -203,7 +203,10 @@
     <main>
         <!-- Active Complaints Table -->
         <div class="card">
-            <div class="card-title">Active Complaints</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
+                <div class="card-title" style="margin-bottom:0;">Active Complaints</div>
+                <button id="historicBtn" class="btn btn-secondary" style="padding:0.6rem 1.4rem;font-size:0.9rem;">🗂 Historic</button>
+            </div>
             <div id="loadingSpinner" style="text-align:center;padding:2rem;display:none;"><div class="spinner"></div></div>
             <div class="table-wrapper">
                 <table>
@@ -221,6 +224,28 @@
                     </thead>
                     <tbody id="complaintsTableBody">
                         <tr><td colspan="8" class="empty-state">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Historic Complaints Table -->
+        <div class="card" id="historicCard" style="display:none;">
+            <div class="card-title">Historic Complaints (Resolved)</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date Received</th>
+                            <th>Job Ref</th>
+                            <th>Contract</th>
+                            <th>Engineer</th>
+                            <th>FTL</th>
+                            <th>Target Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historicTableBody">
+                        <tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -258,10 +283,10 @@
                     <select id="engineer" required>
                         <option value="">Select Engineer</option>
                         <option>Aaron Shepherd</option>
+                        <option>Alessandro Cilia</option>
                         <option>Alex Duff</option>
                         <option>Alistair Cavan</option>
                         <option>Allan Grant</option>
-                        <option>Andrew Wallace</option>
                         <option>Auther Bumhira</option>
                         <option>Bilal Amin</option>
                         <option>Billy McDonough</option>
@@ -283,7 +308,7 @@
                         <option>Ivan Rivers</option>
                         <option>James Mclean</option>
                         <option>Jamie Longland</option>
-                        <option>James Stott</option>
+                        <option>Johnson Allepot</option>
                         <option>Jon Convery</option>
                         <option>Jonathan Chyla</option>
                         <option>Jonny Thompson</option>
@@ -291,7 +316,6 @@
                         <option>Jordan Morrison</option>
                         <option>Kris Armstrong</option>
                         <option>Lukasz Holysz</option>
-                        <option>Mark Lavelle</option>
                         <option>Martin Bailes</option>
                         <option>Matti Chalkowski</option>
                         <option>Mehdi Khamseh</option>
@@ -617,6 +641,38 @@
             tbody.appendChild(tr);
         });
     }
+
+    function renderHistoric() {
+        const tbody    = document.getElementById('historicTableBody');
+        const resolved = allComplaints.filter(c => c.status === 'resolved');
+        tbody.innerHTML = '';
+        if (resolved.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No resolved complaints yet.</td></tr>';
+            return;
+        }
+        resolved.forEach(c => {
+            const tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.innerHTML = `
+                <td>${formatDate(c.dateReceived)}</td>
+                <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
+                <td>${c.contract||'—'}</td>
+                <td>${c.engineer||'—'}</td>
+                <td>${c.ftl||'—'}</td>
+                <td>${formatDate(c.targetDate)}</td>`;
+            tr.addEventListener('click', () => openModal(c.id));
+            tbody.appendChild(tr);
+        });
+    }
+
+    document.getElementById('historicBtn').addEventListener('click', () => {
+        const card = document.getElementById('historicCard');
+        const btn  = document.getElementById('historicBtn');
+        const isVisible = card.style.display !== 'none';
+        card.style.display = isVisible ? 'none' : 'block';
+        btn.textContent = isVisible ? '🗂 Historic' : '✕ Hide Historic';
+        if (!isVisible) renderHistoric();
+    });
 
     // ── Detail modal ──────────────────────────────────────────────────────────
     function openModal(id) {
