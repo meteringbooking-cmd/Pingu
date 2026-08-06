@@ -1376,24 +1376,11 @@
                 const uploadLink = `${UPLOAD_BASE_URL}engineer-photo-upload.html?job=${encodedJob}`;
 
                 let emailContent = `
-                    <div style="font-family:Arial,sans-serif;color:#333;padding:20px;background:#f5f5f5;">
-                        <div style="background:white;padding:30px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
-                            <h2 style="color:#FF6B35;">Job Audit Report - #${escapeHtml(safeJobNumber)}</h2>
-                            <p><strong>Outcome:</strong> ${calculatedOutcome}</p>
-                            <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
-
-                            <!-- Engineer photo upload CTA -->
-                            <div style="background:#fff8f5;border:2px solid #FF6B35;border-radius:10px;padding:20px;margin:20px 0;text-align:center;">
-                                <p style="margin:0 0 6px 0;font-size:1rem;font-weight:700;color:#FF6B35;">📸 Action Required — Upload Your Photos</p>
-                                <p style="margin:0 0 16px 0;color:#555;font-size:0.9rem;">Please upload any missing or required photos using the button below.<br>Photos save automatically — no login needed.</p>
-                                <a href="${uploadLink}" target="_blank"
-                                   style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;
-                                          padding:12px 28px;border-radius:8px;font-weight:700;font-size:1rem;
-                                          letter-spacing:0.02em;">
-                                    📷 Upload Photos for Job #${escapeHtml(safeJobNumber)}
-                                </a>
-                                <p style="margin:14px 0 0;font-size:0.75rem;color:#999;">Or copy this link: <a href="${uploadLink}" style="color:#FF6B35;word-break:break-all;">${uploadLink}</a></p>
-                            </div>
+                    <div style="font-family:Arial,sans-serif;color:#333;padding:15px;background:#f5f5f5;">
+                        <div style="background:white;padding:20px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
+                            <h2 style="color:#FF6B35;margin:0 0 10px 0;">Audit Report - #${escapeHtml(safeJobNumber)}</h2>
+                            <p style="margin:0 0 15px 0;"><strong>Outcome:</strong> ${calculatedOutcome}</p>
+                            <a href="${uploadLink}" target="_blank" style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;">📸 Upload Missing Photos</a>
                             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
                 `;
 
@@ -1435,9 +1422,7 @@
                     let qEmailContent = "";
 
                     if (includeInEmail) {
-                        qEmailContent += `<div style="margin-bottom:20px;padding:15px;background:#f9f9f9;border-left:3px solid #ccc;">`;
-                        qEmailContent += `<h4 style="margin:0 0 10px 0;color:#222;">${questionNumEmail}. ${q.text}</h4>`;
-                        qEmailContent += `<p style="margin:0;"><strong>Answer:</strong> ${response}</p>`;
+                        qEmailContent += `<div style="margin-bottom:12px;padding:8px;background:#f9f9f9;border-left:3px solid #ccc;"><h4 style="margin:0 0 5px 0;color:#222;">${questionNumEmail}. ${q.text}</h4><p style="margin:0;font-size:14px;"><strong>Answer:</strong> ${response}</p>`;
                     }
 
                     if (response === q.triggers && response !== '') {
@@ -1456,39 +1441,28 @@
                                 questionSaveData.codesSelected = selectedCodesInfo.map(c => c.txt); // Save to Firebase
                                 
                                 if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Selected Codes & Required Actions:</strong><ul style="padding-left:20px;margin-top:5px;color:#d9534f;">`;
-                                    selectedCodesInfo.forEach(c => {
-                                        qEmailContent += `<li><strong>${c.txt}</strong>`;
-                                        if (c.action) {
-                                            qEmailContent += `<br><span style="color:#555;font-size:0.9em;"><em>Action Required: ${c.action}</em></span>`;
-                                        }
-                                        qEmailContent += `</li>`;
-                                    });
-                                    qEmailContent += `</ul></div>`;
+                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Codes:</strong> `;
+                                    qEmailContent += selectedCodesInfo.map(c => `<b>${c.txt}</b>` + (c.action ? ` (${c.action})` : ``)).join(' | ');
+                                    qEmailContent += `</div>`;
                                 }
                             } else if (q.ifNoAction) {
-                                // Direct "If no" fallback for questions with no distinct CAT checkboxes
                                 if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong style="color:#d9534f;">Action Required:</strong> <span style="color:#555;font-size:0.9em;"><em>${q.ifNoAction}</em></span></div>`;
+                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Action:</strong> ${q.ifNoAction}</div>`;
                                 }
                             }
                         }
                     }
 
-                    // Append Contextual Notes to Email (always, if present)
                     if (includeInEmail && questionNotes) {
-                        qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Auditor Notes:</strong><br><span style="color:#333;font-size:0.95em;white-space:pre-wrap;">${escapeHtml(questionNotes)}</span></div>`;
+                        qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;"><strong>Notes:</strong> ${escapeHtml(questionNotes)}</div>`;
                     }
 
-                    // Render ALL photos in email if required
                     if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
-                        qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br><div style="margin-top:8px;">`;
+                        qEmailContent += `<div style="margin-top:8px;font-size:14px;"><strong>Photos:</strong> `;
                         questionSaveData.uploadedPhotos.forEach((photoUrl, idx) => {
-                            qEmailContent += `<a href="${photoUrl}" target="_blank" style="display:inline-block; margin-right: 8px; margin-bottom: 8px; padding: 6px 12px; background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; text-decoration: none; color: #495057; font-size: 0.85em; font-weight: bold;">
-                                📸 View Photo ${idx + 1}
-                            </a>`;
+                            qEmailContent += `<a href="${photoUrl}" target="_blank" style="margin-right:8px;color:#0056b3;text-decoration:none;">[Photo ${idx + 1}]</a>`;
                         });
-                        qEmailContent += `</div></div>`;
+                        qEmailContent += `</div>`;
                     }
                     
                     if (includeInEmail) {
