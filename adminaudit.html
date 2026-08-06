@@ -368,6 +368,20 @@
         .photo-thumb-status.done { background: rgba(78,204,163,0.9); color: #000; }
         .photo-thumb-status.error { background: rgba(255,107,107,0.9); color: white; }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        
+        .drop-zone {
+            width: 100%; padding: 1.2rem; background: rgba(0, 0, 0, 0.2);
+            border: 2px dashed var(--text-dim); border-radius: 8px;
+            color: var(--text-dim); text-align: center; cursor: pointer;
+            transition: all 0.3s ease; font-size: 0.85rem;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            background: rgba(255, 107, 53, 0.1); border-color: var(--primary); color: white;
+        }
+        .file-names-display {
+            margin-top: 0.5rem; color: var(--primary); font-size: 0.75rem; word-break: break-all;
+        }
+
         .photo-count-badge {
             display: inline-flex; align-items: center; gap: 0.4rem;
             background: rgba(78,204,163,0.15); border: 1px solid var(--success);
@@ -977,6 +991,28 @@
             { id: "q78", text: "Is Kracken Field Complete", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
+        window.handleDrop = function(e, inputId) {
+            const input = document.getElementById(inputId);
+            if (input && e.dataTransfer.files) {
+                input.files = e.dataTransfer.files;
+                const qId = inputId.replace('_files', '');
+                updateFileNames(qId);
+            }
+        };
+
+        window.updateFileNames = function(qId) {
+            const input = document.getElementById(`${qId}_files`);
+            const display = document.getElementById(`${qId}_file_names`);
+            if (input && display) {
+                if (input.files.length > 0) {
+                    display.innerHTML = Array.from(input.files).map(f => f.name).join('<br>');
+                } else {
+                    display.innerHTML = '';
+                }
+            }
+            triggerAutoSave();
+        };
+
         window.triggerAutoSave = function() {
             if (checklistAutoSaveTimeout) clearTimeout(checklistAutoSaveTimeout);
             checklistAutoSaveTimeout = setTimeout(saveChecklistDraftLocally, 1000);
@@ -1071,7 +1107,12 @@
                         <div style="padding: 0.8rem 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 0.5rem; border-left: 2px solid var(--primary);">
                             <textarea id="${q.id}_notes" class="filter-input" style="min-height: 50px; margin-bottom: 0.8rem; font-size: 0.85rem; padding: 0.6rem;" placeholder="Add specific notes (Optional)..." oninput="triggerAutoSave()"></textarea>
                             <div id="${q.id}_photo_preview" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;"></div>
-                            <input type="file" id="${q.id}_files" class="file-upload-input" style="margin: 0; padding: 0.4rem; background: var(--dark-lighter); border: 1px dashed var(--text-dim); font-size: 0.75rem;" accept="image/*" multiple>
+                            <div class="drop-zone" onclick="document.getElementById('${q.id}_files').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDrop(event, '${q.id}_files')">
+                                <span style="font-size: 1.2rem; display: block; margin-bottom: 0.3rem;">📁</span>
+                                Drag & Drop photos here, or click to select
+                                <div id="${q.id}_file_names" class="file-names-display"></div>
+                                <input type="file" id="${q.id}_files" style="display: none;" accept="image/*" multiple onchange="updateFileNames('${q.id}')">
+                            </div>
                         </div>
                     </details>
                 `;
