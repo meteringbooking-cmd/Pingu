@@ -1070,6 +1070,7 @@
                         <summary style="cursor: pointer; color: var(--primary); font-size: 0.85rem; font-weight: 600; list-style: none; user-select: none;">+ Add Notes or Photos</summary>
                         <div style="padding: 0.8rem 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 0.5rem; border-left: 2px solid var(--primary);">
                             <textarea id="${q.id}_notes" class="filter-input" style="min-height: 50px; margin-bottom: 0.8rem; font-size: 0.85rem; padding: 0.6rem;" placeholder="Add specific notes (Optional)..." oninput="triggerAutoSave()"></textarea>
+                            <div id="${q.id}_photo_preview" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;"></div>
                             <input type="file" id="${q.id}_files" class="file-upload-input" style="margin: 0; padding: 0.4rem; background: var(--dark-lighter); border: 1px dashed var(--text-dim); font-size: 0.75rem;" accept="image/*" multiple>
                         </div>
                     </details>
@@ -1338,7 +1339,7 @@
                         uploadedPhotos: [...existingPhotos] 
                     };
                     
-                    let includeInEmail = (response === q.triggers && response !== '');
+                    let includeInEmail = ((response === q.triggers && response !== '') || questionNotes || questionSaveData.uploadedPhotos.length > 0 || (fileInput && fileInput.files.length > 0));
                     let qEmailContent = "";
 
                     if (includeInEmail) {
@@ -1379,38 +1380,37 @@
                                     qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong style="color:#d9534f;">Action Required:</strong> <span style="color:#555;font-size:0.9em;"><em>${q.ifNoAction}</em></span></div>`;
                                 }
                             }
-
-                            // Append Contextual Notes to Email
-                            if (includeInEmail && questionNotes) {
-                                qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Auditor Notes:</strong><br><span style="color:#333;font-size:0.95em;white-space:pre-wrap;">${escapeHtml(questionNotes)}</span></div>`;
-                            }
-
-                            // Process Files (Firebase Upload)
-                            const fileInput = document.getElementById(`${q.id}_files`);
-                            if (fileInput && fileInput.files.length > 0) {
-                                if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
-                                }
-                                for (let f = 0; f < fileInput.files.length; f++) {
-                                    const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
-                                    
-                                    questionSaveData.uploadedPhotos.push(liveUrl); // Save URL to Firebase
-                                }
-                            }
-                            
-                            // Render ALL photos (old + newly uploaded) in email if required
-                            if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
-                                if (!fileInput || fileInput.files.length === 0) {
-                                    qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
-                                }
-                                questionSaveData.uploadedPhotos.forEach(photoUrl => {
-                                    qEmailContent += `<a href="${photoUrl}" target="_blank">
-                                        <img src="${photoUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
-                                    </a>`;
-                                });
-                                qEmailContent += `</div>`;
-                            }
                         }
+                    }
+
+                    // Append Contextual Notes to Email (always, if present)
+                    if (includeInEmail && questionNotes) {
+                        qEmailContent += `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ccc;"><strong>Auditor Notes:</strong><br><span style="color:#333;font-size:0.95em;white-space:pre-wrap;">${escapeHtml(questionNotes)}</span></div>`;
+                    }
+
+                    // Process Files (Firebase Upload) (always)
+                    const fileInput = document.getElementById(`${q.id}_files`);
+                    if (fileInput && fileInput.files.length > 0) {
+                        if (includeInEmail) {
+                            qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
+                        }
+                        for (let f = 0; f < fileInput.files.length; f++) {
+                            const liveUrl = await uploadImageToFirebase(fileInput.files[f], safeJobNumber);
+                            questionSaveData.uploadedPhotos.push(liveUrl); // Save URL to Firebase
+                        }
+                    }
+                    
+                    // Render ALL photos (old + newly uploaded) in email if required
+                    if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
+                        if (!fileInput || fileInput.files.length === 0) {
+                            qEmailContent += `<div style="margin-top:15px;"><strong>Attached Evidence:</strong><br>`;
+                        }
+                        questionSaveData.uploadedPhotos.forEach(photoUrl => {
+                            qEmailContent += `<a href="${photoUrl}" target="_blank">
+                                <img src="${photoUrl}" style="max-width:250px;margin:5px;border:1px solid #ccc;border-radius:4px;" alt="Attached Image" />
+                            </a>`;
+                        });
+                        qEmailContent += `</div>`;
                     }
                     
                     if (includeInEmail) {
@@ -1944,8 +1944,12 @@
             // Reset dropdowns
             document.querySelectorAll('.checklist-dropdown').forEach(dd => dd.value = '');
             
-            // Remove Highlights
+            // Remove Highlights & Reset Previews
             document.querySelectorAll('.checklist-item').forEach(el => el.classList.remove('error-highlight'));
+            auditQuestionsData.forEach(q => {
+                let p = document.getElementById(`${q.id}_photo_preview`);
+                if (p) p.innerHTML = '';
+            });
 
             const cbs = document.querySelectorAll('.cat-code-cb');
             cbs.forEach(cb => cb.checked = false);
@@ -1989,6 +1993,19 @@
                         if (savedData.notes || (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0)) {
                             let detailsEl = document.getElementById(`${q.id}_details`);
                             if (detailsEl) detailsEl.open = true;
+                            
+                            if (savedData.uploadedPhotos && savedData.uploadedPhotos.length > 0) {
+                                let previewEl = document.getElementById(`${q.id}_photo_preview`);
+                                if (previewEl) {
+                                    previewEl.innerHTML = savedData.uploadedPhotos.map(url => `
+                                        <div style="position:relative; width: 60px; height: 60px; border-radius: 4px; overflow: hidden; border: 1px solid var(--dark-lighter);">
+                                            <a href="${url}" target="_blank">
+                                                <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" alt="Saved photo" />
+                                            </a>
+                                        </div>
+                                    `).join('');
+                                }
+                            }
                         }
 
                         // If expanded, restore any previously checked CAT codes
