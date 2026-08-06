@@ -364,6 +364,7 @@
                         <tr>
                             <th>Date Received</th>
                             <th>Type</th>
+                            <th>Contract</th>
                             <th>Job Ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
@@ -374,7 +375,7 @@
                         </tr>
                     </thead>
                     <tbody id="complaintsTableBody">
-                        <tr><td colspan="9" class="empty-state">Loading...</td></tr>
+                        <tr><td colspan="10" class="empty-state">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -389,6 +390,7 @@
                         <tr>
                             <th>Date Received</th>
                             <th>Type</th>
+                            <th>Contract</th>
                             <th>Job Ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
@@ -397,7 +399,7 @@
                         </tr>
                     </thead>
                     <tbody id="historicTableBody">
-                        <tr><td colspan="7" class="empty-state">No resolved complaints yet.</td></tr>
+                        <tr><td colspan="8" class="empty-state">No resolved complaints yet.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -420,6 +422,15 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="contract">Contract *</label>
+                    <select id="contract" required>
+                        <option value="">Select Contract</option>
+                        <option value="Energise">Energise</option>
+                        <option value="Sureserve">Sureserve</option>
+                        <option value="Calisen">Calisen</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label for="ftl">FTL *</label>
                     <select id="ftl" required>
                         <option value="">Select FTL</option>
@@ -438,6 +449,7 @@
                         <option>Alex Duff</option>
                         <option>Alistair Cavan</option>
                         <option>Allan Grant</option>
+                        <option>Andrew Wallace</option>
                         <option>Auther Bumhira</option>
                         <option>Bilal Amin</option>
                         <option>Billy McDonough</option>
@@ -458,6 +470,7 @@
                         <option>Herve Ntwali</option>
                         <option>Ivan Rivers</option>
                         <option>James Mclean</option>
+                        <option>James Stott</option>
                         <option>Jamie Longland</option>
                         <option>Johnson Allepot</option>
                         <option>Jon Convery</option>
@@ -467,6 +480,7 @@
                         <option>Jordan Morrison</option>
                         <option>Kris Armstrong</option>
                         <option>Lukasz Holysz</option>
+                        <option>Mark Lavelle</option>
                         <option>Martin Bailes</option>
                         <option>Matti Chalkowski</option>
                         <option>Mehdi Khamseh</option>
@@ -559,6 +573,7 @@
             <div class="detail-grid">
                 <div class="detail-item"><label>Date Received</label><div class="value" id="mdDateReceived">—</div></div>
                 <div class="detail-item"><label>Type</label><div class="value" id="mdType">—</div></div>
+                <div class="detail-item"><label>Contract</label><div class="value" id="mdContract">—</div></div>
                 <div class="detail-item"><label>Job Reference</label><div class="value" id="mdJobRef">—</div></div>
                 <div class="detail-item"><label>Engineer</label><div class="value" id="mdEngineer">—</div></div>
                 <div class="detail-item"><label>FTL</label><div class="value" id="mdFtl">—</div></div>
@@ -943,7 +958,7 @@
         const active = allComplaints.filter(c => c.status !== 'resolved');
         tbody.innerHTML = '';
         if (active.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No active complaints ✓</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No active complaints ✓</td></tr>';
             return;
         }
         active.forEach(c => {
@@ -954,6 +969,7 @@
             tr.innerHTML = `
                 <td>${formatDate(c.dateReceived)}</td>
                 <td>${typeBadge(c.type||'Complaint')}</td>
+                <td>${c.contract||'—'}</td>
                 <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
@@ -973,7 +989,7 @@
         const resolved = allComplaints.filter(c => c.status === 'resolved');
         tbody.innerHTML = '';
         if (resolved.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No resolved complaints yet.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No resolved complaints yet.</td></tr>';
             return;
         }
         resolved.forEach(c => {
@@ -982,6 +998,7 @@
             tr.innerHTML = `
                 <td>${formatDate(c.dateReceived)}</td>
                 <td>${typeBadge(c.type||'Complaint')}</td>
+                <td>${c.contract||'—'}</td>
                 <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
@@ -1012,6 +1029,7 @@
         document.getElementById('modalBadges').innerHTML      = typeBadge(c.type||'Complaint') + urgencyBadge(days);
         document.getElementById('mdDateReceived').textContent  = formatDate(c.dateReceived);
         document.getElementById('mdType').innerHTML            = typeBadge(c.type||'Complaint');
+        document.getElementById('mdContract').textContent      = c.contract||'—';
         document.getElementById('mdJobRef').textContent        = c.jobRef||'—';
         document.getElementById('mdEngineer').textContent      = c.engineer||'—';
         document.getElementById('mdFtl').textContent           = c.ftl||'—';
@@ -1180,12 +1198,13 @@
     document.getElementById('submitBtn').addEventListener('click', async () => {
         const dateReceived = document.getElementById('dateReceived').value;
         const type         = document.getElementById('type').value;
+        const contract     = document.getElementById('contract').value;
         const engineer     = document.getElementById('engineer').value;
         const ftl          = document.getElementById('ftl').value;
         const jobRef       = document.getElementById('jobRef').value.trim();
         const targetDate   = document.getElementById('targetDate').value;
 
-        if (!dateReceived || !type || !engineer || !ftl || !jobRef || !targetDate) {
+        if (!dateReceived || !type || !contract || !engineer || !ftl || !jobRef || !targetDate) {
             showToast('Please fill in all required fields.', 'error');
             return;
         }
@@ -1196,7 +1215,7 @@
         try {
             const uploadedFiles = await uploadAllFiles(jobRef);
             await addDoc(collection(db, 'Complaints'), {
-                dateReceived, type, engineer, ftl, jobRef, targetDate,
+                dateReceived, type, contract, engineer, ftl, jobRef, targetDate,
                 status: 'in-progress', engineerInformed: false,
                 uploadedFiles, submittedAt: serverTimestamp()
             });
@@ -1213,6 +1232,7 @@
     function resetForm() {
         document.getElementById('dateReceived').valueAsDate = new Date();
         document.getElementById('type').value     = '';
+        document.getElementById('contract').value = '';
         document.getElementById('ftl').value      = '';
         document.getElementById('engineer').value = '';
         document.getElementById('jobRef').value   = '';
