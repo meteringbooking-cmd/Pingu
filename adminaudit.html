@@ -991,6 +991,49 @@
             { id: "q78", text: "Is Kracken Field Complete", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
+        window.clearFiles = function(qId) {
+            const input = document.getElementById(`${qId}_files`);
+            if (input) {
+                input.dt = new DataTransfer();
+                input.files = input.dt.files;
+                updateFileNamesDisplay(qId);
+            }
+        };
+
+        window.updateFileNamesDisplay = function(qId) {
+            const input = document.getElementById(`${qId}_files`);
+            const display = document.getElementById(`${qId}_file_names`);
+            if (input && display) {
+                if (input.files.length > 0) {
+                    display.innerHTML = `
+                        <div style="margin-bottom: 0.4rem; color: var(--primary);">` + 
+                        Array.from(input.files).map(f => f.name).join('<br>') +
+                        `</div>
+                        <button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; background: rgba(255,255,255,0.1); border: 1px solid var(--text-dim);" onclick="event.stopPropagation(); window.clearFiles('${qId}')">Clear Selected</button>
+                    `;
+                } else {
+                    display.innerHTML = '';
+                }
+            }
+            triggerAutoSave();
+        };
+
+        window.updateFileNames = function(qId) {
+            const input = document.getElementById(`${qId}_files`);
+            if (input) {
+                if (!input.dt) input.dt = new DataTransfer();
+                for (let i = 0; i < input.files.length; i++) {
+                    let exists = false;
+                    for (let j = 0; j < input.dt.files.length; j++) {
+                         if (input.dt.files[j].name === input.files[i].name) exists = true;
+                    }
+                    if (!exists) input.dt.items.add(input.files[i]);
+                }
+                input.files = input.dt.files;
+                updateFileNamesDisplay(qId);
+            }
+        };
+
         window.handleDrop = function(e, inputId) {
             const input = document.getElementById(inputId);
             if (input && e.dataTransfer.files) {
@@ -998,19 +1041,6 @@
                 const qId = inputId.replace('_files', '');
                 updateFileNames(qId);
             }
-        };
-
-        window.updateFileNames = function(qId) {
-            const input = document.getElementById(`${qId}_files`);
-            const display = document.getElementById(`${qId}_file_names`);
-            if (input && display) {
-                if (input.files.length > 0) {
-                    display.innerHTML = Array.from(input.files).map(f => f.name).join('<br>');
-                } else {
-                    display.innerHTML = '';
-                }
-            }
-            triggerAutoSave();
         };
 
         window.triggerAutoSave = function() {
