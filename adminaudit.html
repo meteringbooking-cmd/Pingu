@@ -991,11 +991,12 @@
             { id: "q78", text: "Is Kracken Field Complete", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
-        window.deleteUploadedPhoto = function(qId, urlIndex) {
+                window.deleteUploadedPhoto = async function(qId, urlIndex) {
             if (!currentJob || !currentJob.auditChecklistData || !currentJob.auditChecklistData[qId] || !currentJob.auditChecklistData[qId].uploadedPhotos) return;
             currentJob.auditChecklistData[qId].uploadedPhotos.splice(urlIndex, 1);
             updateFileNamesDisplay(qId);
             triggerAutoSave();
+            await persistPhotosToFirebase(qId);
         };
 
         window.updateFileNamesDisplay = function(qId) {
@@ -1016,6 +1017,25 @@
                 }
             } else if (previewEl) {
                 previewEl.innerHTML = '';
+            }
+        };
+
+                // Immediately persists this question's photo URLs to Firestore.
+        // Uses dot-path field so it only ever touches this one question's
+        // uploadedPhotos array, never clobbering answers/notes/other questions.
+        window.persistPhotosToFirebase = async function(qId) {
+            if (!currentJob) return;
+            const photos = (currentJob.auditChecklistData && currentJob.auditChecklistData[qId])
+                ? currentJob.auditChecklistData[qId].uploadedPhotos || []
+                : [];
+            try {
+                await writeSolarJob(currentJob, {
+                    [`auditChecklistData.${qId}.uploadedPhotos`]: photos,
+                    [`auditChecklistData.${qId}.questionText`]: auditQuestionsData.find(q => q.id === qId)?.text || ''
+                });
+            } catch (e) {
+                console.error('Failed to persist photo(s) to Firestore', e);
+                if (typeof showToast === 'function') showToast('Photo uploaded but failed to save reference — please click Save', 'error');
             }
         };
 
@@ -1040,10 +1060,12 @@
             }
             if (previewEl) previewEl.insertAdjacentHTML('beforeend', uploadingHtml);
             
+            let anyUploaded = false;
             for (let i = 0; i < files.length; i++) {
                 try {
                     const liveUrl = await uploadImageToFirebase(files[i], currentJob.jobNumber);
                     currentJob.auditChecklistData[qId].uploadedPhotos.push(liveUrl);
+                    anyUploaded = true;
                 } catch (e) {
                     if (typeof showToast === 'function') showToast('Failed to upload a photo', 'error');
                 }
@@ -1053,6 +1075,13 @@
             
             updateFileNamesDisplay(qId);
             triggerAutoSave();
+
+            // Write the photo URL(s) to Firestore right away — don't wait for
+            // the user to click Save. This is what was previously missing.
+            if (anyUploaded) {
+                await persistPhotosToFirebase(qId);
+                if (typeof showToast === 'function') showToast('Photo saved', 'success');
+            }
         };
 
         window.handleDrop = function(e, inputId) {
@@ -1093,7 +1122,11 @@
                     codesSelected = checkedCbs.map(cb => cb.nextElementSibling.textContent);
                 }
                 
-                draft[q.id] = { answer: response, notes: notes, codesSelected: codesSelected };
+                                let uploadedPhotos = (currentJob && currentJob.auditChecklistData && currentJob.auditChecklistData[q.id])
+                                        ? currentJob.auditChecklistData[q.id].uploadedPhotos || []
+                                        : [];
+
+                draft[q.id] = { answer: response, notes: notes, codesSelected: codesSelected, uploadedPhotos: uploadedPhotos };
             }
             
             // Also store emails and general additional notes
@@ -2095,12 +2128,21 @@
                             
                             handleChecklistChange(q.id, q.triggers);
                             
-                            if (d.notes) {
-                                let specificNotes = document.getElementById(`${q.id}_notes`);
-                                if (specificNotes) specificNotes.value = d.notes;
-                                let detailsEl = document.getElementById(`${q.id}_details`);
-                                if (detailsEl) detailsEl.open = true;
-                            }
+                                                    if (d.notes) {
+                            let specificNotes = document.getElementById(`${q.id}_notes`);
+                            if (specificNotes) specificNotes.value = d.notes;
+                            let detailsEl = document.getElementById(`${q.id}_details`);
+                            if (detailsEl) detailsEl.open = true;
+                        }
+
+                        if (d.uploadedPhotos && d.uploadedPhotos.length > 0) {
+                            if (!currentJob.auditChecklistData) currentJob.auditChecklistData = {};
+                            if (!currentJob.auditChecklistData[qId]) currentJob.auditChecklistData[qId] = {};
+                            currentJob.auditChecklistData[qId].uploadedPhotos = d.uploadedPhotos;
+                            updateFileNamesDisplay(qId);
+                            let detailsEl2 = document.getElementById(`${q.id}_details`);
+                            if (detailsEl2) detailsEl2.open = true;
+                        }
 
                             if (d.answer === q.triggers) {
                                 if (d.codesSelected && d.codesSelected.length > 0) {
