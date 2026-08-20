@@ -1428,9 +1428,10 @@
                         <div style="background:white;padding:20px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
                             <h2 style="color:#FF6B35;margin:0 0 10px 0;">Audit Report - #${escapeHtml(safeJobNumber)}</h2>
                             <p style="margin:0 0 15px 0;"><strong>Outcome:</strong> ${calculatedOutcome}</p>
-                            ${pdfReportUrl ? `<a href="${pdfReportUrl}" target="_blank" style="display:inline-block;background:#28a745;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;margin-right:10px;">📄 View Full PDF Report (incl. photos)</a>` : ''}
+                            ${pdfReportUrl ? `<a href="${pdfReportUrl}" target="_blank" style="display:inline-block;background:#28a745;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;margin-right:10px;">📄 View Full PDF Report (incl. photos)</a>` : `<p style="color:#d9534f;font-size:13px;">⚠️ PDF report could not be generated — please check the dashboard.</p>`}
                             <a href="${uploadLink}" target="_blank" style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;">📸 Upload Missing Photos</a>
                             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+                            <p style="font-size:14px;color:#555;margin:0 0 10px 0;">Items flagged during this audit (see the PDF report for full notes, codes, and photos):</p>
                 `;
 
                 // Object to store all the data we'll save into Firebase
@@ -1467,59 +1468,32 @@
                         uploadedPhotos: [...existingPhotos] 
                     };
                     
-                    let includeInEmail = ((response === q.triggers && response !== '') || questionNotes || questionSaveData.uploadedPhotos.length > 0);
-                    let qEmailContent = "";
-
-                    if (includeInEmail) {
-                        qEmailContent += `<div style="margin-bottom:12px;padding:8px;background:#f9f9f9;border-left:3px solid #ccc;"><h4 style="margin:0 0 5px 0;color:#222;">${questionNumEmail}. ${q.text}</h4><p style="margin:0;font-size:14px;"><strong>Answer:</strong> ${response}</p>`;
-                    }
-
+                                        // Still compute codesSelected for Firestore/PDF, but keep
+                    // the EMAIL body itself minimal — full detail now lives
+                    // in the linked PDF report. This avoids hitting EmailJS's
+                    // request size limit (large audits were causing
+                    // ERR_HTTP2_PROTOCOL_ERROR from an oversized payload).
                     if (response === q.triggers && response !== '') {
                         const extraDiv = document.getElementById(`${q.id}_extra`);
                         if (extraDiv) {
                             const checkedCbs = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked'));
-                            
                             if (checkedCbs.length > 0) {
-                                let selectedCodesInfo = checkedCbs.map(cb => {
-                                    let val = cb.value;
-                                    let txt = cb.nextElementSibling.textContent;
-                                    let action = cb.getAttribute('data-action') || '';
-                                    return { val, txt, action };
-                                });
-
-                                questionSaveData.codesSelected = selectedCodesInfo.map(c => c.txt); // Save to Firebase
-                                
-                                if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Codes:</strong> `;
-                                    qEmailContent += selectedCodesInfo.map(c => `<b>${c.txt}</b>` + (c.action ? ` (${c.action})` : ``)).join(' | ');
-                                    qEmailContent += `</div>`;
-                                }
-                            } else if (q.ifNoAction) {
-                                if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Action:</strong> ${q.ifNoAction}</div>`;
-                                }
+                                questionSaveData.codesSelected = checkedCbs.map(cb => cb.nextElementSibling.textContent);
                             }
                         }
                     }
 
-                    if (includeInEmail && questionNotes) {
-                        qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;"><strong>Notes:</strong> ${escapeHtml(questionNotes)}</div>`;
+                    const hasIssue = (response === q.triggers && response !== '');
+                    if (hasIssue) {
+                        emailContent += `<div style="margin-bottom:6px;padding:6px 10px;background:#f9f9f9;border-left:3px solid #d9534f;font-size:13px;">
+                            <strong>${questionNumEmail}. ${q.text}</strong> — ${response}
+                            ${questionSaveData.codesSelected.length > 0 ? ` (${questionSaveData.codesSelected.length} code${questionSaveData.codesSelected.length > 1 ? 's' : ''})` : ''}
+                        </div>`;
                     }
 
-                    if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
-                        qEmailContent += `<div style="margin-top:8px;font-size:14px;color:#666;">📎 ${questionSaveData.uploadedPhotos.length} photo(s) — included in the full PDF report linked above</div>`;
-                    }
-                    
-                    if (includeInEmail) {
-                        qEmailContent += `</div>`;
-                        emailContent += qEmailContent;
-                    }
-                    
                     // Assign to master firebase save object
                     firebaseChecklistData[q.id] = questionSaveData;
                     questionNumEmail++;
-                }
-
                 const additionalNotes = document.getElementById('additional-email-notes').value.trim();
                 if (additionalNotes && sendEmail) {
                     emailContent += `
@@ -1533,6 +1507,9 @@
                 emailContent += `</div></div>`;
 
                 // 1. SAVE TO FIREBASE DATABASE
+                                // 1. SAVE TO FIREBASE DATABASE — this always runs and its
+                // success/failure is reported independently of the email,
+                // so a failed email never masks whether your answers saved.
                 if (currentJob) {
                     await writeSolarJob(currentJob, {
                         auditChecklistData: firebaseChecklistData,
@@ -1552,21 +1529,29 @@
                     localStorage.removeItem('audit_draft_' + currentJob.id);
                 }
 
-                // 2. FIRE EMAILJS
+                // 2. FIRE EMAILJS — isolated in its own try/catch so a network
+                // or payload-size failure here doesn't get confused with a
+                // database save failure.
                 if (sendEmail) {
-                    await emailjs.send('service_4cq7fb3', 'template_6510scg', {
-                        to_email: formattedEmails,
-                        job_number: safeJobNumber,
-                        postcode: currentJob ? currentJob.postcode : 'N/A',
-                        message_html: emailContent
-                    });
-                    showToast(`Saved to database & sent to ${formattedEmails}`, "success");
+                    try {
+                        console.log('[Audit Email] payload size (chars):', emailContent.length);
+                        await emailjs.send('service_4cq7fb3', 'template_6510scg', {
+                            to_email: formattedEmails,
+                            job_number: safeJobNumber,
+                            postcode: currentJob ? currentJob.postcode : 'N/A',
+                            message_html: emailContent
+                        });
+                        showToast(`Saved to database & sent to ${formattedEmails}`, "success");
+                    } catch (emailErr) {
+                        console.error("Audit saved, but EmailJS send failed:", emailErr, "payload size:", emailContent.length);
+                        showToast("Audit saved, but the email failed to send (likely too large — see console). Try again or trim notes.", "error");
+                    }
                 } else {
                     showToast("Progress successfully saved to database.", "success");
                 }
             } catch (err) {
-                console.error("Error saving/sending checklist", err);
-                showToast("Failed to process. Check console for errors.", "error");
+                console.error("Error saving checklist to database:", err);
+                showToast("Failed to save to database. Check console for errors.", "error");
             } finally {
                 btnSave.innerHTML = "💾 Save Only (No Email)";
                 btnSend.innerHTML = "✉️ Save & Send Email";
