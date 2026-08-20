@@ -2701,62 +2701,57 @@
                     return; // Skip omitted jobs
                 }
 
-                // Installs completed logic
+                // Everything is keyed on completionDate falling within the week
+                if (!job.completionDate) return;
+                const compDate = new Date(job.completionDate);
+                if (compDate < wcStart || compDate > wcEnd) return;
+
+                // Installs completed
                 if (job.status === 'complete' && job.jobType) {
                     const jt = job.jobType.toLowerCase();
                     if (jt.includes('install') || jt.includes('battery')) {
-                        if (job.completionDate) {
-                            const compDate = new Date(job.completionDate);
-                            if (compDate >= wcStart && compDate <= wcEnd) {
-                                installsCompleted++;
-                            }
-                        }
+                        installsCompleted++;
                     }
                 }
 
-                // Audits logic
+                // Audits completed (any job with a non-pending audit status whose completion date is in the week)
                 if (job.auditStatus && job.auditStatus !== 'pending') {
-                    if (job.auditDate) {
-                        const audDate = new Date(job.auditDate);
-                        if (audDate >= wcStart && audDate <= wcEnd) {
-                            auditsCompleted++;
-                            
-                            let hasCat1 = false;
-                            let hasCat2 = false;
-                            let hasCat3 = false;
-                            let hasCat4 = false;
+                    auditsCompleted++;
 
-                            // Scan CATs for this audited job
-                            if (job.auditChecklistData) {
-                                Object.values(job.auditChecklistData).forEach(qData => {
-                                    if (qData.codesSelected) {
-                                        qData.codesSelected.forEach(code => {
-                                            if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
-                                            if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
-                                            if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
-                                            if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
-                                        });
-                                    }
+                    let hasCat1 = false;
+                    let hasCat2 = false;
+                    let hasCat3 = false;
+                    let hasCat4 = false;
+
+                    // Scan CATs for this audited job
+                    if (job.auditChecklistData) {
+                        Object.values(job.auditChecklistData).forEach(qData => {
+                            if (qData.codesSelected) {
+                                qData.codesSelected.forEach(code => {
+                                    if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
+                                    if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
+                                    if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
+                                    if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
                                 });
                             }
+                        });
+                    }
 
-                            // 1. Total individual jobs for each CAT code
-                            if (hasCat1) cat1++;
-                            if (hasCat2) cat2++;
-                            if (hasCat3) cat3++;
-                            if (hasCat4) cat4++;
+                    // 1. Total individual jobs for each CAT code
+                    if (hasCat1) cat1++;
+                    if (hasCat2) cat2++;
+                    if (hasCat3) cat3++;
+                    if (hasCat4) cat4++;
 
-                            // 2. Mutually exclusive Outcome Bucket (highest severity first)
-                            if (hasCat1) {
-                                safetyFailsCount++;
-                            } else if (hasCat2) {
-                                policyFailsCount++;
-                            } else if (hasCat3 || hasCat4) {
-                                pncCount++;
-                            } else {
-                                passCount++;
-                            }
-                        }
+                    // 2. Mutually exclusive Outcome Bucket (highest severity first)
+                    if (hasCat1) {
+                        safetyFailsCount++;
+                    } else if (hasCat2) {
+                        policyFailsCount++;
+                    } else if (hasCat3 || hasCat4) {
+                        pncCount++;
+                    } else {
+                        passCount++;
                     }
                 }
             });
@@ -2819,10 +2814,8 @@
             ];
 
             // ── Backing data ──────────────────────────────────────────────
-            // Collect the individual jobs that contributed to the KPI totals.
-            // A job is included if:
-            //   • it is an install/battery that completed in the week, OR
-            //   • it has an auditDate that falls in the week
+            // Mirrors the stats loop exactly: every job whose completionDate
+            // falls within the selected week is included.
             const csvEscape = (v) => {
                 const s = String(v == null ? '' : v);
                 return s.includes(',') || s.includes('"') || s.includes('\n')
@@ -2839,54 +2832,32 @@
             const backingRows = [];
             allJobs.forEach(job => {
                 if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) return;
+                if (!job.completionDate) return;
+                const compDate = new Date(job.completionDate);
+                if (compDate < wcStart || compDate > wcEnd) return;
 
-                let includeRow = false;
-
-                // Include if it's a relevant install completed this week
-                if (job.status === 'complete' && job.jobType) {
-                    const jt = job.jobType.toLowerCase();
-                    if ((jt.includes('install') || jt.includes('battery')) && job.completionDate) {
-                        const compDate = new Date(job.completionDate);
-                        if (compDate >= wcStart && compDate <= wcEnd) includeRow = true;
-                    }
-                }
-
-                // Include if it was audited this week
-                if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
-                    const audDate = new Date(job.auditDate);
-                    if (audDate >= wcStart && audDate <= wcEnd) includeRow = true;
-                }
-
-                if (!includeRow) return;
-
-                // Gather CAT code details for this job
+                // CAT code details
                 let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
                 const allCodes = [];
                 if (job.auditChecklistData) {
                     Object.values(job.auditChecklistData).forEach(qData => {
-                        if (qData.codesSelected) {
-                            qData.codesSelected.forEach(code => {
-                                allCodes.push(code);
-                                if (code.startsWith('CAT 1')) jobCat1++;
-                                else if (code.startsWith('CAT 2')) jobCat2++;
-                                else if (code.startsWith('CAT 3')) jobCat3++;
-                                else if (code.startsWith('CAT 4')) jobCat4++;
-                            });
-                        }
+                        (qData.codesSelected || []).forEach(code => {
+                            allCodes.push(code);
+                            if (code.startsWith('CAT 1')) jobCat1++;
+                            else if (code.startsWith('CAT 2')) jobCat2++;
+                            else if (code.startsWith('CAT 3')) jobCat3++;
+                            else if (code.startsWith('CAT 4')) jobCat4++;
+                        });
                     });
                 }
 
-                // Determine audit outcome label
                 let outcomeLabel = '';
                 if (job.auditStatus && job.auditStatus !== 'pending') {
                     if (jobCat1 > 0) outcomeLabel = 'Safety Fail';
                     else if (jobCat2 > 0) outcomeLabel = 'Policy Fail';
                     else if (jobCat3 > 0 || jobCat4 > 0) outcomeLabel = 'PNC';
-                    else if (job.auditStatus === 'pass' || job.auditStatus === 'complete-with-issues' || job.auditStatus === 'in-progress') outcomeLabel = 'Pass';
+                    else outcomeLabel = 'Pass';
                 }
-
-                const auditDateStr = job.auditDate ? new Date(job.auditDate).toLocaleDateString('en-GB') : '';
-                const compDateStr  = job.completionDate ? new Date(job.completionDate).toLocaleDateString('en-GB') : '';
 
                 backingRows.push([
                     csvEscape(job.jobNumber),
@@ -2894,14 +2865,11 @@
                     csvEscape(job.engineer),
                     csvEscape(job.jobType),
                     csvEscape(getStatusLabel(job.status)),
-                    csvEscape(compDateStr),
+                    csvEscape(new Date(job.completionDate).toLocaleDateString('en-GB')),
                     csvEscape(job.auditStatus || 'pending'),
-                    csvEscape(auditDateStr),
+                    csvEscape(job.auditDate ? new Date(job.auditDate).toLocaleDateString('en-GB') : ''),
                     csvEscape(outcomeLabel),
-                    jobCat1,
-                    jobCat2,
-                    jobCat3,
-                    jobCat4,
+                    jobCat1, jobCat2, jobCat3, jobCat4,
                     csvEscape(allCodes.join('; '))
                 ].join(","));
             });
@@ -2910,7 +2878,7 @@
                 headers.join(","),
                 rowData.join(","),
                 "", // blank separator
-                "BACKING DATA",
+                "BACKING DATA — all jobs with completion date in selected week",
                 backingHeaders.map(csvEscape).join(","),
                 ...backingRows
             ];
