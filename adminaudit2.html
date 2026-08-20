@@ -2696,10 +2696,19 @@
             const omitInput = document.getElementById('export-omit-jobs').value || '';
             const omitJobs = omitInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
 
+            const isAllowedExportJobType = (job) => {
+                if (!job || !job.jobType) return false;
+                const jt = job.jobType.trim().toLowerCase();
+                return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
+            };
+
             allJobs.forEach(job => {
                 if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) {
                     return; // Skip omitted jobs
                 }
+
+                // Only include specified Job Types: Solar Install, Solar PV Install, Battery Only
+                if (!isAllowedExportJobType(job)) return;
 
                 // Everything is keyed on completionDate falling within the week
                 if (!job.completionDate) return;
@@ -2707,11 +2716,8 @@
                 if (compDate < wcStart || compDate > wcEnd) return;
 
                 // Installs completed
-                if (job.status === 'complete' && job.jobType) {
-                    const jt = job.jobType.toLowerCase();
-                    if (jt.includes('install') || jt.includes('battery')) {
-                        installsCompleted++;
-                    }
+                if (job.status === 'complete') {
+                    installsCompleted++;
                 }
 
                 // Audits completed (any job with a non-pending audit status whose completion date is in the week)
@@ -2815,7 +2821,7 @@
 
             // ── Backing data ──────────────────────────────────────────────
             // Mirrors the stats loop exactly: every job whose completionDate
-            // falls within the selected week is included.
+            // falls within the selected week and matches allowed job types is included.
             const csvEscape = (v) => {
                 const s = String(v == null ? '' : v);
                 return s.includes(',') || s.includes('"') || s.includes('\n')
@@ -2832,6 +2838,7 @@
             const backingRows = [];
             allJobs.forEach(job => {
                 if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) return;
+                if (!isAllowedExportJobType(job)) return;
                 if (!job.completionDate) return;
                 const compDate = new Date(job.completionDate);
                 if (compDate < wcStart || compDate > wcEnd) return;
