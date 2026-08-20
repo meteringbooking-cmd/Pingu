@@ -2818,9 +2818,104 @@
                 cat4Total  // AD
             ];
 
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + headers.join(",") + "\n"
-                + rowData.join(",");
+            // ── Backing data ──────────────────────────────────────────────
+            // Collect the individual jobs that contributed to the KPI totals.
+            // A job is included if:
+            //   • it is an install/battery that completed in the week, OR
+            //   • it has an auditDate that falls in the week
+            const csvEscape = (v) => {
+                const s = String(v == null ? '' : v);
+                return s.includes(',') || s.includes('"') || s.includes('\n')
+                    ? '"' + s.replace(/"/g, '""') + '"'
+                    : s;
+            };
+
+            const backingHeaders = [
+                "Job Number", "Postcode", "Engineer", "Job Type", "Job Status",
+                "Completion Date", "Audit Status", "Audit Date", "Audit Outcome",
+                "CAT 1 count", "CAT 2 count", "CAT 3 count", "CAT 4 count", "CAT codes"
+            ];
+
+            const backingRows = [];
+            allJobs.forEach(job => {
+                if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) return;
+
+                let includeRow = false;
+
+                // Include if it's a relevant install completed this week
+                if (job.status === 'complete' && job.jobType) {
+                    const jt = job.jobType.toLowerCase();
+                    if ((jt.includes('install') || jt.includes('battery')) && job.completionDate) {
+                        const compDate = new Date(job.completionDate);
+                        if (compDate >= wcStart && compDate <= wcEnd) includeRow = true;
+                    }
+                }
+
+                // Include if it was audited this week
+                if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
+                    const audDate = new Date(job.auditDate);
+                    if (audDate >= wcStart && audDate <= wcEnd) includeRow = true;
+                }
+
+                if (!includeRow) return;
+
+                // Gather CAT code details for this job
+                let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
+                const allCodes = [];
+                if (job.auditChecklistData) {
+                    Object.values(job.auditChecklistData).forEach(qData => {
+                        if (qData.codesSelected) {
+                            qData.codesSelected.forEach(code => {
+                                allCodes.push(code);
+                                if (code.startsWith('CAT 1')) jobCat1++;
+                                else if (code.startsWith('CAT 2')) jobCat2++;
+                                else if (code.startsWith('CAT 3')) jobCat3++;
+                                else if (code.startsWith('CAT 4')) jobCat4++;
+                            });
+                        }
+                    });
+                }
+
+                // Determine audit outcome label
+                let outcomeLabel = '';
+                if (job.auditStatus && job.auditStatus !== 'pending') {
+                    if (jobCat1 > 0) outcomeLabel = 'Safety Fail';
+                    else if (jobCat2 > 0) outcomeLabel = 'Policy Fail';
+                    else if (jobCat3 > 0 || jobCat4 > 0) outcomeLabel = 'PNC';
+                    else if (job.auditStatus === 'pass' || job.auditStatus === 'complete-with-issues' || job.auditStatus === 'in-progress') outcomeLabel = 'Pass';
+                }
+
+                const auditDateStr = job.auditDate ? new Date(job.auditDate).toLocaleDateString('en-GB') : '';
+                const compDateStr  = job.completionDate ? new Date(job.completionDate).toLocaleDateString('en-GB') : '';
+
+                backingRows.push([
+                    csvEscape(job.jobNumber),
+                    csvEscape(job.postcode),
+                    csvEscape(job.engineer),
+                    csvEscape(job.jobType),
+                    csvEscape(getStatusLabel(job.status)),
+                    csvEscape(compDateStr),
+                    csvEscape(job.auditStatus || 'pending'),
+                    csvEscape(auditDateStr),
+                    csvEscape(outcomeLabel),
+                    jobCat1,
+                    jobCat2,
+                    jobCat3,
+                    jobCat4,
+                    csvEscape(allCodes.join('; '))
+                ].join(","));
+            });
+
+            const csvLines = [
+                headers.join(","),
+                rowData.join(","),
+                "", // blank separator
+                "BACKING DATA",
+                backingHeaders.map(csvEscape).join(","),
+                ...backingRows
+            ];
+
+            const csvContent = "data:text/csv;charset=utf-8," + csvLines.join("\n");
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
