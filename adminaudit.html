@@ -1408,13 +1408,30 @@
                 const encodedJob = encodeURIComponent(safeJobNumber);
                 const uploadLink = `${UPLOAD_BASE_URL}engineer-photo-upload.html?job=${encodedJob}`;
 
+                // Generate the audit PDF (with embedded photos) and upload it
+                // to Firebase Storage so we can link to it in the email,
+                // instead of attaching it or linking individual photos.
+                let pdfReportUrl = null;
+                if (sendEmail) {
+                    btnSend.innerHTML = "⏳ Generating PDF Report...";
+                    try {
+                        pdfReportUrl = await generateAndUploadAuditPDF(safeJobNumber);
+                    } catch (e) {
+                        console.error('Failed to generate/upload audit PDF', e);
+                        showToast('Could not generate PDF report — email will be sent without it', 'error');
+                    }
+                    btnSend.innerHTML = "⏳ Saving Database & Compiling Email...";
+                }
+
                 let emailContent = `
                     <div style="font-family:Arial,sans-serif;color:#333;padding:15px;background:#f5f5f5;">
                         <div style="background:white;padding:20px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
                             <h2 style="color:#FF6B35;margin:0 0 10px 0;">Audit Report - #${escapeHtml(safeJobNumber)}</h2>
                             <p style="margin:0 0 15px 0;"><strong>Outcome:</strong> ${calculatedOutcome}</p>
+                            ${pdfReportUrl ? `<a href="${pdfReportUrl}" target="_blank" style="display:inline-block;background:#28a745;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;margin-right:10px;">📄 View Full PDF Report (incl. photos)</a>` : `<p style="color:#d9534f;font-size:13px;">⚠️ PDF report could not be generated — please check the dashboard.</p>`}
                             <a href="${uploadLink}" target="_blank" style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;">📸 Upload Missing Photos</a>
                             <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
+                            <p style="font-size:14px;color:#555;margin:0 0 10px 0;">Items flagged during this audit (see the PDF report for full notes, codes, and photos):</p>
                 `;
 
                 // Object to store all the data we'll save into Firebase
@@ -1451,58 +1468,30 @@
                         uploadedPhotos: [...existingPhotos] 
                     };
                     
-                    let includeInEmail = ((response === q.triggers && response !== '') || questionNotes || questionSaveData.uploadedPhotos.length > 0);
-                    let qEmailContent = "";
-
-                    if (includeInEmail) {
-                        qEmailContent += `<div style="margin-bottom:12px;padding:8px;background:#f9f9f9;border-left:3px solid #ccc;"><h4 style="margin:0 0 5px 0;color:#222;">${questionNumEmail}. ${q.text}</h4><p style="margin:0;font-size:14px;"><strong>Answer:</strong> ${response}</p>`;
-                    }
-
+                                        // Still compute codesSelected for Firestore/PDF, but keep
+                    // the EMAIL body itself minimal — full detail now lives
+                    // in the linked PDF report. This avoids hitting EmailJS's
+                    // request size limit (large audits were causing
+                    // ERR_HTTP2_PROTOCOL_ERROR from an oversized payload).
                     if (response === q.triggers && response !== '') {
                         const extraDiv = document.getElementById(`${q.id}_extra`);
                         if (extraDiv) {
                             const checkedCbs = Array.from(extraDiv.querySelectorAll('.cat-code-cb:checked'));
-                            
                             if (checkedCbs.length > 0) {
-                                let selectedCodesInfo = checkedCbs.map(cb => {
-                                    let val = cb.value;
-                                    let txt = cb.nextElementSibling.textContent;
-                                    let action = cb.getAttribute('data-action') || '';
-                                    return { val, txt, action };
-                                });
-
-                                questionSaveData.codesSelected = selectedCodesInfo.map(c => c.txt); // Save to Firebase
-                                
-                                if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Codes:</strong> `;
-                                    qEmailContent += selectedCodesInfo.map(c => `<b>${c.txt}</b>` + (c.action ? ` (${c.action})` : ``)).join(' | ');
-                                    qEmailContent += `</div>`;
-                                }
-                            } else if (q.ifNoAction) {
-                                if (includeInEmail) {
-                                    qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;color:#d9534f;"><strong>Action:</strong> ${q.ifNoAction}</div>`;
-                                }
+                                questionSaveData.codesSelected = checkedCbs.map(cb => cb.nextElementSibling.textContent);
                             }
                         }
                     }
 
-                    if (includeInEmail && questionNotes) {
-                        qEmailContent += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #ccc;font-size:14px;"><strong>Notes:</strong> ${escapeHtml(questionNotes)}</div>`;
+                    const hasIssue = (response === q.triggers && response !== '');
+                    if (hasIssue) {
+                        emailContent += `<div style="margin-bottom:6px;padding:6px 10px;background:#f9f9f9;border-left:3px solid #d9534f;font-size:13px;">
+                            <strong>${questionNumEmail}. ${q.text}</strong> — ${response}
+                            ${questionSaveData.codesSelected.length > 0 ? ` (${questionSaveData.codesSelected.length} code${questionSaveData.codesSelected.length > 1 ? 's' : ''})` : ''}
+                        </div>`;
                     }
 
-                    if (includeInEmail && questionSaveData.uploadedPhotos.length > 0) {
-                        qEmailContent += `<div style="margin-top:8px;font-size:14px;"><strong>Photos:</strong> `;
-                        questionSaveData.uploadedPhotos.forEach((photoUrl, idx) => {
-                            qEmailContent += `<a href="${photoUrl}" target="_blank" style="margin-right:8px;color:#0056b3;text-decoration:none;">[Photo ${idx + 1}]</a>`;
-                        });
-                        qEmailContent += `</div>`;
-                    }
-                    
-                    if (includeInEmail) {
-                        qEmailContent += `</div>`;
-                        emailContent += qEmailContent;
-                    }
-                    
+                    // Assign to master firebase save object
                     // Assign to master firebase save object
                     firebaseChecklistData[q.id] = questionSaveData;
                     questionNumEmail++;
@@ -1521,6 +1510,9 @@
                 emailContent += `</div></div>`;
 
                 // 1. SAVE TO FIREBASE DATABASE
+                                // 1. SAVE TO FIREBASE DATABASE — this always runs and its
+                // success/failure is reported independently of the email,
+                // so a failed email never masks whether your answers saved.
                 if (currentJob) {
                     await writeSolarJob(currentJob, {
                         auditChecklistData: firebaseChecklistData,
@@ -1540,21 +1532,29 @@
                     localStorage.removeItem('audit_draft_' + currentJob.id);
                 }
 
-                // 2. FIRE EMAILJS
+                // 2. FIRE EMAILJS — isolated in its own try/catch so a network
+                // or payload-size failure here doesn't get confused with a
+                // database save failure.
                 if (sendEmail) {
-                    await emailjs.send('service_4cq7fb3', 'template_6510scg', {
-                        to_email: formattedEmails,
-                        job_number: safeJobNumber,
-                        postcode: currentJob ? currentJob.postcode : 'N/A',
-                        message_html: emailContent
-                    });
-                    showToast(`Saved to database & sent to ${formattedEmails}`, "success");
+                    try {
+                        console.log('[Audit Email] payload size (chars):', emailContent.length);
+                        await emailjs.send('service_4cq7fb3', 'template_6510scg', {
+                            to_email: formattedEmails,
+                            job_number: safeJobNumber,
+                            postcode: currentJob ? currentJob.postcode : 'N/A',
+                            message_html: emailContent
+                        });
+                        showToast(`Saved to database & sent to ${formattedEmails}`, "success");
+                    } catch (emailErr) {
+                        console.error("Audit saved, but EmailJS send failed:", emailErr, "payload size:", emailContent.length);
+                        showToast("Audit saved, but the email failed to send (likely too large — see console). Try again or trim notes.", "error");
+                    }
                 } else {
                     showToast("Progress successfully saved to database.", "success");
                 }
             } catch (err) {
-                console.error("Error saving/sending checklist", err);
-                showToast("Failed to process. Check console for errors.", "error");
+                console.error("Error saving checklist to database:", err);
+                showToast("Failed to save to database. Check console for errors.", "error");
             } finally {
                 btnSave.innerHTML = "💾 Save Only (No Email)";
                 btnSend.innerHTML = "✉️ Save & Send Email";
@@ -2448,14 +2448,7 @@
             return null;
         }
 
-        async function generateAuditPDF() {
-            if (!currentJob) {
-                if (typeof showToast === 'function') showToast('No job selected', 'error');
-                return;
-            }
-
-            if (typeof showToast === 'function') showToast('Fetching images & generating PDF...', 'success');
-
+        async function buildAuditPdfDocDefinition() {
             const jobNumText = document.getElementById('modal-job-number').innerText.trim() || 'Job';
             const safeJobNumber = currentJob.jobNumber || 'Unknown';
             const outcomeText = document.getElementById('outcome-text') ? document.getElementById('outcome-text').innerText : '';
@@ -2602,8 +2595,38 @@
                 }
             };
 
+            return { docDefinition, jobNumText };
+        }
+
+        async function generateAuditPDF() {
+            if (!currentJob) {
+                if (typeof showToast === 'function') showToast('No job selected', 'error');
+                return;
+            }
+            if (typeof showToast === 'function') showToast('Fetching images & generating PDF...', 'success');
+
+            const { docDefinition, jobNumText } = await buildAuditPdfDocDefinition();
             pdfMake.createPdf(docDefinition).download(`${jobNumText} - Job Audit.pdf`);
             if (typeof showToast === 'function') showToast('PDF Generated Successfully!', 'success');
+        }
+
+        // Builds the PDF, uploads it to Firebase Storage (same bucket as
+        // audit evidence photos), and returns a public download URL.
+        async function generateAndUploadAuditPDF(jobNumber) {
+            const { docDefinition, jobNumText } = await buildAuditPdfDocDefinition();
+            const pdfBlob = await new Promise((resolve, reject) => {
+                try {
+                    pdfMake.createPdf(docDefinition).getBlob((blob) => resolve(blob));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+
+            const { ref, uploadBytes, getDownloadURL } = window.firebaseStorageModules;
+            const fileName = `${Date.now()}_Audit_Report.pdf`;
+            const storageRef = ref(window.storage, `audit_reports/${jobNumber}/${fileName}`);
+            await uploadBytes(storageRef, pdfBlob);
+            return await getDownloadURL(storageRef);
         }
 
         function openExportModal() {
@@ -2673,67 +2696,68 @@
             const omitInput = document.getElementById('export-omit-jobs').value || '';
             const omitJobs = omitInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
 
+            const isAllowedExportJobType = (job) => {
+                if (!job || !job.jobType) return false;
+                const jt = job.jobType.trim().toLowerCase();
+                return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
+            };
+
             allJobs.forEach(job => {
                 if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) {
                     return; // Skip omitted jobs
                 }
 
-                // Installs completed logic
-                if (job.status === 'complete' && job.jobType) {
-                    const jt = job.jobType.toLowerCase();
-                    if (jt.includes('install') || jt.includes('battery')) {
-                        if (job.completionDate) {
-                            const compDate = new Date(job.completionDate);
-                            if (compDate >= wcStart && compDate <= wcEnd) {
-                                installsCompleted++;
-                            }
-                        }
-                    }
+                // Only include specified Job Types: Solar Install, Solar PV Install, Battery Only
+                if (!isAllowedExportJobType(job)) return;
+
+                // Everything is keyed on completionDate falling within the week
+                if (!job.completionDate) return;
+                const compDate = new Date(job.completionDate);
+                if (compDate < wcStart || compDate > wcEnd) return;
+
+                // Installs completed
+                if (job.status === 'complete') {
+                    installsCompleted++;
                 }
 
-                // Audits logic
+                // Audits completed (any job with a non-pending audit status whose completion date is in the week)
                 if (job.auditStatus && job.auditStatus !== 'pending') {
-                    if (job.auditDate) {
-                        const audDate = new Date(job.auditDate);
-                        if (audDate >= wcStart && audDate <= wcEnd) {
-                            auditsCompleted++;
-                            
-                            let hasCat1 = false;
-                            let hasCat2 = false;
-                            let hasCat3 = false;
-                            let hasCat4 = false;
+                    auditsCompleted++;
 
-                            // Scan CATs for this audited job
-                            if (job.auditChecklistData) {
-                                Object.values(job.auditChecklistData).forEach(qData => {
-                                    if (qData.codesSelected) {
-                                        qData.codesSelected.forEach(code => {
-                                            if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
-                                            if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
-                                            if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
-                                            if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
-                                        });
-                                    }
+                    let hasCat1 = false;
+                    let hasCat2 = false;
+                    let hasCat3 = false;
+                    let hasCat4 = false;
+
+                    // Scan CATs for this audited job
+                    if (job.auditChecklistData) {
+                        Object.values(job.auditChecklistData).forEach(qData => {
+                            if (qData.codesSelected) {
+                                qData.codesSelected.forEach(code => {
+                                    if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
+                                    if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
+                                    if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
+                                    if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
                                 });
                             }
+                        });
+                    }
 
-                            // 1. Total individual jobs for each CAT code
-                            if (hasCat1) cat1++;
-                            if (hasCat2) cat2++;
-                            if (hasCat3) cat3++;
-                            if (hasCat4) cat4++;
+                    // 1. Total individual jobs for each CAT code
+                    if (hasCat1) cat1++;
+                    if (hasCat2) cat2++;
+                    if (hasCat3) cat3++;
+                    if (hasCat4) cat4++;
 
-                            // 2. Mutually exclusive Outcome Bucket (highest severity first)
-                            if (hasCat1) {
-                                safetyFailsCount++;
-                            } else if (hasCat2) {
-                                policyFailsCount++;
-                            } else if (hasCat3 || hasCat4) {
-                                pncCount++;
-                            } else {
-                                passCount++;
-                            }
-                        }
+                    // 2. Mutually exclusive Outcome Bucket (highest severity first)
+                    if (hasCat1) {
+                        safetyFailsCount++;
+                    } else if (hasCat2) {
+                        policyFailsCount++;
+                    } else if (hasCat3 || hasCat4) {
+                        pncCount++;
+                    } else {
+                        passCount++;
                     }
                 }
             });
@@ -2795,9 +2819,78 @@
                 cat4Total  // AD
             ];
 
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + headers.join(",") + "\n"
-                + rowData.join(",");
+            // ── Backing data ──────────────────────────────────────────────
+            // Mirrors the stats loop exactly: every job whose completionDate
+            // falls within the selected week and matches allowed job types is included.
+            const csvEscape = (v) => {
+                const s = String(v == null ? '' : v);
+                return s.includes(',') || s.includes('"') || s.includes('\n')
+                    ? '"' + s.replace(/"/g, '""') + '"'
+                    : s;
+            };
+
+            const backingHeaders = [
+                "Job Number", "Postcode", "Engineer", "Job Type", "Job Status",
+                "Completion Date", "Audit Status", "Audit Date", "Audit Outcome",
+                "CAT 1 count", "CAT 2 count", "CAT 3 count", "CAT 4 count", "CAT codes"
+            ];
+
+            const backingRows = [];
+            allJobs.forEach(job => {
+                if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) return;
+                if (!isAllowedExportJobType(job)) return;
+                if (!job.completionDate) return;
+                const compDate = new Date(job.completionDate);
+                if (compDate < wcStart || compDate > wcEnd) return;
+
+                // CAT code details
+                let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
+                const allCodes = [];
+                if (job.auditChecklistData) {
+                    Object.values(job.auditChecklistData).forEach(qData => {
+                        (qData.codesSelected || []).forEach(code => {
+                            allCodes.push(code);
+                            if (code.startsWith('CAT 1')) jobCat1++;
+                            else if (code.startsWith('CAT 2')) jobCat2++;
+                            else if (code.startsWith('CAT 3')) jobCat3++;
+                            else if (code.startsWith('CAT 4')) jobCat4++;
+                        });
+                    });
+                }
+
+                let outcomeLabel = '';
+                if (job.auditStatus && job.auditStatus !== 'pending') {
+                    if (jobCat1 > 0) outcomeLabel = 'Safety Fail';
+                    else if (jobCat2 > 0) outcomeLabel = 'Policy Fail';
+                    else if (jobCat3 > 0 || jobCat4 > 0) outcomeLabel = 'PNC';
+                    else outcomeLabel = 'Pass';
+                }
+
+                backingRows.push([
+                    csvEscape(job.jobNumber),
+                    csvEscape(job.postcode),
+                    csvEscape(job.engineer),
+                    csvEscape(job.jobType),
+                    csvEscape(getStatusLabel(job.status)),
+                    csvEscape(new Date(job.completionDate).toLocaleDateString('en-GB')),
+                    csvEscape(job.auditStatus || 'pending'),
+                    csvEscape(job.auditDate ? new Date(job.auditDate).toLocaleDateString('en-GB') : ''),
+                    csvEscape(outcomeLabel),
+                    jobCat1, jobCat2, jobCat3, jobCat4,
+                    csvEscape(allCodes.join('; '))
+                ].join(","));
+            });
+
+            const csvLines = [
+                headers.join(","),
+                rowData.join(","),
+                "", // blank separator
+                "BACKING DATA",
+                backingHeaders.map(csvEscape).join(","),
+                ...backingRows
+            ];
+
+            const csvContent = "data:text/csv;charset=utf-8," + csvLines.join("\n");
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
