@@ -310,6 +310,15 @@
             border-radius: 3px;
         }
 
+        .item-code {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(255,255,255,0.04);
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+}
+
         .multi-job-text { color: var(--warning); font-size: 0.85rem; display: block; margin-top: 0.25rem; }
 
         .toast {
@@ -814,12 +823,13 @@
                     }
                 }
 
-                if (data.miscItems && data.miscItems.length > 0) {
-                    hasItems = true;
-                    data.miscItems.forEach(item => {
-                        itemsHtml += `<div class="item-badge misc"><span class="item-type-tag">${escapeHtml(item.type).substring(0,4)}</span>${escapeHtml(item.desc)} <span class="qty">x${item.qty}</span></div>`;
-                    });
-                }
+if (data.miscItems && data.miscItems.length > 0) {
+    hasItems = true;
+    data.miscItems.forEach(item => {
+        const codeTag = item.code ? `<span class="item-code">${escapeHtml(item.code)}</span>` : '';
+        itemsHtml += `<div class="item-badge misc"><span class="item-type-tag">${escapeHtml(item.type).substring(0,4)}</span>${escapeHtml(item.desc)}${codeTag} <span class="qty">x${item.qty}</span></div>`;
+    });
+}
 
                 itemsHtml += '</div>';
                 if (!hasItems) itemsHtml = '<span style="color:var(--text-dim)">No items specified</span>';
@@ -1200,14 +1210,15 @@
             });
 
             // Build updated miscItems — read current values from DOM, exclude removed
-            const updatedMiscItems = _editMiscItems
-                .filter(item => !item._removed)
-                .map(item => ({
-                    type: document.getElementById(`edit-misc-type-${item._id}`)?.value || item.type,
-                    desc: document.getElementById(`edit-misc-desc-${item._id}`)?.value.trim() || item.desc,
-                    qty:  parseInt(document.getElementById(`edit-misc-qty-${item._id}`)?.value, 10) || item.qty
-                }))
-                .filter(item => item.desc); // drop items with no description
+const updatedMiscItems = _editMiscItems
+    .filter(item => !item._removed)
+    .map(item => ({
+        type: document.getElementById(`edit-misc-type-${item._id}`)?.value || item.type,
+        desc: document.getElementById(`edit-misc-desc-${item._id}`)?.value.trim() || item.desc,
+        qty:  parseInt(document.getElementById(`edit-misc-qty-${item._id}`)?.value, 10) || item.qty,
+        code: item.code || ''
+    }))
+    .filter(item => item.desc); // drop items with no description
 
             try {
                 const docRef = window.firebaseDoc(window.db, 'Cable Requirements', _editDocId);
