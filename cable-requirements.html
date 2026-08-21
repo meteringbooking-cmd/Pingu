@@ -689,9 +689,9 @@ const roofItems = [
             items.forEach((item, i) => {
                 const uid = containerId + '-' + i;
                 const packBadge = item.pack ? `<span class="material-pack-badge">${item.pack}</span>` : '';
-                html += `<div class="material-item">
-                    <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}">
-                    <label for="chk-${uid}" class="material-desc">${item.desc}${packBadge}</label>
+html += `<div class="material-item">
+    <input type="checkbox" id="chk-${uid}" class="material-checkbox" data-desc="${item.desc.replace(/"/g,'&quot;')}" data-code="${(item.code || '').replace(/"/g,'&quot;')}">
+    <label for="chk-${uid}" class="material-desc">${item.desc}${packBadge}</label>
                     <div class="quantity-wrapper" id="qw-${uid}">
                         <span class="quantity-label">Qty:</span>
                         <input type="number" class="quantity-input" id="qty-${uid}" min="0" value="0" step="1">
@@ -724,21 +724,22 @@ const roofItems = [
             if (value === 'yes') { getField('extra-jobs').value = ''; setError('extra-jobs', false); }
         }
 
-        function collectMiscellaneous() {
-            const lines = [], collectedItems = [];
-            ['electrical-items', 'roof-items'].forEach(cId => {
-                const type = cId === 'electrical-items' ? 'Electrical' : 'Roof';
-                document.querySelectorAll('#' + cId + ' .material-checkbox:checked').forEach(chk => {
-                    const uid = chk.id.replace('chk-', '');
-                    const qty = parseInt(document.getElementById('qty-' + uid).value) || 0;
-                    if (qty > 0) {
-                        lines.push(`• ${type}: ${chk.dataset.desc} (x${qty})`);
-                        collectedItems.push({ type, desc: chk.dataset.desc, qty });
-                    }
-                });
-            });
-            return { lines, collectedItems };
-        }
+function collectMiscellaneous() {
+    const lines = [], collectedItems = [];
+    ['electrical-items', 'roof-items'].forEach(cId => {
+        const type = cId === 'electrical-items' ? 'Electrical' : 'Roof';
+        document.querySelectorAll('#' + cId + ' .material-checkbox:checked').forEach(chk => {
+            const uid = chk.id.replace('chk-', '');
+            const qty = parseInt(document.getElementById('qty-' + uid).value) || 0;
+            if (qty > 0) {
+                const code = chk.dataset.code || '';
+                lines.push(`• ${type}: ${chk.dataset.desc}${code ? ' [' + code + ']' : ''} (x${qty})`);
+                collectedItems.push({ type, desc: chk.dataset.desc, qty, code });
+            }
+        });
+    });
+    return { lines, collectedItems };
+}
 
         function validateForm() {
             const name = getField('name').value.trim();
@@ -851,13 +852,13 @@ const roofItems = [
                     <span class="success-detail-value">${escapeHtml(data.extraJobs)}</span>
                 </div>` : '';
 
-            let miscRows = data.miscItems && data.miscItems.length > 0
-                ? `<div style="margin:1.5rem 0 0.5rem;font-size:0.8rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Miscellaneous</div>`
-                  + data.miscItems.map(m => `<div class="success-detail-row">
-                    <span class="success-detail-label">${escapeHtml(m.type)}: ${escapeHtml(m.desc)}</span>
-                    <span class="success-detail-value">x${m.qty}</span>
-                </div>`).join('')
-                : '';
+let miscRows = data.miscItems && data.miscItems.length > 0
+    ? `<div style="margin:1.5rem 0 0.5rem;font-size:0.8rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Miscellaneous</div>`
+      + data.miscItems.map(m => `<div class="success-detail-row">
+          <span class="success-detail-label">${escapeHtml(m.type)}: ${escapeHtml(m.desc)}${m.code ? ' <span style="color:var(--text-dim);">(' + escapeHtml(m.code) + ')</span>' : ''}</span>
+          <span class="success-detail-value">x${m.qty}</span>
+        </div>`).join('')
+    : '';
 
             let cablesHeader = cableRows ? `<div style="margin:1.5rem 0 0.5rem;font-size:0.8rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;">Cables</div>` : '';
 
