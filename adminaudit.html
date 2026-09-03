@@ -1039,8 +1039,9 @@
             }
         };
 
-        window.updateFileNames = async function(qId) {
-            const input = document.getElementById(`${qId}_files`);
+        window.updateFileNames = async function(qId, inputIdOverride) {
+            const targetInputId = inputIdOverride || `${qId}_files`;
+            const input = document.getElementById(targetInputId);
             if (!input || !currentJob || input.files.length === 0) return;
             
             if (!currentJob.auditChecklistData) currentJob.auditChecklistData = {};
@@ -1089,7 +1090,7 @@
             if (input && e.dataTransfer.files) {
                 input.files = e.dataTransfer.files;
                 const qId = inputId.replace('_files', '');
-                updateFileNames(qId);
+                updateFileNames(qId, inputId);
             }
         };
 
@@ -1191,11 +1192,17 @@
                         <div style="padding: 0.8rem 1rem; background: rgba(0,0,0,0.15); border-radius: 8px; margin-top: 0.5rem; border-left: 2px solid var(--primary);">
                             <textarea id="${q.id}_notes" class="filter-input" style="min-height: 50px; margin-bottom: 0.8rem; font-size: 0.85rem; padding: 0.6rem;" placeholder="Add specific notes (Optional)..." oninput="triggerAutoSave()"></textarea>
                             <div id="${q.id}_photo_preview" style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;"></div>
-                            <div class="drop-zone" onclick="document.getElementById('${q.id}_files').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDrop(event, '${q.id}_files')">
-                                <span style="font-size: 1.2rem; display: block; margin-bottom: 0.3rem;">📁</span>
-                                Drag & Drop photos here, or click to select
-                                <div id="${q.id}_file_names" class="file-names-display"></div>
-                                <input type="file" id="${q.id}_files" style="display: none;" accept="image/*" multiple onchange="updateFileNames('${q.id}')">
+                            <div style="display:flex; gap:0.5rem; margin-bottom: 0.8rem;">
+                                <div class="drop-zone" style="flex:1;" onclick="document.getElementById('${q.id}_files').click()" ondragover="event.preventDefault(); this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="event.preventDefault(); this.classList.remove('dragover'); handleDrop(event, '${q.id}_files')">
+                                    <span style="font-size: 1.2rem; display: block; margin-bottom: 0.3rem;">🖼️</span>
+                                    Drag & Drop or Select
+                                    <input type="file" id="${q.id}_files" style="display: none;" accept="image/*" multiple onchange="updateFileNames('${q.id}', '${q.id}_files')">
+                                </div>
+                                <div class="drop-zone" style="flex:0 0 100px; padding: 1.2rem 0.5rem;" onclick="document.getElementById('${q.id}_camera').click()">
+                                    <span style="font-size: 1.2rem; display: block; margin-bottom: 0.3rem;">📸</span>
+                                    Camera
+                                    <input type="file" id="${q.id}_camera" style="display: none;" accept="image/*" capture="environment" onchange="updateFileNames('${q.id}', '${q.id}_camera')">
+                                </div>
                             </div>
                         </div>
                     </details>
