@@ -74,13 +74,16 @@
             border: 2px solid transparent; animation: fadeInUp 0.6s ease-out; margin-bottom: 2rem;
         }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .controls-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .controls-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem; }
         .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .control-group.full-width { grid-column: 1 / -1; }
         .control-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        .control-hint { color: var(--text-dim); font-size: 0.75rem; margin-top: -0.15rem; }
         .control-input {
             background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
             color: var(--text); padding: 0.8rem 1rem; border-radius: 8px;
             font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; transition: all 0.3s ease;
+            width: 100%;
         }
         .control-input:focus { outline: none; border-color: var(--primary); }
 
@@ -111,6 +114,12 @@
         .progress-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.4rem; }
 
         .preview-section { display: none; animation: fadeInUp 0.8s ease-out 0.2s both; }
+        .omit-note {
+            background: rgba(255, 200, 87, 0.08); border: 1px solid rgba(255, 200, 87, 0.3);
+            color: var(--warning); font-size: 0.82rem; padding: 0.75rem 1rem; border-radius: 8px;
+            margin-bottom: 1.5rem; display: none;
+        }
+        .omit-note.show { display: block; }
         .preview-card {
             background: var(--dark-light); border-radius: 16px; padding: 1.75rem;
             border: 2px solid var(--dark-lighter); margin-bottom: 1.5rem;
@@ -192,7 +201,7 @@
                 <a href="adminaudit2.html" class="back-btn">← Back to Audits</a>
             </div>
             <h1>📊 Audit &amp; Cat Code Report</h1>
-            <p class="subtitle">Pick a date range to preview Installs vs Audits, Audit Type and Cat Code trends, then export as a PowerPoint</p>
+            <p class="subtitle">Pick a date range to preview Installs vs Audits, Audit Type and Cat Code trends, then export as a client-ready PowerPoint</p>
         </header>
 
         <div class="controls-card">
@@ -209,6 +218,14 @@
                     <button id="load-btn" class="btn btn-primary" onclick="loadReport()">
                         <span>🔄</span> Load Preview
                     </button>
+                </div>
+            </div>
+
+            <div class="controls-row">
+                <div class="control-group full-width">
+                    <label class="control-label" for="omit-jobs">Omit Job Numbers (optional)</label>
+                    <input type="text" id="omit-jobs" class="control-input" placeholder="e.g. JOB123, JOB456">
+                    <span class="control-hint">Comma-separated. These jobs are excluded from Audits Completed, Audit Ratio, Audit Type and Cat Codes — but still count towards Solar PV Installs.</span>
                 </div>
             </div>
 
@@ -229,6 +246,8 @@
         </div>
 
         <div class="preview-section" id="preview-section">
+
+            <div class="omit-note" id="omit-note"></div>
 
             <!-- Slide 1 preview -->
             <div class="preview-card">
@@ -426,18 +445,32 @@
             return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
         }
 
-        function computeReport(start, end) {
+        function parseOmitJobs(raw) {
+            return new Set(
+                (raw || '')
+                    .split(',')
+                    .map(s => s.trim().toUpperCase())
+                    .filter(s => s)
+            );
+        }
+
+        // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
+        function computeReport(start, end, omitSet) {
+            omitSet = omitSet || new Set();
             let installsCompleted = 0;
             let auditsCompleted = 0;
             const catCounts = {}; // key -> { key, desc, count }
 
             allJobs.forEach(job => {
-                // Solar PV Installs — completion date falls in range
+                // Solar PV Installs — completion date falls in range (omit list does NOT apply here)
                 if (isAllowedInstallType(job) && job.status === 'complete' && job.completionDate) {
                     if (job.completionDate >= start && job.completionDate <= end) {
                         installsCompleted++;
                     }
                 }
+
+                // Everything below this point respects the omit list
+                if (job.jobNumber && omitSet.has(job.jobNumber.toUpperCase())) return;
 
                 // Audits Completed — audit date falls in range
                 if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
@@ -468,7 +501,8 @@
                 auditsCompleted,
                 auditRatio,
                 auditTypes: { pc: 0, wip: 0, dpc: auditsCompleted, signoff: 0, total: auditsCompleted },
-                catList
+                catList,
+                omittedJobs: Array.from(omitSet)
             };
         }
 
@@ -484,13 +518,15 @@
             const end   = new Date(endVal + 'T23:59:59.999');
             if (start > end) { showToast('Start date must be before end date', 'error'); return; }
 
+            const omitSet = parseOmitJobs(document.getElementById('omit-jobs').value);
+
             document.getElementById('loading-indicator').style.display = 'block';
             document.getElementById('preview-section').style.display = 'none';
             document.getElementById('load-btn').disabled = true;
 
             try {
                 if (allJobs.length === 0) await loadAllJobs();
-                reportData = computeReport(start, end);
+                reportData = computeReport(start, end, omitSet);
                 reportData.rangeStart = start;
                 reportData.rangeEnd = end;
 
@@ -512,6 +548,14 @@
             const rangeLabel = `(${fmtDate(data.rangeStart)} – ${fmtDate(data.rangeEnd)})`;
             document.getElementById('range-label-1').textContent = rangeLabel;
             document.getElementById('range-label-3').textContent = rangeLabel;
+
+            const omitNote = document.getElementById('omit-note');
+            if (data.omittedJobs && data.omittedJobs.length > 0) {
+                omitNote.textContent = `⚠️ Omitting ${data.omittedJobs.length} job number(s) from Audits Completed, Audit Ratio, Audit Type and Cat Codes: ${data.omittedJobs.join(', ')} (still counted in Solar PV Installs)`;
+                omitNote.classList.add('show');
+            } else {
+                omitNote.classList.remove('show');
+            }
 
             document.getElementById('kpi-installs').textContent = data.installsCompleted;
             document.getElementById('kpi-audits').textContent   = data.auditsCompleted;
@@ -574,82 +618,176 @@
             return div.innerHTML;
         }
 
+        function truncate(text, maxLen) {
+            if (!text) return '';
+            return text.length > maxLen ? text.slice(0, maxLen - 1).trim() + '…' : text;
+        }
+
         /* ══════════════════════════════════════════════
-           POWERPOINT EXPORT
+           POWERPOINT EXPORT — client-ready deck
+           5 slides: Cover, Installs vs Audits, Audit Type, Cat Codes, Closing
         ══════════════════════════════════════════════ */
         const C = {
-            dark: '1A1A2E', darkLight: '252541', darkLighter: '2F2F4A',
+            dark: '15152A', darkLight: '1E1E38', darkLighter: '2A2A4A', darkCard: '242440',
             primary: 'FF6B35', secondary: 'FFC857', accent: '00D9FF',
-            text: 'EAEAEA', textDim: '9A9AB0', success: '4ECCA3',
-            error: 'FF6B6B', warning: 'FFC857', forecast: 'B06EFF', white: 'FFFFFF'
+            text: 'F2F2F5', textDim: 'A0A0BC', success: '4ECCA3',
+            error: 'FF6B6B', warning: 'FFC857', forecast: 'B06EFF', white: 'FFFFFF',
+            line: '3A3A5E'
         };
-        const SLIDE_W = 10, SLIDE_H = 5.625, HDR_H = 0.50, PAD = 0.25, BODY_Y = HDR_H + 0.08;
+        const SOFT_SHADOW = { type: 'outer', color: '000000', opacity: 0.4, blur: 5, offset: 2, angle: 90 };
 
-        function addSlideHeader(pptx, slide, title, subtitle, badgeText) {
-            slide.addShape('rect', { x: 0, y: 0, w: SLIDE_W, h: HDR_H, fill: { color: C.dark }, line: { color: C.dark } });
-            slide.addShape('rect', { x: 0, y: HDR_H - 0.03, w: SLIDE_W, h: 0.03, fill: { color: C.primary }, line: { color: C.primary } });
-            slide.addText('Pingu - Solar', { x: PAD, y: 0.06, w: 2, h: 0.26, fontSize: 10, bold: true, color: C.primary, fontFace: 'Calibri' });
-            slide.addText(title, { x: 2, y: 0.04, w: 6, h: 0.28, fontSize: 16, bold: true, color: C.accent, fontFace: 'Calibri', align: 'center' });
-            slide.addText(subtitle, { x: 2, y: 0.3, w: 6, h: 0.18, fontSize: 7.5, color: C.textDim, fontFace: 'Calibri', align: 'center' });
-            slide.addText(badgeText, { x: 7.9, y: 0.06, w: 1.85, h: 0.26, fontSize: 7.5, bold: true, color: C.primary, fontFace: 'Calibri', align: 'right' });
+        const SLIDE_W = 10, SLIDE_H = 5.625;
+        const HDR_H = 0.58, FOOTER_H = 0.26, PAD = 0.35;
+        const BODY_Y = HDR_H + 0.16;
+        const CONTENT_BOTTOM = SLIDE_H - FOOTER_H - 0.06;
+        const INSIGHT_Y = 4.35, INSIGHT_H = 0.75;
+
+        function addSlideHeader(slide, title, subtitle, pageLabel) {
+            slide.addShape('rect', { x: 0, y: 0, w: SLIDE_W, h: HDR_H, fill: { color: C.darkLight }, line: { color: C.darkLight } });
+            slide.addShape('rect', { x: 0, y: HDR_H - 0.028, w: SLIDE_W, h: 0.028, fill: { color: C.primary }, line: { color: C.primary } });
+            slide.addText(title, { x: PAD, y: 0.1, w: 6.4, h: 0.3, fontSize: 18, bold: true, color: C.text, fontFace: 'Calibri' });
+            slide.addText(subtitle, { x: PAD, y: 0.4, w: 6.4, h: 0.16, fontSize: 9, color: C.textDim, fontFace: 'Calibri', italic: true });
+            slide.addText('NEXTGEN', { x: SLIDE_W - PAD - 2.0, y: 0.11, w: 2.0, h: 0.22, fontSize: 10.5, bold: true, color: C.primary, fontFace: 'Calibri', align: 'right', charSpacing: 1 });
+            if (pageLabel) {
+                slide.addText(pageLabel, { x: SLIDE_W - PAD - 2.0, y: 0.34, w: 2.0, h: 0.18, fontSize: 8, color: C.textDim, fontFace: 'Calibri', align: 'right' });
+            }
         }
 
-        function addCommentaryBox(slide, x, y, w, h) {
-            if (h < 0.3) return;
-            slide.addShape('rect', { x, y, w, h, fill: { color: C.darkLight }, line: { color: '2A4A6A', width: 1 } });
-            slide.addText('Commentary', { x: x + 0.1, y: y + 0.06, w: w - 0.2, h: 0.18, fontSize: 7.5, bold: true, color: C.accent, fontFace: 'Calibri' });
-            slide.addText('[ Enter commentary here ]', { x: x + 0.1, y: y + 0.26, w: w - 0.2, h: h - 0.32, fontSize: 8, color: C.textDim, fontFace: 'Calibri', italic: true, valign: 'top' });
+        function addFooter(slide, badgeText, pageNum, totalPages) {
+            slide.addShape('rect', { x: 0, y: SLIDE_H - FOOTER_H, w: SLIDE_W, h: FOOTER_H, fill: { color: C.darkLight }, line: { color: C.darkLight } });
+            slide.addShape('rect', { x: 0, y: SLIDE_H - FOOTER_H, w: SLIDE_W, h: 0.012, fill: { color: C.line }, line: { color: C.line } });
+            slide.addText('NextGen  ·  Solar Installation Audit Report', { x: PAD, y: SLIDE_H - FOOTER_H, w: 4.2, h: FOOTER_H, fontSize: 7.5, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
+            slide.addText(badgeText, { x: SLIDE_W / 2 - 2, y: SLIDE_H - FOOTER_H, w: 4, h: FOOTER_H, fontSize: 7.5, color: C.textDim, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+            slide.addText(`Page ${pageNum} of ${totalPages}`, { x: SLIDE_W - PAD - 1.4, y: SLIDE_H - FOOTER_H, w: 1.4, h: FOOTER_H, fontSize: 7.5, color: C.textDim, fontFace: 'Calibri', align: 'right', valign: 'middle' });
         }
 
-        /* --- Slide 1: Installations vs Audits --- */
-        function buildInstallsAuditsSlide(pptx, data, badgeText) {
+        function addInsightBox(slide, text, y, h) {
+            y = y != null ? y : INSIGHT_Y;
+            h = h != null ? h : INSIGHT_H;
+            slide.addShape('roundRect', {
+                x: PAD, y, w: SLIDE_W - PAD * 2, h,
+                fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.06, shadow: SOFT_SHADOW
+            });
+            slide.addShape('rect', { x: PAD, y: y + 0.08, w: 0.045, h: h - 0.16, fill: { color: C.accent }, line: { color: C.accent } });
+            slide.addText('KEY INSIGHT', { x: PAD + 0.22, y: y + 0.09, w: SLIDE_W - PAD * 2 - 0.4, h: 0.16, fontSize: 7, bold: true, color: C.accent, fontFace: 'Calibri', charSpacing: 1 });
+            slide.addText(text, { x: PAD + 0.22, y: y + 0.27, w: SLIDE_W - PAD * 2 - 0.4, h: h - 0.35, fontSize: 10, color: C.text, fontFace: 'Calibri', valign: 'top', lineSpacing: 13 });
+        }
+
+        function insightInstalls(data) {
+            if (data.installsCompleted === 0) return 'No Solar PV installs were recorded in this reporting period.';
+            const pct = (data.auditRatio * 100).toFixed(1);
+            return `${data.installsCompleted} Solar PV install${data.installsCompleted === 1 ? '' : 's'} were completed in this period, with ${data.auditsCompleted} audit${data.auditsCompleted === 1 ? '' : 's'} carried out — an audit ratio of ${pct}%.`;
+        }
+        function insightAuditType(data) {
+            const at = data.auditTypes;
+            if (at.total === 0) return 'No audits were recorded in this reporting period.';
+            return `All ${at.total} audit${at.total === 1 ? '' : 's'} in this period were DPC audits, recorded via the NextGen audit checklist. PC, WIP and Sign Off audit types are not yet tracked as separate workflows.`;
+        }
+        function insightCatCodes(data) {
+            if (data.catList.length === 0) return 'No Cat codes were selected on any audits in this reporting period.';
+            const top = data.catList[0];
+            return `${top.key} was the most frequently recorded Cat code, with ${top.count} occurrence${top.count === 1 ? '' : 's'} — ${truncate(top.desc, 130)}`;
+        }
+
+        /* --- Slide: Cover --- */
+        function buildCoverSlide(pptx, data, badgeText) {
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
-            addSlideHeader(pptx, slide, 'NextGen Audit Data', 'Installations vs Audits', badgeText);
 
-            const kW = 2.9, kY = BODY_Y + 0.15, kH = 1.7;
+            slide.addShape('rect', { x: 0, y: 0, w: SLIDE_W, h: 0.1, fill: { color: C.primary }, line: { color: C.primary } });
+            slide.addShape('rect', { x: 0, y: 0.1, w: SLIDE_W, h: 0.035, fill: { color: C.secondary }, line: { color: C.secondary } });
+            slide.addShape('rect', { x: 0, y: 0.135, w: SLIDE_W, h: 0.02, fill: { color: C.accent }, line: { color: C.accent } });
+
+            slide.addText('NEXTGEN', { x: 0.5, y: 1.5, w: 9, h: 0.42, fontSize: 15, bold: true, color: C.accent, fontFace: 'Calibri', align: 'center', charSpacing: 3 });
+            slide.addText('Solar Installation Audit & Performance Report', {
+                x: 0.6, y: 1.98, w: 8.8, h: 0.85, fontSize: 30, bold: true, color: C.text, fontFace: 'Calibri', align: 'center'
+            });
+
+            slide.addShape('rect', { x: 4.2, y: 2.92, w: 1.6, h: 0.025, fill: { color: C.primary }, line: { color: C.primary } });
+
+            slide.addText(`Reporting Period:  ${badgeText}`, { x: 0.5, y: 3.1, w: 9, h: 0.34, fontSize: 13, color: C.textDim, fontFace: 'Calibri', align: 'center' });
+
+            const generatedStr = 'Generated ' + new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+            slide.addText(generatedStr, { x: 0.5, y: 3.46, w: 9, h: 0.28, fontSize: 9.5, italic: true, color: C.textDim, fontFace: 'Calibri', align: 'center' });
+
+            // Headline KPI strip
+            const kW = 2.5, kY = 4.05, kH = 0.95, gap = 0.25;
             const kpis = [
                 { label: 'Solar PV Installs', value: data.installsCompleted, color: C.primary },
                 { label: 'Audits Completed',  value: data.auditsCompleted,   color: C.accent },
                 { label: 'Audit Ratio',       value: `${(data.auditRatio * 100).toFixed(1)}%`, color: C.success }
             ];
-            const totalW = kpis.length * kW + (kpis.length - 1) * 0.2;
+            const totalW = kpis.length * kW + (kpis.length - 1) * gap;
             const startX = (SLIDE_W - totalW) / 2;
             kpis.forEach((k, i) => {
-                const x = startX + i * (kW + 0.2);
-                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkLighter }, line: { color: k.color, width: 2 }, rectRadius: 0.12 });
-                slide.addText(k.value.toString(), { x, y: kY + 0.3, w: kW, h: 0.85, fontSize: 40, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
-                slide.addText(k.label, { x, y: kY + 1.15, w: kW, h: 0.4, fontSize: 11, color: C.text, fontFace: 'Calibri', align: 'center' });
+                const x = startX + i * (kW + gap);
+                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: SOFT_SHADOW });
+                slide.addText(k.value.toString(), { x, y: kY + 0.08, w: kW, h: 0.5, fontSize: 22, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
+                slide.addText(k.label, { x, y: kY + 0.6, w: kW, h: 0.3, fontSize: 8.5, color: C.textDim, fontFace: 'Calibri', align: 'center' });
+            });
+
+            if (data.omittedJobs && data.omittedJobs.length > 0) {
+                slide.addText(`Note: ${data.omittedJobs.length} job number${data.omittedJobs.length === 1 ? '' : 's'} excluded from audit analysis by request (${data.omittedJobs.join(', ')})`, {
+                    x: 0.7, y: 5.02, w: 8.6, h: 0.22, fontSize: 7.5, italic: true, color: C.textDim, fontFace: 'Calibri', align: 'center'
+                });
+            }
+
+            slide.addText('Prepared by Pingu Solar  ·  Confidential', {
+                x: 0.5, y: SLIDE_H - 0.32, w: 9, h: 0.24, fontSize: 8, color: C.textDim, fontFace: 'Calibri', align: 'center'
+            });
+        }
+
+        /* --- Slide 1: Installations vs Audits --- */
+        function buildInstallsAuditsSlide(pptx, data, badgeText, pageNum, totalPages) {
+            const slide = pptx.addSlide();
+            slide.background = { color: C.dark };
+            addSlideHeader(slide, 'Installations vs Audits', 'NextGen Audit Data', 'Section 1');
+
+            const kW = 2.85, kY = 0.95, kH = 1.85, gap = 0.2;
+            const kpis = [
+                { label: 'Solar PV Installs', value: data.installsCompleted.toLocaleString('en-GB'), color: C.primary },
+                { label: 'Audits Completed',  value: data.auditsCompleted.toLocaleString('en-GB'),   color: C.accent },
+                { label: 'Audit Ratio',       value: `${(data.auditRatio * 100).toFixed(1)}%`, color: C.success }
+            ];
+            const totalW = kpis.length * kW + (kpis.length - 1) * gap;
+            const startX = (SLIDE_W - totalW) / 2;
+            kpis.forEach((k, i) => {
+                const x = startX + i * (kW + gap);
+                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: SOFT_SHADOW });
+                slide.addShape('rect', { x: x + 0.18, y: kY + 0.18, w: 0.5, h: 0.05, fill: { color: k.color }, line: { color: k.color } });
+                slide.addText(k.value.toString(), { x, y: kY + 0.36, w: kW, h: 0.75, fontSize: 36, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
+                slide.addText(k.label, { x, y: kY + 1.16, w: kW, h: 0.4, fontSize: 10.5, color: C.text, fontFace: 'Calibri', align: 'center' });
             });
 
             // Comparative bar: installs vs audits
-            const barY = kY + kH + 0.3;
-            const barTrackW = SLIDE_W - PAD * 2 - 1.3;
+            const barY = 3.05;
+            const barLabelW = 1.1, barGapR = 0.7;
+            const barTrackW = SLIDE_W - PAD * 2 - barLabelW - barGapR;
             const maxBar = Math.max(data.installsCompleted, data.auditsCompleted, 1);
             const rows = [
                 { label: 'Installs', value: data.installsCompleted, color: C.primary },
                 { label: 'Audits',   value: data.auditsCompleted,   color: C.accent }
             ];
             rows.forEach((r, i) => {
-                const y = barY + i * 0.36;
+                const y = barY + i * 0.38;
                 const bw = barTrackW * (r.value / maxBar);
-                slide.addText(r.label, { x: PAD, y, w: 1.05, h: 0.3, fontSize: 9, color: C.text, fontFace: 'Calibri', valign: 'middle' });
-                slide.addShape('roundRect', { x: PAD + 1.1, y: y + 0.03, w: barTrackW, h: 0.24, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.08 });
+                slide.addText(r.label, { x: PAD, y, w: barLabelW, h: 0.3, fontSize: 9.5, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+                slide.addShape('roundRect', { x: PAD + barLabelW, y: y + 0.03, w: barTrackW, h: 0.24, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.08 });
                 if (bw > 0.05) {
-                    slide.addShape('roundRect', { x: PAD + 1.1, y: y + 0.03, w: bw, h: 0.24, fill: { color: r.color }, line: { color: r.color }, rectRadius: 0.08 });
+                    slide.addShape('roundRect', { x: PAD + barLabelW, y: y + 0.03, w: bw, h: 0.24, fill: { color: r.color }, line: { color: r.color }, rectRadius: 0.08 });
                 }
-                slide.addText(r.value.toString(), { x: PAD + 1.1 + barTrackW + 0.08, y, w: 0.5, h: 0.3, fontSize: 9, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+                slide.addText(r.value.toString(), { x: PAD + barLabelW + barTrackW + 0.1, y, w: 0.5, h: 0.3, fontSize: 9.5, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
             });
 
-            const commY = barY + rows.length * 0.36 + 0.2;
-            addCommentaryBox(slide, PAD, commY, SLIDE_W - PAD * 2, SLIDE_H - commY - 0.06);
+            addInsightBox(slide, insightInstalls(data));
+            addFooter(slide, badgeText, pageNum, totalPages);
         }
 
         /* --- Slide 2: NextGen Audit Type --- */
-        function buildAuditTypeSlide(pptx, data, badgeText) {
+        function buildAuditTypeSlide(pptx, data, badgeText, pageNum, totalPages) {
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
-            addSlideHeader(pptx, slide, 'NextGen Audit Data', 'NextGen Audit Type', badgeText);
+            addSlideHeader(slide, 'NextGen Audit Type', 'NextGen Audit Data', 'Section 2');
 
             const at = data.auditTypes;
             const statDefs = [
@@ -659,101 +797,117 @@
                 { key: 'signoff', label: 'Sign Off', color: C.success }
             ];
             const maxVal = Math.max(...statDefs.map(s => at[s.key]), 1);
-            const chartX = 1.7;
-            const chartW = SLIDE_W - chartX - PAD - 1.35;
-            const rowH = 0.62;
-            const startY = BODY_Y + 0.15;
+            const chartX = 1.65;
+            const chartW = SLIDE_W - chartX - PAD - 1.1;
+            const rowH = 0.52;
+            const startY = 1.0;
 
-            slide.addText('AUDIT TYPE', { x: PAD, y: startY - 0.2, w: 1.6, h: 0.16, fontSize: 6.5, bold: true, color: C.textDim, fontFace: 'Calibri' });
-            slide.addText('COUNT', { x: chartX + chartW + 0.1, y: startY - 0.2, w: 1.3, h: 0.16, fontSize: 6.5, bold: true, color: C.textDim, fontFace: 'Calibri' });
+            slide.addText('AUDIT TYPE', { x: PAD, y: startY - 0.22, w: 1.5, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
+            slide.addText('COUNT', { x: chartX + chartW + 0.1, y: startY - 0.22, w: 1.0, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
 
             statDefs.forEach((s, i) => {
                 const y = startY + i * rowH;
                 const count = at[s.key] || 0;
                 const barW = chartW * (count / maxVal);
-                if (i % 2 === 0) slide.addShape('rect', { x: PAD, y: y + 0.01, w: SLIDE_W - PAD * 2, h: rowH - 0.02, fill: { color: '20203A' }, line: { color: '20203A' } });
+                if (i % 2 === 0) slide.addShape('rect', { x: PAD, y: y + 0.01, w: SLIDE_W - PAD * 2, h: rowH - 0.03, fill: { color: C.darkLight }, line: { color: C.darkLight } });
 
-                slide.addText(s.label, { x: PAD, y: y + 0.12, w: 1.5, h: rowH - 0.24, fontSize: 11, bold: count > 0, color: count > 0 ? C.text : C.textDim, fontFace: 'Calibri', valign: 'middle' });
-                slide.addShape('roundRect', { x: chartX, y: y + 0.14, w: chartW, h: 0.34, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.1 });
+                slide.addText(s.label, { x: PAD, y: y + 0.1, w: 1.35, h: rowH - 0.2, fontSize: 10.5, bold: count > 0, color: count > 0 ? C.text : C.textDim, fontFace: 'Calibri', valign: 'middle' });
+                slide.addShape('roundRect', { x: chartX, y: y + 0.13, w: chartW, h: 0.28, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.09 });
                 if (barW > 0.02) {
-                    slide.addShape('roundRect', { x: chartX, y: y + 0.14, w: barW, h: 0.34, fill: { color: s.color }, line: { color: s.color }, rectRadius: 0.1 });
+                    slide.addShape('roundRect', { x: chartX, y: y + 0.13, w: barW, h: 0.28, fill: { color: s.color }, line: { color: s.color }, rectRadius: 0.09 });
                 }
-                slide.addText(count.toString(), { x: chartX + chartW + 0.1, y: y + 0.14, w: 1.25, h: 0.34, fontSize: 10, bold: true, color: count > 0 ? s.color : C.textDim, fontFace: 'Calibri', valign: 'middle' });
+                slide.addText(count.toString(), { x: chartX + chartW + 0.1, y: y + 0.13, w: 1.0, h: 0.28, fontSize: 10, bold: true, color: count > 0 ? s.color : C.textDim, fontFace: 'Calibri', valign: 'middle' });
             });
 
             // Total banner
-            const bannerY = startY + statDefs.length * rowH + 0.15;
-            slide.addShape('roundRect', { x: PAD, y: bannerY, w: SLIDE_W - PAD * 2, h: 0.72, fill: { color: C.darkLighter }, line: { color: C.accent, width: 2 }, rectRadius: 0.1 });
-            slide.addText('Total Audits:', { x: PAD + 0.18, y: bannerY + 0.1, w: 2.4, h: 0.52, fontSize: 12, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
-            slide.addText(at.total.toString(), { x: 2.8, y: bannerY + 0.04, w: 1.6, h: 0.64, fontSize: 26, bold: true, color: C.accent, fontFace: 'Calibri', align: 'center' });
-            slide.addText('All jobs audited via the DPC checklist (adminaudit.html / adminaudit2.html) in this date range', {
-                x: 4.6, y: bannerY + 0.1, w: 5.0, h: 0.52, fontSize: 8.5, color: C.textDim, fontFace: 'Calibri', italic: true, valign: 'middle' });
+            const bannerY = startY + statDefs.length * rowH + 0.18;
+            slide.addShape('roundRect', { x: PAD, y: bannerY, w: SLIDE_W - PAD * 2, h: 0.62, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.09, shadow: SOFT_SHADOW });
+            slide.addShape('rect', { x: PAD, y: bannerY + 0.07, w: 0.045, h: 0.48, fill: { color: C.accent }, line: { color: C.accent } });
+            slide.addText('Total Audits', { x: PAD + 0.24, y: bannerY + 0.08, w: 2.1, h: 0.46, fontSize: 10.5, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
+            slide.addText(at.total.toString(), { x: 2.55, y: bannerY + 0.02, w: 1.3, h: 0.58, fontSize: 24, bold: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle' });
+            slide.addText('All jobs audited via the NextGen DPC checklist in this date range', {
+                x: 4.1, y: bannerY + 0.08, w: SLIDE_W - PAD - 4.1, h: 0.46, fontSize: 8.5, italic: true, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
 
-            const commY = bannerY + 0.72 + 0.15;
-            addCommentaryBox(slide, PAD, commY, SLIDE_W - PAD * 2, SLIDE_H - commY - 0.06);
+            addInsightBox(slide, insightAuditType(data));
+            addFooter(slide, badgeText, pageNum, totalPages);
         }
 
         /* --- Slide 3: NextGen Cat Codes --- */
-        function buildCatCodeSlide(pptx, data, badgeText) {
+        function buildCatCodeSlide(pptx, data, badgeText, pageNum, totalPages) {
             const slide = pptx.addSlide();
             slide.background = { color: C.dark };
-            addSlideHeader(pptx, slide, 'NextGen Cat Codes', 'Most Commonly Selected Cat Codes', badgeText);
+            addSlideHeader(slide, 'NextGen Cat Codes', 'Most Commonly Selected Cat Codes', 'Section 3');
 
             const top8 = data.catList.slice(0, 8);
             const top5 = data.catList.slice(0, 5);
 
             // Left: bar chart of top 8
-            const chartX = PAD, chartY = BODY_Y + 0.1;
-            const chartAreaW = 4.55;
-            slide.addText('TOP CAT CODES (BY FREQUENCY)', { x: chartX, y: chartY, w: chartAreaW, h: 0.16, fontSize: 6.5, bold: true, color: C.textDim, fontFace: 'Calibri' });
+            const chartX = PAD, chartY = 1.0;
+            const chartAreaW = 4.35;
+            slide.addText('TOP CAT CODES  ·  BY FREQUENCY', { x: chartX, y: chartY - 0.22, w: chartAreaW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
 
             if (top8.length === 0) {
-                slide.addText('No Cat codes selected in this range.', { x: chartX, y: chartY + 0.3, w: chartAreaW, h: 0.4, fontSize: 9, italic: true, color: C.textDim, fontFace: 'Calibri' });
+                slide.addText('No Cat codes selected in this range.', { x: chartX, y: chartY + 0.2, w: chartAreaW, h: 0.4, fontSize: 9, italic: true, color: C.textDim, fontFace: 'Calibri' });
             } else {
                 const maxCat = Math.max(...top8.map(c => c.count), 1);
-                const rowH = 0.42;
-                const barTrackW = chartAreaW - 1.05;
+                const rowH = 0.4;
+                const barTrackW = chartAreaW - 1.0;
                 top8.forEach((c, i) => {
-                    const y = chartY + 0.24 + i * rowH;
+                    const y = chartY + i * rowH;
                     const bw = barTrackW * (c.count / maxCat);
-                    slide.addText(c.key, { x: chartX, y, w: 1.0, h: rowH - 0.06, fontSize: 8, color: C.text, fontFace: 'Calibri', valign: 'middle' });
-                    slide.addShape('roundRect', { x: chartX + 1.05, y: y + 0.05, w: barTrackW, h: 0.24, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.08 });
+                    slide.addText(c.key, { x: chartX, y, w: 0.95, h: rowH - 0.06, fontSize: 8, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+                    slide.addShape('roundRect', { x: chartX + 1.0, y: y + 0.05, w: barTrackW, h: 0.24, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.08 });
                     if (bw > 0.03) {
-                        slide.addShape('roundRect', { x: chartX + 1.05, y: y + 0.05, w: bw, h: 0.24, fill: { color: C.accent }, line: { color: C.accent }, rectRadius: 0.08 });
+                        slide.addShape('roundRect', { x: chartX + 1.0, y: y + 0.05, w: bw, h: 0.24, fill: { color: C.accent }, line: { color: C.accent }, rectRadius: 0.08 });
                     }
-                    slide.addText(c.count.toString(), { x: chartX + 1.05 + barTrackW + 0.06, y, w: 0.4, h: rowH - 0.06, fontSize: 8, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+                    slide.addText(c.count.toString(), { x: chartX + 1.0 + barTrackW + 0.06, y, w: 0.35, h: rowH - 0.06, fontSize: 8, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
                 });
             }
 
             // Right: native table of top 5
-            const tableX = chartX + chartAreaW + 0.25;
+            const tableX = chartX + chartAreaW + 0.3;
             const tableW = SLIDE_W - PAD - tableX;
-            slide.addText('TOP 5 CAT CODES', { x: tableX, y: chartY, w: tableW, h: 0.16, fontSize: 6.5, bold: true, color: C.textDim, fontFace: 'Calibri' });
+            slide.addText('TOP 5 CAT CODES', { x: tableX, y: chartY - 0.22, w: tableW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
 
             const headerRow = [
-                { text: 'Code',        options: { bold: true, color: C.accent, fill: { color: C.darkLighter }, fontSize: 8 } },
-                { text: 'Description', options: { bold: true, color: C.accent, fill: { color: C.darkLighter }, fontSize: 8 } },
-                { text: 'Count',       options: { bold: true, color: C.accent, fill: { color: C.darkLighter }, fontSize: 8, align: 'right' } }
+                { text: 'Code',        options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
+                { text: 'Description', options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
+                { text: 'Count',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8, align: 'right' } }
             ];
             const bodyRows = top5.length > 0
                 ? top5.map((c, i) => {
                     const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                     return [
-                        { text: c.key,               options: { color: C.accent, fill: { color: rowFill }, fontSize: 8, bold: true } },
-                        { text: c.desc,               options: { color: C.text,   fill: { color: rowFill }, fontSize: 7.5 } },
+                        { text: c.key,               options: { color: C.accent,  fill: { color: rowFill }, fontSize: 8, bold: true } },
+                        { text: truncate(c.desc, 90), options: { color: C.text,   fill: { color: rowFill }, fontSize: 7.5 } },
                         { text: c.count.toString(),  options: { color: C.primary, fill: { color: rowFill }, fontSize: 8, bold: true, align: 'right' } }
                     ];
                   })
-                : [[{ text: 'No Cat codes selected in this range.', options: { color: C.textDim, colspan: 3, italic: true, fontSize: 8 } }, {}, {}]];
+                : [[{ text: 'No Cat codes selected in this range.', options: { color: C.textDim, colspan: 3, italic: true, fontSize: 8, fill: { color: C.darkLight } } }, {}, {}]];
 
             slide.addTable([headerRow, ...bodyRows], {
-                x: tableX, y: chartY + 0.24, w: tableW, colW: [0.9, tableW - 1.6, 0.7],
-                fontFace: 'Calibri', border: { type: 'solid', color: C.darkLighter, pt: 0.5 },
+                x: tableX, y: chartY, w: tableW, colW: [0.85, tableW - 1.55, 0.7],
+                fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
                 autoPage: false, valign: 'middle', margin: [0.03, 0.06, 0.03, 0.06]
             });
 
-            const commY = chartY + 0.24 + (bodyRows.length + 1) * 0.42 + 0.15;
-            if (SLIDE_H - commY - 0.06 > 0.35) addCommentaryBox(slide, PAD, commY, SLIDE_W - PAD * 2, SLIDE_H - commY - 0.06);
+            addInsightBox(slide, insightCatCodes(data));
+            addFooter(slide, badgeText, pageNum, totalPages);
+        }
+
+        /* --- Slide: Closing --- */
+        function buildClosingSlide(pptx, badgeText) {
+            const slide = pptx.addSlide();
+            slide.background = { color: C.dark };
+            slide.addShape('rect', { x: 0, y: SLIDE_H - 0.135, w: SLIDE_W, h: 0.045, fill: { color: C.accent }, line: { color: C.accent } });
+            slide.addShape('rect', { x: 0, y: SLIDE_H - 0.09, w: SLIDE_W, h: 0.045, fill: { color: C.primary }, line: { color: C.primary } });
+
+            slide.addText('Thank You', { x: 0.5, y: 2.05, w: 9, h: 0.9, fontSize: 38, bold: true, color: C.text, fontFace: 'Calibri', align: 'center' });
+            slide.addShape('rect', { x: 4.2, y: 2.9, w: 1.6, h: 0.025, fill: { color: C.primary }, line: { color: C.primary } });
+            slide.addText('Questions & Discussion', { x: 0.5, y: 3.05, w: 9, h: 0.5, fontSize: 14, color: C.accent, fontFace: 'Calibri', align: 'center' });
+
+            slide.addText('NextGen  ·  Solar Installation Audit & Performance Report', { x: 0.5, y: 4.7, w: 9, h: 0.28, fontSize: 9, color: C.textDim, fontFace: 'Calibri', align: 'center' });
+            slide.addText(badgeText, { x: 0.5, y: 4.98, w: 9, h: 0.26, fontSize: 8.5, color: C.textDim, fontFace: 'Calibri', align: 'center' });
         }
 
         window.exportToPowerPoint = async function() {
@@ -776,19 +930,27 @@
                 pptx.author = 'Pingu - Solar';
                 pptx.company = 'NextGen';
                 pptx.title = 'NextGen Audit & Cat Code Report';
+                pptx.subject = 'Solar Installation Audit & Performance Report';
 
                 const badgeText = `${fmtDate(reportData.rangeStart)} – ${fmtDate(reportData.rangeEnd)}`;
+                const totalPages = 3;
 
-                setProgress(20, '📈 Building Installations vs Audits slide...');
-                buildInstallsAuditsSlide(pptx, reportData, badgeText);
+                setProgress(12, '🎨 Building cover slide...');
+                buildCoverSlide(pptx, reportData, badgeText);
 
-                setProgress(50, '🏷️ Building NextGen Audit Type slide...');
-                buildAuditTypeSlide(pptx, reportData, badgeText);
+                setProgress(32, '📈 Building Installations vs Audits slide...');
+                buildInstallsAuditsSlide(pptx, reportData, badgeText, 1, totalPages);
 
-                setProgress(80, '🚩 Building NextGen Cat Codes slide...');
-                buildCatCodeSlide(pptx, reportData, badgeText);
+                setProgress(55, '🏷️ Building NextGen Audit Type slide...');
+                buildAuditTypeSlide(pptx, reportData, badgeText, 2, totalPages);
 
-                setProgress(95, '💾 Saving file...');
+                setProgress(78, '🚩 Building NextGen Cat Codes slide...');
+                buildCatCodeSlide(pptx, reportData, badgeText, 3, totalPages);
+
+                setProgress(90, '🙏 Building closing slide...');
+                buildClosingSlide(pptx, badgeText);
+
+                setProgress(96, '💾 Saving file...');
                 const s = reportData.rangeStart, e = reportData.rangeEnd;
                 const fmtFile = (d) => `${d.getDate().toString().padStart(2,'0')}${(d.getMonth()+1).toString().padStart(2,'0')}${d.getFullYear()}`;
                 const fileName = `NextGen_Audit_Report_${fmtFile(s)}_to_${fmtFile(e)}.pptx`;
