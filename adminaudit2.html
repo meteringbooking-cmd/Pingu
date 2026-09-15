@@ -2618,10 +2618,26 @@
                             content.push({ text: `Auditor Notes:\n${savedData.notes}`, style: 'notesText' });
                         }
 
+                        if (savedData.answer === q.triggers && q.ifNoAction) {
+                            content.push({ text: `Action Required: ${q.ifNoAction}`, fontSize: 9.5, color: '#d9534f', italics: true, margin: [15, 0, 0, 6] });
+                        }
+
                         if (savedData.codesSelected && savedData.codesSelected.length > 0) {
-                            content.push({ text: 'Selected Codes:', style: 'codesHeader' });
+                            content.push({ text: 'Selected Codes & Actions:', style: 'codesHeader' });
+                            
+                            const codesWithActions = savedData.codesSelected.map(codeTxt => {
+                                let actionTxt = "";
+                                if (typeof window.allCatCodes !== 'undefined') {
+                                    const match = window.allCatCodes.find(c => codeTxt.includes(c.val));
+                                    if (match && match.action) {
+                                        actionTxt = `\nAction: ${match.action}`;
+                                    }
+                                }
+                                return { text: codeTxt + actionTxt, fontSize: 9, color: '#d9534f' };
+                            });
+
                             content.push({
-                                ul: savedData.codesSelected.map(code => ({ text: code, fontSize: 9, color: '#d9534f' })),
+                                ul: codesWithActions,
                                 margin: [15, 0, 0, 8]
                             });
                         }
