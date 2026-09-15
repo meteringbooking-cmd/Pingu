@@ -342,6 +342,17 @@
             const start = new Date(today); start.setDate(start.getDate() - 30);
             document.getElementById('range-start').valueAsDate = start;
             document.getElementById('range-end').valueAsDate = today;
+
+            // If the user edits the Omit Job Numbers box AFTER already loading a preview,
+            // automatically re-run the report with the new omit list — this avoids the
+            // easy-to-hit trap of typing a job number to omit but the preview/export still
+            // reflecting the old (pre-omit) numbers because "Load Preview" wasn't clicked again.
+            let omitDebounce = null;
+            document.getElementById('omit-jobs').addEventListener('input', () => {
+                if (!reportData) return; // nothing loaded yet — nothing to refresh
+                clearTimeout(omitDebounce);
+                omitDebounce = setTimeout(() => { window.loadReport(); }, 500);
+            });
         }
 
         /* ══════════════════════════════════════════════
@@ -446,10 +457,11 @@
             return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
         }
 
-        // Normalises a job number for comparison: uppercase, and all whitespace removed
-        // (so "JOB 123", "job123" and " JOB123 " are all treated as the same job number).
+        // Normalises a job number for comparison: uppercase, letters/digits only.
+        // Strips spaces AND punctuation (dashes, underscores, slashes, dots, etc.) so
+        // "JOB 123", "job123", "JOB-123" and "JOB_123" are all treated as the same job number.
         function normaliseJobNumber(s) {
-            return String(s || '').toUpperCase().replace(/\s+/g, '');
+            return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         }
 
         function parseOmitJobs(raw) {
@@ -468,6 +480,7 @@
             let auditsCompleted = 0;
             const catCounts = {}; // key -> { key, desc, count }
             const matchedOmitJobs = new Set();
+            const omitMatchDebug = []; // diagnostic: which raw jobs matched the omit list, and how
 
             allJobs.forEach(job => {
                 // Solar PV Installs — completion date falls in range (omit list does NOT apply here)
@@ -482,6 +495,7 @@
                     const normalisedJobNumber = normaliseJobNumber(job.jobNumber);
                     if (omitSet.has(normalisedJobNumber)) {
                         matchedOmitJobs.add(normalisedJobNumber);
+                        omitMatchDebug.push({ rawJobNumber: job.jobNumber, normalised: normalisedJobNumber, auditStatus: job.auditStatus, auditDate: job.auditDate });
                         return;
                     }
                 }
@@ -519,7 +533,8 @@
                 auditTypes: { pc: 0, wip: 0, dpc: auditsCompleted, signoff: 0, total: auditsCompleted },
                 catList,
                 omittedJobs,
-                unmatchedOmitJobs
+                unmatchedOmitJobs,
+                omitMatchDebug
             };
         }
 
@@ -553,6 +568,14 @@
                 reportData = computeReport(start, end, omitSet);
                 reportData.rangeStart = start;
                 reportData.rangeEnd = end;
+
+                if (omitSet.size > 0) {
+                    console.log('ℹ️ Omit list (normalised):', Array.from(omitSet));
+                    console.log('ℹ️ Jobs actually excluded by the omit list:', reportData.omitMatchDebug);
+                    if (reportData.unmatchedOmitJobs.length > 0) {
+                        console.log('⚠️ Omit entries with NO matching job in the loaded data:', reportData.unmatchedOmitJobs);
+                    }
+                }
 
                 renderPreview(reportData);
 
