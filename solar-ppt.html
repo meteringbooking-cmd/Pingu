@@ -445,11 +445,17 @@
             return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
         }
 
+        // Normalises a job number for comparison: uppercase, and all whitespace removed
+        // (so "JOB 123", "job123" and " JOB123 " are all treated as the same job number).
+        function normaliseJobNumber(s) {
+            return String(s || '').toUpperCase().replace(/\s+/g, '');
+        }
+
         function parseOmitJobs(raw) {
             return new Set(
                 (raw || '')
                     .split(',')
-                    .map(s => s.trim().toUpperCase())
+                    .map(s => normaliseJobNumber(s))
                     .filter(s => s)
             );
         }
@@ -460,6 +466,7 @@
             let installsCompleted = 0;
             let auditsCompleted = 0;
             const catCounts = {}; // key -> { key, desc, count }
+            const matchedOmitJobs = new Set();
 
             allJobs.forEach(job => {
                 // Solar PV Installs — completion date falls in range (omit list does NOT apply here)
@@ -470,7 +477,13 @@
                 }
 
                 // Everything below this point respects the omit list
-                if (job.jobNumber && omitSet.has(job.jobNumber.toUpperCase())) return;
+                if (job.jobNumber) {
+                    const normalisedJobNumber = normaliseJobNumber(job.jobNumber);
+                    if (omitSet.has(normalisedJobNumber)) {
+                        matchedOmitJobs.add(normalisedJobNumber);
+                        return;
+                    }
+                }
 
                 // Audits Completed — audit date falls in range
                 if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
@@ -495,6 +508,8 @@
 
             const auditRatio = installsCompleted > 0 ? (auditsCompleted / installsCompleted) : 0;
             const catList = Object.values(catCounts).sort((a, b) => b.count - a.count);
+            const omittedJobs = Array.from(omitSet);
+            const unmatchedOmitJobs = omittedJobs.filter(j => !matchedOmitJobs.has(j));
 
             return {
                 installsCompleted,
@@ -502,7 +517,8 @@
                 auditRatio,
                 auditTypes: { pc: 0, wip: 0, dpc: auditsCompleted, signoff: 0, total: auditsCompleted },
                 catList,
-                omittedJobs: Array.from(omitSet)
+                omittedJobs,
+                unmatchedOmitJobs
             };
         }
 
@@ -551,7 +567,11 @@
 
             const omitNote = document.getElementById('omit-note');
             if (data.omittedJobs && data.omittedJobs.length > 0) {
-                omitNote.textContent = `⚠️ Omitting ${data.omittedJobs.length} job number(s) from Audits Completed, Audit Ratio, Audit Type and Cat Codes: ${data.omittedJobs.join(', ')} (still counted in Solar PV Installs)`;
+                let msg = `⚠️ Omitting ${data.omittedJobs.length} job number(s) from Audits Completed, Audit Ratio, Audit Type and Cat Codes: ${data.omittedJobs.join(', ')} (still counted in Solar PV Installs).`;
+                if (data.unmatchedOmitJobs && data.unmatchedOmitJobs.length > 0) {
+                    msg += ` No job in the loaded data matches: ${data.unmatchedOmitJobs.join(', ')} — double-check the job number is spelled/formatted exactly as it appears in the system (this is why omitting may not appear to change the figures).`;
+                }
+                omitNote.textContent = msg;
                 omitNote.classList.add('show');
             } else {
                 omitNote.classList.remove('show');
@@ -668,7 +688,9 @@
             slide.addText(`Page ${pageNum} of ${totalPages}`, { x: SLIDE_W - PAD - 1.4, y: SLIDE_H - FOOTER_H, w: 1.4, h: FOOTER_H, fontSize: 7.5, color: C.textDim, fontFace: 'Calibri', align: 'right', valign: 'middle' });
         }
 
-        function addInsightBox(slide, text, y, h) {
+        // Draws an empty "Key Insight" box — left blank on purpose so it can be
+        // filled in with your own commentary directly in PowerPoint.
+        function addInsightBox(slide, y, h) {
             y = y != null ? y : INSIGHT_Y;
             h = h != null ? h : INSIGHT_H;
             slide.addShape('roundRect', {
@@ -677,23 +699,7 @@
             });
             slide.addShape('rect', { x: PAD, y: y + 0.08, w: 0.045, h: h - 0.16, fill: { color: C.accent }, line: { color: C.accent } });
             slide.addText('KEY INSIGHT', { x: PAD + 0.22, y: y + 0.09, w: SLIDE_W - PAD * 2 - 0.4, h: 0.16, fontSize: 7, bold: true, color: C.accent, fontFace: 'Calibri', charSpacing: 1 });
-            slide.addText(text, { x: PAD + 0.22, y: y + 0.27, w: SLIDE_W - PAD * 2 - 0.4, h: h - 0.35, fontSize: 10, color: C.text, fontFace: 'Calibri', valign: 'top', lineSpacing: 13 });
-        }
-
-        function insightInstalls(data) {
-            if (data.installsCompleted === 0) return 'No Solar PV installs were recorded in this reporting period.';
-            const pct = (data.auditRatio * 100).toFixed(1);
-            return `${data.installsCompleted} Solar PV install${data.installsCompleted === 1 ? '' : 's'} were completed in this period, with ${data.auditsCompleted} audit${data.auditsCompleted === 1 ? '' : 's'} carried out — an audit ratio of ${pct}%.`;
-        }
-        function insightAuditType(data) {
-            const at = data.auditTypes;
-            if (at.total === 0) return 'No audits were recorded in this reporting period.';
-            return `All ${at.total} audit${at.total === 1 ? '' : 's'} in this period were DPC audits, recorded via the NextGen audit checklist. PC, WIP and Sign Off audit types are not yet tracked as separate workflows.`;
-        }
-        function insightCatCodes(data) {
-            if (data.catList.length === 0) return 'No Cat codes were selected on any audits in this reporting period.';
-            const top = data.catList[0];
-            return `${top.key} was the most frequently recorded Cat code, with ${top.count} occurrence${top.count === 1 ? '' : 's'} — ${truncate(top.desc, 130)}`;
+            slide.addText('', { x: PAD + 0.22, y: y + 0.27, w: SLIDE_W - PAD * 2 - 0.4, h: h - 0.35, fontSize: 10, color: C.text, fontFace: 'Calibri', valign: 'top', lineSpacing: 13 });
         }
 
         /* --- Slide: Cover --- */
@@ -714,9 +720,6 @@
 
             slide.addText(`Reporting Period:  ${badgeText}`, { x: 0.5, y: 3.1, w: 9, h: 0.34, fontSize: 13, color: C.textDim, fontFace: 'Calibri', align: 'center' });
 
-            const generatedStr = 'Generated ' + new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
-            slide.addText(generatedStr, { x: 0.5, y: 3.46, w: 9, h: 0.28, fontSize: 9.5, italic: true, color: C.textDim, fontFace: 'Calibri', align: 'center' });
-
             // Headline KPI strip
             const kW = 2.5, kY = 4.05, kH = 0.95, gap = 0.25;
             const kpis = [
@@ -732,12 +735,6 @@
                 slide.addText(k.value.toString(), { x, y: kY + 0.08, w: kW, h: 0.5, fontSize: 22, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
                 slide.addText(k.label, { x, y: kY + 0.6, w: kW, h: 0.3, fontSize: 8.5, color: C.textDim, fontFace: 'Calibri', align: 'center' });
             });
-
-            if (data.omittedJobs && data.omittedJobs.length > 0) {
-                slide.addText(`Note: ${data.omittedJobs.length} job number${data.omittedJobs.length === 1 ? '' : 's'} excluded from audit analysis by request (${data.omittedJobs.join(', ')})`, {
-                    x: 0.7, y: 5.02, w: 8.6, h: 0.22, fontSize: 7.5, italic: true, color: C.textDim, fontFace: 'Calibri', align: 'center'
-                });
-            }
 
             slide.addText('Prepared by Pingu Solar  ·  Confidential', {
                 x: 0.5, y: SLIDE_H - 0.32, w: 9, h: 0.24, fontSize: 8, color: C.textDim, fontFace: 'Calibri', align: 'center'
@@ -786,7 +783,7 @@
                 slide.addText(r.value.toString(), { x: PAD + barLabelW + barTrackW + 0.1, y, w: 0.5, h: 0.3, fontSize: 9.5, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
             });
 
-            addInsightBox(slide, insightInstalls(data));
+            addInsightBox(slide);
             addFooter(slide, badgeText, pageNum, totalPages);
         }
 
@@ -835,7 +832,7 @@
             slide.addText('All jobs audited via the NextGen DPC checklist in this date range', {
                 x: 4.1, y: bannerY + 0.08, w: SLIDE_W - PAD - 4.1, h: 0.46, fontSize: 8.5, italic: true, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
 
-            addInsightBox(slide, insightAuditType(data));
+            addInsightBox(slide);
             addFooter(slide, badgeText, pageNum, totalPages);
         }
 
@@ -898,7 +895,7 @@
                 autoPage: false, valign: 'middle', margin: [0.03, 0.06, 0.03, 0.06]
             });
 
-            addInsightBox(slide, insightCatCodes(data));
+            addInsightBox(slide);
             addFooter(slide, badgeText, pageNum, totalPages);
         }
 
