@@ -6,6 +6,7 @@
     <title>View Orders | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -547,6 +548,7 @@
                     <span class="search-icon">🔍</span>
                     <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Name, Postcode...">
                 </div>
+                <button class="nav-btn" id="export-btn" onclick="openExportModal()">📊 Export</button>
                 <a href="cable-requirements.html" class="nav-btn">➕ New Order</a>
             </div>
         </header>
@@ -600,6 +602,38 @@
             <div class="modal-actions">
                 <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
                 <button class="edit-save-btn" onclick="saveEdits()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="export-modal-overlay">
+        <div class="modal">
+            <h3>📊 Export Orders to Excel</h3>
+            <p>Choose a submission date range and status to include. Leave dates blank to export all.</p>
+            <div style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1rem;">
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    From
+                    <input type="date" id="export-start-date" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    To
+                    <input type="date" id="export-end-date" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    Status
+                    <select id="export-status" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="denied">Denied</option>
+                        <option value="historic">Historic</option>
+                    </select>
+                </label>
+            </div>
+            <p id="export-count-msg" style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1.25rem;">0 orders match this range.</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeExportModal()">Cancel</button>
+                <button class="modal-confirm approve" onclick="runExport()">⬇️ Export XLSX</button>
             </div>
         </div>
     </div>
@@ -1056,6 +1090,91 @@ const updatedMiscItems = _editMiscItems
                 console.error('Save edits failed:', err);
                 showToast('Failed to save changes: ' + err.message, 'error');
             }
+        };
+        // ---- Export to XLSX ----
+        function getExportOrders() {
+            const startVal  = document.getElementById('export-start-date').value;
+            const endVal    = document.getElementById('export-end-date').value;
+            const statusVal = document.getElementById('export-status').value;
+            const start = startVal ? new Date(startVal + 'T00:00:00') : null;
+            const end   = endVal   ? new Date(endVal   + 'T23:59:59.999') : null;
+            return allOrders.filter(o => {
+                const status = o.status || 'historic';
+                if (statusVal !== 'all' && status !== statusVal) return false;
+                if (start || end) {
+                    if (!o.submittedAt) return false;
+                    const d = new Date(o.submittedAt);
+                    if (start && d < start) return false;
+                    if (end && d > end) return false;
+                }
+                return true;
+            });
+        }
+        function updateExportCount() {
+            const n = getExportOrders().length;
+            document.getElementById('export-count-msg').textContent = `${n} order${n === 1 ? '' : 's'} match this range.`;
+        }
+        window.openExportModal = function() {
+            document.getElementById('export-start-date').value = '';
+            document.getElementById('export-end-date').value   = '';
+            document.getElementById('export-status').value     = 'all';
+            updateExportCount();
+            document.getElementById('export-modal-overlay').classList.add('show');
+        };
+        window.closeExportModal = function() {
+            document.getElementById('export-modal-overlay').classList.remove('show');
+        };
+        document.getElementById('export-start-date').addEventListener('change', updateExportCount);
+        document.getElementById('export-end-date').addEventListener('change', updateExportCount);
+        document.getElementById('export-status').addEventListener('change', updateExportCount);
+        window.runExport = function() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Export library failed to load — check your connection', 'error');
+                return;
+            }
+            const orders = getExportOrders();
+            if (orders.length === 0) {
+                showToast('No orders match the selected range', 'warning');
+                return;
+            }
+            const rows = orders.map(o => {
+                const status = o.status || 'historic';
+                const row = {
+                    'Job #':           o.jobNumber || '',
+                    'Date Submitted':  o.submittedAt ? new Date(o.submittedAt).toLocaleString('en-GB') : '',
+                    'Technician':      o.name || '',
+                    'Email':           o.email || '',
+                    'Door Number':     o.doorNumber || '',
+                    'Postcode':        o.postcode || ''
+                };
+                CABLE_LABELS_LIST.forEach(c => {
+                    const qty = o.cables ? o.cables[c.id] : 0;
+                    row[`${c.label} (m)`] = qty > 0 ? qty : '';
+                });
+                row['Misc Items'] = (o.miscItems && o.miscItems.length > 0)
+                    ? o.miscItems.map(m => `${m.type}: ${m.desc}${m.code ? ' [' + m.code + ']' : ''} x${m.qty}`).join('; ')
+                    : '';
+                row['Applicable Jobs'] = (o.isSingleJob === false && o.extraJobs)
+                    ? `Multiple: ${o.extraJobs}`
+                    : 'Single Job';
+                row['Status'] = status.charAt(0).toUpperCase() + status.slice(1);
+                return row;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const headers = Object.keys(rows[0]);
+            worksheet['!cols'] = headers.map(key => {
+                const maxLen = Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length));
+                return { wch: Math.min(Math.max(maxLen + 2, 10), 50) };
+            });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Cable Orders');
+            const startVal = document.getElementById('export-start-date').value;
+            const endVal   = document.getElementById('export-end-date').value;
+            const rangePart = (startVal || endVal) ? `${startVal || 'start'}_to_${endVal || 'now'}` : 'all';
+            const fileName = `cable-orders_${rangePart}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            showToast(`📊 Exported ${orders.length} order${orders.length === 1 ? '' : 's'} to ${fileName}`, 'success');
+            closeExportModal();
         };
         // ---- Filter & Search ----
         window.setFilter = function(filter) {
