@@ -379,6 +379,7 @@
 
             const solarSnap = await getDocs(query(collection(window.db, 'Solar-jobs'), orderBy('uploadDate', 'desc')));
             const jobsSnap  = await getDocs(query(collection(window.db, 'jobs'),       orderBy('uploadDate', 'desc')));
+            console.log(`ℹ️ Firestore: ${solarSnap.size} doc(s) in Solar-jobs, ${jobsSnap.size} doc(s) in jobs`);
 
             const processDoc = (docSnap) => {
                 const data = docSnap.data();
@@ -542,6 +543,13 @@
 
             try {
                 if (allJobs.length === 0) await loadAllJobs();
+                console.log(`ℹ️ ${allJobs.length} job(s) available to report on`);
+
+                if (allJobs.length === 0) {
+                    showToast('⚠️ Loaded 0 jobs from Firebase — check your connection or Firestore permissions (see console for details)', 'error');
+                    return;
+                }
+
                 reportData = computeReport(start, end, omitSet);
                 reportData.rangeStart = start;
                 reportData.rangeEnd = end;
@@ -550,7 +558,12 @@
 
                 document.getElementById('preview-section').style.display = 'block';
                 document.getElementById('export-btn').disabled = false;
-                showToast(`✅ Loaded report for ${fmtDate(start)} – ${fmtDate(end)}`, 'success');
+
+                if (reportData.installsCompleted === 0 && reportData.auditsCompleted === 0) {
+                    showToast(`Loaded ${fmtDate(start)} – ${fmtDate(end)}, but no installs or audits fall in this range`, 'error');
+                } else {
+                    showToast(`✅ Loaded report for ${fmtDate(start)} – ${fmtDate(end)}`, 'success');
+                }
             } catch (err) {
                 console.error(err);
                 showToast('Error loading data: ' + err.message, 'error');
