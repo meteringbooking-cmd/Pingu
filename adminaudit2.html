@@ -702,6 +702,7 @@
         let checklistAutoSaveTimeout = null;
         let isFiltered         = false;
         let showSurveyOnly     = false;
+        window.allCatCodes     = [];
 
         // ── BASE URL for engineer photo upload link in emails ──
         // Update this to match wherever these files are hosted.
@@ -1157,15 +1158,15 @@
             let html = '';
             let qNum = 1;
 
-            const allCatCodes = [];
+            window.allCatCodes = [];
             auditQuestionsData.forEach(q => {
                 if (q.codes) {
                     q.codes.forEach(c => {
-                        if (!allCatCodes.find(ac => ac.val === c.val)) allCatCodes.push(c);
+                        if (!window.allCatCodes.find(ac => ac.val === c.val)) window.allCatCodes.push(c);
                     });
                 }
             });
-            allCatCodes.sort((a,b) => a.val.localeCompare(b.val));
+            window.allCatCodes.sort((a,b) => a.val.localeCompare(b.val));
 
             auditQuestionsData.forEach((q) => {
                 if (q.isHeader) {
@@ -1195,21 +1196,19 @@
                         </label>
                     `).join('');
 
-                    let otherCodes = allCatCodes.filter(c => !q.codes.find(qc => qc.val === c.val));
-                    let otherCodesHtml = otherCodes.map(c => `
-                        <label class="cat-code-option" style="padding-left: 0.5rem;">
-                            <input type="checkbox" class="cat-code-cb" value="${c.val}" data-cat="${c.cat}" data-action="${c.action || ''}" onchange="recalculateOutcome(); triggerAutoSave();"> 
-                            <span>${c.text}</span>
-                        </label>
+                    let otherCodes = window.allCatCodes.filter(c => !q.codes.find(qc => qc.val === c.val));
+                    let selectOptions = otherCodes.map(c => `
+                        <option value="${c.val}" data-cat="${c.cat}" data-action="${c.action || ''}">${c.val} - ${c.text.substring(0, 50)}...</option>
                     `).join('');
                     
                     codesHtml += `
-                        <details style="margin-top: 1rem; border: 1px dashed rgba(255,107,53,0.5); padding: 0.5rem; border-radius: 6px; background: rgba(0,0,0,0.2);">
-                            <summary style="cursor: pointer; color: var(--primary); font-size: 0.85rem; font-weight: 600; list-style: none; user-select: none;">+ Apply Additional CAT Codes</summary>
-                            <div style="margin-top: 0.8rem; max-height: 250px; overflow-y: auto; padding-right: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
-                                ${otherCodesHtml}
-                            </div>
-                        </details>
+                        <div style="margin-top: 1rem; border-top: 1px dashed rgba(255,107,53,0.5); padding-top: 0.8rem;">
+                            <select class="checklist-dropdown" style="width: 100%; max-width: none; font-size: 0.85rem; padding: 0.5rem;" onchange="handleAddAdditionalCat(this, '${q.id}')">
+                                <option value="">+ Add additional CAT code...</option>
+                                ${selectOptions}
+                            </select>
+                            <div id="${q.id}_additional_cats" style="margin-top: 0.5rem;"></div>
+                        </div>
                     `;
                 }
 
@@ -1259,6 +1258,29 @@
                 qNum++;
             });
             container.innerHTML = html;
+        };
+
+        window.handleAddAdditionalCat = function(selectEl, qId) {
+            const val = selectEl.value;
+            if (!val) return;
+            const opt = selectEl.options[selectEl.selectedIndex];
+            const cat = opt.getAttribute('data-cat');
+            const action = opt.getAttribute('data-action');
+            const text = opt.text;
+
+            const container = document.getElementById(`${qId}_additional_cats`);
+            if (container && !container.querySelector(`input[value="${val}"]`)) {
+                const div = document.createElement('label');
+                div.className = 'cat-code-option';
+                div.innerHTML = `
+                    <input type="checkbox" class="cat-code-cb" value="${val}" data-cat="${cat}" data-action="${action}" checked onchange="recalculateOutcome(); triggerAutoSave();">
+                    <span style="color: var(--secondary);">${val} - Added from list</span>
+                `;
+                container.appendChild(div);
+            }
+            selectEl.value = '';
+            recalculateOutcome();
+            triggerAutoSave();
         };
 
         window.handleChecklistChange = function(qId, triggerVal) {
@@ -2145,11 +2167,28 @@
                             if (savedData.codesSelected && savedData.codesSelected.length > 0) {
                                 const extraDiv = document.getElementById(`${q.id}_extra`);
                                 if (extraDiv) {
-                                    const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
-                                    checkboxes.forEach(cb => {
-                                        let txt = cb.nextElementSibling.textContent;
-                                        if (savedData.codesSelected.includes(txt)) {
-                                            cb.checked = true;
+                                    savedData.codesSelected.forEach(txt => {
+                                        let found = false;
+                                        const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
+                                        checkboxes.forEach(cb => {
+                                            if (cb.nextElementSibling.textContent === txt) {
+                                                cb.checked = true; found = true;
+                                            }
+                                        });
+                                        if (!found && typeof window.allCatCodes !== 'undefined') {
+                                            const match = window.allCatCodes.find(c => txt.startsWith(c.val));
+                                            if (match) {
+                                                const container = document.getElementById(`${q.id}_additional_cats`);
+                                                if (container) {
+                                                    const div = document.createElement('label');
+                                                    div.className = 'cat-code-option';
+                                                    div.innerHTML = `
+                                                        <input type="checkbox" class="cat-code-cb" value="${match.val}" data-cat="${match.cat}" data-action="${match.action || ''}" checked onchange="recalculateOutcome(); triggerAutoSave();">
+                                                        <span style="color: var(--secondary);">${txt}</span>
+                                                    `;
+                                                    container.appendChild(div);
+                                                }
+                                            }
                                         }
                                     });
                                 }
@@ -2204,10 +2243,29 @@
                                 if (d.codesSelected && d.codesSelected.length > 0) {
                                     const extraDiv = document.getElementById(`${q.id}_extra`);
                                     if (extraDiv) {
-                                        const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
-                                        checkboxes.forEach(cb => {
-                                            let txt = cb.nextElementSibling.textContent;
-                                            if (d.codesSelected.includes(txt)) cb.checked = true;
+                                        d.codesSelected.forEach(txt => {
+                                            let found = false;
+                                            const checkboxes = extraDiv.querySelectorAll('.cat-code-cb');
+                                            checkboxes.forEach(cb => {
+                                                if (cb.nextElementSibling.textContent === txt) {
+                                                    cb.checked = true; found = true;
+                                                }
+                                            });
+                                            if (!found && typeof window.allCatCodes !== 'undefined') {
+                                                const match = window.allCatCodes.find(c => txt.startsWith(c.val));
+                                                if (match) {
+                                                    const container = document.getElementById(`${q.id}_additional_cats`);
+                                                    if (container) {
+                                                        const div = document.createElement('label');
+                                                        div.className = 'cat-code-option';
+                                                        div.innerHTML = `
+                                                            <input type="checkbox" class="cat-code-cb" value="${match.val}" data-cat="${match.cat}" data-action="${match.action || ''}" checked onchange="recalculateOutcome(); triggerAutoSave();">
+                                                            <span style="color: var(--secondary);">${txt}</span>
+                                                        `;
+                                                        container.appendChild(div);
+                                                    }
+                                                }
+                                            }
                                         });
                                     }
                                 }
