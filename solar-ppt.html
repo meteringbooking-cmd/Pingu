@@ -634,7 +634,14 @@
             error: 'FF6B6B', warning: 'FFC857', forecast: 'B06EFF', white: 'FFFFFF',
             line: '3A3A5E'
         };
-        const SOFT_SHADOW = { type: 'outer', color: '000000', opacity: 0.4, blur: 5, offset: 2, angle: 90 };
+        // IMPORTANT: PptxGenJS mutates a shadow options object in place while building the
+        // slide XML (converting points/degrees to EMU). Reusing one shared object across
+        // multiple shapes causes it to be converted again on every reuse, producing
+        // corrupted (astronomically large) values that PowerPoint refuses to open.
+        // Always call this to get a fresh object per shape.
+        function softShadow() {
+            return { type: 'outer', color: '000000', opacity: 0.4, blur: 5, offset: 2, angle: 90 };
+        }
 
         const SLIDE_W = 10, SLIDE_H = 5.625;
         const HDR_H = 0.58, FOOTER_H = 0.26, PAD = 0.35;
@@ -666,7 +673,7 @@
             h = h != null ? h : INSIGHT_H;
             slide.addShape('roundRect', {
                 x: PAD, y, w: SLIDE_W - PAD * 2, h,
-                fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.06, shadow: SOFT_SHADOW
+                fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.06, shadow: softShadow()
             });
             slide.addShape('rect', { x: PAD, y: y + 0.08, w: 0.045, h: h - 0.16, fill: { color: C.accent }, line: { color: C.accent } });
             slide.addText('KEY INSIGHT', { x: PAD + 0.22, y: y + 0.09, w: SLIDE_W - PAD * 2 - 0.4, h: 0.16, fontSize: 7, bold: true, color: C.accent, fontFace: 'Calibri', charSpacing: 1 });
@@ -721,7 +728,7 @@
             const startX = (SLIDE_W - totalW) / 2;
             kpis.forEach((k, i) => {
                 const x = startX + i * (kW + gap);
-                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: SOFT_SHADOW });
+                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: softShadow() });
                 slide.addText(k.value.toString(), { x, y: kY + 0.08, w: kW, h: 0.5, fontSize: 22, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
                 slide.addText(k.label, { x, y: kY + 0.6, w: kW, h: 0.3, fontSize: 8.5, color: C.textDim, fontFace: 'Calibri', align: 'center' });
             });
@@ -753,7 +760,7 @@
             const startX = (SLIDE_W - totalW) / 2;
             kpis.forEach((k, i) => {
                 const x = startX + i * (kW + gap);
-                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: SOFT_SHADOW });
+                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: softShadow() });
                 slide.addShape('rect', { x: x + 0.18, y: kY + 0.18, w: 0.5, h: 0.05, fill: { color: k.color }, line: { color: k.color } });
                 slide.addText(k.value.toString(), { x, y: kY + 0.36, w: kW, h: 0.75, fontSize: 36, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
                 slide.addText(k.label, { x, y: kY + 1.16, w: kW, h: 0.4, fontSize: 10.5, color: C.text, fontFace: 'Calibri', align: 'center' });
@@ -821,7 +828,7 @@
 
             // Total banner
             const bannerY = startY + statDefs.length * rowH + 0.18;
-            slide.addShape('roundRect', { x: PAD, y: bannerY, w: SLIDE_W - PAD * 2, h: 0.62, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.09, shadow: SOFT_SHADOW });
+            slide.addShape('roundRect', { x: PAD, y: bannerY, w: SLIDE_W - PAD * 2, h: 0.62, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.09, shadow: softShadow() });
             slide.addShape('rect', { x: PAD, y: bannerY + 0.07, w: 0.045, h: 0.48, fill: { color: C.accent }, line: { color: C.accent } });
             slide.addText('Total Audits', { x: PAD + 0.24, y: bannerY + 0.08, w: 2.1, h: 0.46, fontSize: 10.5, color: C.textDim, fontFace: 'Calibri', valign: 'middle' });
             slide.addText(at.total.toString(), { x: 2.55, y: bannerY + 0.02, w: 1.3, h: 0.58, fontSize: 24, bold: true, color: C.accent, fontFace: 'Calibri', align: 'center', valign: 'middle' });
