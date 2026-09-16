@@ -506,24 +506,15 @@
             return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
         }
 
-        // Every job that would count towards Audits Completed (and therefore Audit Type / Cat
-        // Codes) for this date range, regardless of any exclusion — this is the exact set of
-        // jobs shown in the click-to-exclude picker, since those are the only ones an omission
-        // can affect. Not restricted by job type: Audits Completed counts every job type.
-        function getAuditJobsForRange(start, end) {
-            return allJobs.filter(job =>
-                job.jobNumber &&
-                job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
-                job.auditDate >= start && job.auditDate <= end
-            ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
-        }
-
-        // Full job list for the "Jobs Audited In This Range" slide: every Solar PV Install /
-        // Solar Install / Battery Only job COMPLETED in this range — the exact same population
-        // that makes up the "Solar PV Installs" figure on slide 1 — shown regardless of audit
-        // status (pending, pass, fail, in progress, unable...). Nothing is filtered by whether
-        // or when it was audited; the Audit Status column just reports each job's current state.
-        function getJobListForRange(start, end) {
+        // Master population for the whole report, per adminaudit.html's own definitions
+        // (job.status === 'complete', job.completionDate, isAllowedInstallType): every
+        // Solar PV Install / Solar Install / Battery Only job whose Completion Date falls
+        // within the selected range AND whose Status is Complete. This one set of jobs is
+        // the basis for the Solar PV Installs figure, Audits Completed, the Safety Fails /
+        // Policy Fails / PNC / Pass bars, the CAT code table, and the job-list table — audit
+        // date is never used to pull a job into or out of the report; only its own audit
+        // status (once it's in the population) is checked.
+        function getInstallPopulationForRange(start, end) {
             return allJobs.filter(job =>
                 job.jobNumber && isAllowedInstallType(job) &&
                 job.status === 'complete' && job.completionDate &&
@@ -531,10 +522,28 @@
             ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
+        // Jobs from the install population that have actually been audited — the only ones
+        // an omission can affect (the Solar PV Installs count itself is unaffected by omit).
+        // This is the exact set of jobs shown in the click-to-exclude picker.
+        function getAuditJobsForRange(start, end) {
+            return getInstallPopulationForRange(start, end).filter(job =>
+                job.auditStatus && job.auditStatus !== 'pending'
+            );
+        }
+
+        // Full job list for the "Jobs Audited In This Range" slide — the entire install
+        // population for this range, regardless of audit status (pending, pass, fail, in
+        // progress, unable...). The Audit Status column just reports each job's current state.
+        function getJobListForRange(start, end) {
+            return getInstallPopulationForRange(start, end);
+        }
+
         // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
         function computeReport(start, end, omitSet) {
             omitSet = omitSet || new Set();
-            let installsCompleted = 0;
+            const population = getInstallPopulationForRange(start, end);
+            const installsCompleted = population.length; // omit list does NOT apply here
+
             let auditsCompleted = 0;
             const catCounts = {}; // key -> { key, desc, count }
             const matchedOmitJobs = new Set();
@@ -545,14 +554,7 @@
             // job with no CAT codes at all is a Pass. Only counted for audited jobs.
             let safetyFails = 0, policyFails = 0, pncCount = 0, passCount = 0;
 
-            allJobs.forEach(job => {
-                // Solar PV Installs — completion date falls in range (omit list does NOT apply here)
-                if (isAllowedInstallType(job) && job.status === 'complete' && job.completionDate) {
-                    if (job.completionDate >= start && job.completionDate <= end) {
-                        installsCompleted++;
-                    }
-                }
-
+            population.forEach(job => {
                 // Everything below this point respects the omit list
                 if (job.jobNumber) {
                     const normalisedJobNumber = normaliseJobNumber(job.jobNumber);
@@ -563,39 +565,35 @@
                     }
                 }
 
-                // Audits Completed — audit date falls in range. Not restricted by job type:
-                // every audited job counts here (and in the Safety Fails / Policy Fails / PNC
-                // / Pass bars), regardless of whether it's one of the install types shown on
-                // the "Jobs Audited In This Range" table.
-                if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
-                    if (job.auditDate >= start && job.auditDate <= end) {
-                        auditsCompleted++;
+                // Audits Completed — this job (already in the install population for this
+                // range) has been audited, whenever that audit happened.
+                if (job.auditStatus && job.auditStatus !== 'pending') {
+                    auditsCompleted++;
 
-                        let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
-                        if (job.auditChecklistData) {
-                            Object.values(job.auditChecklistData).forEach(qData => {
-                                (qData.codesSelected || []).forEach(codeText => {
-                                    const parsed = parseCatCode(codeText);
-                                    if (!parsed) return;
-                                    if (!catCounts[parsed.key]) {
-                                        catCounts[parsed.key] = { key: parsed.key, desc: parsed.desc, count: 0 };
-                                    }
-                                    catCounts[parsed.key].count++;
+                    let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
+                    if (job.auditChecklistData) {
+                        Object.values(job.auditChecklistData).forEach(qData => {
+                            (qData.codesSelected || []).forEach(codeText => {
+                                const parsed = parseCatCode(codeText);
+                                if (!parsed) return;
+                                if (!catCounts[parsed.key]) {
+                                    catCounts[parsed.key] = { key: parsed.key, desc: parsed.desc, count: 0 };
+                                }
+                                catCounts[parsed.key].count++;
 
-                                    const t = String(codeText);
-                                    if (t.startsWith('CAT 1')) jobCat1++;
-                                    else if (t.startsWith('CAT 2')) jobCat2++;
-                                    else if (t.startsWith('CAT 3')) jobCat3++;
-                                    else if (t.startsWith('CAT 4')) jobCat4++;
-                                });
+                                const t = String(codeText);
+                                if (t.startsWith('CAT 1')) jobCat1++;
+                                else if (t.startsWith('CAT 2')) jobCat2++;
+                                else if (t.startsWith('CAT 3')) jobCat3++;
+                                else if (t.startsWith('CAT 4')) jobCat4++;
                             });
-                        }
-
-                        if (jobCat1 > 0) safetyFails++;
-                        else if (jobCat2 > 0) policyFails++;
-                        else if (jobCat3 > 0 || jobCat4 > 0) pncCount++;
-                        else passCount++;
+                        });
                     }
+
+                    if (jobCat1 > 0) safetyFails++;
+                    else if (jobCat2 > 0) policyFails++;
+                    else if (jobCat3 > 0 || jobCat4 > 0) pncCount++;
+                    else passCount++;
                 }
             });
 
