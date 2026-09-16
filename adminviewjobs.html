@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin View Jobs | Pingu - Solar</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <style>
         :root {
             --primary: #FF6B35;
@@ -599,6 +600,8 @@
         window.db = getFirestore(app);
         window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, setDoc };
         console.log('✅ Firebase initialized');
+        emailjs.init("ziLnha91scpGjFABh");
+        console.log('✅ EmailJS initialized');
         window.addEventListener('DOMContentLoaded', () => { window.loadJobs(); });
     } catch (error) {
         console.error('❌ Firebase error:', error);
@@ -1161,6 +1164,27 @@
         setTimeout(() => t.classList.remove('show'), 3000);
     }
     /* ═══════════════════════════════════════════════
+       JOB COMPLETION EMAIL
+    ═══════════════════════════════════════════════ */
+    async function sendJobCompletionEmail(job) {
+        try {
+            const jobNumber      = job.jobNumber || job['Job Number'] || 'N/A';
+            const postcode       = job.postcode  || 'N/A';
+            const engineer       = job.engineer || job.lead || 'Unassigned';
+            const jobType        = job.jobType  || 'Standard';
+            const completionDate = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+            const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#4ECCA3;">✅ Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Team Lead:</td><td>${engineer}</td></tr><tr><td>Field Engineer:</td><td>${job.originalEngineer || engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
+            await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
+                to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
+                job_number: jobNumber, postcode, engineer, job_type: jobType,
+                completion_date: completionDate, message_html: emailHTML
+            });
+            showToast(`Completion email sent for job #${jobNumber}`, 'success');
+        } catch (error) {
+            showToast('Email notification failed: ' + error.message, 'error');
+        }
+    }
+    /* ═══════════════════════════════════════════════
        EDIT MODAL
        All writes go to Solar-jobs via writeSolarJob()
     ═══════════════════════════════════════════════ */
@@ -1224,6 +1248,7 @@
                 updateData['poNumbersUpdatedAt'] = now;
             if (bookedDate)    updateData['Booked Date'] = bookedDate;
             if (projectedDate) updateData['Projected Completion Date'] = projectedDate;
+            const prevStatus = currentEditJob.statusUpdate;
             // Always write to Solar-jobs
             await writeSolarJob(currentEditJob, updateData);
             // Update local cache
@@ -1232,6 +1257,7 @@
                 job.statusUpdate = normaliseStatus(statusValue);
                 job.poNumbers    = newPO;
                 if (updateData['poNumbersUpdatedAt']) job.poNumbersUpdatedAt = updateData['poNumbersUpdatedAt'];
+                if (job.statusUpdate === 'complete' && prevStatus !== 'complete') await sendJobCompletionEmail(job);
             }
             if (updateData['poNumbersUpdatedAt']) {
                 document.getElementById('edit-po-timestamp').textContent =
