@@ -509,32 +509,26 @@
         // Every job that would count towards Audits Completed (and therefore Audit Type / Cat
         // Codes) for this date range, regardless of any exclusion — this is the exact set of
         // jobs shown in the click-to-exclude picker, since those are the only ones an omission
-        // can affect.
+        // can affect. Not restricted by job type: Audits Completed counts every job type.
         function getAuditJobsForRange(start, end) {
             return allJobs.filter(job =>
-                job.jobNumber && isAllowedInstallType(job) &&
+                job.jobNumber &&
                 job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
                 job.auditDate >= start && job.auditDate <= end
             ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
         // Full job list for the "Jobs Audited In This Range" slide: every Solar PV Install /
-        // Solar Install / Battery Only job that's either (a) audited in range, or (b) completed
-        // in range but has NOT been audited yet — shown with a "Pending" status so nothing
-        // relevant to the period silently falls off the list. Other job types never appear here.
+        // Solar Install / Battery Only job COMPLETED in this range — the exact same population
+        // that makes up the "Solar PV Installs" figure on slide 1 — shown regardless of audit
+        // status (pending, pass, fail, in progress, unable...). Nothing is filtered by whether
+        // or when it was audited; the Audit Status column just reports each job's current state.
         function getJobListForRange(start, end) {
-            return allJobs.filter(job => {
-                if (!job.jobNumber || !isAllowedInstallType(job)) return false;
-
-                const auditedInRange = job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
-                    job.auditDate >= start && job.auditDate <= end;
-                if (auditedInRange) return true;
-
-                const notYetAudited = !job.auditStatus || job.auditStatus === 'pending';
-                const installedInRange = job.status === 'complete' && job.completionDate &&
-                    job.completionDate >= start && job.completionDate <= end;
-                return notYetAudited && installedInRange;
-            }).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
+            return allJobs.filter(job =>
+                job.jobNumber && isAllowedInstallType(job) &&
+                job.status === 'complete' && job.completionDate &&
+                job.completionDate >= start && job.completionDate <= end
+            ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
         // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
@@ -569,11 +563,11 @@
                     }
                 }
 
-                // Audits Completed — audit date falls in range. Restricted to the same
-                // Solar PV Install / Solar Install / Battery Only types as the job-list
-                // table, so every job counted here (and in the Safety Fails / Policy Fails
-                // / PNC / Pass bars) has a matching row on the "Jobs Audited In This Range" slide.
-                if (isAllowedInstallType(job) && job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
+                // Audits Completed — audit date falls in range. Not restricted by job type:
+                // every audited job counts here (and in the Safety Fails / Policy Fails / PNC
+                // / Pass bars), regardless of whether it's one of the install types shown on
+                // the "Jobs Audited In This Range" table.
+                if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
                     if (job.auditDate >= start && job.auditDate <= end) {
                         auditsCompleted++;
 
