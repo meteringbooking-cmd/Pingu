@@ -512,7 +512,7 @@
         // can affect.
         function getAuditJobsForRange(start, end) {
             return allJobs.filter(job =>
-                job.jobNumber &&
+                job.jobNumber && isAllowedInstallType(job) &&
                 job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
                 job.auditDate >= start && job.auditDate <= end
             ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
@@ -569,8 +569,11 @@
                     }
                 }
 
-                // Audits Completed — audit date falls in range
-                if (job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
+                // Audits Completed — audit date falls in range. Restricted to the same
+                // Solar PV Install / Solar Install / Battery Only types as the job-list
+                // table, so every job counted here (and in the Safety Fails / Policy Fails
+                // / PNC / Pass bars) has a matching row on the "Jobs Audited In This Range" slide.
+                if (isAllowedInstallType(job) && job.auditStatus && job.auditStatus !== 'pending' && job.auditDate) {
                     if (job.auditDate >= start && job.auditDate <= end) {
                         auditsCompleted++;
 
