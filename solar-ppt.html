@@ -372,6 +372,7 @@
         let currentRangeEnd = null;
         let omitJobSet = new Set();      // normalised job numbers currently excluded (click-to-toggle)
         let auditJobsInRange = [];       // jobs shown in the click-to-exclude picker for the current range
+        let fullJobListForRange = []; // audited + not-yet-audited jobs, for the Section 4 slide
 
         function initializePage() {
             const today = new Date();
@@ -517,6 +518,25 @@
             ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
+        // Full job list for the "Jobs Audited In This Range" slide: every job that's either
+        // (a) audited in range (same set as getAuditJobsForRange), or (b) a Solar PV Install
+        // that completed in range but has NOT been audited yet — shown with a "Pending"
+        // status so nothing relevant to the period silently falls off the list.
+        function getJobListForRange(start, end) {
+            return allJobs.filter(job => {
+                if (!job.jobNumber) return false;
+
+                const auditedInRange = job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
+                    job.auditDate >= start && job.auditDate <= end;
+                if (auditedInRange) return true;
+
+                const notYetAudited = !job.auditStatus || job.auditStatus === 'pending';
+                const installedInRange = isAllowedInstallType(job) && job.status === 'complete' && job.completionDate &&
+                    job.completionDate >= start && job.completionDate <= end;
+                return notYetAudited && installedInRange;
+            }).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
+        }
+
         // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
         function computeReport(start, end, omitSet) {
             omitSet = omitSet || new Set();
@@ -525,6 +545,11 @@
             const catCounts = {}; // key -> { key, desc, count }
             const matchedOmitJobs = new Set();
             const omitMatchDebug = []; // diagnostic: which raw jobs matched the omit list, and how
+
+            // Per-job audit outcome — mirrors adminaudit2.html's classification exactly:
+            // the LOWEST CAT number present on the job wins (CAT 1 is most severe), and a
+            // job with no CAT codes at all is a Pass. Only counted for audited jobs.
+            let safetyFails = 0, policyFails = 0, pncCount = 0, passCount = 0;
 
             allJobs.forEach(job => {
                 // Solar PV Installs — completion date falls in range (omit list does NOT apply here)
@@ -549,6 +574,7 @@
                     if (job.auditDate >= start && job.auditDate <= end) {
                         auditsCompleted++;
 
+                        let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
                         if (job.auditChecklistData) {
                             Object.values(job.auditChecklistData).forEach(qData => {
                                 (qData.codesSelected || []).forEach(codeText => {
@@ -558,9 +584,20 @@
                                         catCounts[parsed.key] = { key: parsed.key, desc: parsed.desc, count: 0 };
                                     }
                                     catCounts[parsed.key].count++;
+
+                                    const t = String(codeText);
+                                    if (t.startsWith('CAT 1')) jobCat1++;
+                                    else if (t.startsWith('CAT 2')) jobCat2++;
+                                    else if (t.startsWith('CAT 3')) jobCat3++;
+                                    else if (t.startsWith('CAT 4')) jobCat4++;
                                 });
                             });
                         }
+
+                        if (jobCat1 > 0) safetyFails++;
+                        else if (jobCat2 > 0) policyFails++;
+                        else if (jobCat3 > 0 || jobCat4 > 0) pncCount++;
+                        else passCount++;
                     }
                 }
             });
@@ -575,6 +612,7 @@
                 auditsCompleted,
                 auditRatio,
                 auditTypes: { pc: 0, wip: 0, dpc: auditsCompleted, signoff: 0, total: auditsCompleted },
+                auditOutcomes: { safetyFails, policyFails, pnc: pncCount, pass: passCount },
                 catList,
                 omittedJobs,
                 unmatchedOmitJobs,
@@ -611,6 +649,7 @@
                 currentRangeEnd = end;
                 omitJobSet = new Set();
                 auditJobsInRange = getAuditJobsForRange(start, end);
+                fullJobListForRange = getJobListForRange(start, end);
 
                 refreshComputedStats();
 
@@ -876,41 +915,34 @@
             slide.background = { color: C.dark };
             addSlideHeader(slide, 'Installations vs Audits', 'NextGen Audit Data', 'Section 1');
 
-            const kW = 2.85, kY = 0.95, kH = 1.85, gap = 0.2;
-            const kpis = [
-                { label: 'Solar PV Installs', value: data.installsCompleted.toLocaleString('en-GB'), color: C.primary },
-                { label: 'Audits Completed',  value: data.auditsCompleted.toLocaleString('en-GB'),   color: C.accent },
-                { label: 'Audit Ratio',       value: `${(data.auditRatio * 100).toFixed(1)}%`, color: C.success }
-            ];
-            const totalW = kpis.length * kW + (kpis.length - 1) * gap;
-            const startX = (SLIDE_W - totalW) / 2;
-            kpis.forEach((k, i) => {
-                const x = startX + i * (kW + gap);
-                slide.addShape('roundRect', { x, y: kY, w: kW, h: kH, fill: { color: C.darkCard }, line: { color: C.line, width: 0.75 }, rectRadius: 0.1, shadow: softShadow() });
-                slide.addShape('rect', { x: x + 0.18, y: kY + 0.18, w: 0.5, h: 0.05, fill: { color: k.color }, line: { color: k.color } });
-                slide.addText(k.value.toString(), { x, y: kY + 0.36, w: kW, h: 0.75, fontSize: 36, bold: true, color: k.color, fontFace: 'Calibri', align: 'center' });
-                slide.addText(k.label, { x, y: kY + 1.16, w: kW, h: 0.4, fontSize: 10.5, color: C.text, fontFace: 'Calibri', align: 'center' });
-            });
-
-            // Comparative bar: installs vs audits
-            const barY = 3.05;
-            const barLabelW = 1.1, barGapR = 0.7;
+            const barLabelW = 1.3, barGapR = 0.7;
             const barTrackW = SLIDE_W - PAD * 2 - barLabelW - barGapR;
-            const maxBar = Math.max(data.installsCompleted, data.auditsCompleted, 1);
-            const rows = [
-                { label: 'Installs', value: data.installsCompleted, color: C.primary },
-                { label: 'Audits',   value: data.auditsCompleted,   color: C.accent }
-            ];
-            rows.forEach((r, i) => {
-                const y = barY + i * 0.38;
-                const bw = barTrackW * (r.value / maxBar);
-                slide.addText(r.label, { x: PAD, y, w: barLabelW, h: 0.3, fontSize: 9.5, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+
+            function drawBarRow(y, label, value, color, maxVal) {
+                const bw = barTrackW * (value / maxVal);
+                slide.addText(label, { x: PAD, y, w: barLabelW, h: 0.3, fontSize: 9.5, color: C.text, fontFace: 'Calibri', valign: 'middle' });
                 slide.addShape('roundRect', { x: PAD + barLabelW, y: y + 0.03, w: barTrackW, h: 0.24, fill: { color: C.darkLighter }, line: { color: C.darkLighter }, rectRadius: 0.08 });
                 if (bw > 0.05) {
-                    slide.addShape('roundRect', { x: PAD + barLabelW, y: y + 0.03, w: bw, h: 0.24, fill: { color: r.color }, line: { color: r.color }, rectRadius: 0.08 });
+                    slide.addShape('roundRect', { x: PAD + barLabelW, y: y + 0.03, w: bw, h: 0.24, fill: { color }, line: { color }, rectRadius: 0.08 });
                 }
-                slide.addText(r.value.toString(), { x: PAD + barLabelW + barTrackW + 0.1, y, w: 0.5, h: 0.3, fontSize: 9.5, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
-            });
+                slide.addText(value.toString(), { x: PAD + barLabelW + barTrackW + 0.1, y, w: 0.5, h: 0.3, fontSize: 9.5, bold: true, color: C.text, fontFace: 'Calibri', valign: 'middle' });
+            }
+
+            // Installs vs Audits
+            const maxBar = Math.max(data.installsCompleted, data.auditsCompleted, 1);
+            slide.addText('INSTALLS VS AUDITS', { x: PAD, y: 0.78, w: 4, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
+            drawBarRow(0.96, 'Installs', data.installsCompleted, C.primary, maxBar);
+            drawBarRow(1.34, 'Audits',   data.auditsCompleted,   C.accent,  maxBar);
+
+            // Audit outcome breakdown (Safety Fail / Policy Fail / PNC / Pass) — same
+            // CAT-code severity classification used in adminaudit2.html's backing data.
+            const o = data.auditOutcomes;
+            const maxOutcome = Math.max(o.safetyFails, o.policyFails, o.pnc, o.pass, 1);
+            slide.addText('AUDIT OUTCOME', { x: PAD, y: 1.72, w: 4, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
+            drawBarRow(1.90, 'Safety Fails', o.safetyFails, C.error,   maxOutcome);
+            drawBarRow(2.28, 'Policy Fails', o.policyFails, C.warning, maxOutcome);
+            drawBarRow(2.66, 'PNC',          o.pnc,          C.forecast, maxOutcome);
+            drawBarRow(3.04, 'Pass',         o.pass,         C.success, maxOutcome);
 
             addInsightBox(slide);
             addFooter(slide, badgeText, pageNum, totalPages);
@@ -977,7 +1009,7 @@
             // Left: bar chart of top 8
             const chartX = PAD, chartY = 1.0;
             const chartAreaW = 4.35;
-            slide.addText('TOP CAT CODES  ·  BY FREQUENCY', { x: chartX, y: chartY - 0.22, w: chartAreaW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
+            slide.addText('TOTAL CAT CODES  ·  BY FREQUENCY', { x: chartX, y: chartY - 0.22, w: chartAreaW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
 
             if (top8.length === 0) {
                 slide.addText('No Cat codes selected in this range.', { x: chartX, y: chartY + 0.2, w: chartAreaW, h: 0.4, fontSize: 9, italic: true, color: C.textDim, fontFace: 'Calibri' });
@@ -1047,7 +1079,7 @@
         /* --- Slide(s): full job list for the range, including omitted jobs (as Pending) --- */
         // Returns the number of slides it created, so the caller can size totalPages up front.
         function buildJobListSlides(pptx, badgeText, startPageNum, totalPages) {
-            const jobs = auditJobsInRange; // same set shown in the click-to-exclude picker
+            const jobs = fullJobListForRange; // audited jobs + not-yet-audited installs, for this range
             const pageCount = Math.max(1, Math.ceil(jobs.length / JOB_LIST_ROWS_PER_PAGE));
 
             for (let p = 0; p < pageCount; p++) {
@@ -1061,6 +1093,7 @@
 
                 const headerRow = [
                     { text: 'Job Number',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
+                    { text: 'Job Type',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
                     { text: 'Lead Engineer',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
                     { text: 'Audit Status',   options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } }
                 ];
@@ -1072,14 +1105,15 @@
                         const rowFill = isOmitted ? C.dark : (i % 2 === 0 ? C.darkLight : C.darkLighter);
                         return [
                             { text: job.jobNumber,    options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5, bold: !isOmitted } },
+                            { text: job.jobType || 'Standard', options: { color: isOmitted ? C.textDim : C.textDim, fill: { color: rowFill }, fontSize: 8 } },
                             { text: job.leadEngineer, options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5 } },
                             { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 8.5, italic: !!status.italic, bold: !status.italic } }
                         ];
                       })
-                    : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 3, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
+                    : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 4, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
 
                 slide.addTable([headerRow, ...bodyRows], {
-                    x: PAD, y: BODY_Y, w: tableW, colW: [2.4, 3.7, tableW - 6.1],
+                    x: PAD, y: BODY_Y, w: tableW, colW: [1.8, 2.1, 2.8, tableW - 6.7],
                     fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
                     autoPage: false, valign: 'middle', margin: [0.02, 0.08, 0.02, 0.08]
                 });
@@ -1113,7 +1147,7 @@
                 pptx.subject = 'Solar Installation Audit & Performance Report';
 
                 const badgeText = `${fmtDate(reportData.rangeStart)} – ${fmtDate(reportData.rangeEnd)}`;
-                const jobListPageCount = Math.max(1, Math.ceil(auditJobsInRange.length / JOB_LIST_ROWS_PER_PAGE));
+                const jobListPageCount = Math.max(1, Math.ceil(fullJobListForRange.length / JOB_LIST_ROWS_PER_PAGE));
                 const totalPages = 3 + jobListPageCount;
 
                 setProgress(10, '🎨 Building cover slide...');
