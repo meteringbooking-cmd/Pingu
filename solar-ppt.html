@@ -436,6 +436,12 @@
 
                 const statusUpdate = normaliseStatus(data['Status Update'] ?? data['status'] ?? '');
 
+                // Same fallback chain adminaudit2.html uses to find the assigned engineer.
+                let leadEngineer = 'Unassigned';
+                for (const f of ['Lead Engineer', 'Lead', 'Engineer', 'engineer']) {
+                    if (data[f] && String(data[f]).trim()) { leadEngineer = String(data[f]).trim(); break; }
+                }
+
                 let completedTimestamp = null;
                 if (data['completedTimestamp']) {
                     completedTimestamp = data['completedTimestamp'].toDate
@@ -451,6 +457,7 @@
                     jobType:            data['Job Type'] || 'Standard',
                     status:             statusUpdate,
                     completionDate:     completedTimestamp || jobDate,
+                    leadEngineer:       leadEngineer,
                     auditStatus:        data['auditStatus'] || 'pending',
                     auditDate:          data['auditDate'] ? parseDate(data['auditDate']) : null,
                     auditChecklistData: data['auditChecklistData'] || null
@@ -1021,6 +1028,68 @@
             addFooter(slide, badgeText, pageNum, totalPages);
         }
 
+        // Maps a job's raw auditStatus to a display label + color. Omitted jobs are always
+        // shown as "Pending" here, regardless of what their real audit status was — they're
+        // being presented as excluded from the stats, not as actually un-audited.
+        function auditStatusLabel(job, isOmitted) {
+            if (isOmitted) return { label: 'Pending', color: C.textDim, italic: true };
+            switch (job.auditStatus) {
+                case 'pass':                 return { label: 'No Issues',            color: C.success };
+                case 'complete-with-issues': return { label: 'Complete With Issues', color: C.warning };
+                case 'unable':               return { label: 'Unable to Audit',      color: C.error };
+                case 'in-progress':          return { label: 'In Progress',          color: C.forecast };
+                default:                     return { label: 'Pending',              color: C.textDim, italic: true };
+            }
+        }
+
+        const JOB_LIST_ROWS_PER_PAGE = 16;
+
+        /* --- Slide(s): full job list for the range, including omitted jobs (as Pending) --- */
+        // Returns the number of slides it created, so the caller can size totalPages up front.
+        function buildJobListSlides(pptx, badgeText, startPageNum, totalPages) {
+            const jobs = auditJobsInRange; // same set shown in the click-to-exclude picker
+            const pageCount = Math.max(1, Math.ceil(jobs.length / JOB_LIST_ROWS_PER_PAGE));
+
+            for (let p = 0; p < pageCount; p++) {
+                const slide = pptx.addSlide();
+                slide.background = { color: C.dark };
+                const pageSuffix = pageCount > 1 ? ` (Page ${p + 1} of ${pageCount})` : '';
+                addSlideHeader(slide, 'Jobs Audited In This Range', `All Audited Jobs For This Period${pageSuffix}`, 'Section 4');
+
+                const chunk = jobs.slice(p * JOB_LIST_ROWS_PER_PAGE, (p + 1) * JOB_LIST_ROWS_PER_PAGE);
+                const tableW = SLIDE_W - PAD * 2;
+
+                const headerRow = [
+                    { text: 'Job Number',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
+                    { text: 'Lead Engineer',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
+                    { text: 'Audit Status',   options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } }
+                ];
+
+                const bodyRows = chunk.length > 0
+                    ? chunk.map((job, i) => {
+                        const isOmitted = omitJobSet.has(normaliseJobNumber(job.jobNumber));
+                        const status = auditStatusLabel(job, isOmitted);
+                        const rowFill = isOmitted ? C.dark : (i % 2 === 0 ? C.darkLight : C.darkLighter);
+                        return [
+                            { text: job.jobNumber,    options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5, bold: !isOmitted } },
+                            { text: job.leadEngineer, options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5 } },
+                            { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 8.5, italic: !!status.italic, bold: !status.italic } }
+                        ];
+                      })
+                    : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 3, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
+
+                slide.addTable([headerRow, ...bodyRows], {
+                    x: PAD, y: BODY_Y, w: tableW, colW: [2.4, 3.7, tableW - 6.1],
+                    fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
+                    autoPage: false, valign: 'middle', margin: [0.02, 0.08, 0.02, 0.08]
+                });
+
+                addFooter(slide, badgeText, startPageNum + p, totalPages);
+            }
+
+            return pageCount;
+        }
+
         window.exportToPowerPoint = async function() {
             if (!reportData) { showToast('Please load a report first', 'error'); return; }
 
@@ -1044,19 +1113,23 @@
                 pptx.subject = 'Solar Installation Audit & Performance Report';
 
                 const badgeText = `${fmtDate(reportData.rangeStart)} – ${fmtDate(reportData.rangeEnd)}`;
-                const totalPages = 3;
+                const jobListPageCount = Math.max(1, Math.ceil(auditJobsInRange.length / JOB_LIST_ROWS_PER_PAGE));
+                const totalPages = 3 + jobListPageCount;
 
-                setProgress(12, '🎨 Building cover slide...');
+                setProgress(10, '🎨 Building cover slide...');
                 buildCoverSlide(pptx, reportData, badgeText);
 
-                setProgress(32, '📈 Building Installations vs Audits slide...');
+                setProgress(28, '📈 Building Installations vs Audits slide...');
                 buildInstallsAuditsSlide(pptx, reportData, badgeText, 1, totalPages);
 
-                setProgress(55, '🏷️ Building NextGen Audit Type slide...');
+                setProgress(46, '🏷️ Building NextGen Audit Type slide...');
                 buildAuditTypeSlide(pptx, reportData, badgeText, 2, totalPages);
 
-                setProgress(80, '🚩 Building NextGen Cat Codes slide...');
+                setProgress(64, '🚩 Building NextGen Cat Codes slide...');
                 buildCatCodeSlide(pptx, reportData, badgeText, 3, totalPages);
+
+                setProgress(82, '📋 Building Jobs Audited slide...');
+                buildJobListSlides(pptx, badgeText, 4, totalPages);
 
                 setProgress(96, '💾 Saving file...');
                 const s = reportData.rangeStart, e = reportData.rangeEnd;
