@@ -518,20 +518,20 @@
             ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
-        // Full job list for the "Jobs Audited In This Range" slide: every job that's either
-        // (a) audited in range (same set as getAuditJobsForRange), or (b) a Solar PV Install
-        // that completed in range but has NOT been audited yet — shown with a "Pending"
-        // status so nothing relevant to the period silently falls off the list.
+        // Full job list for the "Jobs Audited In This Range" slide: every Solar PV Install /
+        // Solar Install / Battery Only job that's either (a) audited in range, or (b) completed
+        // in range but has NOT been audited yet — shown with a "Pending" status so nothing
+        // relevant to the period silently falls off the list. Other job types never appear here.
         function getJobListForRange(start, end) {
             return allJobs.filter(job => {
-                if (!job.jobNumber) return false;
+                if (!job.jobNumber || !isAllowedInstallType(job)) return false;
 
                 const auditedInRange = job.auditStatus && job.auditStatus !== 'pending' && job.auditDate &&
                     job.auditDate >= start && job.auditDate <= end;
                 if (auditedInRange) return true;
 
                 const notYetAudited = !job.auditStatus || job.auditStatus === 'pending';
-                const installedInRange = isAllowedInstallType(job) && job.status === 'complete' && job.completionDate &&
+                const installedInRange = job.status === 'complete' && job.completionDate &&
                     job.completionDate >= start && job.completionDate <= end;
                 return notYetAudited && installedInRange;
             }).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
@@ -1074,7 +1074,7 @@
             }
         }
 
-        const JOB_LIST_ROWS_PER_PAGE = 16;
+        const JOB_LIST_ROWS_PER_PAGE = 25;
 
         /* --- Slide(s): full job list for the range, including omitted jobs (as Pending) --- */
         // Returns the number of slides it created, so the caller can size totalPages up front.
@@ -1092,30 +1092,33 @@
                 const tableW = SLIDE_W - PAD * 2;
 
                 const headerRow = [
-                    { text: 'Job Number',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
-                    { text: 'Job Type',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
-                    { text: 'Lead Engineer',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } },
-                    { text: 'Audit Status',   options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 9 } }
+                    { text: 'Job Number',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Job Type',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Lead Engineer',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Audit Status',   options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } }
                 ];
 
                 const bodyRows = chunk.length > 0
                     ? chunk.map((job, i) => {
+                        // Omitted jobs are shown identically to every other row — only their
+                        // Audit Status text differs (it reads "Pending"), same as any other
+                        // job that genuinely hasn't been audited yet. No highlighting.
                         const isOmitted = omitJobSet.has(normaliseJobNumber(job.jobNumber));
                         const status = auditStatusLabel(job, isOmitted);
-                        const rowFill = isOmitted ? C.dark : (i % 2 === 0 ? C.darkLight : C.darkLighter);
+                        const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                         return [
-                            { text: job.jobNumber,    options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5, bold: !isOmitted } },
-                            { text: job.jobType || 'Standard', options: { color: isOmitted ? C.textDim : C.textDim, fill: { color: rowFill }, fontSize: 8 } },
-                            { text: job.leadEngineer, options: { color: isOmitted ? C.textDim : C.text, fill: { color: rowFill }, fontSize: 8.5 } },
-                            { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 8.5, italic: !!status.italic, bold: !status.italic } }
+                            { text: job.jobNumber,    options: { color: C.text, fill: { color: rowFill }, fontSize: 7, bold: true } },
+                            { text: job.jobType || 'Standard', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.5 } },
+                            { text: job.leadEngineer, options: { color: C.text, fill: { color: rowFill }, fontSize: 7 } },
+                            { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 7, italic: !!status.italic, bold: !status.italic } }
                         ];
                       })
                     : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 4, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
 
                 slide.addTable([headerRow, ...bodyRows], {
-                    x: PAD, y: BODY_Y, w: tableW, colW: [1.8, 2.1, 2.8, tableW - 6.7],
+                    x: PAD, y: HDR_H + 0.08, w: tableW, colW: [1.8, 2.1, 2.8, tableW - 6.7],
                     fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
-                    autoPage: false, valign: 'middle', margin: [0.02, 0.08, 0.02, 0.08]
+                    autoPage: false, valign: 'middle', margin: 0
                 });
 
                 addFooter(slide, badgeText, startPageNum + p, totalPages);
