@@ -266,6 +266,8 @@
         .audit-btn.issues { background: linear-gradient(135deg, var(--audit-issues), #E5B73B); }
         .audit-btn.unable { background: linear-gradient(135deg, var(--audit-unable), #E55A5A); }
         .audit-btn.in-progress { background: linear-gradient(135deg, var(--audit-in-progress), #00B8D9); }
+        .audit-btn.active { border-color: #fff; box-shadow: 0 0 0 3px rgba(255,255,255,0.55), 0 6px 16px rgba(0,0,0,0.4); transform: translateY(-2px); }
+        .audit-btn.active::after { content: '✓ Selected'; display: block; font-size: 0.7rem; font-weight: 700; margin-top: 0.3rem; letter-spacing: 0.05em; opacity: 0.9; }
         .notes-section { margin-top: 1.5rem; }
         .notes-label { color: var(--text-dim); font-size: 0.9rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.6rem; display: block; }
         .notes-textarea {
@@ -627,18 +629,18 @@
 
                 <div class="modal-section" style="background: var(--dark-light); border: 1px solid var(--dark-lighter);">
                     <h3>Update Audit Status</h3>
-                    <div class="audit-actions">
-                        <button class="audit-btn" onclick="setAuditStatus('safety-fail')" style="background-color: #d9534f; color: white;">Safety Fail</button>
-                        <button class="audit-btn" onclick="setAuditStatus('policy-fail')" style="background-color: #f0ad4e; color: white;">Policy Fail</button>
-                        <button class="audit-btn" onclick="setAuditStatus('pnc')" style="background-color: #5bc0de; color: white;">PNC</button>
-                        <button class="audit-btn pass" onclick="setAuditStatus('pass')" style="background-color: #5cb85c; color: white;">Pass</button>
+                    <div class="audit-actions" id="audit-status-actions">
+                        <button class="audit-btn" data-status="safety-fail" onclick="setAuditStatus('safety-fail')" style="background-color: #d9534f; color: white;">Safety Fail</button>
+                        <button class="audit-btn" data-status="policy-fail" onclick="setAuditStatus('policy-fail')" style="background-color: #f0ad4e; color: white;">Policy Fail</button>
+                        <button class="audit-btn" data-status="pnc" onclick="setAuditStatus('pnc')" style="background-color: #5bc0de; color: white;">PNC</button>
+                        <button class="audit-btn pass" data-status="pass" onclick="setAuditStatus('pass')" style="background-color: #5cb85c; color: white;">Pass</button>
                     </div>
                     <button class="btn btn-primary" onclick="generateAuditPDF()" style="width: 100%; margin-top: 1rem; padding: 1rem; font-size: 1.1rem; border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.3s ease;">
                         📄 Generate PDF
                     </button>
 
                     <div class="notes-section">
-                        <label class="notes-label" for="audit-notes" style="color: var(--secondary);">Internal Audit Notes (do not send this)</label>
+                        <label class="notes-label" for="audit-notes" style="color: var(--secondary);">Internal Audit Notes (optional, do not send this)</label>
                         <textarea id="audit-notes" class="notes-textarea" placeholder="Add internal notes about the audit..."></textarea>
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.8rem; flex-wrap: wrap; gap: 0.8rem;">
                             <div class="auto-save-indicator" id="auto-save-indicator">💾 Notes auto-saved locally</div>
@@ -651,13 +653,13 @@
                 <div class="modal-section" style="background: var(--dark-light); border: 1px solid var(--dark-lighter);">
                     <h3>Clients Outcome</h3>
                     <div class="client-outcome-section" style="background: var(--dark-lighter); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--primary);">
-                        <select id="client-outcome" class="filter-input" style="width: 100%; margin-bottom: 1rem;" onchange="autoSaveNotes()">
-                            <option value="">Select Outcome...</option>
-                            <option value="Safety Fail">Safety Fail</option>
-                            <option value="Policy Fail">Policy Fail</option>
-                            <option value="PNC">PNC</option>
-                            <option value="Pass">Pass</option>
-                        </select>
+                        <input type="hidden" id="client-outcome" value="">
+                        <div class="audit-actions" id="client-outcome-actions" style="margin-top: 0; margin-bottom: 1rem;">
+                            <button type="button" class="audit-btn" data-outcome="Safety Fail" onclick="setClientOutcome('Safety Fail')" style="background-color: #d9534f; color: white;">Safety Fail</button>
+                            <button type="button" class="audit-btn" data-outcome="Policy Fail" onclick="setClientOutcome('Policy Fail')" style="background-color: #f0ad4e; color: white;">Policy Fail</button>
+                            <button type="button" class="audit-btn" data-outcome="PNC" onclick="setClientOutcome('PNC')" style="background-color: #5bc0de; color: white;">PNC</button>
+                            <button type="button" class="audit-btn" data-outcome="Pass" onclick="setClientOutcome('Pass')" style="background-color: #5cb85c; color: white;">Pass</button>
+                        </div>
 
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
                             <button id="btn-client-resolved" class="btn btn-secondary" style="background-color: #f1f3f5; color: #333; border: 1px solid #ced4da; padding: 0.4rem 1rem; font-size: 0.9rem;" onclick="toggleClientResolved()">✅ Client issue resolved</button>
@@ -1036,12 +1038,11 @@
             { id: "q78", text: "Is all evidene complete on required system.", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
-                window.deleteUploadedPhoto = async function(qId, urlIndex) {
+        window.deleteUploadedPhoto = function(qId, urlIndex) {
             if (!currentJob || !currentJob.auditChecklistData || !currentJob.auditChecklistData[qId] || !currentJob.auditChecklistData[qId].uploadedPhotos) return;
             currentJob.auditChecklistData[qId].uploadedPhotos.splice(urlIndex, 1);
             updateFileNamesDisplay(qId);
             triggerAutoSave();
-            await persistPhotosToFirebase(qId);
         };
 
         window.updateFileNamesDisplay = function(qId) {
@@ -1062,25 +1063,6 @@
                 }
             } else if (previewEl) {
                 previewEl.innerHTML = '';
-            }
-        };
-
-                // Immediately persists this question's photo URLs to Firestore.
-        // Uses dot-path field so it only ever touches this one question's
-        // uploadedPhotos array, never clobbering answers/notes/other questions.
-        window.persistPhotosToFirebase = async function(qId) {
-            if (!currentJob) return;
-            const photos = (currentJob.auditChecklistData && currentJob.auditChecklistData[qId])
-                ? currentJob.auditChecklistData[qId].uploadedPhotos || []
-                : [];
-            try {
-                await writeSolarJob(currentJob, {
-                    [`auditChecklistData.${qId}.uploadedPhotos`]: photos,
-                    [`auditChecklistData.${qId}.questionText`]: auditQuestionsData.find(q => q.id === qId)?.text || ''
-                });
-            } catch (e) {
-                console.error('Failed to persist photo(s) to Firestore', e);
-                if (typeof showToast === 'function') showToast('Photo uploaded but failed to save reference — please click Save', 'error');
             }
         };
 
@@ -1106,12 +1088,10 @@
             }
             if (previewEl) previewEl.insertAdjacentHTML('beforeend', uploadingHtml);
             
-            let anyUploaded = false;
             for (let i = 0; i < files.length; i++) {
                 try {
                     const liveUrl = await uploadImageToFirebase(files[i], currentJob.jobNumber);
                     currentJob.auditChecklistData[qId].uploadedPhotos.push(liveUrl);
-                    anyUploaded = true;
                 } catch (e) {
                     if (typeof showToast === 'function') showToast('Failed to upload a photo', 'error');
                 }
@@ -1121,13 +1101,6 @@
             
             updateFileNamesDisplay(qId);
             triggerAutoSave();
-
-            // Write the photo URL(s) to Firestore right away — don't wait for
-            // the user to click Save. This is what was previously missing.
-            if (anyUploaded) {
-                await persistPhotosToFirebase(qId);
-                if (typeof showToast === 'function') showToast('Photo saved', 'success');
-            }
         };
 
         window.handleDrop = function(e, inputId) {
@@ -1168,11 +1141,7 @@
                     codesSelected = checkedCbs.map(cb => cb.nextElementSibling.textContent);
                 }
                 
-                                let uploadedPhotos = (currentJob && currentJob.auditChecklistData && currentJob.auditChecklistData[q.id])
-                                        ? currentJob.auditChecklistData[q.id].uploadedPhotos || []
-                                        : [];
-
-                draft[q.id] = { answer: response, notes: notes, codesSelected: codesSelected, uploadedPhotos: uploadedPhotos };
+                draft[q.id] = { answer: response, notes: notes, codesSelected: codesSelected };
             }
             
             // Also store emails and general additional notes
@@ -1606,7 +1575,7 @@
                             ${questionSaveData.notes ? `<div style="margin-top:4px;color:#d9534f;"><em>Notes: ${questionSaveData.notes}</em></div>` : ''}
                         </div>`;
                     }
-
+                    questionNumEmail++;
                     // Assign to master firebase save object
                     // Assign to master firebase save object
                     firebaseChecklistData[q.id] = questionSaveData;
@@ -1977,10 +1946,10 @@
                 const totals = [
                     nonSurveyAll.length, allC.length,
                     allC.filter(j=>j.auditStatus==='pending').length,
-                    allC.filter(j=>j.auditStatus==='in-progress').length,
-                    allC.filter(j=>j.auditStatus==='pass').length,
-                    allC.filter(j=>j.auditStatus==='complete-with-issues').length,
-                    allC.filter(j=>j.auditStatus==='unable').length
+                    allC.filter(j=>j.auditStatus==='safety-fail').length,
+                    allC.filter(j=>j.auditStatus==='policy-fail').length,
+                    allC.filter(j=>j.auditStatus==='pnc').length,
+                    allC.filter(j=>j.auditStatus==='pass').length
                 ];
                 indicators.forEach((id, i) => {
                     document.getElementById(id).textContent = `of ${totals[i]} total`;
@@ -2014,10 +1983,10 @@
                 const auditClass = job.auditStatus === 'pending' ? '' : `audit-${job.auditStatus}`;
 
                 let auditLabel = 'Pending Audit';
-                if      (job.auditStatus === 'pass')                 auditLabel = 'No Issues';
-                else if (job.auditStatus === 'complete-with-issues') auditLabel = 'Complete With Issues';
-                else if (job.auditStatus === 'unable')               auditLabel = 'Unable to Audit';
-                else if (job.auditStatus === 'in-progress')          auditLabel = 'In Progress';
+                if      (job.auditStatus === 'pass')        auditLabel = 'Pass';
+                else if (job.auditStatus === 'safety-fail') auditLabel = 'Safety Fail';
+                else if (job.auditStatus === 'policy-fail') auditLabel = 'Policy Fail';
+                else if (job.auditStatus === 'pnc')         auditLabel = 'PNC';
 
                 const statusBadgeClass = getStatusBadgeClass(job.status);
                 const statusLabel      = getStatusLabel(job.status);
@@ -2167,11 +2136,12 @@
                 `<div class="source-info-banner ${bannerCls}">${bannerTxt}</div>`;
 
             let s = 'Pending Audit';
-            if      (job.auditStatus === 'pass')                 s = 'Audit Completed — No Issues';
-            else if (job.auditStatus === 'complete-with-issues') s = 'Audit Completed — Complete With Issues';
-            else if (job.auditStatus === 'unable')               s = 'Unable to Audit';
-            else if (job.auditStatus === 'in-progress')          s = 'Audit — In Progress';
+            if      (job.auditStatus === 'pass')        s = 'Audit Completed — Pass';
+            else if (job.auditStatus === 'safety-fail') s = 'Audit Completed — Safety Fail';
+            else if (job.auditStatus === 'policy-fail') s = 'Audit Completed — Policy Fail';
+            else if (job.auditStatus === 'pnc')         s = 'Audit Completed — PNC';
             document.getElementById('modal-current-status').textContent = s;
+            highlightAuditStatusButton(job.auditStatus);
 
             // Reset checklist state
             const rbs = document.querySelectorAll('.checklist-radio input');
@@ -2362,6 +2332,9 @@
 
             document.getElementById('audit-notes').value = loadSavedNotes(job.id) || job.auditNotes || '';
             document.getElementById('client-outcome').value = job.clientOutcome || '';
+            document.querySelectorAll('#client-outcome-actions .audit-btn').forEach(btn => {
+                btn.classList.toggle('active', !!job.clientOutcome && btn.dataset.outcome === job.clientOutcome);
+            });
             const resolvedState = job.clientResolved === true ? 'true' : 'false';
             document.getElementById('client-resolved-state').value = resolvedState;
             document.getElementById('client-resolved-date').value = job.clientResolvedDate || '';
@@ -2397,19 +2370,25 @@
             currentJob = null; pendingAuditStatus = null;
         };
 
+        // Highlights whichever Update Audit Status button matches `status` (or clears all
+        // highlights when status is falsy), so clicking an option always gives visible feedback.
+        function highlightAuditStatusButton(status) {
+            document.querySelectorAll('#audit-status-actions .audit-btn').forEach(btn => {
+                btn.classList.toggle('active', !!status && btn.dataset.status === status);
+            });
+        }
+
         window.setAuditStatus = function(status) {
             pendingAuditStatus = status;
-            if ((status === 'safety-fail' || status === 'policy-fail' || status === 'pnc') && !document.getElementById('audit-notes').value.trim()) {
-                showToast('Please add internal notes explaining the fail/PNC', 'error');
-                document.getElementById('audit-notes').focus();
-                return;
-            }
+            highlightAuditStatusButton(status);
             document.getElementById('confirm-actions').style.display = 'grid';
         };
 
         window.cancelAuditUpdate = function() {
             pendingAuditStatus = null;
             document.getElementById('confirm-actions').style.display = 'none';
+            // Revert the highlight back to whatever is actually saved on the job
+            highlightAuditStatusButton(currentJob ? currentJob.auditStatus : null);
         };
 
         window.confirmAuditUpdate = async function() {
@@ -2419,11 +2398,7 @@
             const clientResolved = document.getElementById('client-resolved-state').value === 'true';
             const clientResolvedDate = document.getElementById('client-resolved-date').value;
             const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
-            
-            if ((pendingAuditStatus === 'safety-fail' || pendingAuditStatus === 'policy-fail' || pendingAuditStatus === 'pnc') && !notes) {
-                showToast('Notes are required when marking issues', 'error');
-                return;
-            }
+
             try {
                 await writeSolarJob(currentJob, {
                     auditStatus: pendingAuditStatus,
@@ -2457,6 +2432,40 @@
             } catch(e) {
                 console.error(e);
                 showToast('Failed to update audit status', 'error');
+            }
+        };
+
+        // Clients Outcome buttons save immediately on click — no notes required, no separate
+        // Confirm step. Highlights the clicked button and refreshes the job tiles right away.
+        window.setClientOutcome = async function(outcome) {
+            if (!currentJob) return;
+            document.getElementById('client-outcome').value = outcome;
+            document.querySelectorAll('#client-outcome-actions .audit-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.outcome === outcome);
+            });
+
+            const clientResolved = document.getElementById('client-resolved-state').value === 'true';
+            const clientResolvedDate = document.getElementById('client-resolved-date').value;
+            const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
+
+            try {
+                await writeSolarJob(currentJob, {
+                    clientOutcome: outcome,
+                    clientResolved: clientResolved,
+                    clientResolvedDate: clientResolvedDate,
+                    clientResolvedNotes: clientResolvedNotes
+                });
+                currentJob.clientOutcome = outcome;
+                currentJob.clientResolved = clientResolved;
+                currentJob.clientResolvedDate = clientResolvedDate;
+                currentJob.clientResolvedNotes = clientResolvedNotes;
+
+                showToast(`Client outcome set to: ${outcome}`, 'success');
+                updateStats(getNonSurveyJobs());
+                renderJobs();
+            } catch(e) {
+                console.error(e);
+                showToast('Failed to save client outcome', 'error');
             }
         };
 
@@ -2959,68 +2968,67 @@
             const omitInput = document.getElementById('export-omit-jobs').value || '';
             const omitJobs = omitInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
 
-            const isAllowedExportJobType = (job) => {
-                if (!job || !job.jobType) return false;
-                const jt = job.jobType.trim().toLowerCase();
-                return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
-            };
-
             allJobs.forEach(job => {
                 if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) {
                     return; // Skip omitted jobs
                 }
 
-                // Only include specified Job Types: Solar Install, Solar PV Install, Battery Only
-                if (!isAllowedExportJobType(job)) return;
-
-                // Everything is keyed on completionDate falling within the week
-                if (!job.completionDate) return;
-                const compDate = new Date(job.completionDate);
-                if (compDate < wcStart || compDate > wcEnd) return;
-
-                // Installs completed
-                if (job.status === 'complete') {
-                    installsCompleted++;
+                // Installs completed logic
+                if (job.status === 'complete' && job.jobType) {
+                    const jt = job.jobType.toLowerCase();
+                    if (jt.includes('install') || jt.includes('battery')) {
+                        if (job.completionDate) {
+                            const compDate = new Date(job.completionDate);
+                            if (compDate >= wcStart && compDate <= wcEnd) {
+                                installsCompleted++;
+                            }
+                        }
+                    }
                 }
 
-                // Audits completed (any job with a non-pending audit status whose completion date is in the week)
+                // Audits logic
                 if (job.auditStatus && job.auditStatus !== 'pending') {
-                    auditsCompleted++;
+                    if (job.auditDate) {
+                        const audDate = new Date(job.auditDate);
+                        if (audDate >= wcStart && audDate <= wcEnd) {
+                            auditsCompleted++;
+                            
+                            let hasCat1 = false;
+                            let hasCat2 = false;
+                            let hasCat3 = false;
+                            let hasCat4 = false;
 
-                    let hasCat1 = false;
-                    let hasCat2 = false;
-                    let hasCat3 = false;
-                    let hasCat4 = false;
-
-                    // Scan CATs for this audited job
-                    if (job.auditChecklistData) {
-                        Object.values(job.auditChecklistData).forEach(qData => {
-                            if (qData.codesSelected) {
-                                qData.codesSelected.forEach(code => {
-                                    if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
-                                    if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
-                                    if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
-                                    if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
+                            // Scan CATs for this audited job
+                            if (job.auditChecklistData) {
+                                Object.values(job.auditChecklistData).forEach(qData => {
+                                    if (qData.codesSelected) {
+                                        qData.codesSelected.forEach(code => {
+                                            if (code.startsWith('CAT 1')) { hasCat1 = true; cat1Total++; }
+                                            if (code.startsWith('CAT 2')) { hasCat2 = true; cat2Total++; }
+                                            if (code.startsWith('CAT 3')) { hasCat3 = true; cat3Total++; }
+                                            if (code.startsWith('CAT 4')) { hasCat4 = true; cat4Total++; }
+                                        });
+                                    }
                                 });
                             }
-                        });
-                    }
 
-                    // 1. Total individual jobs for each CAT code
-                    if (hasCat1) cat1++;
-                    if (hasCat2) cat2++;
-                    if (hasCat3) cat3++;
-                    if (hasCat4) cat4++;
+                            // 1. Total individual jobs for each CAT code
+                            if (hasCat1) cat1++;
+                            if (hasCat2) cat2++;
+                            if (hasCat3) cat3++;
+                            if (hasCat4) cat4++;
 
-                    // 2. Mutually exclusive Outcome Bucket (highest severity first)
-                    if (hasCat1) {
-                        safetyFailsCount++;
-                    } else if (hasCat2) {
-                        policyFailsCount++;
-                    } else if (hasCat3 || hasCat4) {
-                        pncCount++;
-                    } else {
-                        passCount++;
+                            // 2. Mutually exclusive Outcome Bucket (highest severity first)
+                            if (hasCat1) {
+                                safetyFailsCount++;
+                            } else if (hasCat2) {
+                                policyFailsCount++;
+                            } else if (hasCat3 || hasCat4) {
+                                pncCount++;
+                            } else {
+                                passCount++;
+                            }
+                        }
                     }
                 }
             });
@@ -3082,78 +3090,9 @@
                 cat4Total  // AD
             ];
 
-            // ── Backing data ──────────────────────────────────────────────
-            // Mirrors the stats loop exactly: every job whose completionDate
-            // falls within the selected week and matches allowed job types is included.
-            const csvEscape = (v) => {
-                const s = String(v == null ? '' : v);
-                return s.includes(',') || s.includes('"') || s.includes('\n')
-                    ? '"' + s.replace(/"/g, '""') + '"'
-                    : s;
-            };
-
-            const backingHeaders = [
-                "Job Number", "Postcode", "Engineer", "Job Type", "Job Status",
-                "Completion Date", "Audit Status", "Audit Date", "Audit Outcome",
-                "CAT 1 count", "CAT 2 count", "CAT 3 count", "CAT 4 count", "CAT codes"
-            ];
-
-            const backingRows = [];
-            allJobs.forEach(job => {
-                if (job.jobNumber && omitJobs.includes(job.jobNumber.toUpperCase())) return;
-                if (!isAllowedExportJobType(job)) return;
-                if (!job.completionDate) return;
-                const compDate = new Date(job.completionDate);
-                if (compDate < wcStart || compDate > wcEnd) return;
-
-                // CAT code details
-                let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
-                const allCodes = [];
-                if (job.auditChecklistData) {
-                    Object.values(job.auditChecklistData).forEach(qData => {
-                        (qData.codesSelected || []).forEach(code => {
-                            allCodes.push(code);
-                            if (code.startsWith('CAT 1')) jobCat1++;
-                            else if (code.startsWith('CAT 2')) jobCat2++;
-                            else if (code.startsWith('CAT 3')) jobCat3++;
-                            else if (code.startsWith('CAT 4')) jobCat4++;
-                        });
-                    });
-                }
-
-                let outcomeLabel = '';
-                if (job.auditStatus && job.auditStatus !== 'pending') {
-                    if (jobCat1 > 0) outcomeLabel = 'Safety Fail';
-                    else if (jobCat2 > 0) outcomeLabel = 'Policy Fail';
-                    else if (jobCat3 > 0 || jobCat4 > 0) outcomeLabel = 'PNC';
-                    else outcomeLabel = 'Pass';
-                }
-
-                backingRows.push([
-                    csvEscape(job.jobNumber),
-                    csvEscape(job.postcode),
-                    csvEscape(job.engineer),
-                    csvEscape(job.jobType),
-                    csvEscape(getStatusLabel(job.status)),
-                    csvEscape(new Date(job.completionDate).toLocaleDateString('en-GB')),
-                    csvEscape(job.auditStatus || 'pending'),
-                    csvEscape(job.auditDate ? new Date(job.auditDate).toLocaleDateString('en-GB') : ''),
-                    csvEscape(outcomeLabel),
-                    jobCat1, jobCat2, jobCat3, jobCat4,
-                    csvEscape(allCodes.join('; '))
-                ].join(","));
-            });
-
-            const csvLines = [
-                headers.join(","),
-                rowData.join(","),
-                "", // blank separator
-                "BACKING DATA — all jobs with completion date in selected week",
-                backingHeaders.map(csvEscape).join(","),
-                ...backingRows
-            ];
-
-            const csvContent = "data:text/csv;charset=utf-8," + csvLines.join("\n");
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + headers.join(",") + "\n"
+                + rowData.join(",");
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
