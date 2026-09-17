@@ -538,6 +538,33 @@
             return getInstallPopulationForRange(start, end);
         }
 
+        // Classifies a single audited job's outcome by CAT-code severity — the LOWEST CAT
+        // number present on the job wins (CAT 1 is most severe), and no CAT codes at all is
+        // a Pass. Mirrors adminaudit2.html's classification exactly. Returns null for a job
+        // that hasn't been audited (auditStatus pending/unset). This is the single source of
+        // truth for outcome, used both for the Safety Fails / Policy Fails / PNC / Pass bars
+        // on slide 1 and for each job's Audit Status column on the job-list table, so the two
+        // always agree — the table never shows the raw "Update Audit Status" selection.
+        function classifyAuditOutcome(job) {
+            if (!job.auditStatus || job.auditStatus === 'pending') return null;
+            let cat1 = 0, cat2 = 0, cat3 = 0, cat4 = 0;
+            if (job.auditChecklistData) {
+                Object.values(job.auditChecklistData).forEach(qData => {
+                    (qData.codesSelected || []).forEach(codeText => {
+                        const t = String(codeText);
+                        if (t.startsWith('CAT 1')) cat1++;
+                        else if (t.startsWith('CAT 2')) cat2++;
+                        else if (t.startsWith('CAT 3')) cat3++;
+                        else if (t.startsWith('CAT 4')) cat4++;
+                    });
+                });
+            }
+            if (cat1 > 0) return 'safety';
+            if (cat2 > 0) return 'policy';
+            if (cat3 > 0 || cat4 > 0) return 'pnc';
+            return 'pass';
+        }
+
         // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
         function computeReport(start, end, omitSet) {
             omitSet = omitSet || new Set();
@@ -570,7 +597,7 @@
                 if (job.auditStatus && job.auditStatus !== 'pending') {
                     auditsCompleted++;
 
-                    let jobCat1 = 0, jobCat2 = 0, jobCat3 = 0, jobCat4 = 0;
+                    // Individual CAT-code frequency, for the CAT code slide/table
                     if (job.auditChecklistData) {
                         Object.values(job.auditChecklistData).forEach(qData => {
                             (qData.codesSelected || []).forEach(codeText => {
@@ -580,19 +607,15 @@
                                     catCounts[parsed.key] = { key: parsed.key, desc: parsed.desc, count: 0 };
                                 }
                                 catCounts[parsed.key].count++;
-
-                                const t = String(codeText);
-                                if (t.startsWith('CAT 1')) jobCat1++;
-                                else if (t.startsWith('CAT 2')) jobCat2++;
-                                else if (t.startsWith('CAT 3')) jobCat3++;
-                                else if (t.startsWith('CAT 4')) jobCat4++;
                             });
                         });
                     }
 
-                    if (jobCat1 > 0) safetyFails++;
-                    else if (jobCat2 > 0) policyFails++;
-                    else if (jobCat3 > 0 || jobCat4 > 0) pncCount++;
+                    // Mutually-exclusive outcome bucket, via the shared classifier
+                    const outcome = classifyAuditOutcome(job);
+                    if (outcome === 'safety') safetyFails++;
+                    else if (outcome === 'policy') policyFails++;
+                    else if (outcome === 'pnc') pncCount++;
                     else passCount++;
                 }
             });
@@ -1055,17 +1078,21 @@
             addFooter(slide, badgeText, pageNum, totalPages);
         }
 
-        // Maps a job's raw auditStatus to a display label + color. Omitted jobs are always
-        // shown as "Pending" here, regardless of what their real audit status was — they're
-        // being presented as excluded from the stats, not as actually un-audited.
+        // Maps a job to a display label + color for the Audit Status column, using the SAME
+        // calculated CAT-code outcome as the Safety Fails / Policy Fails / PNC / Pass bars on
+        // slide 1 — not the raw "Update Audit Status" selection (pass / complete-with-issues /
+        // unable / in-progress). Omitted jobs are always shown as "Pending" here, regardless
+        // of what their real audit outcome was — they're being presented as excluded from the
+        // stats, not as actually un-audited.
         function auditStatusLabel(job, isOmitted) {
             if (isOmitted) return { label: 'Pending', color: C.textDim, italic: true };
-            switch (job.auditStatus) {
-                case 'pass':                 return { label: 'No Issues',            color: C.success };
-                case 'complete-with-issues': return { label: 'Complete With Issues', color: C.warning };
-                case 'unable':               return { label: 'Unable to Audit',      color: C.error };
-                case 'in-progress':          return { label: 'In Progress',          color: C.forecast };
-                default:                     return { label: 'Pending',              color: C.textDim, italic: true };
+            const outcome = classifyAuditOutcome(job);
+            switch (outcome) {
+                case 'safety': return { label: 'Safety Fail', color: C.error };
+                case 'policy': return { label: 'Policy Fail', color: C.warning };
+                case 'pnc':    return { label: 'PNC',          color: C.forecast };
+                case 'pass':   return { label: 'Pass',         color: C.success };
+                default:       return { label: 'Pending',      color: C.textDim, italic: true };
             }
         }
 
