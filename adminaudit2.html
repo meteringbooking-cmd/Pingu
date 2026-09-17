@@ -176,9 +176,11 @@
         }
         .job-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--audit-pending); transition: all 0.3s ease; }
         .job-card.audit-pass::before { background: var(--audit-pass); }
-        .job-card.audit-complete-with-issues::before { background: var(--audit-issues); }
-        .job-card.audit-unable::before { background: var(--audit-unable); }
-        .job-card.audit-in-progress::before { background: var(--audit-in-progress); }
+        .job-card.audit-safety-fail::before { background: #d9534f; }
+        .job-card.audit-policy-fail::before { background: #f0ad4e; }
+        .job-card.audit-pnc::before { background: #5bc0de; }
+        
+        
         .job-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.3); }
         .job-header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem; gap: 0.5rem; }
         .job-header-left { display: flex; flex-direction: column; gap: 0.3rem; }
@@ -186,9 +188,11 @@
         .audit-badge { padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
         .audit-badge.pending { background: rgba(154,154,176,0.2); color: var(--audit-pending); }
         .audit-badge.pass { background: rgba(78,236,163,0.2); color: var(--audit-pass); }
-        .audit-badge.complete-with-issues { background: rgba(255,200,87,0.2); color: var(--audit-issues); }
-        .audit-badge.unable { background: rgba(255,107,107,0.2); color: var(--audit-unable); }
-        .audit-badge.in-progress { background: rgba(0,217,255,0.2); color: var(--audit-in-progress); }
+        .audit-badge.safety-fail { background: rgba(217,83,79,0.2); color: #d9534f; }
+        .audit-badge.policy-fail { background: rgba(240,173,78,0.2); color: #f0ad4e; }
+        .audit-badge.pnc { background: rgba(91,192,222,0.2); color: #5bc0de; }
+        
+        
         .job-details { display: grid; gap: 0.5rem; margin-bottom: 1rem; }
         .job-detail { display: flex; justify-content: space-between; font-size: 0.9rem; gap: 0.5rem; }
         .job-detail-label { color: var(--text-dim); flex-shrink: 0; }
@@ -471,9 +475,10 @@
                         <option value="all" selected>All Jobs</option>
                         <option value="pending">Pending Audit</option>
                         <option value="pass">No Issues</option>
-                        <option value="complete-with-issues">Complete With Issues</option>
-                        <option value="unable">Unable to Audit</option>
-                        <option value="in-progress">Audit - In Progress</option>
+                        <option value="safety-fail">Safety Fail</option>
+                          <option value="policy-fail">Policy Fail</option>
+                        <option value="pnc">PNC</option>
+                        
                     </select>
                 </div>
                 <div class="filter-group">
@@ -507,25 +512,25 @@
                     <div class="filter-indicator" id="pending-audit-indicator"></div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-label">In Progress</div>
-                    <div class="stat-value in-progress" id="audit-in-progress">0</div>
-                    <div class="filter-indicator" id="audit-in-progress-indicator"></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">No Issues</div>
-                    <div class="stat-value pass" id="audit-pass">0</div>
-                    <div class="filter-indicator" id="audit-pass-indicator"></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">With Issues</div>
-                    <div class="stat-value issues" id="audit-issues">0</div>
-                    <div class="filter-indicator" id="audit-issues-indicator"></div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Unable to Audit</div>
-                    <div class="stat-value unable" id="audit-unable">0</div>
-                    <div class="filter-indicator" id="audit-unable-indicator"></div>
-                </div>
+                      <div class="stat-label">Safety Fail</div>
+                      <div class="stat-value" style="color:#d9534f;" id="audit-safety-fail">0</div>
+                      <div class="filter-indicator" id="audit-safety-fail-indicator"></div>
+                  </div>
+                  <div class="stat-item">
+                      <div class="stat-label">Policy Fail</div>
+                      <div class="stat-value" style="color:#f0ad4e;" id="audit-policy-fail">0</div>
+                      <div class="filter-indicator" id="audit-policy-fail-indicator"></div>
+                  </div>
+                  <div class="stat-item">
+                      <div class="stat-label">PNC</div>
+                      <div class="stat-value" style="color:#5bc0de;" id="audit-pnc">0</div>
+                      <div class="filter-indicator" id="audit-pnc-indicator"></div>
+                  </div>
+                  <div class="stat-item">
+                      <div class="stat-label">Pass</div>
+                      <div class="stat-value pass" id="audit-pass">0</div>
+                      <div class="filter-indicator" id="audit-pass-indicator"></div>
+                  </div>
             </div>
         </div>
 
@@ -623,14 +628,38 @@
                 <div class="modal-section" style="background: var(--dark-light); border: 1px solid var(--dark-lighter);">
                     <h3>Update Audit Status</h3>
                     <div class="audit-actions">
-                        <button class="audit-btn pass" onclick="setAuditStatus('pass')">✅ No Issues</button>
-                        <button class="audit-btn issues" onclick="setAuditStatus('complete-with-issues')">⚠️ Complete With Issues</button>
-                        <button class="audit-btn unable" onclick="setAuditStatus('unable')">❌ Unable to Audit</button>
-                        <button class="audit-btn in-progress" onclick="setAuditStatus('in-progress')">🔄 Audit - In Progress</button>
+                        <button class="audit-btn" onclick="setAuditStatus('safety-fail')" style="background-color: #d9534f; color: white;">Safety Fail</button>
+                        <button class="audit-btn" onclick="setAuditStatus('policy-fail')" style="background-color: #f0ad4e; color: white;">Policy Fail</button>
+                        <button class="audit-btn" onclick="setAuditStatus('pnc')" style="background-color: #5bc0de; color: white;">PNC</button>
+                        <button class="audit-btn pass" onclick="setAuditStatus('pass')" style="background-color: #5cb85c; color: white;">Pass</button>
                     </div>
                     <button class="btn btn-primary" onclick="generateAuditPDF()" style="width: 100%; margin-top: 1rem; padding: 1rem; font-size: 1.1rem; border-radius: 8px; display: flex; justify-content: center; align-items: center; gap: 0.5rem; font-weight: bold; transition: all 0.3s ease;">
                         📄 Generate PDF
                     </button>
+                    <div class="client-outcome-section" style="margin-bottom: 1.5rem; background: var(--dark-lighter); padding: 1rem; border-radius: 8px; border-left: 3px solid var(--primary);">
+                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: var(--secondary);">Clients Outcome</label>
+                        <select id="client-outcome" class="filter-input" style="width: 100%; margin-bottom: 1rem;" onchange="autoSaveNotes()">
+                            <option value="">Select Outcome...</option>
+                            <option value="Safety Fail">Safety Fail</option>
+                            <option value="Policy Fail">Policy Fail</option>
+                            <option value="PNC">PNC</option>
+                            <option value="Pass">Pass</option>
+                        </select>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <button id="btn-client-resolved" class="btn btn-secondary" style="background-color: #f1f3f5; color: #333; border: 1px solid #ced4da; padding: 0.4rem 1rem; font-size: 0.9rem;" onclick="toggleClientResolved()">?? Client issue resolved</button>
+                            <input type="hidden" id="client-resolved-state" value="false">
+                        </div>
+                        
+                        <div id="client-resolved-details" style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.2);">
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Resolved Date</label>
+                            <input type="date" id="client-resolved-date" class="filter-input" style="width: 100%; margin-bottom: 0.8rem;" onchange="autoSaveNotes()">
+                            
+                            <label style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem;">Resolution Notes</label>
+                            <textarea id="client-resolved-notes" class="filter-input" style="min-height: 60px; width: 100%; padding: 0.5rem; font-size: 0.85rem;" placeholder="Add notes about the resolution..." oninput="autoSaveNotes()"></textarea>
+                        </div>
+                    </div>
+
                     <div class="notes-section">
                         <label class="notes-label" for="audit-notes" style="color: var(--secondary);">Internal Audit Notes (do not send this)</label>
                         <textarea id="audit-notes" class="notes-textarea" placeholder="Add internal notes about the audit..."></textarea>
@@ -999,7 +1028,7 @@
                 {val: "CAT 3 - E41", text: "CAT 3 E41 - Testing results different to recorded details but within limits.", cat: 3, action: "All recorded testing results must match photographed results."},
                 {val: "CAT 4 - E51", text: "CAT 4 E51 - Testing on MFT using incorrect setting.", cat: 4, action: "Need clear photos of all tesing showing testers on correct setting for test."}
             ]},
-            { id: "q78", text: "Is all evidence complete on required system.", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
+            { id: "q78", text: "Is all evidene complete on required system.", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
                 window.deleteUploadedPhoto = async function(qId, urlIndex) {
@@ -1319,11 +1348,9 @@
                 extraDiv.classList.add('show');
             } else {
                 extraDiv.classList.remove('show');
-                // Uncheck codes and clear notes if hidden
+                // Uncheck codes if hidden
                 const cbs = extraDiv.querySelectorAll('.cat-code-cb');
                 cbs.forEach(cb => cb.checked = false);
-                const notes = document.getElementById(`${qId}_notes`);
-                if(notes) notes.value = '';
             }
             recalculateOutcome();
         };
@@ -1571,7 +1598,7 @@
                             <strong>${questionNumEmail}. ${q.text}</strong> - ${response || 'No Response'}
                             ${questionSaveData.codesSelected.length > 0 ? ` (${questionSaveData.codesSelected.length} code${questionSaveData.codesSelected.length > 1 ? 's' : ''})` : ''}
                             ${(hasIssue && q.ifNoAction && q.id !== 'q4') ? `<div style="margin-top:4px;color:#d9534f;"><em>Action Required: ${q.ifNoAction}</em></div>` : ''}
-                            ${questionSaveData.notes ? `<div style="margin-top:4px;color:#666;"><em>Notes: ${questionSaveData.notes}</em></div>` : ''}
+                            ${questionSaveData.notes ? `<div style="margin-top:4px;color:#d9534f;"><em>Notes: ${questionSaveData.notes}</em></div>` : ''}
                         </div>`;
                     }
 
@@ -1756,6 +1783,25 @@
         /* ═══════════════════════════════════════════════
            AUTO-SAVE NOTES
         ═══════════════════════════════════════════════ */
+        window.toggleClientResolved = function() {
+            const stateInput = document.getElementById('client-resolved-state');
+            const detailsDiv = document.getElementById('client-resolved-details');
+            const btn = document.getElementById('btn-client-resolved');
+            
+            if (stateInput.value === 'false') {
+                stateInput.value = 'true';
+                detailsDiv.style.display = 'block';
+                btn.style.backgroundColor = '#28a745';
+                btn.style.color = '#fff';
+            } else {
+                stateInput.value = 'false';
+                detailsDiv.style.display = 'none';
+                btn.style.backgroundColor = '#f1f3f5';
+                btn.style.color = '#333';
+            }
+            if(typeof autoSaveNotes === 'function') autoSaveNotes();
+        };
+
         function autoSaveNotes() {
             if (!currentJob) return;
             localStorage.setItem(`audit_notes_${currentJob.id}`, document.getElementById('audit-notes').value);
@@ -1769,14 +1815,30 @@
         window.saveNotesOnly = async function() {
             if (!currentJob) return;
             const notes = document.getElementById('audit-notes').value.trim();
+            const clientOutcome = document.getElementById('client-outcome').value;
+            const clientResolved = document.getElementById('client-resolved-state').value === 'true';
+            const clientResolvedDate = document.getElementById('client-resolved-date').value;
+            const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
+            
             try {
-                await writeSolarJob(currentJob, { auditNotes: notes });
+                await writeSolarJob(currentJob, { 
+                    auditNotes: notes,
+                    clientOutcome: clientOutcome,
+                    clientResolved: clientResolved,
+                    clientResolvedDate: clientResolvedDate,
+                    clientResolvedNotes: clientResolvedNotes
+                });
                 currentJob.auditNotes = notes;
+                currentJob.clientOutcome = clientOutcome;
+                currentJob.clientResolved = clientResolved;
+                currentJob.clientResolvedDate = clientResolvedDate;
+                currentJob.clientResolvedNotes = clientResolvedNotes;
+                
                 clearSavedNotes(currentJob.id);
-                showToast('Internal notes saved to database successfully', 'success');
+                showToast('Internal notes & client outcome saved to database successfully', 'success');
                 renderJobs();
             } catch(e) {
-                showToast('Failed to save notes to database', 'error');
+                showToast('Failed to save data to database', 'error');
             }
         };
 
@@ -1896,14 +1958,14 @@
             document.getElementById('total-jobs').textContent      = jobsToCount.length;
             document.getElementById('total-complete').textContent  = completed.length;
             document.getElementById('pending-audit').textContent   = completed.filter(j => j.auditStatus === 'pending').length;
-            document.getElementById('audit-in-progress').textContent = completed.filter(j => j.auditStatus === 'in-progress').length;
+            document.getElementById('audit-safety-fail').textContent = completed.filter(j => j.auditStatus === 'safety-fail').length;
             document.getElementById('audit-pass').textContent      = completed.filter(j => j.auditStatus === 'pass').length;
-            document.getElementById('audit-issues').textContent    = completed.filter(j => j.auditStatus === 'complete-with-issues').length;
-            document.getElementById('audit-unable').textContent    = completed.filter(j => j.auditStatus === 'unable').length;
+            document.getElementById('audit-policy-fail').textContent = completed.filter(j => j.auditStatus === 'policy-fail').length;
+            document.getElementById('audit-pnc').textContent = completed.filter(j => j.auditStatus === 'pnc').length;
 
             const statItems  = document.querySelectorAll('.stat-item');
             const indicators = ['total-jobs-indicator','total-complete-indicator','pending-audit-indicator',
-                                 'audit-in-progress-indicator','audit-pass-indicator','audit-issues-indicator','audit-unable-indicator'];
+                                 'audit-safety-fail-indicator','audit-policy-fail-indicator','audit-pnc-indicator','audit-pass-indicator'];
 
             if (showingFiltered) {
                 const allC = nonSurveyAll.filter(j => j.status === 'complete');
@@ -2294,6 +2356,24 @@
             }
 
             document.getElementById('audit-notes').value = loadSavedNotes(job.id) || job.auditNotes || '';
+            document.getElementById('client-outcome').value = job.clientOutcome || '';
+            const resolvedState = job.clientResolved === true ? 'true' : 'false';
+            document.getElementById('client-resolved-state').value = resolvedState;
+            document.getElementById('client-resolved-date').value = job.clientResolvedDate || '';
+            document.getElementById('client-resolved-notes').value = job.clientResolvedNotes || '';
+            
+            const btnRes = document.getElementById('btn-client-resolved');
+            const detailsDiv = document.getElementById('client-resolved-details');
+            if (resolvedState === 'true') {
+                detailsDiv.style.display = 'block';
+                btnRes.style.backgroundColor = '#28a745';
+                btnRes.style.color = '#fff';
+            } else {
+                detailsDiv.style.display = 'none';
+                btnRes.style.backgroundColor = '#f1f3f5';
+                btnRes.style.color = '#333';
+            }
+
             document.getElementById('audit-notes').oninput = function() {
                 if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
                 autoSaveTimeout = setTimeout(autoSaveNotes, 1000);
@@ -2314,8 +2394,8 @@
 
         window.setAuditStatus = function(status) {
             pendingAuditStatus = status;
-            if (status === 'complete-with-issues' && !document.getElementById('audit-notes').value.trim()) {
-                showToast('Please add internal notes explaining the issues found', 'error');
+            if ((status === 'safety-fail' || status === 'policy-fail' || status === 'pnc') && !document.getElementById('audit-notes').value.trim()) {
+                showToast('Please add internal notes explaining the fail/PNC', 'error');
                 document.getElementById('audit-notes').focus();
                 return;
             }
@@ -2330,7 +2410,12 @@
         window.confirmAuditUpdate = async function() {
             if (!currentJob || !pendingAuditStatus) return;
             const notes = document.getElementById('audit-notes').value.trim();
-            if (pendingAuditStatus === 'complete-with-issues' && !notes) {
+            const clientOutcome = document.getElementById('client-outcome').value;
+            const clientResolved = document.getElementById('client-resolved-state').value === 'true';
+            const clientResolvedDate = document.getElementById('client-resolved-date').value;
+            const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
+            
+            if ((pendingAuditStatus === 'safety-fail' || pendingAuditStatus === 'policy-fail' || pendingAuditStatus === 'pnc') && !notes) {
                 showToast('Notes are required when marking issues', 'error');
                 return;
             }
@@ -2338,19 +2423,23 @@
                 await writeSolarJob(currentJob, {
                     auditStatus: pendingAuditStatus,
                     auditNotes:  notes,
-                    auditDate:   new Date().toISOString()
+                    auditDate:   new Date().toISOString(),
+                    clientOutcome: clientOutcome,
+                    clientResolved: clientResolved,
+                    clientResolvedDate: clientResolvedDate,
+                    clientResolvedNotes: clientResolvedNotes
                 });
                 currentJob.auditStatus = pendingAuditStatus;
                 currentJob.auditNotes  = notes;
                 currentJob.auditDate   = new Date();
+                currentJob.clientOutcome = clientOutcome;
+                currentJob.clientResolved = clientResolved;
+                currentJob.clientResolvedDate = clientResolvedDate;
+                currentJob.clientResolvedNotes = clientResolvedNotes;
+                
                 clearSavedNotes(currentJob.id);
 
-                const lbl = {
-                    'pass': 'No Issues',
-                    'complete-with-issues': 'Complete With Issues',
-                    'unable': 'Unable to Audit',
-                    'in-progress': 'In Progress'
-                }[pendingAuditStatus] || pendingAuditStatus;
+                const lbl = { 'pass': 'Pass', 'safety-fail': 'Safety Fail', 'policy-fail': 'Policy Fail', 'pnc': 'PNC' }[pendingAuditStatus] || pendingAuditStatus;
 
                 if (currentJob.status === 'complete' && pendingAuditStatus !== 'in-progress') {
                     // Send main status notification
@@ -2378,9 +2467,10 @@
                 const auditDate      = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
                 let auditOutcome = '', outcomeColor = '', outcomeIcon = '';
-                if      (auditStatus === 'pass')                 { auditOutcome = 'Audit Completed — No Issues';          outcomeColor = '#4ECCA3'; outcomeIcon = '✅'; }
-                else if (auditStatus === 'complete-with-issues') { auditOutcome = 'Audit Completed — Complete With Issues'; outcomeColor = '#FFC857'; outcomeIcon = '⚠️'; }
-                else if (auditStatus === 'unable')               { auditOutcome = 'Unable to Audit';                        outcomeColor = '#FF6B6B'; outcomeIcon = '❌'; }
+                if      (auditStatus === 'pass')        { auditOutcome = 'Audit Completed - Pass';        outcomeColor = '#5cb85c'; outcomeIcon = '✅'; }
+                else if (auditStatus === 'safety-fail') { auditOutcome = 'Audit Completed - Safety Fail'; outcomeColor = '#d9534f'; outcomeIcon = '❌'; }
+                else if (auditStatus === 'policy-fail') { auditOutcome = 'Audit Completed - Policy Fail'; outcomeColor = '#f0ad4e'; outcomeIcon = '⚠️'; }
+                else if (auditStatus === 'pnc')         { auditOutcome = 'Audit Completed - PNC';         outcomeColor = '#5bc0de'; outcomeIcon = 'ℹ️'; }
 
                 const sourceLabel = { solar:'Solar-Jobs', jobs:'Jobs', both:'Both Collections' }[job.source] || job.source;
 
