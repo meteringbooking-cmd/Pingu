@@ -552,11 +552,12 @@
         // on slide 1 and for each job's Audit Status column on the job-list table, so the two
         // always agree — the table never shows the raw "Update Audit Status" selection.
         function classifyAuditOutcome(job) {
-            if (!job.auditStatus || job.auditStatus === 'pending') return null;
-            if (job.auditStatus === 'safety-fail') return 'safety';
-            if (job.auditStatus === 'policy-fail') return 'policy';
-            if (job.auditStatus === 'pnc')         return 'pnc';
-            if (job.auditStatus === 'pass')        return 'pass';
+            const st = (job.auditStatus || 'pending').toLowerCase().trim();
+            if (st === 'pending') return null;
+            if (st === 'safety-fail' || st === 'safety fail') return 'safety';
+            if (st === 'policy-fail' || st === 'policy fail') return 'policy';
+            if (st === 'pnc') return 'pnc';
+            if (st === 'pass') return 'pass';
             
             // Fallback for old jobs prior to the status options change
             let cat1 = 0, cat2 = 0, cat3 = 0, cat4 = 0;
@@ -1114,7 +1115,7 @@
         // and any resolution notes if they were filled in. Blank when no client outcome has
         // been set for the job.
                 function clientStatusCellText(job) {
-            if (!job.clientOutcome) return { text: '', color: C.textDim };
+            if (!job.clientOutcome) return { text: ' ', color: C.textDim };
             const colorMap = {
                 'Safety Fail': C.error,
                 'Policy Fail': C.warning,
@@ -1167,7 +1168,7 @@
                             { text: job.leadEngineer, options: { color: C.text, fill: { color: rowFill }, fontSize: 7 } },
                             { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 7, italic: !!status.italic, bold: !status.italic } },
                             { text: clientStatus.text, options: { color: clientStatus.color, fill: { color: rowFill }, fontSize: 6.5 } },
-                            { text: job.clientResolvedNotes || '', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.0 } }
+                            { text: job.clientResolvedNotes ? String(job.clientResolvedNotes) : ' ', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.0 } }
                         ];
                       })
                     : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 7, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
