@@ -2000,19 +2000,19 @@
         function renderJobs() {
             const grid = document.getElementById('jobs-grid');
             if (!filteredJobs.length) {
-                grid.innerHTML = 
+                grid.innerHTML = `
                     <div class="empty-state">
-                        <div style="font-size:4rem;margin-bottom:1rem;opacity:.5;">??</div>
+                        <div style="font-size:4rem;margin-bottom:1rem;opacity:.5;">📋</div>
                         <h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:.5rem;">No Jobs Found</h3>
-                        <p style="color:var(--text-dim)">Adjust your search or filter criteria.</p>
-                    </div>;
+                        <p>No jobs match your current filters</p>
+                    </div>`;
                 return;
             }
-            
+
             const now = new Date();
             grid.innerHTML = filteredJobs.map(job => {
                 const oStatus = getOverallAuditStatus(job);
-                const auditClass = oStatus === 'pending' ? '' :  udit-;
+                const auditClass = oStatus === 'pending' ? '' : `audit-${oStatus}`;
 
                 let auditLabel = 'Pending Audit';
                 if      (oStatus === 'pass')        auditLabel = 'Pass';
@@ -2028,38 +2028,104 @@
 
                 let pendingTimeHTML = '';
                 if (job.status === 'complete' && oStatus === 'pending' && job.completedTimestamp) {
-                    const days = Math.floor((now - job.completedTimestamp) / (1000 * 60 * 60 * 24));
+                    const days = Math.floor((new Date() - job.completedTimestamp) / (1000 * 60 * 60 * 24));
                     if (days > 0) {
                         let color = 'var(--text-dim)';
                         if (days > 7) color = 'var(--warning)';
                         if (days > 14) color = 'var(--error)';
                         
-                        pendingTimeHTML = <div style="font-size: 0.75rem; color: ; margin-top: 0.25rem;">
-                            <i class="fas fa-clock" style="margin-right:0.25rem"></i>Pending for  day
-                        </div>;
+                        pendingTimeHTML = `<div class="pending-time" style="color: ${color};">
+                            <span>⏱️</span> Pending for ${days} day${days !== 1 ? 's' : ''}
+                        </div>`;
                     }
                 }
 
-                return 
-                    <div class="job-card" onclick="openAuditModal('')">
-                        <div class="job-card-header">
-                            <span class="job-number"></span>
-                            <div class="audit-badge "></div>
+                const bookedDateStr = job['Booked Date'] || job['Projected Completion Date'] || job['Install Date'] || '';
+
+                return `
+                    <div class="job-card ${auditClass}" onclick="openAuditModal('${escapeHtml(job.id)}')">
+                        <div class="job-header">
+                            <div class="job-header-left">
+                                <div class="job-number">#${escapeHtml(job.jobNumber)}</div>
+                                ${sourceBadgeHtml(job.source)}
+                            </div>
+                            <div class="audit-badge ${oStatus}">${auditLabel}</div>
                         </div>
-                        <div class="job-card-body">
-                            <div class="info-row"><i class="fas fa-map-marker-alt"></i></div>
-                            <div class="info-row"><i class="fas fa-user-hard-hat"></i></div>
-                            <div class="info-row"><i class="fas fa-tools"></i></div>
-                            <div class="info-row"><i class="fas fa-info-circle"></i></div>
+                        <div class="job-details">
+                            <div class="job-detail">
+                                <span class="job-detail-label">Status:</span>
+                                <span class="job-status-badge ${statusBadgeClass}">${escapeHtml(statusLabel)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Booked Date:</span>
+                                <span class="job-detail-value">${formatDate(parseDate(bookedDateStr))}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Postcode:</span>
+                                <span class="job-detail-value">${escapeHtml(job.postcode)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Engineer:</span>
+                                <span class="job-detail-value">${escapeHtml(job.engineer)}</span>
+                            </div>
+                            <div class="job-detail">
+                                <span class="job-detail-label">Job Type:</span>
+                                <span class="job-detail-value">${escapeHtml(job.jobType)}</span>
+                            </div>
+                            ${job.status === 'complete' ? `<div class="job-detail"><span class="job-detail-label">Completed:</span><span class="job-detail-value">${formatDate(job.completionDate)}</span></div>` : ''}
                         </div>
-                        <div class="job-card-footer">
-                            <div class="status-badge "></div>
-                            
-                        </div>
-                    </div>
-                ;
+                        ${pendingTimeHTML}
+                        ${job.auditNotes ? `<div class="job-notes-preview"><strong>Notes:</strong> ${escapeHtml(job.auditNotes)}</div>` : ''}
+                    </div>`;
             }).join('');
         }
+
+        /* ═══════════════════════════════════════════════
+           FILTERS
+        ═══════════════════════════════════════════════ */
+        window.applyFilters = function() {
+            const jobSearch    = document.getElementById('job-search').value.toLowerCase().trim();
+            const dfVal        = document.getElementById('date-from').value;
+            const dtVal        = document.getElementById('date-to').value;
+            const dateFrom     = dfVal ? new Date(dfVal) : null;
+            const dateTo       = dtVal ? new Date(dtVal) : null;
+            if (dateFrom) dateFrom.setHours(0,0,0,0);
+            if (dateTo)   dateTo.setHours(23,59,59,999);
+            const jobStatusFilter = document.getElementById('job-status').value;
+            const auditStatus     = document.getElementById('audit-status').value;
+            const sourceFilter    = document.getElementById('filter-source').value;
+
+            isFiltered = !!(jobSearch || dateFrom || dateTo
+                || jobStatusFilter !== 'all' || auditStatus !== 'all' || sourceFilter !== 'all');
+
+            const filterFn = job => {
+                if (jobSearch &&
+                    !job.jobNumber.toLowerCase().includes(jobSearch) &&
+                    !job.postcode.toLowerCase().includes(jobSearch)) return false;
+
+                const refDate = job.bookedDate || job.completionDate;
+                if (refDate) {
+                    if (dateFrom && refDate < dateFrom) return false;
+                    if (dateTo   && refDate > dateTo)   return false;
+                }
+
+                if (jobStatusFilter !== 'all') {
+                    if (jobStatusFilter === 'none' && job.status !== '') return false;
+                    if (jobStatusFilter !== 'none' && job.status !== jobStatusFilter) return false;
+                }
+
+                if (auditStatus !== 'all' && getOverallAuditStatus(job) !== auditStatus) return false;
+                if (sourceFilter !== 'all' && job.source !== sourceFilter) return false;
+
+                return true;
+            };
+
+            filteredJobs = getBaseJobsForGrid().filter(filterFn);
+            const statsJobs = isFiltered ? getNonSurveyJobs().filter(filterFn) : getNonSurveyJobs();
+            updateStats(statsJobs);
+            renderJobs();
+            showToast(`Showing ${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''}${showSurveyOnly ? ' (Solar Surveys)' : ''}`, 'success');
+        };
 
         window.clearFilters = function() {
             document.getElementById('job-search').value    = '';
