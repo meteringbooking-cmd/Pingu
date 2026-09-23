@@ -2455,58 +2455,53 @@
         // Update Audit Status buttons save immediately on click — no staging, no separate
         // Confirm step (matches the Clients Outcome buttons below). Note: this means the
         // client notification email fires right away on the very first click.
-                window.setAuditStatusElec = async function(status) {
+        // Shared by the Electrical and Roofing rows. Clicking the button that is already
+        // selected clears it back to Pending (no email is sent when clearing).
+        async function setPartAuditStatus(part, status) {
             if (!currentJob) return;
-            highlightAuditStatusButtonElec(status);
+            const other     = part === 'Elec' ? 'Roof' : 'Elec';
+            const partName  = part === 'Elec' ? 'Electrical' : 'Roofing';
+            const highlight = part === 'Elec' ? highlightAuditStatusButtonElec : highlightAuditStatusButtonRoof;
+            const current   = getPartAuditStatus(currentJob, part);
+            const clearing  = current === status;
+            if (clearing) status = 'pending';
+            highlight(status);
+
             try {
-                const other   = 'Roof';
-                const preview = { ...currentJob, auditStatusElec: status, ['auditStatus' + other]: getPartAuditStatus(currentJob, other) };
+                const otherStatus = getPartAuditStatus(currentJob, other);
+                const preview = { ...currentJob, ['auditStatus' + part]: status, ['auditStatus' + other]: otherStatus };
                 const overall = getOverallAuditStatus(preview);
-                const nowIso  = new Date().toISOString();
+                const nowIso  = overall === 'pending' ? '' : new Date().toISOString();
                 await writeSolarJob(currentJob, {
-                    auditStatusElec: status,
-                    ['auditStatus' + other]: preview['auditStatus' + other],
+                    ['auditStatus' + part]:  status,
+                    ['auditStatus' + other]: otherStatus,
                     auditStatus: overall,
                     auditDate:   nowIso
                 });
-                currentJob.auditStatusElec = status;
-                currentJob['auditStatus' + other] = preview['auditStatus' + other];
+                currentJob['auditStatus' + part]  = status;
+                currentJob['auditStatus' + other] = otherStatus;
                 currentJob.auditStatus = overall;
-                currentJob.auditDate   = new Date(nowIso);
-                document.getElementById('modal-current-status').textContent =
-                    `Audit Completed — Electrical: ${({'pass':'Pass','safety-fail':'Safety Fail','policy-fail':'Policy Fail','pnc':'PNC'})[getPartAuditStatus(currentJob,'Elec')] || 'Pending'} · Roofing: ${({'pass':'Pass','safety-fail':'Safety Fail','policy-fail':'Policy Fail','pnc':'PNC'})[getPartAuditStatus(currentJob,'Roof')] || 'Pending'}`;
-                if (jobShouldEmail(currentJob)) await sendAuditNotificationEmail(currentJob, getOverallAuditStatus(currentJob), document.getElementById('audit-notes').value.trim());
-                showToast('Electrical audit status updated', 'success');
+                currentJob.auditDate   = nowIso ? new Date(nowIso) : null;
+
+                const lbl = st => ({ 'pass': 'Pass', 'safety-fail': 'Safety Fail', 'policy-fail': 'Policy Fail', 'pnc': 'PNC' }[st] || 'Pending');
+                document.getElementById('modal-current-status').textContent = overall === 'pending'
+                    ? 'Pending Audit'
+                    : `Audit Completed — Electrical: ${lbl(getPartAuditStatus(currentJob, 'Elec'))} · Roofing: ${lbl(getPartAuditStatus(currentJob, 'Roof'))}`;
+
+                if (!clearing && jobShouldEmail(currentJob)) {
+                    await sendAuditNotificationEmail(currentJob, overall, document.getElementById('audit-notes').value.trim());
+                }
+                showToast(clearing ? `${partName} audit status cleared` : `${partName} audit status updated`, 'success');
                 updateStats(getNonSurveyJobs());
                 renderJobs();
-            } catch(e) { console.error(e); highlightAuditStatusButtonElec(getPartAuditStatus(currentJob, 'Elec')); showToast('Failed to save electrical audit status', 'error'); }
-        };
-        window.setAuditStatusRoof = async function(status) {
-            if (!currentJob) return;
-            highlightAuditStatusButtonRoof(status);
-            try {
-                const other   = 'Elec';
-                const preview = { ...currentJob, auditStatusRoof: status, ['auditStatus' + other]: getPartAuditStatus(currentJob, other) };
-                const overall = getOverallAuditStatus(preview);
-                const nowIso  = new Date().toISOString();
-                await writeSolarJob(currentJob, {
-                    auditStatusRoof: status,
-                    ['auditStatus' + other]: preview['auditStatus' + other],
-                    auditStatus: overall,
-                    auditDate:   nowIso
-                });
-                currentJob.auditStatusRoof = status;
-                currentJob['auditStatus' + other] = preview['auditStatus' + other];
-                currentJob.auditStatus = overall;
-                currentJob.auditDate   = new Date(nowIso);
-                document.getElementById('modal-current-status').textContent =
-                    `Audit Completed — Electrical: ${({'pass':'Pass','safety-fail':'Safety Fail','policy-fail':'Policy Fail','pnc':'PNC'})[getPartAuditStatus(currentJob,'Elec')] || 'Pending'} · Roofing: ${({'pass':'Pass','safety-fail':'Safety Fail','policy-fail':'Policy Fail','pnc':'PNC'})[getPartAuditStatus(currentJob,'Roof')] || 'Pending'}`;
-                if (jobShouldEmail(currentJob)) await sendAuditNotificationEmail(currentJob, getOverallAuditStatus(currentJob), document.getElementById('audit-notes').value.trim());
-                showToast('Roofing audit status updated', 'success');
-                updateStats(getNonSurveyJobs());
-                renderJobs();
-            } catch(e) { console.error(e); highlightAuditStatusButtonRoof(getPartAuditStatus(currentJob, 'Roof')); showToast('Failed to save roofing audit status', 'error'); }
-        };
+            } catch(e) {
+                console.error(e);
+                highlight(getPartAuditStatus(currentJob, part));
+                showToast(`Failed to save ${partName.toLowerCase()} audit status`, 'error');
+            }
+        }
+        window.setAuditStatusElec = status => setPartAuditStatus('Elec', status);
+        window.setAuditStatusRoof = status => setPartAuditStatus('Roof', status);
 
         // Clients Outcome buttons save immediately on click — no notes required, no separate
         // Confirm step. Highlights the clicked button and refreshes the job tiles right away.
