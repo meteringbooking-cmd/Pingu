@@ -461,11 +461,15 @@
                     completionDate:     completedTimestamp || jobDate,
                     leadEngineer:       leadEngineer,
                     auditStatus:        data['auditStatus'] || 'pending',
+                    auditStatusElec:    data['auditStatusElec'] || '',
+                    auditStatusRoof:    data['auditStatusRoof'] || '',
                     auditDate:          data['auditDate'] ? parseDate(data['auditDate']) : null,
                     auditChecklistData: data['auditChecklistData'] || null,
                     // Set via the separate "Clients Outcome" section in adminaudit.html —
                     // independent of auditStatus / the calculated CAT outcome above.
                     clientOutcome:       data['clientOutcome'] || null,
+                    clientOutcomeElec:   data['clientOutcomeElec'] || '',
+                    clientOutcomeRoof:   data['clientOutcomeRoof'] || '',
                     clientResolvedDate:  data['clientResolvedDate'] ? parseDate(data['clientResolvedDate']) : null,
                     clientResolvedNotes: data['clientResolvedNotes'] || ''
                 };
@@ -532,9 +536,7 @@
         // an omission can affect (the Solar PV Installs count itself is unaffected by omit).
         // This is the exact set of jobs shown in the click-to-exclude picker.
         function getAuditJobsForRange(start, end) {
-            return getInstallPopulationForRange(start, end).filter(job =>
-                job.auditStatus && job.auditStatus !== 'pending'
-            );
+            return getInstallPopulationForRange(start, end).filter(isAudited);
         }
 
         // Full job list for the "Jobs Audited In This Range" slide — the entire install
@@ -551,6 +553,21 @@
         // truth for outcome, used both for the Safety Fails / Policy Fails / PNC / Pass bars
         // on slide 1 and for each job's Audit Status column on the job-list table, so the two
         // always agree — the table never shows the raw "Update Audit Status" selection.
+        // Electrical / Roofing split (set in adminaudit.html). Jobs audited before the split
+        // only have the single auditStatus / clientOutcome, which is used for both parts.
+        function partAuditStatus(job, part) {
+            if (job.auditStatusElec || job.auditStatusRoof) return job['auditStatus' + part] || '';
+            return job.auditStatus || '';
+        }
+        function partClientOutcome(job, part) {
+            if (job.clientOutcomeElec || job.clientOutcomeRoof) return job['clientOutcome' + part] || '';
+            return job.clientOutcome || '';
+        }
+        function isAudited(job) {
+            const done = s => !!s && s !== 'pending';
+            return done(job.auditStatus) || done(job.auditStatusElec) || done(job.auditStatusRoof);
+        }
+
         function classifySpecificOutcome(statusStr) {
             const st = (statusStr || '').toLowerCase().trim();
             if (st === 'safety-fail' || st === 'safety fail') return 'safety';
@@ -561,8 +578,8 @@
         }
         
         function classifyAuditOutcome(job) {
-            let e = classifySpecificOutcome(job.auditStatusElec || job.auditStatus);
-            let r = classifySpecificOutcome(job.auditStatusRoof || job.auditStatus);
+            let e = classifySpecificOutcome(partAuditStatus(job, 'Elec'));
+            let r = classifySpecificOutcome(partAuditStatus(job, 'Roof'));
             
             // Fallback for completely legacy jobs
             if (!e && !r && job.auditStatus && job.auditStatus !== 'pending') {
@@ -626,7 +643,7 @@
 
                 // Audits Completed — this job (already in the install population for this
                 // range) has been audited, whenever that audit happened.
-                if (job.auditStatus && job.auditStatus !== 'pending') {
+                if (isAudited(job)) {
                     auditsCompleted++;
 
                     // Individual CAT-code frequency, for the CAT code slide/table
@@ -1178,8 +1195,8 @@
                         // job that genuinely hasn't been audited yet. No highlighting.
                         const isOmitted = omitJobSet.has(normaliseJobNumber(job.jobNumber));
                         
-                        let eOutcome = classifySpecificOutcome(job.auditStatusElec || job.auditStatus);
-                        let rOutcome = classifySpecificOutcome(job.auditStatusRoof || job.auditStatus);
+                        let eOutcome = classifySpecificOutcome(partAuditStatus(job, 'Elec'));
+                        let rOutcome = classifySpecificOutcome(partAuditStatus(job, 'Roof'));
                         // legacy fallback
                         if (!eOutcome && !rOutcome && job.auditStatus && job.auditStatus !== 'pending') {
                             const o = classifyAuditOutcome(job);
@@ -1188,8 +1205,8 @@
 
                         const statusE = auditStatusLabel(eOutcome, isOmitted);
                         const statusR = auditStatusLabel(rOutcome, isOmitted);
-                        const clientE = clientStatusCellText(job.clientOutcomeElec || job.clientOutcome);
-                        const clientR = clientStatusCellText(job.clientOutcomeRoof || job.clientOutcome);
+                        const clientE = clientStatusCellText(partClientOutcome(job, 'Elec'));
+                        const clientR = clientStatusCellText(partClientOutcome(job, 'Roof'));
                         const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                         return [
                             { text: job.jobNumber,    options: { color: C.text, fill: { color: rowFill }, fontSize: 7, bold: true } },
