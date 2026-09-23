@@ -551,32 +551,50 @@
         // truth for outcome, used both for the Safety Fails / Policy Fails / PNC / Pass bars
         // on slide 1 and for each job's Audit Status column on the job-list table, so the two
         // always agree — the table never shows the raw "Update Audit Status" selection.
-        function classifyAuditOutcome(job) {
-            const st = (job.auditStatus || 'pending').toLowerCase().trim();
-            if (st === 'pending') return null;
+        function classifySpecificOutcome(statusStr) {
+            const st = (statusStr || '').toLowerCase().trim();
             if (st === 'safety-fail' || st === 'safety fail') return 'safety';
             if (st === 'policy-fail' || st === 'policy fail') return 'policy';
             if (st === 'pnc') return 'pnc';
             if (st === 'pass') return 'pass';
+            return null;
+        }
+        
+        function classifyAuditOutcome(job) {
+            let e = classifySpecificOutcome(job.auditStatusElec || job.auditStatus);
+            let r = classifySpecificOutcome(job.auditStatusRoof || job.auditStatus);
             
-            // Fallback for old jobs prior to the status options change
-            let cat1 = 0, cat2 = 0, cat3 = 0, cat4 = 0;
-            if (job.auditChecklistData) {
-                Object.values(job.auditChecklistData).forEach(qData => {
-                    (qData.codesSelected || []).forEach(codeText => {
-                        const parsed = parseCatCode(codeText);
-                        if (parsed) {
-                            if (parsed.cat === 1) cat1++;
-                            else if (parsed.cat === 2) cat2++;
-                            else if (parsed.cat === 3) cat3++;
-                            else if (parsed.cat === 4) cat4++;
-                        }
+            // Fallback for completely legacy jobs
+            if (!e && !r && job.auditStatus && job.auditStatus !== 'pending') {
+                let cat1 = 0, cat2 = 0, cat3 = 0, cat4 = 0;
+                if (job.auditChecklistData) {
+                    Object.values(job.auditChecklistData).forEach(qData => {
+                        (qData.codesSelected || []).forEach(codeText => {
+                            const parsed = parseCatCode(codeText);
+                            if (parsed) {
+                                if (parsed.cat === 1) cat1++;
+                                else if (parsed.cat === 2) cat2++;
+                                else if (parsed.cat === 3) cat3++;
+                                else if (parsed.cat === 4) cat4++;
+                            }
+                        });
                     });
-                });
+                }
+                if (cat1 > 0 || cat2 > 0) e = r = 'safety';
+                else if (cat3 > 0 || cat4 > 0) e = r = 'policy';
+                else e = r = 'pass';
             }
-            if (cat1 > 0 || cat2 > 0) return 'safety';
-            if (cat3 > 0 || cat4 > 0) return 'policy';
-            return 'pass';
+            
+            const w = { 'safety': 4, 'policy': 3, 'pnc': 2, 'pass': 1 };
+            const ew = w[e] || 0;
+            const rw = w[r] || 0;
+            if (ew === 0 && rw === 0) return null;
+            const maxW = Math.max(ew, rw);
+            if (maxW === 4) return 'safety';
+            if (maxW === 3) return 'policy';
+            if (maxW === 2) return 'pnc';
+            if (maxW === 1) return 'pass';
+            return null;
         }
 
         // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
@@ -1098,9 +1116,8 @@
         // unable / in-progress). Omitted jobs are always shown as "Pending" here, regardless
         // of what their real audit outcome was — they're being presented as excluded from the
         // stats, not as actually un-audited.
-        function auditStatusLabel(job, isOmitted) {
+        function auditStatusLabel(outcome, isOmitted) {
             if (isOmitted) return { label: 'Pending', color: C.textDim, italic: true };
-            const outcome = classifyAuditOutcome(job);
             switch (outcome) {
                 case 'safety': return { label: 'Safety Fail', color: C.error };
                 case 'policy': return { label: 'Policy Fail', color: C.warning };
@@ -1114,15 +1131,15 @@
         // the separate "Clients Outcome" section in adminaudit.html, plus the resolved date
         // and any resolution notes if they were filled in. Blank when no client outcome has
         // been set for the job.
-                function clientStatusCellText(job) {
-            if (!job.clientOutcome) return { text: ' ', color: C.textDim };
+                function clientStatusCellText(outcomeStr) {
+            if (!outcomeStr) return { text: ' ', color: C.textDim };
             const colorMap = {
                 'Safety Fail': C.error,
                 'Policy Fail': C.warning,
                 'PNC':         C.forecast,
                 'Pass':        C.success
             };
-            return { text: job.clientOutcome, color: colorMap[job.clientOutcome] || C.text };
+            return { text: outcomeStr, color: colorMap[outcomeStr] || C.text };
         }
 
         const JOB_LIST_ROWS_PER_PAGE = 35;
@@ -1147,8 +1164,10 @@
                     { text: 'Postcode',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
                     { text: 'Job Type',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
                     { text: 'Lead Engineer',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
-                    { text: 'Audit Status',   options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
-                    { text: 'Client Status',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Elec Audit',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Roof Audit',     options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Elec Client',    options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
+                    { text: 'Roof Client',    options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } },
                     { text: 'Resolution Notes',  options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 7.5 } }
                 ];
 
@@ -1158,23 +1177,36 @@
                         // Audit Status text differs (it reads "Pending"), same as any other
                         // job that genuinely hasn't been audited yet. No highlighting.
                         const isOmitted = omitJobSet.has(normaliseJobNumber(job.jobNumber));
-                        const status = auditStatusLabel(job, isOmitted);
-                        const clientStatus = clientStatusCellText(job);
+                        
+                        let eOutcome = classifySpecificOutcome(job.auditStatusElec || job.auditStatus);
+                        let rOutcome = classifySpecificOutcome(job.auditStatusRoof || job.auditStatus);
+                        // legacy fallback
+                        if (!eOutcome && !rOutcome && job.auditStatus && job.auditStatus !== 'pending') {
+                            const o = classifyAuditOutcome(job);
+                            eOutcome = o; rOutcome = o;
+                        }
+
+                        const statusE = auditStatusLabel(eOutcome, isOmitted);
+                        const statusR = auditStatusLabel(rOutcome, isOmitted);
+                        const clientE = clientStatusCellText(job.clientOutcomeElec || job.clientOutcome);
+                        const clientR = clientStatusCellText(job.clientOutcomeRoof || job.clientOutcome);
                         const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                         return [
                             { text: job.jobNumber,    options: { color: C.text, fill: { color: rowFill }, fontSize: 7, bold: true } },
                             { text: job.postcode || '', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.5 } },
                             { text: job.jobType || 'Standard', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.5 } },
                             { text: job.leadEngineer, options: { color: C.text, fill: { color: rowFill }, fontSize: 7 } },
-                            { text: status.label,     options: { color: status.color, fill: { color: rowFill }, fontSize: 7, italic: !!status.italic, bold: !status.italic } },
-                            { text: clientStatus.text, options: { color: clientStatus.color, fill: { color: rowFill }, fontSize: 6.5 } },
+                            { text: statusE.label,    options: { color: statusE.color, fill: { color: rowFill }, fontSize: 7, italic: !!statusE.italic, bold: !statusE.italic } },
+                            { text: statusR.label,    options: { color: statusR.color, fill: { color: rowFill }, fontSize: 7, italic: !!statusR.italic, bold: !statusR.italic } },
+                            { text: clientE.text,     options: { color: clientE.color, fill: { color: rowFill }, fontSize: 6.5 } },
+                            { text: clientR.text,     options: { color: clientR.color, fill: { color: rowFill }, fontSize: 6.5 } },
                             { text: job.clientResolvedNotes ? String(job.clientResolvedNotes) : ' ', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.0 } }
                         ];
                       })
-                    : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 7, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
+                    : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 9, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
 
                 slide.addTable([headerRow, ...bodyRows], {
-                    x: PAD, y: HDR_H + 0.08, w: tableW, colW: [1.0, 0.9, 1.1, 1.3, 1.1, 1.0, tableW - 6.4],
+                    x: PAD, y: HDR_H + 0.08, w: tableW, colW: [0.9, 0.8, 1.0, 1.2, 0.9, 0.9, 0.9, 0.9, tableW - 7.5],
                     fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
                     autoPage: false, valign: 'middle', margin: 0
                 });
