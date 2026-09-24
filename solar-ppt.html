@@ -166,7 +166,7 @@
         .cat-table .cat-code-cell { color: var(--accent); font-weight: 700; white-space: nowrap; }
         .cat-table .cat-count-cell { color: var(--primary); font-weight: 700; text-align: right; white-space: nowrap; }
 
-        /* Job picker — click a job to exclude it from everything except Solar PV Installs */
+        /* Job picker — click a job to exclude it from everything except Solar PV & Battery Installs */
         .job-picker-hint { color: var(--text-dim); font-size: 0.8rem; margin-bottom: 1rem; }
         .job-picker-hint strong { color: var(--text); }
         .job-picker-list {
@@ -273,7 +273,7 @@
             <!-- Job picker -->
             <div class="preview-card">
                 <div class="preview-card-title">🗂️ Jobs Audited In This Range <span class="hint">click a job to exclude it from Audits Completed, Audit Type &amp; Cat Codes</span></div>
-                <div class="job-picker-hint">Click any job number below to toggle it out of every stat except <strong>Solar PV Installs</strong>. Click it again to bring it back in.</div>
+                <div class="job-picker-hint">Click any job number below to toggle it out of every stat except <strong>Solar PV &amp; Battery Installs</strong>. Click it again to bring it back in.</div>
                 <div class="job-picker-list" id="job-picker-list"></div>
                 <div class="job-picker-actions">
                     <button class="job-picker-clear" id="job-picker-clear-btn" onclick="clearOmittedJobs()">Clear exclusions</button>
@@ -287,7 +287,7 @@
                 <div class="kpi-row">
                     <div class="kpi-card">
                         <div class="kpi-value installs" id="kpi-installs">0</div>
-                        <div class="kpi-label">Solar PV Installs</div>
+                        <div class="kpi-label">Solar PV &amp; Battery Installs</div>
                     </div>
                     <div class="kpi-card">
                         <div class="kpi-value audits" id="kpi-audits">0</div>
@@ -381,7 +381,7 @@
             document.getElementById('range-end').valueAsDate = today;
 
             // Event delegation: click any job chip in the picker to toggle it in/out of
-            // everything except Solar PV Installs. Delegated so it works for chips added
+            // everything except Solar PV & Battery Installs. Delegated so it works for chips added
             // after this listener is bound (the list is rebuilt on every Load Preview / toggle).
             document.getElementById('job-picker-list').addEventListener('click', (e) => {
                 const chip = e.target.closest('.job-chip');
@@ -503,10 +503,14 @@
         /* ══════════════════════════════════════════════
            REPORT COMPUTATION
         ══════════════════════════════════════════════ */
+        const ALLOWED_INSTALL_TYPES = ['solar install', 'solar pv install', 'battery install', 'battery only'];
+
         function isAllowedInstallType(job) {
             if (!job.jobType) return false;
-            const jt = job.jobType.trim().toLowerCase();
-            return jt === 'solar install' || jt === 'solar pv install' || jt === 'battery only';
+            // Lower-case, treat - and _ as spaces, collapse repeated spaces
+            // ("Battery-Only", "battery  install" etc. all match).
+            const jt = job.jobType.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+            return ALLOWED_INSTALL_TYPES.includes(jt);
         }
 
         // Normalises a job number for comparison: uppercase, letters/digits only.
@@ -518,9 +522,9 @@
 
         // Master population for the whole report, per adminaudit.html's own definitions
         // (job.status === 'complete', job.completionDate, isAllowedInstallType): every
-        // Solar PV Install / Solar Install / Battery Only job whose Completion Date falls
+        // Solar PV Install / Solar Install / Battery Install / Battery Only job whose Completion Date falls
         // within the selected range AND whose Status is Complete. This one set of jobs is
-        // the basis for the Solar PV Installs figure, Audits Completed, the Safety Fails /
+        // the basis for the Solar PV & Battery Installs figure, Audits Completed, the Safety Fails /
         // Policy Fails / PNC / Pass bars, the CAT code table, and the job-list table — audit
         // date is never used to pull a job into or out of the report; only its own audit
         // status (once it's in the population) is checked.
@@ -533,7 +537,7 @@
         }
 
         // Jobs from the install population that have actually been audited — the only ones
-        // an omission can affect (the Solar PV Installs count itself is unaffected by omit).
+        // an omission can affect (the Solar PV & Battery Installs count itself is unaffected by omit).
         // This is the exact set of jobs shown in the click-to-exclude picker.
         function getAuditJobsForRange(start, end) {
             return getInstallPopulationForRange(start, end).filter(isAudited);
@@ -614,7 +618,7 @@
             return null;
         }
 
-        // omitSet: job numbers to exclude from everything EXCEPT the Solar PV Installs count
+        // omitSet: job numbers to exclude from everything EXCEPT the Solar PV & Battery Installs count
         function computeReport(start, end, omitSet) {
             omitSet = omitSet || new Set();
             const population = getInstallPopulationForRange(start, end);
@@ -785,7 +789,7 @@
             }).join('');
 
             countEl.textContent = omitJobSet.size > 0
-                ? `${omitJobSet.size} of ${auditJobsInRange.length} excluded (still counted in Solar PV Installs)`
+                ? `${omitJobSet.size} of ${auditJobsInRange.length} excluded (still counted in Solar PV & Battery Installs)`
                 : `${auditJobsInRange.length} audited job(s) — click any to exclude it`;
         }
 
@@ -796,7 +800,7 @@
 
             const omitNote = document.getElementById('omit-note');
             if (data.omittedJobs && data.omittedJobs.length > 0) {
-                omitNote.textContent = `⚠️ Excluding ${data.omittedJobs.length} job(s) from Audits Completed, Audit Ratio, Audit Type and Cat Codes (still counted in Solar PV Installs).`;
+                omitNote.textContent = `⚠️ Excluding ${data.omittedJobs.length} job(s) from Audits Completed, Audit Ratio, Audit Type and Cat Codes (still counted in Solar PV & Battery Installs).`;
                 omitNote.classList.add('show');
             } else {
                 omitNote.classList.remove('show');
@@ -958,7 +962,7 @@
             // Headline KPI strip
             const kW = 2.5, kY = 4.05, kH = 0.95, gap = 0.25;
             const kpis = [
-                { label: 'Solar PV Installs', value: data.installsCompleted, color: C.primary },
+                { label: 'Solar PV & Battery Installs', value: data.installsCompleted, color: C.primary },
                 { label: 'Audits Completed',  value: data.auditsCompleted,   color: C.accent },
                 { label: 'Audit Ratio',       value: `${(data.auditRatio * 100).toFixed(1)}%`, color: C.success }
             ];
