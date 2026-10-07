@@ -328,7 +328,7 @@
                         <div class="bar-chart" id="cat-code-chart"></div>
                     </div>
                     <div>
-                        <div class="chart-title" style="color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">Top 5 Cat Codes</div>
+                        <div class="chart-title" style="color:var(--text-dim); font-size:0.8rem; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.75rem;">All Cat Codes</div>
                         <table class="cat-table" id="cat-code-table">
                             <thead><tr><th>Code</th><th>Description</th><th style="text-align:right;">Count</th></tr></thead>
                             <tbody id="cat-code-tbody"></tbody>
@@ -855,9 +855,9 @@
                 </div>`;
             }).join('');
 
-            // Cat code bar chart (top 8) + table (top 5)
+            // Cat code bar chart (top 8) + table (every code)
             const top8 = data.catList.slice(0, 8);
-            const top5 = data.catList.slice(0, 5);
+            const allCats = data.catList;
             const maxCat = Math.max(...top8.map(c => c.count), 1);
 
             document.getElementById('cat-code-chart').innerHTML = top8.length > 0
@@ -874,8 +874,8 @@
                 }).join('')
                 : '<div style="color:var(--text-dim); font-size:0.85rem;">No Cat codes selected in this range</div>';
 
-            document.getElementById('cat-code-tbody').innerHTML = top5.length > 0
-                ? top5.map(c => `<tr>
+            document.getElementById('cat-code-tbody').innerHTML = allCats.length > 0
+                ? allCats.map(c => `<tr>
                     <td class="cat-code-cell">${escapeHtml(c.key)}</td>
                     <td>${escapeHtml(c.desc)}</td>
                     <td class="cat-count-cell">${c.count}</td>
@@ -1098,7 +1098,8 @@
             addSlideHeader(slide, 'NextGen Cat Codes', 'Most Commonly Selected Cat Codes', 'Section 3');
 
             const top8 = data.catList.slice(0, 8);
-            const top5 = data.catList.slice(0, 5);
+            const firstRows = data.catList.slice(0, CAT_FIRST_ROWS);
+            const moreCount = Math.max(0, data.catList.length - CAT_FIRST_ROWS);
 
             // Left: bar chart of top 8
             const chartX = PAD, chartY = 1.0;
@@ -1123,18 +1124,18 @@
                 });
             }
 
-            // Right: native table of top 5
+            // Right: native table of every cat code (continues on the next slide(s) if needed)
             const tableX = chartX + chartAreaW + 0.3;
             const tableW = SLIDE_W - PAD - tableX;
-            slide.addText('TOP 5 CAT CODES', { x: tableX, y: chartY - 0.22, w: tableW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
+            slide.addText(moreCount > 0 ? `ALL CAT CODES  ·  ${data.catList.length} TOTAL (CONTINUED ON NEXT PAGE)` : `ALL CAT CODES  ·  ${data.catList.length} TOTAL`, { x: tableX, y: chartY - 0.22, w: tableW, h: 0.16, fontSize: 7, bold: true, color: C.textDim, fontFace: 'Calibri', charSpacing: 1 });
 
             const headerRow = [
                 { text: 'Code',        options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
                 { text: 'Description', options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
                 { text: 'Count',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8, align: 'right' } }
             ];
-            const bodyRows = top5.length > 0
-                ? top5.map((c, i) => {
+            const bodyRows = firstRows.length > 0
+                ? firstRows.map((c, i) => {
                     const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                     return [
                         { text: c.key,               options: { color: C.accent,  fill: { color: rowFill }, fontSize: 8, bold: true } },
@@ -1152,6 +1153,46 @@
 
             addInsightBox(slide);
             addFooter(slide, badgeText, pageNum, totalPages);
+        }
+
+        // Cat codes that didn't fit on slide 3 go onto full-width continuation slides.
+        const CAT_FIRST_ROWS = 8, CAT_CONT_ROWS = 18;
+        function catContinuationPageCount(data) {
+            const rest = Math.max(0, data.catList.length - CAT_FIRST_ROWS);
+            return Math.ceil(rest / CAT_CONT_ROWS);
+        }
+        function buildCatCodeContinuationSlides(pptx, data, badgeText, startPageNum, totalPages) {
+            const rest = data.catList.slice(CAT_FIRST_ROWS);
+            const pages = catContinuationPageCount(data);
+            for (let p = 0; p < pages; p++) {
+                const slide = pptx.addSlide();
+                slide.background = { color: C.dark };
+                const suffix = pages > 1 ? ` (Page ${p + 1} of ${pages})` : '';
+                addSlideHeader(slide, 'NextGen Cat Codes (continued)', `All Cat Codes${suffix}`, 'Section 3');
+
+                const chunk = rest.slice(p * CAT_CONT_ROWS, (p + 1) * CAT_CONT_ROWS);
+                const tableW = SLIDE_W - PAD * 2;
+                const headerRow = [
+                    { text: 'Code',        options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
+                    { text: 'Description', options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8 } },
+                    { text: 'Count',       options: { bold: true, color: C.dark, fill: { color: C.accent }, fontSize: 8, align: 'right' } }
+                ];
+                const bodyRows = chunk.map((c, i) => {
+                    const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
+                    return [
+                        { text: c.key,                options: { color: C.accent,  fill: { color: rowFill }, fontSize: 8, bold: true } },
+                        { text: truncate(c.desc, 150), options: { color: C.text,    fill: { color: rowFill }, fontSize: 7.5 } },
+                        { text: c.count.toString(),   options: { color: C.primary, fill: { color: rowFill }, fontSize: 8, bold: true, align: 'right' } }
+                    ];
+                });
+                slide.addTable([headerRow, ...bodyRows], {
+                    x: PAD, y: HDR_H + 0.25, w: tableW, colW: [1.0, tableW - 1.7, 0.7],
+                    fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
+                    autoPage: false, valign: 'middle', margin: [0.03, 0.06, 0.03, 0.06]
+                });
+                addFooter(slide, badgeText, startPageNum + p, totalPages);
+            }
+            return pages;
         }
 
         // Maps a job to a display label + color for the Audit Status column, using the SAME
@@ -1285,7 +1326,8 @@
 
                 const badgeText = `${fmtDate(reportData.rangeStart)} – ${fmtDate(reportData.rangeEnd)}`;
                 const jobListPageCount = Math.max(1, Math.ceil(getIncludedJobList().length / JOB_LIST_ROWS_PER_PAGE));
-                const totalPages = 3 + jobListPageCount;
+                const catExtraPages = catContinuationPageCount(reportData);
+                const totalPages = 3 + catExtraPages + jobListPageCount;
 
                 setProgress(10, '🎨 Building cover slide...');
                 buildCoverSlide(pptx, reportData, badgeText);
@@ -1298,9 +1340,10 @@
 
                 setProgress(64, '🚩 Building NextGen Cat Codes slide...');
                 buildCatCodeSlide(pptx, reportData, badgeText, 3, totalPages);
+                buildCatCodeContinuationSlides(pptx, reportData, badgeText, 4, totalPages);
 
                 setProgress(82, '📋 Building Jobs Audited slide...');
-                buildJobListSlides(pptx, badgeText, 4, totalPages);
+                buildJobListSlides(pptx, badgeText, 4 + catExtraPages, totalPages);
 
                 setProgress(96, '💾 Saving file...');
                 const s = reportData.rangeStart, e = reportData.rangeEnd;
