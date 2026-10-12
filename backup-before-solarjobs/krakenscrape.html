@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kraken Scrape</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0d14;
+            --surface: #111520;
+            --surface2: #161c2e;
+            --accent: #00e5ff;
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --border: #1e2a45;
+            --success: #10b981;
+            --danger: #f43f5e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'DM Mono', monospace; background: var(--bg); color: var(--text); min-height: 100vh; padding: 40px 24px; }
+        .grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+        .container { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; }
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 48px; }
+        .logo { font-size: 40px; line-height: 1; }
+        .title-block h1 { font-family: 'Syne', sans-serif; font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; color: var(--accent); text-shadow: 0 0 40px rgba(0,229,255,0.3); }
+        .title-block p { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+        .upload-zone { border: 2px dashed var(--border); border-radius: 12px; background: var(--surface); padding: 48px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; margin-bottom: 32px; }
+        .upload-zone::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0,229,255,0.04) 0%, transparent 70%); pointer-events: none; }
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent); background: var(--surface2); box-shadow: 0 0 30px rgba(0,229,255,0.08); }
+        .upload-icon { font-size: 3rem; margin-bottom: 16px; display: block; }
+        .upload-zone h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .upload-zone p { color: var(--muted); font-size: 0.8rem; line-height: 1.6; }
+        .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .tag-pill { display: inline-block; background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); color: var(--accent); font-size: 0.7rem; padding: 2px 8px; border-radius: 4px; margin: 2px; }
+        .status-bar { padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 24px; display: none; }
+        .status-bar.success { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); color: var(--success); display: block; }
+        .status-bar.error { background: rgba(244,63,94,0.1); border: 1px solid rgba(244,63,94,0.3); color: var(--danger); display: block; }
+        .controls { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; align-items: center; }
+        .btn { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; padding: 10px 22px; border: none; border-radius: 6px; cursor: pointer; letter-spacing: 0.05em; transition: all 0.15s; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-primary:hover { background: #00c4db; box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+        .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-green { background: rgba(16,185,129,0.15); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.35); }
+        .btn-green:hover { background: rgba(16,185,129,0.28); border-color: #6ee7b7; box-shadow: 0 0 16px rgba(16,185,129,0.2); }
+        .controls-divider { width: 1px; height: 28px; background: var(--border); margin: 0 4px; }
+        .results-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        thead th { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding: 16px 14px; text-align: left; position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+        thead th:first-child { background: var(--surface2); color: var(--muted); border-right: 1px solid var(--border); min-width: 160px; }
+        .col-monday    { background: rgba(59,130,246,0.15);  color: #93c5fd;  border-right: 1px solid var(--border); }
+        .col-tuesday   { background: rgba(139,92,246,0.15);  color: #c4b5fd;  border-right: 1px solid var(--border); }
+        .col-wednesday { background: rgba(236,72,153,0.15);  color: #f9a8d4;  border-right: 1px solid var(--border); }
+        .col-thursday  { background: rgba(245,158,11,0.15);  color: #fcd34d;  border-right: 1px solid var(--border); }
+        .col-friday    { background: rgba(16,185,129,0.15);  color: #6ee7b7; }
+        tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; }
+        tbody tr:hover { background: rgba(255,255,255,0.02); }
+        tbody td { padding: 14px; vertical-align: top; border-right: 1px solid var(--border); }
+        tbody td:first-child { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.85rem; color: var(--text); white-space: nowrap; border-right: 2px solid var(--border); background: rgba(255,255,255,0.01); }
+        tbody td:last-child { border-right: none; }
+        .day-entry { margin-bottom: 8px; padding: 8px 10px; border-radius: 6px; background: rgba(255,255,255,0.03); border-left: 3px solid var(--border); }
+        .day-entry:last-child { margin-bottom: 0; }
+        .job-number { font-family: 'DM Mono', monospace; font-size: 0.82rem; font-weight: 500; color: var(--accent); display: block; }
+        .job-type-tag { display: inline-block; font-size: 0.65rem; padding: 1px 6px; border-radius: 3px; margin-top: 4px; font-weight: 500; }
+        .type-solar-pv       { background: rgba(245,158,11,0.15);  color: #fcd34d;  border: 1px solid rgba(245,158,11,0.2); }
+        .type-solar-aftercare{ background: rgba(251,191,36,0.1);   color: #fde68a;  border: 1px solid rgba(251,191,36,0.2); }
+        .type-battery        { background: rgba(59,130,246,0.15);  color: #93c5fd;  border: 1px solid rgba(59,130,246,0.2); }
+        .type-structural     { background: rgba(139,92,246,0.15);  color: #c4b5fd;  border: 1px solid rgba(139,92,246,0.2); }
+        .type-electrical     { background: rgba(236,72,153,0.15);  color: #f9a8d4;  border: 1px solid rgba(236,72,153,0.2); }
+        .type-unknown        { background: rgba(100,116,139,0.15); color: #94a3b8;  border: 1px solid rgba(100,116,139,0.2); }
+        .empty-cell { color: var(--muted); font-size: 0.75rem; opacity: 0.4; }
+        .summary-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+        .summary-item { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; }
+        .summary-item .s-count { font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800; line-height: 1; }
+        .summary-item .s-label { font-size: 0.72rem; color: var(--muted); line-height: 1.4; }
+        .summary-item.s-total    { border-color: rgba(0,229,255,0.3); }
+        .summary-item.s-total    .s-count { color: var(--accent); }
+        .summary-item.s-solar    .s-count { color: #fcd34d; }
+        .summary-item.s-aftercare .s-count { color: #fde68a; }
+        .summary-item.s-battery  .s-count { color: #93c5fd; }
+        .summary-item.s-struct   .s-count { color: #c4b5fd; }
+        .summary-item.s-elec     .s-count { color: #f9a8d4; }
+    </style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="container">
+    <header>
+        <span class="logo">🐙</span>
+        <div class="title-block">
+            <h1>Kraken Scrape</h1>
+            <p>Schedule parser · Job number & type extractor</p>
+        </div>
+    </header>
+
+    <div class="upload-zone" id="uploadZone">
+        <input type="file" id="csvFile" accept=".csv">
+        <span class="upload-icon">📂</span>
+        <h3>Drop your CSV here or click to browse</h3>
+        <p>
+            Expected columns: <strong>Name, Monday, Tuesday, Wednesday, Thursday, Friday</strong><br><br>
+            Extracts: &nbsp;
+            <span class="tag-pill">J-XXXXXXXX</span>
+            <span class="tag-pill">Solar PV Install</span>
+            <span class="tag-pill">Solar PV Install (Aftercare)</span>
+            <span class="tag-pill">Battery Install</span>
+            <span class="tag-pill">Solar PIV - Structural</span>
+            <span class="tag-pill">Solar PIV - Electrical</span>
+        </p>
+    </div>
+
+    <div class="status-bar" id="statusBar"></div>
+
+    <div id="resultsArea" style="display:none;">
+        <div class="summary-strip" id="summaryStrip"></div>
+        <div class="controls">
+            <button class="btn btn-primary" onclick="exportCSV()">⬇ Export Schedule CSV</button>
+            <button class="btn btn-green" onclick="exportJobList()">⬇ Export Job List CSV</button>
+            <div class="controls-divider"></div>
+            <button class="btn btn-secondary" onclick="clearResults()">✕ Clear</button>
+        </div>
+        <div class="results-wrap">
+            <table id="resultsTable">
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
+
+    const JOB_TYPES = [
+        { pattern: /Solar PV Install[^a-zA-Z]*Aftercare/i, displayLabel: 'Solar PV Install (Aftercare)', key: 'aftercare', css: 'type-solar-aftercare' },
+        { pattern: /Solar PV Install(?!\s*Aftercare)/i,    displayLabel: 'Solar PV Install',             key: 'solar',     css: 'type-solar-pv' },
+        { pattern: /Battery Install/i,                     displayLabel: 'Battery Install',              key: 'battery',   css: 'type-battery' },
+        { pattern: /Solar PIV\s*-\s*Structural/i,          displayLabel: 'Solar PIV - Structural',       key: 'struct',    css: 'type-structural' },
+        { pattern: /Solar PIV\s*-\s*Electrical/i,          displayLabel: 'Solar PIV - Electrical',       key: 'elec',      css: 'type-electrical' },
+    ];
+
+    // drag-drop
+    const zone = document.getElementById('uploadZone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) readFile(file);
+    });
+    document.getElementById('csvFile').addEventListener('change', e => {
+        if (e.target.files[0]) readFile(e.target.files[0]);
+    });
+
+    function readFile(file) {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try { processCSV(ev.target.result); }
+            catch(err) { showStatus('Error: ' + err.message, 'error'); }
+        };
+        reader.readAsText(file);
+    }
+
+    function parseCSVLine(line) {
+        const values = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; }
+            else if (ch === ',' && !inQ) { values.push(cur.trim()); cur = ''; }
+            else cur += ch;
+        }
+        values.push(cur.trim());
+        return values;
+    }
+
+    function extractFromCell(cell) {
+        const tokens = [];
+        for (const m of cell.matchAll(/J-[A-Za-z0-9]{8}/g)) {
+            tokens.push({ pos: m.index, kind: 'job', value: m[0] });
+        }
+        for (const jt of JOB_TYPES) {
+            const re = new RegExp(jt.pattern.source, 'gi');
+            for (const m of cell.matchAll(re)) {
+                tokens.push({ pos: m.index, kind: 'type', jt });
+            }
+        }
+        tokens.sort((a, b) => a.pos - b.pos);
+        const pairs = [];
+        let pendingType = null;
+        for (const tok of tokens) {
+            if (tok.kind === 'type') {
+                pendingType = tok.jt;
+            } else {
+                pairs.push({ job: tok.value, jt: pendingType });
+                pendingType = null;
+            }
+        }
+        return pairs;
+    }
+
+    function cleanName(raw) {
+        const idx = raw.indexOf('SEngineer');
+        return idx !== -1 ? raw.substring(0, idx).trim() : raw.trim();
+    }
+
+    function processCSV(csv) {
+        const lines = csv.split('\n').filter(l => l.trim());
+        if (lines.length < 2) { showStatus('CSV appears empty.', 'error'); return; }
+
+        const headers = parseCSVLine(lines[0]);
+        const nameIdx = headers.findIndex(h => /name/i.test(h));
+        const dayIndices = DAYS.map(d => headers.findIndex(h => h.trim().toLowerCase() === d.toLowerCase()));
+
+        const rows = [];
+        for (let i = 1; i < lines.length; i++) {
+            const vals = parseCSVLine(lines[i]);
+            if (!vals.length) continue;
+            const nameRaw = nameIdx >= 0 ? (vals[nameIdx] || '') : (vals[0] || '');
+            const name = cleanName(nameRaw);
+            if (!name) continue;
+
+            const dayData = {};
+            DAYS.forEach((day, di) => {
+                const colIdx = dayIndices[di];
+                const cell = colIdx >= 0 ? (vals[colIdx] || '') : '';
+                dayData[day] = extractFromCell(cell);
+            });
+            rows.push({ name, dayData });
+        }
+
+        if (!rows.length) { showStatus('No data rows found.', 'error'); return; }
+        window._processedRows = rows;
+
+        const typeTotals = {};
+        JOB_TYPES.forEach(jt => { typeTotals[jt.key] = 0; });
+        let totalUniqueJobs = 0;
+
+        rows.forEach(row => {
+            const seenJobs = new Set();
+            const typeJobSets = {};
+            JOB_TYPES.forEach(jt => { typeJobSets[jt.key] = new Set(); });
+
+            DAYS.forEach(d => {
+                row.dayData[d].forEach(({ job, jt }) => {
+                    seenJobs.add(job);
+                    if (jt) typeJobSets[jt.key].add(job);
+                });
+            });
+
+            totalUniqueJobs += seenJobs.size;
+            JOB_TYPES.forEach(jt => { typeTotals[jt.key] += typeJobSets[jt.key].size; });
+        });
+
+        window._typeTotals = typeTotals;
+
+        document.getElementById('summaryStrip').innerHTML = `
+            <div class="summary-item s-total"><span class="s-count">${rows.length}</span><span class="s-label">Engineers</span></div>
+            <div class="summary-item s-total"><span class="s-count">${totalUniqueJobs}</span><span class="s-label">Total unique jobs</span></div>
+            <div class="summary-item s-solar"><span class="s-count">${typeTotals.solar}</span><span class="s-label">Solar PV Install</span></div>
+            <div class="summary-item s-aftercare"><span class="s-count">${typeTotals.aftercare}</span><span class="s-label">Solar PV Install (Aftercare)</span></div>
+            <div class="summary-item s-battery"><span class="s-count">${typeTotals.battery}</span><span class="s-label">Battery Install</span></div>
+            <div class="summary-item s-struct"><span class="s-count">${typeTotals.struct}</span><span class="s-label">Solar PIV – Structural</span></div>
+            <div class="summary-item s-elec"><span class="s-count">${typeTotals.elec}</span><span class="s-label">Solar PIV – Electrical</span></div>
+        `;
+
+        renderTable(rows);
+        showStatus(`✓ Processed ${rows.length} engineers across ${DAYS.length} days.`, 'success');
+        document.getElementById('resultsArea').style.display = 'block';
+    }
+
+    function renderTable(rows) {
+        const head = document.getElementById('tableHead');
+        const body = document.getElementById('tableBody');
+        const dayClass = ['col-monday','col-tuesday','col-wednesday','col-thursday','col-friday'];
+
+        head.innerHTML = `<tr>
+            <th style="background:var(--surface2);color:var(--muted)">Name</th>
+            ${DAYS.map((d,i) => `<th class="${dayClass[i]}">${d}</th>`).join('')}
+        </tr>`;
+
+        body.innerHTML = rows.map(row => {
+            const cells = DAYS.map(day => {
+                const pairs = row.dayData[day];
+                if (!pairs.length) return `<td><span class="empty-cell">—</span></td>`;
+
+                const html = pairs.map(({ job, jt }) => {
+                    const typeHtml = jt
+                        ? `<span class="job-type-tag ${jt.css}">${jt.displayLabel}</span>`
+                        : `<span class="job-type-tag type-unknown">Unknown</span>`;
+                    return `<div class="day-entry">
+                        <span class="job-number">${escHtml(job)}</span>
+                        ${typeHtml}
+                    </div>`;
+                }).join('');
+
+                return `<td>${html}</td>`;
+            }).join('');
+
+            return `<tr><td>${escHtml(row.name)}</td>${cells}</tr>`;
+        }).join('');
+    }
+
+    // ── Export 1: original schedule export ──────────────────────────
+    function exportCSV() {
+        const rows = window._processedRows;
+        const totals = window._typeTotals;
+        if (!rows) return;
+
+        const lines = [];
+
+        lines.push('WEEKLY SUMMARY');
+        lines.push(`"Solar PV Install","${totals.solar}"`);
+        lines.push(`"Solar PV Install (Aftercare)","${totals.aftercare}"`);
+        lines.push(`"Battery Install","${totals.battery}"`);
+        lines.push(`"Solar PIV - Structural","${totals.struct}"`);
+        lines.push(`"Solar PIV - Electrical","${totals.elec}"`);
+        lines.push('');
+
+        const header = ['Name', ...DAYS];
+        lines.push(header.map(h => `"${h}"`).join(','));
+
+        rows.forEach(row => {
+            const cells = [`"${row.name}"`];
+            DAYS.forEach(day => {
+                const pairs = row.dayData[day];
+                const val = pairs.map(({ job, jt }) =>
+                    jt ? `${job} (${jt.displayLabel})` : job
+                ).join(' | ');
+                cells.push(`"${val}"`);
+            });
+            lines.push(cells.join(','));
+        });
+
+        downloadCSV(lines.join('\n'), `kraken_schedule_${today()}.csv`);
+    }
+
+    // ── Export 2: unique job list ────────────────────────────────────
+    function exportJobList() {
+        const rows = window._processedRows;
+        if (!rows) return;
+
+        // Map: jobNumber -> { type, engineer, firstDayIndex, dayCount (Set of day indices) }
+        const jobMap = new Map();
+
+        rows.forEach(row => {
+            DAYS.forEach((day, di) => {
+                row.dayData[day].forEach(({ job, jt }) => {
+                    if (!jobMap.has(job)) {
+                        jobMap.set(job, {
+                            type: jt ? jt.displayLabel : 'Unknown',
+                            engineer: row.name,
+                            firstDayIndex: di,
+                            days: new Set([di])
+                        });
+                    } else {
+                        const entry = jobMap.get(job);
+                        entry.days.add(di);
+                        // Track earliest day
+                        if (di < entry.firstDayIndex) {
+                            entry.firstDayIndex = di;
+                            // Update type and engineer to match the first occurrence
+                            entry.type = jt ? jt.displayLabel : 'Unknown';
+                            entry.engineer = row.name;
+                        }
+                    }
+                });
+            });
+        });
+
+        const lines = [];
+        lines.push('"Job Number","Job Type","Engineer","First Day","Days Covered"');
+
+        // Sort by first day, then alphabetically by job number
+        const sorted = [...jobMap.entries()].sort((a, b) => {
+            if (a[1].firstDayIndex !== b[1].firstDayIndex) return a[1].firstDayIndex - b[1].firstDayIndex;
+            return a[0].localeCompare(b[0]);
+        });
+
+        sorted.forEach(([job, info]) => {
+            const firstDay = DAYS[info.firstDayIndex];
+            const dayCount = info.days.size;
+            lines.push(`"${job}","${info.type}","${info.engineer}","${firstDay}","${dayCount}"`);
+        });
+
+        downloadCSV(lines.join('\n'), `kraken_joblist_${today()}.csv`);
+    }
+
+    function downloadCSV(content, filename) {
+        const blob = new Blob([content], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function today() {
+        return new Date().toISOString().slice(0, 10);
+    }
+
+    function clearResults() {
+        window._processedRows = null;
+        document.getElementById('resultsArea').style.display = 'none';
+        document.getElementById('statusBar').className = 'status-bar';
+        document.getElementById('csvFile').value = '';
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('statusBar');
+        el.textContent = msg;
+        el.className = 'status-bar ' + type;
+    }
+
+    function escHtml(t) {
+        const d = document.createElement('div');
+        d.textContent = t;
+        return d.innerHTML;
+    }
+</script>
+</body>
+</html>

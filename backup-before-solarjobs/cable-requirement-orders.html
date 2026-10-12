@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Orders | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --shadow: rgba(0, 0, 0, 0.2);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem;
+            font-size: 17px;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.04) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        .container { max-width: 100%; width: 100%; margin: 0; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+        .logo-wrap h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.6rem;
+            color: var(--text);
+            margin-bottom: 0.25rem;
+        }
+        .logo-wrap p { color: var(--text-dim); font-size: 0.95rem; }
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-wrapper { position: relative; display: flex; align-items: center; }
+        .search-icon { position: absolute; left: 1rem; font-size: 1.2rem; pointer-events: none; }
+        .search-input {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem 1rem 0.8rem 2.8rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            width: 300px;
+            transition: all 0.3s ease;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(47, 47, 74, 0.9);
+            box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
+        }
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        .filter-tab {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text-dim);
+            padding: 0.65rem 1.4rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .filter-tab:hover { border-color: var(--primary); color: var(--text); }
+        .filter-tab.active {
+            border-color: var(--primary);
+            background: rgba(255, 107, 53, 0.1);
+            color: var(--text);
+        }
+        .filter-tab .count {
+            background: var(--dark-lighter);
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+        .filter-tab.active .count { background: var(--primary); color: white; }
+        .nav-btn {
+            background: var(--dark-lighter);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        .nav-btn:hover { border-color: var(--primary); background: rgba(255, 107, 53, 0.1); }
+        #loading, #empty-state, #no-results-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            background: var(--dark-light);
+            border-radius: 12px;
+            border: 2px dashed var(--dark-lighter);
+            color: var(--text-dim);
+            margin-top: 2rem;
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px; height: 40px;
+            border: 4px solid var(--dark-lighter);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .table-wrapper {
+            background: var(--dark-light);
+            border-radius: 12px;
+            border: 1px solid var(--dark-lighter);
+            overflow-x: auto;
+            box-shadow: 0 10px 30px var(--shadow);
+            display: none;
+        }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        thead { background: var(--dark-lighter); }
+        th {
+            padding: 1.25rem 1rem;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.95rem;
+            white-space: nowrap;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+        }
+        td {
+            padding: 1.4rem 1.1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 1.05rem;
+            vertical-align: top;
+        }
+        tbody tr { transition: background 0.2s ease; }
+        tbody tr:hover { background: rgba(255, 255, 255, 0.02); }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr.row-approved { background: rgba(78, 204, 163, 0.04); }
+        tbody tr.row-denied  { background: rgba(255, 107, 107, 0.04); opacity: 0.6; }
+        .col-job {
+            font-weight: 700;
+            color: var(--accent);
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            white-space: nowrap;
+        }
+        .col-date { color: var(--text-dim); font-size: 0.85rem; white-space: nowrap; }
+        .col-address { min-width: 150px; }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .status-pending  { background: rgba(255, 200, 87, 0.12); color: var(--warning);  border: 1px solid rgba(255, 200, 87, 0.3); }
+        .status-approved { background: rgba(78, 204, 163, 0.12); color: var(--success);  border: 1px solid rgba(78, 204, 163, 0.3); }
+        .status-denied   { background: rgba(255, 107, 107, 0.12); color: var(--error);   border: 1px solid rgba(255, 107, 107, 0.3); }
+        .status-historic { background: rgba(154, 154, 176, 0.1);  color: var(--text-dim); border: 1px solid rgba(154, 154, 176, 0.2); }
+        .action-cell { white-space: nowrap; }
+        .btn-approve, .btn-deny {
+            border: none;
+            padding: 0.7rem 1.3rem;
+            border-radius: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            letter-spacing: 0.03em;
+        }
+        .btn-approve {
+            background: rgba(78, 204, 163, 0.15);
+            color: var(--success);
+            border: 1px solid rgba(78, 204, 163, 0.4);
+            margin-right: 0.5rem;
+        }
+        .btn-approve:hover:not(:disabled) { background: var(--success); color: var(--dark); }
+        .btn-deny {
+            background: rgba(255, 107, 107, 0.12);
+            color: var(--error);
+            border: 1px solid rgba(255, 107, 107, 0.35);
+        }
+        .btn-deny:hover:not(:disabled) { background: var(--error); color: white; }
+        .btn-approve:disabled, .btn-deny:disabled { opacity: 0.35; cursor: not-allowed; }
+        .item-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .item-badge {
+            background: var(--dark-lighter);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.45rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            display: inline-flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .item-badge.cable span.qty { color: var(--primary); font-weight: 700; }
+        .item-badge.misc span.qty  { color: var(--accent);  font-weight: 700; }
+        .item-type-tag {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            background: rgba(255,255,255,0.05);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+        .item-code {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    background: rgba(255,255,255,0.04);
+    padding: 0.05rem 0.3rem;
+    border-radius: 3px;
+}
+        .multi-job-text { color: var(--warning); font-size: 0.85rem; display: block; margin-top: 0.25rem; }
+        .toast {
+            position: fixed; bottom: 2rem; right: 2rem;
+            background: var(--dark-light); color: var(--text);
+            padding: 1rem 1.5rem; border-radius: 8px;
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            z-index: 2000; display: none; max-width: 360px;
+            animation: slideIn 0.3s ease-out;
+        }
+        .toast.show { display: block; }
+        .toast.error   { border-color: var(--error); }
+        .toast.warning { border-color: var(--warning); }
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to   { transform: translateX(0); opacity: 1; }
+        }
+        .modal-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .modal-overlay.show { opacity: 1; pointer-events: all; }
+        .modal {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            border-radius: 14px;
+            padding: 2rem;
+            max-width: 440px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.show .modal { transform: scale(1); }
+        .modal h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+        .modal p { color: var(--text-dim); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.6; }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; }
+        .modal-cancel {
+            background: var(--dark-lighter);
+            color: var(--text-dim);
+            border: 1px solid transparent;
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .modal-cancel:hover { border-color: var(--text-dim); color: var(--text); }
+        .modal-confirm {
+            padding: 0.65rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+        .modal-confirm.approve { background: var(--success); color: var(--dark); }
+        .modal-confirm.approve:hover { background: #3db88c; }
+        .modal-confirm.deny { background: var(--error); color: white; }
+        .modal-confirm.deny:hover { background: #e05555; }
+        /* Edit modal */
+        .edit-modal {
+            max-width: 580px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .edit-modal h3 { margin-bottom: 0.4rem; }
+        .edit-modal .edit-subtitle { color: var(--text-dim); font-size: 0.85rem; margin-bottom: 1.25rem; }
+        .edit-section-label {
+            font-family: 'Syne', sans-serif;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+            padding: 0.5rem 0 0.4rem;
+            border-bottom: 1px solid var(--dark-lighter);
+            margin-bottom: 0.5rem;
+            margin-top: 0.25rem;
+        }
+        .edit-section-label:first-child { margin-top: 0; }
+        .edit-cable-list {
+            overflow-y: auto;
+            flex: 1;
+            margin-bottom: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .edit-cable-row {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+            padding: 0.65rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            transition: opacity 0.2s ease;
+        }
+        /* Misc items have more fields */
+        .edit-misc-row {
+            display: grid;
+            grid-template-columns: auto 1fr auto auto auto;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+            padding: 0.65rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-left: 3px solid rgba(0, 217, 255, 0.3);
+            transition: opacity 0.2s ease;
+        }
+        .edit-cable-row.removed,
+        .edit-misc-row.removed {
+            opacity: 0.35;
+        }
+        .edit-cable-row.removed .edit-qty-input,
+        .edit-misc-row.removed .edit-qty-input,
+        .edit-misc-row.removed .edit-text-input {
+            text-decoration: line-through;
+            color: var(--text-dim);
+        }
+        .edit-cable-label { font-size: 0.88rem; color: var(--text); }
+        .edit-qty-input {
+            width: 72px;
+            background: var(--dark);
+            border: 1px solid var(--accent);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+        .edit-qty-input:focus { outline: none; border-color: var(--primary); }
+        .edit-qty-input:disabled { border-color: var(--dark-lighter); color: var(--text-dim); }
+        .edit-text-input {
+            background: var(--dark);
+            border: 1px solid rgba(0, 217, 255, 0.4);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            width: 100%;
+            min-width: 0;
+        }
+        .edit-text-input:focus { outline: none; border-color: var(--accent); }
+        .edit-text-input:disabled { border-color: var(--dark-lighter); color: var(--text-dim); }
+        .edit-type-select {
+            background: var(--dark);
+            border: 1px solid rgba(0, 217, 255, 0.4);
+            color: var(--text);
+            padding: 0.4rem 0.5rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            width: 90px;
+            flex-shrink: 0;
+        }
+        .edit-type-select:focus { outline: none; border-color: var(--accent); }
+        .edit-type-select:disabled { border-color: var(--dark-lighter); color: var(--text-dim); }
+        .btn-remove-cable {
+            background: none;
+            border: 1px solid rgba(255,107,107,0.3);
+            color: var(--error);
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .btn-remove-cable:hover { background: var(--error); color: white; border-color: var(--error); }
+        .btn-restore-cable {
+            background: none;
+            border: 1px solid rgba(78,204,163,0.3);
+            color: var(--success);
+            width: 28px; height: 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+        .btn-restore-cable:hover { background: var(--success); color: var(--dark); border-color: var(--success); }
+        .btn-add-misc {
+            background: rgba(0, 217, 255, 0.08);
+            color: var(--accent);
+            border: 1px dashed rgba(0, 217, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            text-align: center;
+            margin-top: 0.25rem;
+        }
+        .btn-add-misc:hover { background: rgba(0, 217, 255, 0.15); border-color: var(--accent); }
+        .btn-edit {
+            background: rgba(0, 217, 255, 0.08);
+            color: var(--accent);
+            border: 1px solid rgba(0, 217, 255, 0.25);
+            padding: 0.45rem 0.8rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            margin-bottom: 0.5rem;
+            display: block;
+            width: 100%;
+        }
+        .btn-edit:hover { background: rgba(0, 217, 255, 0.18); border-color: var(--accent); }
+        .edit-save-btn {
+            background: var(--accent);
+            color: var(--dark);
+            border: none;
+            padding: 0.65rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .edit-save-btn:hover { background: #00c4e8; }
+        .misc-qty-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-align: right;
+            white-space: nowrap;
+        }
+        @media (max-width: 900px) {
+            .search-input { width: 100%; }
+            .header-controls { width: 100%; justify-content: flex-start; }
+            body { padding: 1rem; }
+            .edit-misc-row { grid-template-columns: 1fr auto auto; grid-template-rows: auto auto; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-wrap">
+                <h1>📋 Order Dashboard</h1>
+                <p>Pingu - Solar Requirements</p>
+            </div>
+            <div class="header-controls">
+                <div class="search-wrapper">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="search-input" class="search-input" placeholder="Search Job #, Name, Postcode...">
+                </div>
+                <button class="nav-btn" id="export-btn" onclick="openExportModal()">📊 Export</button>
+                <a href="cable-requirements.html" class="nav-btn">➕ New Order</a>
+            </div>
+        </header>
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="all"    onclick="setFilter('all')">All <span class="count" id="count-all">0</span></button>
+            <button class="filter-tab"        data-filter="pending"  onclick="setFilter('pending')">⏳ Pending <span class="count" id="count-pending">0</span></button>
+            <button class="filter-tab"        data-filter="approved" onclick="setFilter('approved')">✅ Approved <span class="count" id="count-approved">0</span></button>
+            <button class="filter-tab"        data-filter="denied"   onclick="setFilter('denied')">❌ Denied <span class="count" id="count-denied">0</span></button>
+        </div>
+        <div id="loading">
+            <div class="spinner"></div>
+            <p>Fetching latest orders...</p>
+        </div>
+        <div id="empty-state"     style="display:none;"><h2>No orders found</h2><p>Once requirements are submitted, they will appear here.</p></div>
+        <div id="no-results-state" style="display:none;"><h2>No matches found</h2><p>Try adjusting your search or filter.</p></div>
+        <div class="table-wrapper" id="table-wrapper">
+            <table id="orders-table">
+                <thead>
+                    <tr>
+                        <th>Job #</th>
+                        <th>Date Submitted</th>
+                        <th>Technician</th>
+                        <th>Address</th>
+                        <th>Items Requested</th>
+                        <th>Applicable Jobs</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="orders-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <h3 id="modal-title">Confirm Action</h3>
+            <p id="modal-body">Are you sure?</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+                <button class="modal-confirm" id="modal-confirm-btn" onclick="confirmAction()">Confirm</button>
+            </div>
+        </div>
+    </div>
+    <!-- Edit Modal -->
+    <div class="modal-overlay" id="edit-modal-overlay">
+        <div class="modal edit-modal">
+            <h3 id="edit-modal-title">Edit Order Items</h3>
+            <p class="edit-subtitle">Adjust quantities, edit descriptions, or remove items before approving.</p>
+            <div class="edit-cable-list" id="edit-cable-list"></div>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="edit-save-btn" onclick="saveEdits()">💾 Save Changes</button>
+            </div>
+        </div>
+    </div>
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="export-modal-overlay">
+        <div class="modal">
+            <h3>📊 Export Orders to Excel</h3>
+            <p>Choose a submission date range and status to include. Leave dates blank to export all.</p>
+            <div style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1rem;">
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    From
+                    <input type="date" id="export-start-date" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    To
+                    <input type="date" id="export-end-date" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                </label>
+                <label style="font-size:0.85rem; color:var(--text-dim);">
+                    Status
+                    <select id="export-status" class="search-input" style="width:100%; margin-top:0.35rem; padding-left:1rem;">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="denied">Denied</option>
+                        <option value="historic">Historic</option>
+                    </select>
+                </label>
+            </div>
+            <p id="export-count-msg" style="font-size:0.8rem; color:var(--text-dim); margin-bottom:1.25rem;">0 orders match this range.</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="closeExportModal()">Cancel</button>
+                <button class="modal-confirm approve" onclick="runExport()">⬇️ Export XLSX</button>
+            </div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, doc, updateDoc, query, orderBy }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+        window.db = db;
+        window.firebaseUpdateDoc = updateDoc;
+        window.firebaseDoc       = doc;
+        window.firebaseColl      = collection;
+        const CABLE_LABELS = {
+            'cable-6mm-ev-ultra':    '6mm EV Ultra',
+            'cable-fire-fighter':    'Fire Fighter',
+            'cable-blue-brown-tails':'Blue/Brown Tails',
+            'cable-earth-16mm':      'Earth 16mm',
+            'cable-earth-10mm':      'Earth 10mm',
+            'cable-h07-2m':          'H07 2m',
+            'cable-2core-pv-ultra':  '2 Core PV Ultra',
+            'cable-10mm-ev':         '10mm EV',
+            'cable-4core-pv':        '4 Core PV',
+            'cable-6mm-single-dc':   '6mm single DC cable'
+        };
+        let allOrders   = [];
+        let activeFilter = 'all';
+        let searchTerm   = '';
+        window._pendingAction = null;
+        function showToast(msg, type = 'success') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = `toast show ${type}`;
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => t.classList.remove('show'), 4000);
+        }
+        window.showToast = showToast;
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            return new Date(isoString).toLocaleDateString('en-GB', {
+                day: 'numeric', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
+        }
+        function escapeHtml(text) {
+            if (text === null || text === undefined) return '';
+            const div = document.createElement('div');
+            div.textContent = String(text);
+            return div.innerHTML;
+        }
+        function updateCounts(orders) {
+            const counts = { all: orders.length, pending: 0, approved: 0, denied: 0 };
+            orders.forEach(o => {
+                const s = o.status;
+                if (s && counts[s] !== undefined) counts[s]++;
+            });
+            document.getElementById('count-all').textContent      = counts.all;
+            document.getElementById('count-pending').textContent  = counts.pending;
+            document.getElementById('count-approved').textContent = counts.approved;
+            document.getElementById('count-denied').textContent   = counts.denied;
+        }
+        function getFilteredOrders() {
+            return allOrders.filter(o => {
+                const status = o.status || 'historic';
+                const matchFilter = activeFilter === 'all' || status === activeFilter;
+                const matchSearch = !searchTerm ||
+                    (o.jobNumber  || '').toLowerCase().includes(searchTerm) ||
+                    (o.postcode   || '').toLowerCase().includes(searchTerm) ||
+                    (o.name       || '').toLowerCase().includes(searchTerm) ||
+                    (o.extraJobs  || '').toLowerCase().includes(searchTerm);
+                return matchFilter && matchSearch;
+            });
+        }
+        function renderTable(orders) {
+            const tbody        = document.getElementById('orders-tbody');
+            const noResults    = document.getElementById('no-results-state');
+            const tableWrapper = document.getElementById('table-wrapper');
+            tbody.innerHTML = '';
+            if (orders.length === 0) {
+                tableWrapper.style.display = 'none';
+                noResults.style.display = allOrders.length > 0 ? 'block' : 'none';
+                return;
+            }
+            noResults.style.display = 'none';
+            tableWrapper.style.display = 'block';
+            orders.forEach(data => {
+                const isHistoric = !data.status;
+                const status = data.status || 'historic';
+                let itemsHtml = '<div class="item-list">';
+                let hasItems  = false;
+                if (data.cables) {
+                    for (const [id, length] of Object.entries(data.cables)) {
+                        if (length > 0) {
+                            hasItems = true;
+                            itemsHtml += `<div class="item-badge cable">${escapeHtml(CABLE_LABELS[id] || id)} <span class="qty">${length}m</span></div>`;
+                        }
+                    }
+                }
+if (data.miscItems && data.miscItems.length > 0) {
+    hasItems = true;
+    data.miscItems.forEach(item => {
+        const codeTag = item.code ? `<span class="item-code">${escapeHtml(item.code)}</span>` : '';
+        itemsHtml += `<div class="item-badge misc"><span class="item-type-tag">${escapeHtml(item.type).substring(0,4)}</span>${escapeHtml(item.desc)}${codeTag} <span class="qty">x${item.qty}</span></div>`;
+    });
+}
+                itemsHtml += '</div>';
+                if (!hasItems) itemsHtml = '<span style="color:var(--text-dim)">No items specified</span>';
+                const isMultiJob = data.isSingleJob === false;
+                const applicabilityHtml = isMultiJob && data.extraJobs
+                    ? `Multiple<br><span class="multi-job-text">${escapeHtml(data.extraJobs)}</span>`
+                    : 'Single Job';
+                const badgeClass = { pending: 'status-pending', approved: 'status-approved', denied: 'status-denied', historic: 'status-historic' }[status] || 'status-historic';
+                const badgeIcon  = { pending: '⏳', approved: '✅', denied: '❌', historic: '📁' }[status] || '📁';
+                const badgeLabel = status.charAt(0).toUpperCase() + status.slice(1);
+                const statusHtml = `<span class="status-badge ${badgeClass}">${badgeIcon} ${badgeLabel}</span>`;
+                const actionHtml = isHistoric
+                    ? `<div class="action-cell" style="color:var(--text-dim);font-size:0.8rem;">—</div>`
+                    : status === 'pending'
+                        ? `<div class="action-cell">
+                            <button class="btn-edit"    onclick="openEditModal('${data._docId}')">✏️ Edit Items</button>
+                            <button class="btn-approve" onclick="requestApprove('${data._docId}', '${escapeHtml(data.jobNumber)}')">✅ Approve</button>
+                            <button class="btn-deny"    onclick="requestDeny('${data._docId}', '${escapeHtml(data.jobNumber)}')">❌ Deny</button>
+                           </div>`
+                        : `<div class="action-cell" style="color:var(--text-dim);font-size:0.85rem;">${status === 'approved' ? 'Email sent' : 'No action'}</div>`;
+                const tr = document.createElement('tr');
+                tr.className = status === 'approved' ? 'row-approved' : status === 'denied' ? 'row-denied' : '';
+                tr.innerHTML = `
+                    <td class="col-job">#${escapeHtml(data.jobNumber || 'N/A')}</td>
+                    <td class="col-date">${formatDate(data.submittedAt)}</td>
+                    <td>${escapeHtml(data.name || 'Unknown')}<br><span style="color:var(--text-dim);font-size:0.8rem;">${escapeHtml(data.email || '')}</span></td>
+                    <td class="col-address">${escapeHtml(data.doorNumber || '')}<br><strong>${escapeHtml(data.postcode || '')}</strong></td>
+                    <td>${itemsHtml}</td>
+                    <td>${applicabilityHtml}</td>
+                    <td>${statusHtml}</td>
+                    <td>${actionHtml}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+        async function fetchOrders() {
+            try {
+                const q = query(collection(db, 'Cable Requirements'), orderBy('submittedAt', 'desc'));
+                const snapshot = await getDocs(q);
+                document.getElementById('loading').style.display = 'none';
+                if (snapshot.empty) {
+                    document.getElementById('empty-state').style.display = 'block';
+                    return;
+                }
+                allOrders = [];
+                snapshot.forEach(docSnap => {
+                    allOrders.push({ ...docSnap.data(), _docId: docSnap.id });
+                });
+                updateCounts(allOrders);
+                renderTable(getFilteredOrders());
+            } catch (error) {
+                console.error('Error fetching orders:', error);
+                document.getElementById('loading').innerHTML = `
+                    <p style="color:var(--error)">❌ Failed to load orders.</p>
+                    <p style="font-size:0.8rem;margin-top:0.5rem;color:var(--text-dim)">${error.message}</p>`;
+            }
+        }
+        // ---- Approve / Deny flow ----
+        window.requestApprove = function(docId, jobNumber) {
+            window._pendingAction = { type: 'approve', docId };
+            document.getElementById('modal-title').textContent = `Approve Order #${jobNumber}?`;
+            document.getElementById('modal-body').textContent  =
+                'This will mark the order as approved and send a confirmation email to the technician.';
+            const btn = document.getElementById('modal-confirm-btn');
+            btn.textContent = '✅ Approve & Send Email';
+            btn.className   = 'modal-confirm approve';
+            document.getElementById('modal-overlay').classList.add('show');
+        };
+        window.requestDeny = function(docId, jobNumber) {
+            window._pendingAction = { type: 'deny', docId };
+            document.getElementById('modal-title').textContent = `Deny Order #${jobNumber}?`;
+            document.getElementById('modal-body').textContent  =
+                'This will mark the order as denied. No email will be sent to the technician.';
+            const btn = document.getElementById('modal-confirm-btn');
+            btn.textContent = '❌ Deny Order';
+            btn.className   = 'modal-confirm deny';
+            document.getElementById('modal-overlay').classList.add('show');
+        };
+        window.closeModal = function() {
+            document.getElementById('modal-overlay').classList.remove('show');
+            window._pendingAction = null;
+        };
+        window.confirmAction = async function() {
+            const action = { ...window._pendingAction };
+            if (!action.type) return;
+            closeModal();
+            const order = allOrders.find(o => o._docId === action.docId);
+            if (!order) return;
+            try {
+                const docRef = window.firebaseDoc(window.db, 'Cable Requirements', action.docId);
+                if (action.type === 'approve') {
+                    await window.firebaseUpdateDoc(docRef, {
+                        status: 'approved',
+                        approvedAt: new Date().toISOString()
+                    });
+                    const CABLE_LABELS_LOCAL = {
+                        'cable-6mm-ev-ultra': '6mm EV Ultra', 'cable-fire-fighter': 'Fire Fighter',
+                        'cable-blue-brown-tails': 'Blue/Brown Tails', 'cable-earth-16mm': 'Earth 16mm',
+                        'cable-earth-10mm': 'Earth 10mm', 'cable-h07-2m': 'H07 2m',
+                        'cable-2core-pv-ultra': '2 Core PV Ultra', 'cable-10mm-ev': '10mm EV',
+                        'cable-4core-pv': '4 Core PV', 'cable-6mm-single-dc': '6mm single DC cable'
+                    };
+                    let itemSummary = Object.entries(order.cables || {})
+                        .filter(([, v]) => v > 0)
+                        .map(([id, v]) => `${CABLE_LABELS_LOCAL[id] || id}: ${v}m`)
+                        .join('\n');
+                    if (order.miscItems && order.miscItems.length > 0) {
+                        itemSummary += '\n\nMiscellaneous Items:\n' +
+                            order.miscItems.map(m => `• ${m.type}: ${m.desc} (x${m.qty})`).join('\n');
+                    }
+                    if (!itemSummary) itemSummary = 'No items specified.';
+                    try {
+                        await emailjs.send('service_556xeew', 'template_c1rcaoo', {
+                            name:          order.name,
+                            user_email:    order.email,
+                            job_number:    order.jobNumber,
+                            door_number:   order.doorNumber,
+                            postcode:      order.postcode,
+                            is_single_job: order.isSingleJob ? 'Yes' : 'No',
+                            extra_jobs:    order.extraJobs || 'N/A',
+                            cable_summary: itemSummary,
+                            submitted_at:  new Date(order.submittedAt).toLocaleString('en-GB'),
+                            document_id:   action.docId
+                        });
+                        showToast(`✅ Order #${order.jobNumber} approved — email sent`, 'success');
+                    } catch (emailErr) {
+                        console.warn('Email failed:', emailErr);
+                        showToast(`Order approved but email failed to send`, 'warning');
+                    }
+                    order.status = 'approved';
+                } else {
+                    await window.firebaseUpdateDoc(docRef, {
+                        status: 'denied',
+                        deniedAt: new Date().toISOString()
+                    });
+                    order.status = 'denied';
+                    showToast(`❌ Order #${order.jobNumber} denied — no email sent`, 'warning');
+                }
+                updateCounts(allOrders);
+                activeFilter = 'all';
+                document.querySelectorAll('.filter-tab').forEach(t => {
+                    t.classList.toggle('active', t.dataset.filter === 'all');
+                });
+                renderTable(getFilteredOrders());
+            } catch (err) {
+                console.error('Action failed:', err);
+                showToast('Action failed: ' + err.message, 'error');
+            }
+        };
+        // ---- Edit Modal ----
+        const CABLE_LABELS_LIST = [
+            { id: 'cable-6mm-ev-ultra',    label: '6mm EV Ultra' },
+            { id: 'cable-fire-fighter',    label: 'Fire Fighter' },
+            { id: 'cable-blue-brown-tails',label: 'Blue/Brown Tails' },
+            { id: 'cable-earth-16mm',      label: 'Earth 16mm' },
+            { id: 'cable-earth-10mm',      label: 'Earth 10mm' },
+            { id: 'cable-h07-2m',          label: 'H07 2m' },
+            { id: 'cable-2core-pv-ultra',  label: '2 Core PV Ultra' },
+            { id: 'cable-10mm-ev',         label: '10mm EV' },
+            { id: 'cable-4core-pv',        label: '4 Core PV' },
+            { id: 'cable-6mm-single-dc',   label: '6mm single DC cable' }
+        ];
+        const MISC_TYPES = ['Electrical', 'Roof', 'Cable', 'Clip', 'Connector', 'Fuse', 'Other'];
+        let _editDocId = null;
+        let _editRemovedState = {};   // { 'cable-xxx': true/false }
+        let _editMiscItems = [];      // working copy of miscItems array (with _removed flag)
+        let _editNextMiscId = 0;      // counter for new misc items added in-session
+        window.openEditModal = function(docId) {
+            const order = allOrders.find(o => o._docId === docId);
+            if (!order) return;
+            _editDocId = docId;
+            _editRemovedState = {};
+            _editNextMiscId = 0;
+            // Deep-copy miscItems so edits don't mutate the live order until saved
+            _editMiscItems = (order.miscItems || []).map((m, i) => ({
+                ...m,
+                _id: i,       // stable ID for DOM references
+                _removed: false
+            }));
+            document.getElementById('edit-modal-title').textContent = `Edit Items — Job #${escapeHtml(order.jobNumber)}`;
+            renderEditModal(order);
+            document.getElementById('edit-modal-overlay').classList.add('show');
+        };
+        function renderEditModal(order) {
+            const list = document.getElementById('edit-cable-list');
+            list.innerHTML = '';
+            // ── CABLES SECTION ──────────────────────────────────────
+            const activeCables = CABLE_LABELS_LIST.filter(c => (order.cables[c.id] || 0) > 0);
+            if (activeCables.length > 0) {
+                const cableHeader = document.createElement('div');
+                cableHeader.className = 'edit-section-label';
+                cableHeader.textContent = '🔌 Cables';
+                list.appendChild(cableHeader);
+                activeCables.forEach(c => {
+                    if (_editRemovedState[c.id] === undefined) _editRemovedState[c.id] = false;
+                    const isRemoved = _editRemovedState[c.id];
+                    const row = document.createElement('div');
+                    row.className = `edit-cable-row${isRemoved ? ' removed' : ''}`;
+                    row.id = `edit-row-${c.id}`;
+                    row.innerHTML = `
+                        <span class="edit-cable-label">${escapeHtml(c.label)}</span>
+                        <input type="number" class="edit-qty-input" id="edit-qty-${c.id}"
+                               value="${order.cables[c.id]}" min="0" step="0.5"
+                               ${isRemoved ? 'disabled' : ''}>
+                        <button class="${isRemoved ? 'btn-restore-cable' : 'btn-remove-cable'}"
+                                id="edit-toggle-${c.id}"
+                                onclick="toggleCableRemove('${c.id}')"
+                                title="${isRemoved ? 'Restore item' : 'Remove item'}">${isRemoved ? '↩' : '×'}</button>`;
+                    list.appendChild(row);
+                });
+            }
+            // ── MISC ITEMS SECTION ──────────────────────────────────
+            const miscHeader = document.createElement('div');
+            miscHeader.className = 'edit-section-label';
+            miscHeader.textContent = '📦 Miscellaneous Items';
+            list.appendChild(miscHeader);
+            if (_editMiscItems.length === 0) {
+                const empty = document.createElement('p');
+                empty.id = 'edit-misc-empty';
+                empty.style.cssText = 'color:var(--text-dim);font-size:0.85rem;padding:0.25rem 0;';
+                empty.textContent = 'No miscellaneous items on this order.';
+                list.appendChild(empty);
+            } else {
+                _editMiscItems.forEach(item => renderMiscRow(list, item));
+            }
+            // Add misc item button
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn-add-misc';
+            addBtn.textContent = '＋ Add Miscellaneous Item';
+            addBtn.onclick = addMiscItem;
+            list.appendChild(addBtn);
+        }
+        function renderMiscRow(container, item) {
+            // Remove "no items" placeholder if present
+            const empty = document.getElementById('edit-misc-empty');
+            if (empty) empty.remove();
+            const row = document.createElement('div');
+            row.className = `edit-misc-row${item._removed ? ' removed' : ''}`;
+            row.id = `edit-misc-row-${item._id}`;
+            const typeOptions = MISC_TYPES.map(t =>
+                `<option value="${t}" ${item.type === t ? 'selected' : ''}>${t}</option>`
+            ).join('');
+            row.innerHTML = `
+                <select class="edit-type-select" id="edit-misc-type-${item._id}"
+                        ${item._removed ? 'disabled' : ''}>${typeOptions}</select>
+                <input type="text" class="edit-text-input" id="edit-misc-desc-${item._id}"
+                       value="${escapeHtml(item.desc || '')}" placeholder="Description"
+                       ${item._removed ? 'disabled' : ''}>
+                <span class="misc-qty-label">Qty</span>
+                <input type="number" class="edit-qty-input" id="edit-misc-qty-${item._id}"
+                       value="${item.qty || 1}" min="1" step="1"
+                       ${item._removed ? 'disabled' : ''}>
+                <button class="${item._removed ? 'btn-restore-cable' : 'btn-remove-cable'}"
+                        onclick="toggleMiscRemove(${item._id})"
+                        title="${item._removed ? 'Restore item' : 'Remove item'}">${item._removed ? '↩' : '×'}</button>`;
+            // Insert before the "Add" button (last child)
+            const addBtn = container.querySelector('.btn-add-misc');
+            container.insertBefore(row, addBtn);
+        }
+        window.toggleCableRemove = function(cableId) {
+            _editRemovedState[cableId] = !_editRemovedState[cableId];
+            const isNowRemoved = _editRemovedState[cableId];
+            const row   = document.getElementById(`edit-row-${cableId}`);
+            const input = document.getElementById(`edit-qty-${cableId}`);
+            const btn   = document.getElementById(`edit-toggle-${cableId}`);
+            row.classList.toggle('removed', isNowRemoved);
+            input.disabled  = isNowRemoved;
+            btn.className   = isNowRemoved ? 'btn-restore-cable' : 'btn-remove-cable';
+            btn.title       = isNowRemoved ? 'Restore item' : 'Remove item';
+            btn.textContent = isNowRemoved ? '↩' : '×';
+        };
+        window.toggleMiscRemove = function(itemId) {
+            const item = _editMiscItems.find(m => m._id === itemId);
+            if (!item) return;
+            item._removed = !item._removed;
+            const row = document.getElementById(`edit-misc-row-${itemId}`);
+            const btn = row.querySelector('button');
+            const inputs = row.querySelectorAll('input, select');
+            row.classList.toggle('removed', item._removed);
+            inputs.forEach(i => i.disabled = item._removed);
+            btn.className   = item._removed ? 'btn-restore-cable' : 'btn-remove-cable';
+            btn.title       = item._removed ? 'Restore item' : 'Remove item';
+            btn.textContent = item._removed ? '↩' : '×';
+        };
+        window.addMiscItem = function() {
+            const newItem = {
+                _id: 1000 + _editNextMiscId++,
+                type: 'Other',
+                desc: '',
+                qty: 1,
+                _removed: false,
+                _isNew: true
+            };
+            _editMiscItems.push(newItem);
+            const list = document.getElementById('edit-cable-list');
+            renderMiscRow(list, newItem);
+            // Focus the description field
+            setTimeout(() => document.getElementById(`edit-misc-desc-${newItem._id}`)?.focus(), 50);
+        };
+        window.closeEditModal = function() {
+            document.getElementById('edit-modal-overlay').classList.remove('show');
+            _editDocId = null;
+            _editRemovedState = {};
+            _editMiscItems = [];
+        };
+        window.saveEdits = async function() {
+            if (!_editDocId) return;
+            const order = allOrders.find(o => o._docId === _editDocId);
+            if (!order) return;
+            // Build updated cables
+            const updatedCables = { ...order.cables };
+            CABLE_LABELS_LIST.forEach(c => {
+                if (_editRemovedState[c.id] === true) {
+                    updatedCables[c.id] = 0;
+                } else if (document.getElementById(`edit-qty-${c.id}`)) {
+                    updatedCables[c.id] = parseFloat(document.getElementById(`edit-qty-${c.id}`).value) || 0;
+                }
+            });
+            // Build updated miscItems — read current values from DOM, exclude removed
+const updatedMiscItems = _editMiscItems
+    .filter(item => !item._removed)
+    .map(item => ({
+        type: document.getElementById(`edit-misc-type-${item._id}`)?.value || item.type,
+        desc: document.getElementById(`edit-misc-desc-${item._id}`)?.value.trim() || item.desc,
+        qty:  parseInt(document.getElementById(`edit-misc-qty-${item._id}`)?.value, 10) || item.qty,
+        code: item.code || ''
+    }))
+    .filter(item => item.desc); // drop items with no description
+            try {
+                const docRef = window.firebaseDoc(window.db, 'Cable Requirements', _editDocId);
+                await window.firebaseUpdateDoc(docRef, {
+                    cables: updatedCables,
+                    miscItems: updatedMiscItems
+                });
+                order.cables    = updatedCables;
+                order.miscItems = updatedMiscItems;
+                closeEditModal();
+                renderTable(getFilteredOrders());
+                showToast('✏️ Order items updated', 'success');
+            } catch (err) {
+                console.error('Save edits failed:', err);
+                showToast('Failed to save changes: ' + err.message, 'error');
+            }
+        };
+        // ---- Export to XLSX ----
+        function getExportOrders() {
+            const startVal  = document.getElementById('export-start-date').value;
+            const endVal    = document.getElementById('export-end-date').value;
+            const statusVal = document.getElementById('export-status').value;
+            const start = startVal ? new Date(startVal + 'T00:00:00') : null;
+            const end   = endVal   ? new Date(endVal   + 'T23:59:59.999') : null;
+            return allOrders.filter(o => {
+                const status = o.status || 'historic';
+                if (statusVal !== 'all' && status !== statusVal) return false;
+                if (start || end) {
+                    if (!o.submittedAt) return false;
+                    const d = new Date(o.submittedAt);
+                    if (start && d < start) return false;
+                    if (end && d > end) return false;
+                }
+                return true;
+            });
+        }
+        function updateExportCount() {
+            const n = getExportOrders().length;
+            document.getElementById('export-count-msg').textContent = `${n} order${n === 1 ? '' : 's'} match this range.`;
+        }
+        window.openExportModal = function() {
+            document.getElementById('export-start-date').value = '';
+            document.getElementById('export-end-date').value   = '';
+            document.getElementById('export-status').value     = 'all';
+            updateExportCount();
+            document.getElementById('export-modal-overlay').classList.add('show');
+        };
+        window.closeExportModal = function() {
+            document.getElementById('export-modal-overlay').classList.remove('show');
+        };
+        document.getElementById('export-start-date').addEventListener('change', updateExportCount);
+        document.getElementById('export-end-date').addEventListener('change', updateExportCount);
+        document.getElementById('export-status').addEventListener('change', updateExportCount);
+        window.runExport = function() {
+            if (typeof XLSX === 'undefined') {
+                showToast('Export library failed to load — check your connection', 'error');
+                return;
+            }
+            const orders = getExportOrders();
+            if (orders.length === 0) {
+                showToast('No orders match the selected range', 'warning');
+                return;
+            }
+            const rows = orders.map(o => {
+                const status = o.status || 'historic';
+                const row = {
+                    'Job #':           o.jobNumber || '',
+                    'Date Submitted':  o.submittedAt ? new Date(o.submittedAt).toLocaleString('en-GB') : '',
+                    'Technician':      o.name || '',
+                    'Email':           o.email || '',
+                    'Door Number':     o.doorNumber || '',
+                    'Postcode':        o.postcode || ''
+                };
+                CABLE_LABELS_LIST.forEach(c => {
+                    const qty = o.cables ? o.cables[c.id] : 0;
+                    row[`${c.label} (m)`] = qty > 0 ? qty : '';
+                });
+                row['Misc Items'] = (o.miscItems && o.miscItems.length > 0)
+                    ? o.miscItems.map(m => `${m.type}: ${m.desc}${m.code ? ' [' + m.code + ']' : ''} x${m.qty}`).join('; ')
+                    : '';
+                row['Applicable Jobs'] = (o.isSingleJob === false && o.extraJobs)
+                    ? `Multiple: ${o.extraJobs}`
+                    : 'Single Job';
+                row['Status'] = status.charAt(0).toUpperCase() + status.slice(1);
+                return row;
+            });
+            const worksheet = XLSX.utils.json_to_sheet(rows);
+            const headers = Object.keys(rows[0]);
+            worksheet['!cols'] = headers.map(key => {
+                const maxLen = Math.max(key.length, ...rows.map(r => String(r[key] ?? '').length));
+                return { wch: Math.min(Math.max(maxLen + 2, 10), 50) };
+            });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Cable Orders');
+            const startVal = document.getElementById('export-start-date').value;
+            const endVal   = document.getElementById('export-end-date').value;
+            const rangePart = (startVal || endVal) ? `${startVal || 'start'}_to_${endVal || 'now'}` : 'all';
+            const fileName = `cable-orders_${rangePart}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            showToast(`📊 Exported ${orders.length} order${orders.length === 1 ? '' : 's'} to ${fileName}`, 'success');
+            closeExportModal();
+        };
+        // ---- Filter & Search ----
+        window.setFilter = function(filter) {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.filter === filter);
+            });
+            renderTable(getFilteredOrders());
+        };
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            searchTerm = e.target.value.toLowerCase().trim();
+            renderTable(getFilteredOrders());
+        });
+        window.addEventListener('DOMContentLoaded', () => {
+            emailjs.init('ziLnha91scpGjFABh');
+            fetchOrders();
+        });
+    </script>
+</body>
+</html>

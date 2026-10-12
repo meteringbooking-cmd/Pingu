@@ -1,0 +1,1384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Calendar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+
+        .back-btn {
+            background: var(--dark-light);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .back-btn:hover {
+            background: var(--dark-lighter);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            color: var(--text);
+        }
+
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+
+        .actions-card {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 2px solid transparent;
+            margin-bottom: 2rem;
+            animation: fadeInUp 0.6s ease-out;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+        }
+
+        .calendar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--dark-light);
+            border-radius: 12px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background: var(--dark-lighter);
+            border: 2px solid var(--primary);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .nav-btn:hover {
+            background: var(--primary);
+            transform: scale(1.05);
+        }
+
+        .current-month {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .calendar-grid {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        .calendar-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .calendar-table th {
+            padding: 1rem;
+            text-align: center;
+            color: var(--text-dim);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+
+        .calendar-table td {
+            padding: 0;
+            text-align: center;
+            border: 1px solid var(--dark-lighter);
+            height: 200px;
+            vertical-align: top;
+            position: relative;
+        }
+
+        .calendar-day {
+            min-height: 200px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .calendar-day:hover {
+            background: var(--dark-lighter);
+        }
+
+        .day-number {
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .other-month {
+            color: var(--text-dim);
+            opacity: 0.3;
+        }
+
+        .today {
+            background: var(--dark-lighter);
+            border: 2px solid var(--accent);
+        }
+
+        .meetings-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            height: 100%;
+        }
+
+        .time-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+
+        .time-label {
+            font-weight: 700;
+            font-size: 0.7rem;
+            color: var(--secondary);
+            text-align: center;
+            padding: 0.2rem;
+            background: var(--dark-lighter);
+            border-radius: 3px;
+        }
+
+        .meeting-item {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            padding: 0.4rem 0.5rem;
+            border-radius: 4px;
+            color: white;
+            text-align: left;
+            line-height: 1.3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .meeting-item:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .meeting-item.completed {
+            background: linear-gradient(135deg, #4ECCA3, #2ECC71);
+        }
+
+        .meeting-item.not-completed {
+            background: linear-gradient(135deg, #FF6B6B, #E74C3C);
+        }
+        
+        .meeting-item-line {
+            font-size: 0.7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            border: 2px solid var(--primary);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--error);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+
+        .checkbox-label:hover {
+            background: var(--dark);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .additional-purposes-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--dark-light);
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--success);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            animation: slideIn 0.3s ease-out;
+            display: none;
+        }
+
+        .toast.show {
+            display: block;
+        }
+
+        .toast.error {
+            border-color: var(--error);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(400px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .unscheduled-section {
+            margin-top: 3rem;
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .unscheduled-grid {
+            overflow-x: auto;
+        }
+
+        .unscheduled-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .unscheduled-table th {
+            padding: 1rem;
+            text-align: left;
+            color: var(--secondary);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            border-bottom: 2px solid var(--dark-lighter);
+            background: var(--dark-lighter);
+        }
+
+        .unscheduled-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--dark-lighter);
+            vertical-align: top;
+        }
+
+        .engineer-name-item {
+            padding: 0.4rem 0.6rem;
+            background: var(--dark-lighter);
+            border-radius: 4px;
+            margin-bottom: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .calendar-table th,
+            .calendar-table td {
+                padding: 0.3rem;
+                font-size: 0.7rem;
+            }
+
+            .calendar-day {
+                min-height: 80px;
+            }
+
+            .meeting-item {
+                font-size: 0.65rem;
+                padding: 0.2rem;
+            }
+
+            .unscheduled-table th,
+            .unscheduled-table td {
+                padding: 0.5rem;
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="staff-management.html" class="logo">Meeting Calendar</a>
+            </div>
+            <p class="subtitle">Schedule and view team leader meetings with engineers</p>
+        </header>
+
+        <div class="actions-card">
+            <button class="btn" onclick="openMeetingModal()">
+                📅 Input Meeting
+            </button>
+            <button class="btn btn-secondary" onclick="exportToCSV()">
+                📊 Export to CSV
+            </button>
+        </div>
+
+        <div class="calendar-header">
+            <div class="calendar-nav">
+                <button class="nav-btn" onclick="previousMonth()">← Previous</button>
+                <span class="current-month" id="current-month">January 2026</span>
+                <button class="nav-btn" onclick="nextMonth()">Next →</button>
+            </div>
+            <button class="nav-btn" onclick="goToToday()">Today</button>
+        </div>
+
+        <div class="calendar-grid">
+            <table class="calendar-table">
+                <thead>
+                    <tr>
+                        <th>Monday</th>
+                        <th>Tuesday</th>
+                        <th>Wednesday</th>
+                        <th>Thursday</th>
+                        <th>Friday</th>
+                        <th>Saturday</th>
+                        <th>Sunday</th>
+                    </tr>
+                </thead>
+                <tbody id="calendar-body">
+                    <!-- Calendar days will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="unscheduled-section">
+            <h2 class="section-title">Unscheduled Engineers for <span id="unscheduled-month">January 2026</span></h2>
+            <div class="unscheduled-grid">
+                <table class="unscheduled-table" id="unscheduled-table">
+                    <!-- Will be populated dynamically -->
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Meeting Modal -->
+    <div class="modal" id="meeting-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Schedule Meeting</h2>
+                <button class="close-btn" onclick="closeMeetingModal()">×</button>
+            </div>
+            <form id="meeting-form" onsubmit="handleMeetingSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label" for="team-leader-select">Team Leader</label>
+                    <select id="team-leader-select" class="form-select" required onchange="loadEngineers()">
+                        <option value="">Select Team Leader</option>
+                        <option value="Ali Cavan">Ali Cavan</option>
+                        <option value="Craig Barnes">Craig Barnes</option>
+                        <option value="Paul Simpson">Paul Simpson</option>
+                        <option value="Richard Wiecko">Richard Wiecko</option>
+                        <option value="Scott Carson">Scott Carson</option>
+                        <option value="Stuart Whyte">Stuart Whyte</option>
+                        <option value="Subbies">Subbies</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="engineer-select">Engineer</label>
+                    <select id="engineer-select" class="form-select" required>
+                        <option value="">Select Engineer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="purpose-select">Purpose</label>
+                    <select id="purpose-select" class="form-select" required>
+                        <option value="">Select Purpose</option>
+                        <option value="1-2-1">1-2-1</option>
+                        <option value="Disciplinary">Disciplinary</option>
+                        <option value="Fact find investigation">Fact find investigation</option>
+                        <option value="Help with Jep">Help with Jep</option>
+                        <option value="Stock help">Stock help</option>
+                        <option value="Tool/PPE audit">Tool/PPE audit</option>
+                        <option value="Van audit">Van audit</option>
+                        <option value="Van swap">Van swap</option>
+                        <option value="Vehicle Check">Vehicle Check</option>
+                        <option value="Welfare check">Welfare check</option>
+                        <option value="WIP">WIP</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="timeslot-select">Time Slot</label>
+                    <select id="timeslot-select" class="form-select" required>
+                        <option value="">Select Time Slot</option>
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="meeting-date">Meeting Date</label>
+                    <input type="date" id="meeting-date" class="form-input" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%; margin-top: 1rem;">
+                    Schedule Meeting
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Status Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Update Meeting Status</h2>
+                <button class="close-btn" onclick="closeStatusModal()">×</button>
+            </div>
+            <div id="status-meeting-details" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--dark-lighter); border-radius: 8px;">
+                <!-- Meeting details will be populated here -->
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="verify-team-leader">Verify Team Leader</label>
+                <select id="verify-team-leader" class="form-select" required>
+                    <option value="">Select Team Leader</option>
+                    <option value="Ali Cavan">Ali Cavan</option>
+                    <option value="Craig Barnes">Craig Barnes</option>
+                    <option value="Paul Simpson">Paul Simpson</option>
+                    <option value="Richard Wiecko">Richard Wiecko</option>
+                    <option value="Scott Carson">Scott Carson</option>
+                    <option value="Stuart Whyte">Stuart Whyte</option>
+                    <option value="Subbies">Subbies</option>
+                </select>
+            </div>
+
+            <div class="additional-purposes-section">
+                <label class="form-label">Was anything else carried out?</label>
+                <div class="checkbox-group" id="additional-purposes">
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="1-2-1">
+                        <span>1-2-1</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Disciplinary">
+                        <span>Disciplinary</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Fact find investigation">
+                        <span>Fact find investigation</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Help with Jep">
+                        <span>Help with Jep</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Stock help">
+                        <span>Stock help</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Tool/PPE audit">
+                        <span>Tool/PPE audit</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Van audit">
+                        <span>Van audit</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Van swap">
+                        <span>Van swap</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Vehicle Check">
+                        <span>Vehicle Check</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="Welfare check">
+                        <span>Welfare check</span>
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" value="WIP">
+                        <span>WIP</span>
+                    </label>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;">
+                <button class="btn" onclick="updateMeetingStatus('completed')" style="flex: 1; background: linear-gradient(135deg, #4ECCA3, #2ECC71);">
+                    ✓ Completed
+                </button>
+                <button class="btn" onclick="updateMeetingStatus('not-completed')" style="flex: 1; background: linear-gradient(135deg, #FF6B6B, #E74C3C);">
+                    ✗ Not Completed
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div class="modal" id="password-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Password Required</h2>
+                <button class="close-btn" onclick="closePasswordModalFully()">×</button>
+            </div>
+            <p style="margin-bottom: 1.5rem; color: var(--text-dim);">This meeting status has already been set. Enter the password to change it.</p>
+            <div class="form-group">
+                <label class="form-label" for="password-input">Password</label>
+                <input type="password" id="password-input" class="form-input" placeholder="Enter password">
+            </div>
+            <button class="btn" onclick="verifyPassword()" style="width: 100%;">
+                Verify Password
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, addDoc, getDocs, query, where, doc, updateDoc };
+            console.log('Firebase initialized');
+
+            window.addEventListener('DOMContentLoaded', () => {
+                loadEmployees();
+                renderCalendar();
+            });
+        } catch (error) {
+            console.error('Firebase error:', error);
+        }
+    </script>
+
+    <script>
+        let currentDate = new Date();
+        let allEmployees = [];
+        let allMeetings = [];
+
+        const monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+
+        async function loadEmployees() {
+            try {
+                const { collection, getDocs } = window.firebaseModules;
+                const querySnapshot = await getDocs(collection(window.db, 'employees'));
+                allEmployees = [];
+                querySnapshot.forEach((doc) => {
+                    allEmployees.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log('Loaded employees:', allEmployees.length);
+            } catch (error) {
+                console.error('Error loading employees:', error);
+            }
+        }
+
+        async function loadMeetings() {
+            try {
+                const { collection, getDocs } = window.firebaseModules;
+                const querySnapshot = await getDocs(collection(window.db, 'meetings'));
+                allMeetings = [];
+                querySnapshot.forEach((doc) => {
+                    allMeetings.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                console.log('Loaded meetings:', allMeetings.length);
+            } catch (error) {
+                console.error('Error loading meetings:', error);
+            }
+        }
+
+        function getDaysInMonth(date) {
+            return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+        }
+
+        function getFirstDayOfMonth(date) {
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+            // Convert Sunday (0) to 7, and adjust to Monday-based week
+            return firstDay === 0 ? 6 : firstDay - 1;
+        }
+
+        function formatDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getMeetingsForDate(dateStr) {
+            return allMeetings.filter(m => m.date === dateStr);
+        }
+
+        async function renderCalendar() {
+            await loadMeetings();
+            
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const daysInMonth = getDaysInMonth(currentDate);
+            const firstDay = getFirstDayOfMonth(currentDate);
+            
+            document.getElementById('current-month').textContent = `${monthNames[month]} ${year}`;
+            document.getElementById('unscheduled-month').textContent = `${monthNames[month]} ${year}`;
+            
+            const calendarBody = document.getElementById('calendar-body');
+            calendarBody.innerHTML = '';
+            
+            let dayCounter = 1;
+            const totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+            
+            // Days from previous month
+            const prevMonth = new Date(year, month, 0);
+            const daysInPrevMonth = prevMonth.getDate();
+            const prevMonthStart = daysInPrevMonth - firstDay + 1;
+            
+            for (let i = 0; i < Math.ceil(totalCells / 7); i++) {
+                const row = document.createElement('tr');
+                
+                for (let j = 0; j < 7; j++) {
+                    const cell = document.createElement('td');
+                    const cellIndex = i * 7 + j;
+                    
+                    if (cellIndex < firstDay) {
+                        // Previous month days
+                        const day = prevMonthStart + cellIndex;
+                        const prevDate = new Date(year, month - 1, day);
+                        cell.innerHTML = `
+                            <div class="calendar-day other-month">
+                                <div class="day-number">${day}</div>
+                            </div>
+                        `;
+                    } else if (dayCounter <= daysInMonth) {
+                        // Current month days
+                        const currentDay = dayCounter;
+                        const cellDate = new Date(year, month, currentDay);
+                        const dateKey = formatDateKey(cellDate);
+                        const meetings = getMeetingsForDate(dateKey);
+                        
+                        const isToday = 
+                            currentDay === new Date().getDate() &&
+                            month === new Date().getMonth() &&
+                            year === new Date().getFullYear();
+                        
+                        // Separate AM and PM meetings
+                        const amMeetings = meetings.filter(m => m.timeSlot === 'AM');
+                        const pmMeetings = meetings.filter(m => m.timeSlot === 'PM');
+                        
+                        const amHtml = amMeetings.map(m => {
+                            const statusClass = m.status ? m.status : '';
+                            const additionalPurposes = m.additionalPurposes && m.additionalPurposes.length > 0 
+                                ? ` +${m.additionalPurposes.length}` 
+                                : '';
+                            return `<div class="meeting-item ${statusClass}" onclick="openStatusModal('${m.id}', '${m.teamLeader}', '${m.engineer}', '${m.purpose}', '${m.timeSlot}', '${m.status || ''}', '${encodeURIComponent(JSON.stringify(m.additionalPurposes || []))}')">
+                                <div class="meeting-item-line">${m.teamLeader}</div>
+                                <div class="meeting-item-line">${m.engineer}</div>
+                                <div class="meeting-item-line">${m.purpose || 'No purpose'}${additionalPurposes}</div>
+                            </div>`;
+                        }).join('');
+                        
+                        const pmHtml = pmMeetings.map(m => {
+                            const statusClass = m.status ? m.status : '';
+                            const additionalPurposes = m.additionalPurposes && m.additionalPurposes.length > 0 
+                                ? ` +${m.additionalPurposes.length}` 
+                                : '';
+                            return `<div class="meeting-item ${statusClass}" onclick="openStatusModal('${m.id}', '${m.teamLeader}', '${m.engineer}', '${m.purpose}', '${m.timeSlot}', '${m.status || ''}', '${encodeURIComponent(JSON.stringify(m.additionalPurposes || []))}')">
+                                <div class="meeting-item-line">${m.teamLeader}</div>
+                                <div class="meeting-item-line">${m.engineer}</div>
+                                <div class="meeting-item-line">${m.purpose || 'No purpose'}${additionalPurposes}</div>
+                            </div>`;
+                        }).join('');
+                        
+                        cell.innerHTML = `
+                            <div class="calendar-day ${isToday ? 'today' : ''}">
+                                <div class="day-number">${currentDay}</div>
+                                <div class="meetings-list">
+                                    <div class="time-section">
+                                        <div class="time-label">AM</div>
+                                        ${amHtml}
+                                    </div>
+                                    <div class="time-section">
+                                        <div class="time-label">PM</div>
+                                        ${pmHtml}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        dayCounter++;
+                    } else {
+                        // Next month days
+                        const nextMonthDay = dayCounter - daysInMonth;
+                        cell.innerHTML = `
+                            <div class="calendar-day other-month">
+                                <div class="day-number">${nextMonthDay}</div>
+                            </div>
+                        `;
+                        dayCounter++;
+                    }
+                    
+                    row.appendChild(cell);
+                }
+                
+                calendarBody.appendChild(row);
+            }
+            
+            renderUnscheduledEngineers();
+        }
+
+        function renderUnscheduledEngineers() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            // Get all meetings for the current month
+            const monthMeetings = allMeetings.filter(m => {
+                if (!m.date) return false;
+                const meetingDate = new Date(m.date);
+                return meetingDate.getFullYear() === year && meetingDate.getMonth() === month;
+            });
+            
+            // Create a set of scheduled engineers
+            const scheduledEngineers = new Set(monthMeetings.map(m => m.engineer));
+            
+            // Group by team leader
+            const teamLeaders = [
+                'Ali Cavan', 'Craig Barnes', 'Paul Simpson', 'Richard Wiecko',
+                'Scott Carson', 'Stuart Whyte', 'Subbies'
+            ];
+            
+            const unscheduledByTeam = {};
+            
+            teamLeaders.forEach(leader => {
+                const teamMembers = allEmployees.filter(emp => {
+                    const empLeader = emp['Team Leader'] || emp.teamLeader;
+                    return empLeader === leader && !emp.leaveDate;
+                });
+                
+                unscheduledByTeam[leader] = teamMembers
+                    .filter(emp => !scheduledEngineers.has(emp['Full Name']))
+                    .sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
+            });
+            
+            // Render table
+            const table = document.getElementById('unscheduled-table');
+            
+            // Create header row
+            const headerRow = document.createElement('tr');
+            teamLeaders.forEach(leader => {
+                const th = document.createElement('th');
+                th.textContent = leader;
+                headerRow.appendChild(th);
+            });
+            table.innerHTML = '';
+            table.appendChild(headerRow);
+            
+            // Find max number of rows needed
+            const maxRows = Math.max(...Object.values(unscheduledByTeam).map(arr => arr.length));
+            
+            // Create data rows
+            for (let i = 0; i < maxRows; i++) {
+                const row = document.createElement('tr');
+                
+                teamLeaders.forEach(leader => {
+                    const td = document.createElement('td');
+                    const engineers = unscheduledByTeam[leader];
+                    
+                    if (i < engineers.length) {
+                        td.innerHTML = `<div class="engineer-name-item">${engineers[i]['Full Name']}</div>`;
+                    } else {
+                        td.innerHTML = '';
+                    }
+                    
+                    row.appendChild(td);
+                });
+                
+                table.appendChild(row);
+            }
+        }
+
+        function previousMonth() {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+
+        function openMeetingModal() {
+            document.getElementById('meeting-modal').classList.add('show');
+            document.getElementById('engineer-select').innerHTML = '<option value="">Select Engineer</option>';
+        }
+
+        function closeMeetingModal() {
+            document.getElementById('meeting-modal').classList.remove('show');
+            document.getElementById('meeting-form').reset();
+        }
+
+        function loadEngineers() {
+            const teamLeader = document.getElementById('team-leader-select').value;
+            const engineerSelect = document.getElementById('engineer-select');
+            
+            engineerSelect.innerHTML = '<option value="">Select Engineer</option>';
+            
+            if (!teamLeader) return;
+            
+            const engineers = allEmployees
+                .filter(emp => {
+                    const leader = emp['Team Leader'] || emp.teamLeader;
+                    return leader === teamLeader && !emp.leaveDate;
+                })
+                .sort((a, b) => (a['Full Name'] || '').localeCompare(b['Full Name'] || ''));
+            
+            engineers.forEach(eng => {
+                const option = document.createElement('option');
+                option.value = eng['Full Name'] || '';
+                option.textContent = eng['Full Name'] || 'Unnamed';
+                engineerSelect.appendChild(option);
+            });
+            
+            if (engineers.length === 0) {
+                engineerSelect.innerHTML = '<option value="">No engineers available</option>';
+            }
+        }
+
+        async function handleMeetingSubmit(event) {
+            event.preventDefault();
+            
+            const teamLeader = document.getElementById('team-leader-select').value;
+            const engineer = document.getElementById('engineer-select').value;
+            const purpose = document.getElementById('purpose-select').value;
+            const timeSlot = document.getElementById('timeslot-select').value;
+            const meetingDate = document.getElementById('meeting-date').value;
+            
+            if (!teamLeader || !engineer || !purpose || !timeSlot || !meetingDate) {
+                showToast('Please fill in all fields', 'error');
+                return;
+            }
+            
+            try {
+                const { collection, addDoc } = window.firebaseModules;
+                await addDoc(collection(window.db, 'meetings'), {
+                    teamLeader: teamLeader,
+                    engineer: engineer,
+                    purpose: purpose,
+                    timeSlot: timeSlot,
+                    date: meetingDate,
+                    status: null,
+                    additionalPurposes: [],
+                    createdAt: new Date().toISOString()
+                });
+                
+                showToast('Meeting scheduled successfully');
+                closeMeetingModal();
+                renderCalendar();
+            } catch (error) {
+                console.error('Error saving meeting:', error);
+                showToast('Failed to schedule meeting', 'error');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast show' + (type === 'error' ? ' error' : '');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function exportToCSV() {
+            await loadMeetings();
+            
+            // CSV header
+            let csv = 'Date,Time Slot,Team Leader,Engineer,Primary Purpose,Additional Purposes,Status\n';
+            
+            // Sort meetings by date
+            const sortedMeetings = [...allMeetings].sort((a, b) => {
+                const dateA = new Date(a.date);
+                const dateB = new Date(b.date);
+                return dateA - dateB;
+            });
+            
+            // Add data rows
+            sortedMeetings.forEach(meeting => {
+                const date = meeting.date || '';
+                const timeSlot = meeting.timeSlot || '';
+                const teamLeader = meeting.teamLeader || '';
+                const engineer = meeting.engineer || '';
+                const purpose = meeting.purpose || '';
+                const additionalPurposes = (meeting.additionalPurposes || []).join('; ');
+                const status = meeting.status === 'completed' ? 'Completed' : 
+                              meeting.status === 'not-completed' ? 'Not Completed' : 
+                              'Pending';
+                
+                // Escape fields that might contain commas
+                const escapedEngineer = `"${engineer}"`;
+                const escapedPurpose = `"${purpose}"`;
+                const escapedAdditional = `"${additionalPurposes}"`;
+                
+                csv += `${date},${timeSlot},${teamLeader},${escapedEngineer},${escapedPurpose},${escapedAdditional},${status}\n`;
+            });
+            
+            // Create download link
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const today = new Date();
+            const filename = `meetings_export_${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast('CSV exported successfully');
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('meeting-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'meeting-modal') {
+                closeMeetingModal();
+            }
+        });
+
+        // Expose functions to global scope
+        window.previousMonth = previousMonth;
+        window.nextMonth = nextMonth;
+        window.goToToday = goToToday;
+        window.openMeetingModal = openMeetingModal;
+        window.closeMeetingModal = closeMeetingModal;
+        window.loadEngineers = loadEngineers;
+        window.handleMeetingSubmit = handleMeetingSubmit;
+        window.exportToCSV = exportToCSV;
+
+        // Status modal functions
+        let currentMeetingId = null;
+        let currentMeetingStatus = null;
+        let currentMeetingTeamLeader = null;
+        let currentMeetingPrimaryPurpose = null;
+        const ADMIN_PASSWORD = 'N3xtGeneration2026!';
+
+        window.openStatusModal = function(meetingId, teamLeader, engineer, purpose, timeSlot, status, additionalPurposesJson) {
+            currentMeetingId = meetingId;
+            currentMeetingStatus = status;
+            currentMeetingTeamLeader = teamLeader;
+            currentMeetingPrimaryPurpose = purpose;
+            
+            let additionalPurposes = [];
+            try {
+                additionalPurposes = JSON.parse(decodeURIComponent(additionalPurposesJson));
+            } catch (e) {
+                additionalPurposes = [];
+            }
+            
+            const detailsDiv = document.getElementById('status-meeting-details');
+            let additionalHtml = '';
+            if (additionalPurposes.length > 0) {
+                additionalHtml = `<div style="margin-top: 0.5rem;"><strong>Additional Purposes:</strong> ${additionalPurposes.join(', ')}</div>`;
+            }
+            
+            detailsDiv.innerHTML = `
+                <div style="margin-bottom: 0.5rem;"><strong>Team Leader:</strong> ${teamLeader}</div>
+                <div style="margin-bottom: 0.5rem;"><strong>Engineer:</strong> ${engineer}</div>
+                <div style="margin-bottom: 0.5rem;"><strong>Primary Purpose:</strong> ${purpose}</div>
+                ${additionalHtml}
+                <div><strong>Time Slot:</strong> ${timeSlot}</div>
+            `;
+            
+            // Reset the team leader dropdown
+            document.getElementById('verify-team-leader').value = '';
+            
+            // Reset checkboxes and populate with existing additional purposes
+            const checkboxes = document.querySelectorAll('#additional-purposes input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = additionalPurposes.includes(checkbox.value);
+                // Disable the primary purpose checkbox
+                if (checkbox.value === purpose) {
+                    checkbox.disabled = true;
+                    checkbox.parentElement.style.opacity = '0.5';
+                } else {
+                    checkbox.disabled = false;
+                    checkbox.parentElement.style.opacity = '1';
+                }
+            });
+            
+            // If status is already set, require password
+            if (status && status !== '') {
+                document.getElementById('password-modal').classList.add('show');
+            } else {
+                document.getElementById('status-modal').classList.add('show');
+            }
+        };
+
+        window.closeStatusModal = function() {
+            document.getElementById('status-modal').classList.remove('show');
+            document.getElementById('verify-team-leader').value = '';
+            // Reset checkboxes
+            const checkboxes = document.querySelectorAll('#additional-purposes input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+                checkbox.disabled = false;
+                checkbox.parentElement.style.opacity = '1';
+            });
+            currentMeetingId = null;
+            currentMeetingStatus = null;
+            currentMeetingTeamLeader = null;
+            currentMeetingPrimaryPurpose = null;
+        };
+
+        window.closePasswordModal = function() {
+            document.getElementById('password-modal').classList.remove('show');
+            document.getElementById('password-input').value = '';
+            // Don't reset currentMeetingId here - keep it for status update
+        };
+
+        window.closePasswordModalFully = function() {
+            document.getElementById('password-modal').classList.remove('show');
+            document.getElementById('password-input').value = '';
+            currentMeetingId = null;
+            currentMeetingStatus = null;
+            currentMeetingTeamLeader = null;
+            currentMeetingPrimaryPurpose = null;
+        };
+
+        window.verifyPassword = function() {
+            const passwordInput = document.getElementById('password-input').value;
+            
+            if (passwordInput === ADMIN_PASSWORD) {
+                closePasswordModal();
+                document.getElementById('status-modal').classList.add('show');
+            } else {
+                showToast('Incorrect password', 'error');
+                document.getElementById('password-input').value = '';
+            }
+        };
+
+        window.updateMeetingStatus = async function(status) {
+            if (!currentMeetingId) return;
+            
+            // Verify team leader selection
+            const selectedTeamLeader = document.getElementById('verify-team-leader').value;
+            
+            if (!selectedTeamLeader) {
+                showToast('Please select a team leader', 'error');
+                return;
+            }
+            
+            if (selectedTeamLeader !== currentMeetingTeamLeader) {
+                showToast('Team leader does not match. Access denied.', 'error');
+                return;
+            }
+            
+            // Get selected additional purposes
+            const checkboxes = document.querySelectorAll('#additional-purposes input[type="checkbox"]:checked');
+            const additionalPurposes = Array.from(checkboxes).map(cb => cb.value);
+            
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                
+                const meetingRef = doc(window.db, 'meetings', currentMeetingId);
+                await updateDoc(meetingRef, {
+                    status: status,
+                    additionalPurposes: additionalPurposes,
+                    statusUpdatedAt: new Date().toISOString()
+                });
+                
+                showToast('Meeting status updated successfully');
+                closeStatusModal();
+                renderCalendar();
+            } catch (error) {
+                console.error('Error updating meeting status:', error);
+                showToast('Failed to update meeting status', 'error');
+            }
+        };
+
+        // Close modals when clicking outside
+        document.getElementById('status-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'status-modal') {
+                closeStatusModal();
+            }
+        });
+
+        document.getElementById('password-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'password-modal') {
+                document.getElementById('password-modal').classList.remove('show');
+                document.getElementById('password-input').value = '';
+                currentMeetingId = null;
+                currentMeetingStatus = null;
+                currentMeetingTeamLeader = null;
+                currentMeetingPrimaryPurpose = null;
+            }
+        });
+    </script>
+</body>
+</html>

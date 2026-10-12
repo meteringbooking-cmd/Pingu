@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pingu Solar - Live Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: #0A0A15;
+            color: #EAEAEA;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            height: 100vh;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(0, 217, 255, 0.1));
+            border-radius: 15px;
+            border: 2px solid rgba(255, 107, 53, 0.3);
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF6B35, #FFC857, #00D9FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+            font-size: 1rem;
+            color: #4ECCA3;
+        }
+
+        .live-dot {
+            width: 15px;
+            height: 15px;
+            background: #4ECCA3;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+
+        .time {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #00D9FF;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1rem;
+        }
+
+        .left-column {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 1rem;
+        }
+
+        /* Big Stats */
+        .big-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .big-stat-card {
+            background: linear-gradient(135deg, rgba(37, 37, 65, 0.8), rgba(26, 26, 46, 0.8));
+            border-radius: 15px;
+            padding: 1.2rem;
+            border: 2px solid rgba(255, 107, 53, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .big-stat-card:hover {
+            border-color: #FF6B35;
+            transform: translateY(-5px);
+        }
+
+        .big-stat-label {
+            font-size: 0.8rem;
+            color: #9A9AB0;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.7rem;
+        }
+
+        .big-stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1;
+            background: linear-gradient(135deg, #FF6B35, #00D9FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .big-stat-sublabel {
+            font-size: 0.75rem;
+            color: #9A9AB0;
+            margin-top: 0.4rem;
+        }
+
+        /* Status Grid */
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.8rem;
+        }
+
+        .status-card {
+            background: linear-gradient(135deg, rgba(37, 37, 65, 0.6), rgba(26, 26, 46, 0.6));
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            border: 2px solid rgba(255, 107, 53, 0.2);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.3rem;
+        }
+
+        .status-label {
+            font-size: 0.7rem;
+            color: #9A9AB0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-icon {
+            font-size: 1.2rem;
+        }
+
+        .status-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .status-complete .status-value { color: #4ECCA3; }
+        .status-progress .status-value { color: #00D9FF; }
+        .status-overdue .status-value { color: #FF6B6B; }
+        .status-week .status-value { color: #FFC857; }
+        .status-aborted .status-value { color: #6C757D; }
+        .status-cancelled .status-value { color: #DC6E3C; }
+
+        /* Right Column - Teams & Today */
+        .right-column {
+            display: grid;
+            grid-template-rows: 0.6fr 1.4fr;
+            gap: 1rem;
+        }
+
+        .section-card {
+            background: linear-gradient(135deg, rgba(37, 37, 65, 0.8), rgba(26, 26, 46, 0.8));
+            border-radius: 15px;
+            padding: 1.2rem;
+            border: 2px solid rgba(0, 217, 255, 0.2);
+            overflow: hidden;
+        }
+
+        .section-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #00D9FF;
+        }
+
+        .team-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.7rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            margin-bottom: 0.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .team-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .team-stat {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #FFC857;
+        }
+
+        .today-job {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #FF6B35;
+            padding: 0.7rem;
+            margin-bottom: 0.6rem;
+            border-radius: 6px;
+        }
+
+        .job-number {
+            font-weight: 700;
+            color: #FF6B35;
+            margin-bottom: 0.2rem;
+            font-size: 0.9rem;
+        }
+
+        .job-location {
+            font-size: 0.75rem;
+            color: #9A9AB0;
+        }
+
+        .job-lead {
+            font-size: 0.7rem;
+            color: #00D9FF;
+            margin-top: 0.2rem;
+        }
+
+        /* Footer */
+        .footer {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+        }
+
+        .footer-stat {
+            background: linear-gradient(135deg, rgba(37, 37, 65, 0.6), rgba(26, 26, 46, 0.6));
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            border: 2px solid rgba(255, 107, 53, 0.2);
+        }
+
+        .footer-label {
+            font-size: 0.7rem;
+            color: #9A9AB0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.4rem;
+        }
+
+        .footer-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.6rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #FFC857, #FF6B35);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 2rem;
+            color: #9A9AB0;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading" class="loading">
+        <div>Loading Dashboard...</div>
+    </div>
+
+    <div id="dashboard" class="dashboard" style="display: none;">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">PINGU SOLAR</div>
+            <div class="live-indicator">
+                <div class="live-dot"></div>
+                <span>LIVE</span>
+            </div>
+            <div class="time" id="current-time"></div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Big Stats -->
+                <div class="big-stats">
+                    <div class="big-stat-card">
+                        <div class="big-stat-label">Total Jobs</div>
+                        <div class="big-stat-value" id="total-jobs">0</div>
+                        <div class="big-stat-sublabel">All Time</div>
+                    </div>
+                    <div class="big-stat-card">
+                        <div class="big-stat-label">This Month</div>
+                        <div class="big-stat-value" id="month-jobs">0</div>
+                        <div class="big-stat-sublabel" id="month-name">January 2026</div>
+                    </div>
+                    <div class="big-stat-card">
+                        <div class="big-stat-label">This Week</div>
+                        <div class="big-stat-value" id="week-jobs">0</div>
+                        <div class="big-stat-sublabel">Mon - Sun</div>
+                    </div>
+                </div>
+
+                <!-- Status Grid -->
+                <div class="status-grid">
+                    <div class="status-card status-week">
+                        <div class="status-header">
+                            <div class="status-label">Jobs Starting Today</div>
+                            <div class="status-icon">📅</div>
+                        </div>
+                        <div class="status-value" id="today-jobs">0</div>
+                    </div>
+                    <div class="status-card status-progress">
+                        <div class="status-header">
+                            <div class="status-label">In Progress</div>
+                            <div class="status-icon">🔧</div>
+                        </div>
+                        <div class="status-value" id="progress-jobs">0</div>
+                    </div>
+                    <div class="status-card status-complete">
+                        <div class="status-header">
+                            <div class="status-label">Completed</div>
+                            <div class="status-icon">✅</div>
+                        </div>
+                        <div class="status-value" id="completed-jobs">0</div>
+                    </div>
+                    <div class="status-card status-aborted">
+                        <div class="status-header">
+                            <div class="status-label">Aborted</div>
+                            <div class="status-icon">🛑</div>
+                        </div>
+                        <div class="status-value" id="aborted-jobs">0</div>
+                    </div>
+                    <div class="status-card status-cancelled">
+                        <div class="status-header">
+                            <div class="status-label">Cancelled</div>
+                            <div class="status-icon">❌</div>
+                        </div>
+                        <div class="status-value" id="cancelled-jobs">0</div>
+                    </div>
+                    <div class="status-card status-overdue">
+                        <div class="status-header">
+                            <div class="status-label">Outstanding</div>
+                            <div class="status-icon">⚠️</div>
+                        </div>
+                        <div class="status-value" id="overdue-jobs">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- Top Teams -->
+                <div class="section-card">
+                    <div class="section-title">🏆 Top Teams This Month</div>
+                    <div id="top-teams"></div>
+                </div>
+
+                <!-- Today's Jobs -->
+                <div class="section-card">
+                    <div class="section-title">📍 Today's Jobs</div>
+                    <div id="today-jobs-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Stats -->
+        <div class="footer">
+            <div class="footer-stat">
+                <div class="footer-label">Total Days</div>
+                <div class="footer-value" id="total-days">0</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Avg Job Length</div>
+                <div class="footer-value" id="avg-days">0</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Active Teams</div>
+                <div class="footer-value" id="active-teams">0</div>
+            </div>
+            <div class="footer-stat">
+                <div class="footer-label">Completion Rate</div>
+                <div class="footer-value" id="completion-rate">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, onSnapshot, query, orderBy };
+            console.log('✅ Firebase initialized');
+
+            setupRealtimeListener();
+            updateClock();
+            setInterval(updateClock, 1000);
+        } catch (error) {
+            console.error('❌ Firebase error:', error);
+        }
+    </script>
+
+    <script>
+        let allJobs = [];
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: false 
+            });
+            document.getElementById('current-time').textContent = timeStr;
+        }
+
+        function setupRealtimeListener() {
+            const { collection, onSnapshot, query, orderBy: orderByFn } = window.firebaseModules;
+
+            const jobsQuery = query(
+                collection(window.db, 'Solar-jobs'),
+                orderByFn('uploadDate', 'desc')
+            );
+
+            onSnapshot(jobsQuery, (snapshot) => {
+                allJobs = [];
+                snapshot.forEach((docSnap) => {
+                    allJobs.push({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    });
+                });
+
+                console.log(`✅ Loaded ${allJobs.length} jobs`);
+                updateDashboard();
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'grid';
+            });
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    const day = parseInt(parts[0], 10);
+                    const month = parseInt(parts[1], 10) - 1;
+                    const year = parseInt(parts[2], 10);
+                    const parsed = new Date(year, month, day);
+                    if (!isNaN(parsed.getTime())) {
+                        parsed.setHours(0, 0, 0, 0);
+                        return parsed;
+                    }
+                }
+            }
+
+            const parsed = new Date(dateStr);
+            if (!isNaN(parsed.getTime())) {
+                parsed.setHours(0, 0, 0, 0);
+                return parsed;
+            }
+
+            return null;
+        }
+
+        function getFieldValue(job, ...fieldNames) {
+            for (const fieldName of fieldNames) {
+                if (job[fieldName] !== undefined && job[fieldName] !== null && job[fieldName] !== '') {
+                    return job[fieldName];
+                }
+            }
+            return '';
+        }
+
+        function getStatusUpdate(job) {
+            const statusUpdate = job['Status Update'];
+            if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                return String(statusUpdate).toLowerCase();
+            }
+            return '';
+        }
+
+        function isOutstanding(job) {
+            const hasStatusUpdateField = 'Status Update' in job;
+            
+            if (hasStatusUpdateField) {
+                const statusUpdate = job['Status Update'];
+                
+                if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
+                    const statusLower = String(statusUpdate).toLowerCase();
+                    
+                    if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
+                        return false;
+                    }
+                    
+                    if (statusLower !== 'in-progress') {
+                        return false;
+                    }
+                }
+            }
+
+            const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+            if (!dateStr) return false;
+            
+            const jobDate = parseDate(dateStr);
+            if (!jobDate || isNaN(jobDate.getTime())) return false;
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            return jobDate < today;
+        }
+
+        function isComplete(job) {
+            const status = getStatusUpdate(job);
+            return status === 'complete';
+        }
+
+        function updateDashboard() {
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+
+            // Month name
+            const monthName = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+            document.getElementById('month-name').textContent = monthName;
+
+            // Total jobs
+            document.getElementById('total-jobs').textContent = allJobs.length;
+
+            // This month
+            const monthJobs = allJobs.filter(job => {
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const jobDate = parseDate(dateStr);
+                return jobDate && jobDate.getMonth() === now.getMonth() && jobDate.getFullYear() === now.getFullYear();
+            });
+            document.getElementById('month-jobs').textContent = monthJobs.length;
+
+            // This week
+            const startOfWeek = new Date(now);
+            const day = startOfWeek.getDay();
+            const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
+            startOfWeek.setDate(diff);
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(endOfWeek.getDate() + 6);
+            endOfWeek.setHours(23, 59, 59, 999);
+
+            const weekJobs = allJobs.filter(job => {
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const jobDate = parseDate(dateStr);
+                return jobDate && jobDate >= startOfWeek && jobDate <= endOfWeek;
+            });
+            document.getElementById('week-jobs').textContent = weekJobs.length;
+
+            // Status counts - REORDERED
+            const todayJobs = allJobs.filter(job => {
+                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                const jobDate = parseDate(dateStr);
+                return jobDate && jobDate.getTime() === now.getTime();
+            });
+            document.getElementById('today-jobs').textContent = todayJobs.length;
+
+            const progressJobs = allJobs.filter(job => getStatusUpdate(job) === 'in-progress');
+            document.getElementById('progress-jobs').textContent = progressJobs.length;
+
+            const completedJobs = allJobs.filter(isComplete);
+            document.getElementById('completed-jobs').textContent = completedJobs.length;
+
+            const abortedJobs = allJobs.filter(job => getStatusUpdate(job) === 'aborted');
+            document.getElementById('aborted-jobs').textContent = abortedJobs.length;
+
+            const cancelledJobs = allJobs.filter(job => getStatusUpdate(job) === 'cancelled');
+            document.getElementById('cancelled-jobs').textContent = cancelledJobs.length;
+
+            const overdueJobs = allJobs.filter(isOutstanding);
+            document.getElementById('overdue-jobs').textContent = overdueJobs.length;
+
+            // Footer stats
+            const totalDays = allJobs.reduce((sum, job) => {
+                const days = parseInt(job['Days'] || job['Job Length (days)'] || 1);
+                return sum + days;
+            }, 0);
+            document.getElementById('total-days').textContent = totalDays;
+
+            const avgDays = allJobs.length > 0 ? Math.round(totalDays / allJobs.length) : 0;
+            document.getElementById('avg-days').textContent = avgDays;
+
+            const teams = new Set();
+            monthJobs.forEach(job => {
+                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+                if (team && team !== 'N/A' && team !== 'Unassigned' && team !== '') {
+                    teams.add(team);
+                }
+            });
+            document.getElementById('active-teams').textContent = teams.size;
+
+            const completionRate = allJobs.length > 0 
+                ? Math.round((completedJobs.length / allJobs.length) * 100) 
+                : 0;
+            document.getElementById('completion-rate').textContent = completionRate + '%';
+
+            // Top teams this month
+            updateTopTeams(monthJobs);
+
+            // Today's jobs list
+            updateTodaysList(todayJobs);
+        }
+
+        function updateTopTeams(monthJobs) {
+            const teamStats = {};
+            
+            monthJobs.forEach(job => {
+                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
+                
+                if (team && team !== 'N/A' && team !== 'Unassigned') {
+                    if (!teamStats[team]) {
+                        teamStats[team] = { total: 0, completed: 0 };
+                    }
+                    teamStats[team].total++;
+                    if (isComplete(job)) {
+                        teamStats[team].completed++;
+                    }
+                }
+            });
+
+            const sortedTeams = Object.entries(teamStats)
+                .map(([team, stats]) => ({
+                    team,
+                    stats,
+                    percentage: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+                }))
+                .sort((a, b) => b.percentage - a.percentage)
+                .slice(0, 5);
+
+            const html = sortedTeams.length > 0
+                ? sortedTeams.map(({ team, stats, percentage }) => `
+                    <div class="team-item">
+                        <div class="team-name">Team ${escapeHtml(team)}</div>
+                        <div class="team-stat">${percentage}% (${stats.completed}/${stats.total})</div>
+                    </div>
+                `).join('')
+                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
+
+            document.getElementById('top-teams').innerHTML = html;
+        }
+
+        function updateTodaysList(todayJobs) {
+            const html = todayJobs.length > 0
+                ? todayJobs.slice(0, 4).map(job => `
+                    <div class="today-job">
+                        <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                        <div class="job-location">${escapeHtml(job['Address'] || 'No Address')}</div>
+                        <div class="job-lead">Lead: ${escapeHtml(job['Lead'] || 'Unassigned')}</div>
+                    </div>
+                `).join('')
+                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No jobs scheduled for today</div>';
+
+            document.getElementById('today-jobs-list').innerHTML = html;
+        }
+
+        function escapeHtml(unsafe) {
+            if (!unsafe) return '';
+            return String(unsafe)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>

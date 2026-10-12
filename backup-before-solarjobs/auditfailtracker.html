@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fail Code Analysis Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f0f23;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(74, 86, 226, 0.3), transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(138, 43, 226, 0.2), transparent 50%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 
+                0 8px 32px 0 rgba(31, 38, 135, 0.37),
+                inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, rgba(120, 119, 198, 0.2) 0%, rgba(74, 86, 226, 0.2) 100%);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 50px 30px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a8c0ff 0%, #3f2b96 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header p {
+            opacity: 0.8;
+            font-size: 1.1em;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        input, select, button {
+            padding: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 1em;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #7F7FD5;
+            box-shadow: 0 0 0 4px rgba(127, 127, 213, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+        }
+        select option {
+            background: #1a1a2e;
+            color: white;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        button:hover::before {
+            left: 100%;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        .file-input-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .file-input-label::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        .file-input-label:hover::before {
+            left: 100%;
+        }
+        .file-input-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        /* Fail Code Filter */
+        .fail-code-filter {
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .fail-code-filter h3 {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-actions button {
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+        .checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .checkbox-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin: 0;
+            padding: 0;
+        }
+        .checkbox-item label {
+            margin: 0;
+            cursor: pointer;
+            font-size: 0.9em;
+            text-transform: none;
+            letter-spacing: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 25px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(102, 126, 234, 0.4);
+        }
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 30px;
+            padding: 30px;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .occurrence-table-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 16px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        .occurrence-table-container h2 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .occurrence-table {
+            width: 100%;
+        }
+        .occurrence-row {
+            display: grid;
+            grid-template-columns: 110px 1fr;
+            gap: 15px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .occurrence-row:hover {
+            background: rgba(102, 126, 234, 0.15);
+            border-color: rgba(127, 127, 213, 0.5);
+            transform: translateX(5px);
+        }
+        .occurrence-code {
+            font-weight: bold;
+            color: #a8c0ff;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .occurrence-count {
+            font-size: 1.3em;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: bold;
+            text-align: right;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        .no-data-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            filter: grayscale(1) opacity(0.5);
+        }
+        .no-data h2 {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 10px;
+        }
+        .top-performers {
+            padding: 0 30px 30px;
+        }
+        .top-performers h2 {
+            padding: 30px 0 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.8em;
+        }
+        .performer-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .performer-card:hover {
+            border-color: rgba(127, 127, 213, 0.5);
+            box-shadow: 0 8px 32px rgba(127, 127, 213, 0.3);
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .performer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .performer-name-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .performer-name {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.95);
+        }
+        .toggle-jobs-btn {
+            background: rgba(102, 126, 234, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(102, 126, 234, 0.5);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .toggle-jobs-btn:hover {
+            background: rgba(102, 126, 234, 0.5);
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .toggle-jobs-btn .arrow {
+            transition: transform 0.3s;
+            font-size: 0.9em;
+        }
+        .toggle-jobs-btn.expanded .arrow {
+            transform: rotate(180deg);
+        }
+        .performer-total {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .job-numbers-section {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .job-numbers-section.show {
+            display: block;
+        }
+        .job-numbers-title {
+            font-weight: 600;
+            color: #a8c0ff;
+            margin-bottom: 12px;
+            font-size: 1.05em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .job-numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .job-number-item {
+            background: rgba(102, 126, 234, 0.15);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: default;
+        }
+        .job-number-item:hover {
+            background: rgba(102, 126, 234, 0.25);
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+        .job-number-item.highlighted {
+            background: rgba(255, 215, 0, 0.3);
+            border-color: rgba(255, 215, 0, 0.6);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+            }
+            50% {
+                box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+            }
+        }
+        .job-numbers-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        .job-numbers-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .job-numbers-grid::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+        .job-numbers-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+        .fail-codes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+        }
+        .fail-code-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(5px);
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .fail-code-item:hover {
+            background: rgba(102, 126, 234, 0.2);
+            border-color: rgba(127, 127, 213, 0.5);
+            transform: scale(1.05);
+        }
+        .fail-code-name {
+            font-weight: bold;
+            color: #a8c0ff;
+            margin-bottom: 6px;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .fail-code-count {
+            font-size: 1.4em;
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: bold;
+        }
+        
+        /* Color badge styles */
+        .color-badge {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .color-badge.red {
+            background: linear-gradient(135deg, #ff4757, #c23616);
+        }
+        .color-badge.amber {
+            background: linear-gradient(135deg, #ffa502, #ff6348);
+        }
+        .color-badge.purple {
+            background: linear-gradient(135deg, #a29bfe, #6c5ce7);
+        }
+        .color-badge.green {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        
+        /* Tooltip styles */
+        .tooltip {
+            position: absolute;
+            background: rgba(20, 20, 40, 0.98);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9em;
+            max-width: 350px;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border: 1px solid rgba(127, 127, 213, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+        .tooltip.show {
+            opacity: 1;
+        }
+        .tooltip-code {
+            font-weight: bold;
+            color: #a8c0ff;
+            margin-bottom: 6px;
+            font-size: 1.1em;
+        }
+        .tooltip-description {
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(127, 127, 213, 0.3);
+        }
+        .tooltip-teams {
+            margin-top: 10px;
+        }
+        .tooltip-teams-title {
+            font-weight: 600;
+            color: #a8c0ff;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .team-list-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.9em;
+        }
+        .team-list-item .team-name {
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .team-list-item .team-count {
+            color: #a8c0ff;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        /* Scrollbar styling */
+        .occurrence-table-container::-webkit-scrollbar,
+        .checkbox-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-track,
+        .checkbox-grid::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-thumb,
+        .checkbox-grid::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 10px;
+        }
+        .occurrence-table-container::-webkit-scrollbar-thumb:hover,
+        .checkbox-grid::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .occurrence-table-container {
+                max-height: 400px;
+            }
+        }
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            .fail-codes-grid {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Fail Code Analysis Dashboard</h1>
+            <p>Upload your CSV file to analyze fail codes by team and date range</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Upload CSV File</label>
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" accept=".csv" />
+                    <label for="fileInput" class="file-input-label">
+                        Choose File
+                    </label>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="startDate">Start Date</label>
+                <input type="date" id="startDate" />
+            </div>
+
+            <div class="control-group">
+                <label for="endDate">End Date</label>
+                <input type="date" id="endDate" />
+            </div>
+
+            <div class="control-group">
+                <label for="teamFilter">Team</label>
+                <select id="teamFilter">
+                    <option value="all">All Teams</option>
+                </select>
+            </div>
+            
+            <div class="control-group" id="exportBtnContainer" style="display: none;">
+                <label>Export</label>
+                <button onclick="exportToPowerPoint()" style="background: linear-gradient(135deg, #FF6B6B 0%, #C0392B 100%);">
+                    Export to PPT
+                </button>
+            </div>
+        </div>
+
+        <div class="fail-code-filter" id="teamNumberFilter" style="display: none;">
+            <h3>Filter Team Numbers</h3>
+            <div class="filter-actions">
+                <button onclick="selectAllTeamNumbers()">Select All</button>
+                <button onclick="deselectAllTeamNumbers()">Deselect All</button>
+            </div>
+            <div class="checkbox-grid" id="teamNumberCheckboxGrid"></div>
+        </div>
+
+        <div class="fail-code-filter" id="failCodeFilter" style="display: none;">
+            <h3>Filter Fail Codes</h3>
+            <div class="filter-actions">
+                <button onclick="selectAllCodes()">Select All</button>
+                <button onclick="deselectAllCodes()">Deselect All</button>
+                <button onclick="selectRedCodes()">Select Red Only</button>
+                <button onclick="selectAmberCodes()">Select Amber Only</button>
+                <button onclick="selectPurpleCodes()">Select Purple Only</button>
+                <button onclick="selectGreenCodes()">Select Green Only</button>
+            </div>
+            <div class="checkbox-grid" id="checkboxGrid"></div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="chart-container">
+                <canvas id="failCodeChart"></canvas>
+            </div>
+            <div class="occurrence-table-container">
+                <h2>All Fail Codes</h2>
+                <div class="occurrence-table" id="occurrenceTable"></div>
+            </div>
+        </div>
+
+        <div id="topPerformers" class="top-performers" style="display: none;">
+            <h2>Top Performers by Fail Code Count</h2>
+            <div id="performersList"></div>
+        </div>
+
+        <div id="noData" class="no-data" style="display: none;">
+            <div class="no-data-icon"></div>
+            <h2>No Data Available</h2>
+            <p>Please upload a CSV file to begin analysis</p>
+        </div>
+    </div>
+
+    <!-- Tooltip element -->
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-code"></div>
+        <div class="tooltip-description"></div>
+        <div class="tooltip-teams"></div>
+    </div>
+
+    <script>
+        const FAIL_CODES = [
+            // E-codes
+            'E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'E10',
+            'E11', 'E12', 'E13', 'E14', 'E15', 'E16', 'E17', 'E18', 'E19', 'E20',
+            'EX1',
+            'E21', 'E22', 'E23', 'E24', 'E25', 'E26', 'E27', 'E28', 'E29', 'E30',
+            'E31', 'E32', 'EX2',
+            'E33', 'E34', 'E35', 'E36', 'E37', 'E38', 'E39', 'E40', 'E41', 'E42',
+            'E43', 'E44', 'E45', 'E46', 'E47', 'E48', 'E49', 'EX3',
+            'E50', 'E51', 'E52', 'E53', 'E54', 'E55', 'E56', 'EX4',
+            // R-codes
+            'R10', 'R11', 'R12', 'R13', 'R14', 'R15', 'R16', 'RX1',
+            'R17', 'R18', 'R19', 'R20', 'R21', 'R22', 'R23', 'R24', 'R25', 'R26',
+            'R27', 'R28', 'R29', 'R30', 'R31', 'R32', 'R33', 'R34', 'R35', 'R36',
+            'R37', 'R38', 'R39', 'R40', 'RX2',
+            'R41', 'R42', 'R43', 'R44', 'R45', 'R46', 'R47', 'R48', 'R49', 'R50',
+            'R51', 'R52', 'R53', 'R54', 'RX3'
+        ];
+
+        const FAIL_CODE_COLORS = {
+            // Red E-codes (E1–E20, EX1)
+            'E1': 'red', 'E2': 'red', 'E3': 'red', 'E4': 'red', 'E5': 'red',
+            'E6': 'red', 'E7': 'red', 'E8': 'red', 'E9': 'red', 'E10': 'red',
+            'E11': 'red', 'E12': 'red', 'E13': 'red', 'E14': 'red', 'E15': 'red',
+            'E16': 'red', 'E17': 'red', 'E18': 'red', 'E19': 'red', 'E20': 'red',
+            'EX1': 'red',
+            // Amber E-codes (E21–E32, EX2)
+            'E21': 'amber', 'E22': 'amber', 'E23': 'amber', 'E24': 'amber', 'E25': 'amber',
+            'E26': 'amber', 'E27': 'amber', 'E28': 'amber', 'E29': 'amber', 'E30': 'amber',
+            'E31': 'amber', 'E32': 'amber', 'EX2': 'amber',
+            // Purple E-codes (E33–E49, EX3)
+            'E33': 'purple', 'E34': 'purple', 'E35': 'purple', 'E36': 'purple', 'E37': 'purple',
+            'E38': 'purple', 'E39': 'purple', 'E40': 'purple', 'E41': 'purple', 'E42': 'purple',
+            'E43': 'purple', 'E44': 'purple', 'E45': 'purple', 'E46': 'purple', 'E47': 'purple',
+            'E48': 'purple', 'E49': 'purple', 'EX3': 'purple',
+            // Green E-codes (E50–E56, EX4)
+            'E50': 'green', 'E51': 'green', 'E52': 'green', 'E53': 'green', 'E54': 'green',
+            'E55': 'green', 'E56': 'green', 'EX4': 'green',
+            // Red R-codes
+            'R10': 'red', 'R11': 'red', 'R12': 'red', 'R13': 'red', 'R14': 'red',
+            'R15': 'red', 'R16': 'red', 'RX1': 'red',
+            // Amber R-codes
+            'R17': 'amber', 'R18': 'amber', 'R19': 'amber', 'R20': 'amber', 'R21': 'amber',
+            'R22': 'amber', 'R23': 'amber', 'R24': 'amber', 'R25': 'amber', 'R26': 'amber',
+            'R27': 'amber', 'R28': 'amber', 'R29': 'amber', 'R30': 'amber', 'R31': 'amber',
+            'R32': 'amber', 'R33': 'amber', 'R34': 'amber', 'R35': 'amber', 'R36': 'amber',
+            'R37': 'amber', 'R38': 'amber', 'R39': 'amber', 'R40': 'amber', 'RX2': 'amber',
+            // Purple R-codes
+            'R41': 'purple', 'R42': 'purple', 'R43': 'purple', 'R44': 'purple', 'R45': 'purple',
+            'R46': 'purple', 'R47': 'purple', 'R48': 'purple', 'R49': 'purple', 'R50': 'purple',
+            'R51': 'purple', 'R52': 'purple', 'R53': 'purple', 'R54': 'purple', 'RX3': 'purple'
+        };
+
+        const FAIL_CODE_DESCRIPTIONS = {
+            // Red E-codes
+            'E1': 'Missed an A code on distribution equipment (DNO)',
+            'E2': 'No PPE worn/incorrect when live testing PPE',
+            'E3': 'Tetra not used',
+            'E4': 'Cable damaged',
+            'E5': 'Reverse Polarity AC',
+            'E6': 'Reverse Polarity DC',
+            'E7': 'Equipment/ Accessories do not protect to suitable IP rating for location',
+            'E8': 'Testing/results not to industry standards COP/BS7671 (provide notes)',
+            'E9': 'Exposed Conductors (including un-plugged holes, both live and neutral and customer blocks)',
+            'E10': 'Loose terminations- greater than 360° rotation on any termination.',
+            'E11': 'Terminals are over tightened, top of terminal, screw rounded/broken',
+            'E12': 'Engineer worked out of scope/Engineer not applying competence (provide notes)',
+            'E13': 'Signs of distress, over heating, burning, etc',
+            'E14': 'Fire detection not fitted or incorrectly fitted',
+            'E15': 'Solar equipment installed using incorrect fixings',
+            'E16': 'Incorrect protective device installed (ka, rcd type, rcd ma, mcb over sized)',
+            'E17': 'Single insulation visible outside of enclosures',
+            'E18': 'System has not been comissioned correctly (import/export limits)',
+            'E19': 'Installation fitted outside BS 7671 requirements without calling Techline (provide notes)',
+            'E20': 'Fire rated clips not used or insufficiant for the cable run',
+            'EX1': 'Miscellaneous - supporting notes required',
+            // Amber E-codes
+            'E21': 'DC cable has no warning stickers',
+            'E22': 'Under sized cable installed for equipment / length of cable run',
+            'E23': 'Incorrect cable type installed.',
+            'E24': 'Cable installed in incorrect zones.',
+            'E25': 'Conductor only secured by one terminal screw in the Henley blocks',
+            'E26': 'Solar equipment not installed in correct location',
+            'E27': 'Bonding not up to standards',
+            'E28': 'Fuse pull has been carried out but not filled in KF (SIP)',
+            'E29': 'PV array test sheet not complete or incorrectly completed',
+            'E30': 'EIC is not completed or incorrectly completed',
+            'E31': 'MCS forms are not completed or incorrectly completed',
+            'E32': 'Not Installed as per MI\'s/ OES standards',
+            'EX2': 'Micellaneous - provide notes',
+            // Purple E-codes
+            'E33': 'Missed a B/C code on distribution equipment (DNO)',
+            'E34': 'Incorrect ferrules or crimps fitted',
+            'E35': 'Missing safety critical photo(s)',
+            'E36': 'Job card is blank and the system is comissioned',
+            'E37': 'Not a clear explanation to the customer how the app and the system works',
+            'E38': 'System has not been set up correctly on the online portal Eg. No array map',
+            'E39': 'CT clamp installed in the incorrect location / not fitted',
+            'E40': 'No socket polarity plug test/ only one performed',
+            'E41': 'Testing results different to recorded details but within limits',
+            'E42': 'No/ incorrect glands/bushes installed (incorrect cable entry)',
+            'E43': 'MCB, RCBO under sized for equipment installed',
+            'E44': 'Safety labelling missing from inverter, storage battery or metering position',
+            'E45': 'Incorrect PPE worn',
+            'E46': 'Non issued OES tools/equipment used',
+            'E47': 'No waterproof sealant used on exterior wall or fire sealant on interior wall',
+            'E48': 'No polarity identification on tails / Grey tails used',
+            'E49': 'Terminations not adequately tightened- rotation on any terminal screw between 180° and 360°',
+            'EX3': 'Micellaneous - provide notes',
+            // Green E-codes
+            'E50': 'DC cable run not stickered enough for length of run',
+            'E51': 'Testing on MFT using incorrect setting',
+            'E52': 'No customer signatures taken in job card.',
+            'E53': 'Missing non-safety critical photo(s)',
+            'E54': '230 Volt label missing',
+            'E55': 'Periodic and RCD test label missing.',
+            'E56': 'No lock-off kit used',
+            'EX4': 'Micellaneous - provide notes',
+            // R-codes (unchanged)
+            'R10': 'Working within 2m of an unprotected edge without correct PPE',
+            'R11': 'Working outside of Scaffolded area',
+            'R12': 'Working on an unsafe scaffold',
+            'R13': 'Working on an unsafe Ladder',
+            'R14': 'DC cable installed unprotected within the building envelope',
+            'R15': 'Cable damage when installed',
+            'R16': 'Installer worked outside of scope/installer not applying competence',
+            'RX1': 'Miscellaneous - supporting notes required',
+            'R17': 'No structural cals completed',
+            'R18': 'Working on scaffold not to TG20:21 standards',
+            'R19': 'Incorrect/No PPE worn',
+            'R20': 'Incorrect hook used for tile type',
+            'R21': 'Rail replacement outside of clamping zone',
+            'R22': 'Incorrect number of fixings in roof hooks',
+            'R23': 'Incorrect fixings used on roof hooks',
+            'R24': '5mm gap not observed to the side of between the roof hook bracket and the roof tile beneath',
+            'R25': 'Incorrect tile flashing used',
+            'R26': 'Flashing incorrectly installed and not weathertight',
+            'R27': 'Incorrect number of placement of hooks',
+            'R28': 'Maximum span between roof hooks exceeded',
+            'R29': 'Racking system bolts under/over tightened. Torque wrench not used.',
+            'R30': 'Rail profiles protrude less than 10mm at module edge',
+            'R31': 'Array not as per schematics',
+            'R32': 'Rail profiles protrude more than 0.4m past the last hook at the sides of the array',
+            'R33': 'Micro inverter fixings under/over tightened, torque wrench not used',
+            'R34': 'Module clamps under/over tightened. Torque wrench not used.',
+            'R35': 'Micro inverters incorrectly installed',
+            'R36': 'Installation of bird guard does not meet manufacturers instructions',
+            'R37': 'Array installed over mechanical vents',
+            'R38': 'Roof not left weathertight, tiles not flush or broken',
+            'R39': 'Property left with split rafters or screws protrudes rafters',
+            'R40': 'Failed to meet the requirements of MCS, installed within 400mm of an edge without special measures considered',
+            'RX2': 'Miscellaneous - supporting notes required',
+            'R41': 'Unidentified pre existing damage to roof/roof in poor condition',
+            'R42': 'Cables inadequately supports',
+            'R43': 'No sealant used on cable entry in wall',
+            'R44': 'Cutting rails in situ on the roof',
+            'R45': 'Cutting tiles in situ on the roof',
+            'R46': 'Missing photos',
+            'R47': 'Photos taken but inadequate',
+            'R48': 'Installation of bird guard does not meet company standard',
+            'R49': 'Cable roof entry not to spec',
+            'R50': 'Rails profile do not protrude module by 50mm',
+            'R51': 'Ladder work without tetra safety systems',
+            'R52': 'Failed to replace broken tiles',
+            'R53': 'Clearances not observed to in roof features',
+            'R54': 'Working on a scaffold not to OES standards',
+            'RX3': 'Miscellaneous - supporting notes required'
+        };
+
+        let allData = [];
+        let filteredData = [];
+        let chart = null;
+        const tooltip = document.getElementById('tooltip');
+        let selectedCodes = new Set(FAIL_CODES);
+        let selectedTeamNumbers = new Set();
+
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('startDate').addEventListener('change', updateDashboard);
+        document.getElementById('endDate').addEventListener('change', updateDashboard);
+        document.getElementById('teamFilter').addEventListener('change', updateDashboard);
+
+        function getColorBadge(code) {
+            const color = FAIL_CODE_COLORS[code] || 'purple';
+            return `<span class="color-badge ${color}"></span>`;
+        }
+
+        function initializeCheckboxes() {
+            const grid = document.getElementById('checkboxGrid');
+            grid.innerHTML = FAIL_CODES.map(code => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="code-${code}" value="${code}" checked onchange="handleCodeToggle()">
+                    <label for="code-${code}">${getColorBadge(code)} ${code}</label>
+                </div>
+            `).join('');
+        }
+
+        function initializeTeamNumberCheckboxes() {
+            const teamNumbers = [...new Set(allData.map(r => r['Team Number']).filter(Boolean))].sort();
+            selectedTeamNumbers = new Set(teamNumbers);
+            
+            const grid = document.getElementById('teamNumberCheckboxGrid');
+            grid.innerHTML = teamNumbers.map(teamNumber => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="teamnum-${teamNumber}" value="${teamNumber}" checked onchange="handleTeamNumberToggle()">
+                    <label for="teamnum-${teamNumber}">${teamNumber}</label>
+                </div>
+            `).join('');
+        }
+
+        function handleCodeToggle() {
+            selectedCodes.clear();
+            document.querySelectorAll('#checkboxGrid input:checked').forEach(checkbox => {
+                selectedCodes.add(checkbox.value);
+            });
+            updateDashboard();
+        }
+
+        function handleTeamNumberToggle() {
+            selectedTeamNumbers.clear();
+            document.querySelectorAll('#teamNumberCheckboxGrid input:checked').forEach(checkbox => {
+                selectedTeamNumbers.add(checkbox.value);
+            });
+            updateDashboard();
+        }
+
+        function selectAllCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => cb.checked = true);
+            handleCodeToggle();
+        }
+
+        function deselectAllCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => cb.checked = false);
+            handleCodeToggle();
+        }
+
+        function selectRedCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'red';
+            });
+            handleCodeToggle();
+        }
+
+        function selectAmberCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'amber';
+            });
+            handleCodeToggle();
+        }
+
+        function selectPurpleCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'purple';
+            });
+            handleCodeToggle();
+        }
+
+        function selectGreenCodes() {
+            document.querySelectorAll('#checkboxGrid input').forEach(cb => {
+                cb.checked = FAIL_CODE_COLORS[cb.value] === 'green';
+            });
+            handleCodeToggle();
+        }
+
+        function selectAllTeamNumbers() {
+            document.querySelectorAll('#teamNumberCheckboxGrid input').forEach(cb => cb.checked = true);
+            handleTeamNumberToggle();
+        }
+
+        function deselectAllTeamNumbers() {
+            document.querySelectorAll('#teamNumberCheckboxGrid input').forEach(cb => cb.checked = false);
+            handleTeamNumberToggle();
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    console.log('Raw data:', results.data);
+                    
+                    const headers = results.data[1];
+                    console.log('Headers:', headers);
+                    
+                    const dataRows = results.data.slice(2).filter(row => row.length > 1 && row[0]);
+
+                    allData = dataRows.map(row => {
+                        const obj = {};
+                        headers.forEach((header, i) => {
+                            const cleanHeader = header ? header.trim() : '';
+                            obj[cleanHeader] = row[i] || '';
+                        });
+                        return obj;
+                    });
+
+                    console.log('Parsed data sample:', allData[0]);
+                    console.log('Team values:', allData.map(r => r['Team']).slice(0, 10));
+
+                    initializeCheckboxes();
+                    initializeTeamNumberCheckboxes();
+                    populateTeamFilter();
+                    setDefaultDateRange();
+                    document.getElementById('teamNumberFilter').style.display = 'block';
+                    document.getElementById('failCodeFilter').style.display = 'block';
+                    updateDashboard();
+                },
+                skipEmptyLines: true
+            });
+        }
+
+        function populateTeamFilter() {
+            const teams = [...new Set(allData.map(r => r['Team']).filter(Boolean))].sort();
+            const select = document.getElementById('teamFilter');
+            select.innerHTML = '<option value="all">All Teams</option>';
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team;
+                option.textContent = team;
+                select.appendChild(option);
+            });
+        }
+
+        function setDefaultDateRange() {
+            const dates = allData
+                .map(r => parseDate(r['Date received']))
+                .filter(d => d)
+                .sort((a, b) => a - b);
+
+            if (dates.length > 0) {
+                document.getElementById('startDate').valueAsDate = dates[0];
+                document.getElementById('endDate').valueAsDate = dates[dates.length - 1];
+            }
+        }
+
+        function parseDate(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            return new Date(dateStr);
+        }
+
+        function getTeamsByFailCode(data, failCode) {
+            const teamCounts = {};
+            
+            data.forEach(row => {
+                const team = row['Team'] || 'Unknown';
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code === failCode) {
+                        teamCounts[team] = (teamCounts[team] || 0) + 1;
+                    }
+                }
+            });
+
+            return Object.entries(teamCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+        }
+
+        function updateDashboard() {
+            if (allData.length === 0) {
+                document.getElementById('noData').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('stats').style.display = 'none';
+                document.getElementById('topPerformers').style.display = 'none';
+                document.getElementById('exportBtnContainer').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('noData').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'grid';
+            document.getElementById('stats').style.display = 'grid';
+
+            const startDate = document.getElementById('startDate').valueAsDate;
+            const endDate = document.getElementById('endDate').valueAsDate;
+            const selectedTeam = document.getElementById('teamFilter').value;
+
+            filteredData = allData.filter(row => {
+                const rowDate = parseDate(row['Date received']);
+                const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                 (rowDate >= startDate && rowDate <= endDate);
+                const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                return dateMatch && teamMatch && teamNumberMatch;
+            });
+
+            updateStats(filteredData, startDate, endDate);
+            updateChart(filteredData);
+            updateOccurrenceTable(filteredData);
+            updateTopPerformers(filteredData);
+            
+            document.getElementById('exportBtnContainer').style.display = 'block';
+        }
+
+        function updateStats(data, startDate, endDate) {
+            let totalIncidents = 0;
+            if (startDate && endDate) {
+                totalIncidents = allData.filter(row => {
+                    const rowDate = parseDate(row['Date received']);
+                    return rowDate && rowDate >= startDate && rowDate <= endDate;
+                }).length;
+            } else {
+                totalIncidents = data.length;
+            }
+            
+            const uniqueTeams = new Set(data.map(r => r['Team']).filter(Boolean)).size;
+            
+            let totalFailCodes = 0;
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && selectedCodes.has(code)) totalFailCodes++;
+                }
+            });
+
+            const revisitsRequired = data.filter(r => 
+                r['Revisit required?'] && r['Revisit required?'].toLowerCase() === 'yes'
+            ).length;
+
+            const revisitsCompleted = data.filter(r => 
+                r['Revisit completed'] && r['Revisit completed'].toLowerCase() === 'yes'
+            ).length;
+
+            const statsHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Incidents</div>
+                    <div class="stat-value">${totalIncidents}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Fail Codes</div>
+                    <div class="stat-value">${totalFailCodes}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Teams</div>
+                    <div class="stat-value">${uniqueTeams}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Revisits</div>
+                    <div class="stat-value">${revisitsCompleted} / ${revisitsRequired}</div>
+                    <div style="font-size: 0.75em; opacity: 0.7; margin-top: 8px;">Completed / Required</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHTML;
+        }
+
+        function updateChart(data) {
+            const failCodeCounts = {};
+            FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && selectedCodes.has(code)) {
+                        failCodeCounts[code]++;
+                    }
+                }
+            });
+
+            const chartData = FAIL_CODES
+                .filter(code => selectedCodes.has(code))
+                .map(code => ({ code, count: failCodeCounts[code] }))
+                .filter(item => item.count > 0)
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 20);
+
+            if (chart) chart.destroy();
+
+            const ctx = document.getElementById('failCodeChart').getContext('2d');
+            
+            const backgroundColors = chartData.map(item => {
+                const color = FAIL_CODE_COLORS[item.code];
+                if (color === 'red') return 'rgba(255, 71, 87, 0.8)';
+                if (color === 'amber') return 'rgba(255, 165, 2, 0.8)';
+                if (color === 'green') return 'rgba(46, 204, 113, 0.8)';
+                return 'rgba(162, 155, 254, 0.8)';
+            });
+            
+            const borderColors = chartData.map(item => {
+                const color = FAIL_CODE_COLORS[item.code];
+                if (color === 'red') return 'rgba(255, 71, 87, 1)';
+                if (color === 'amber') return 'rgba(255, 165, 2, 1)';
+                if (color === 'green') return 'rgba(46, 204, 113, 1)';
+                return 'rgba(162, 155, 254, 1)';
+            });
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(item => item.code),
+                    datasets: [{
+                        label: 'Fail Code Count',
+                        data: chartData.map(item => item.count),
+                        backgroundColor: backgroundColors,
+                        borderColor: borderColors,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Top 20 Fail Codes',
+                            color: 'rgba(255, 255, 255, 0.9)',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(20, 20, 40, 0.95)',
+                            titleColor: '#a8c0ff',
+                            bodyColor: 'rgba(255, 255, 255, 0.9)',
+                            borderColor: 'rgba(127, 127, 213, 0.5)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                title: function(context) {
+                                    return context[0].label;
+                                },
+                                label: function(context) {
+                                    return 'Count: ' + context.parsed.y;
+                                },
+                                afterLabel: function(context) {
+                                    const code = context.label;
+                                    const description = FAIL_CODE_DESCRIPTIONS[code];
+                                    return description ? '\n' + description : '';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateOccurrenceTable(data) {
+            const failCodeCounts = {};
+            FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+
+            data.forEach(row => {
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && selectedCodes.has(code)) {
+                        failCodeCounts[code]++;
+                    }
+                }
+            });
+
+            const sortedCodes = FAIL_CODES
+                .filter(code => selectedCodes.has(code))
+                .map(code => ({ code, count: failCodeCounts[code] }))
+                .filter(item => item.count > 0)
+                .sort((a, b) => b.count - a.count);
+
+            const tableHTML = sortedCodes.map(item => `
+                <div class="occurrence-row" data-code="${item.code}">
+                    <div class="occurrence-code">${getColorBadge(item.code)} ${item.code}</div>
+                    <div class="occurrence-count">${item.count}</div>
+                </div>
+            `).join('');
+
+            document.getElementById('occurrenceTable').innerHTML = tableHTML;
+
+            document.querySelectorAll('.occurrence-row').forEach(row => {
+                row.addEventListener('mouseenter', showTooltip);
+                row.addEventListener('mousemove', moveTooltip);
+                row.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        function updateTopPerformers(data) {
+            const performerData = {};
+
+            data.forEach(row => {
+                const name = row['Team'] || 'Unknown';
+                const jRef = row['J Ref'] || 'N/A';
+                
+                if (!performerData[name]) {
+                    performerData[name] = {
+                        total: 0,
+                        codes: {},
+                        jobNumbers: [],
+                        jobNumberCodes: {}
+                    };
+                }
+
+                let hasFailCode = false;
+                const codesInThisRow = [];
+                for (let i = 1; i <= 12; i++) {
+                    const code = row[`Fail Code ${i}`];
+                    if (code && selectedCodes.has(code)) {
+                        hasFailCode = true;
+                        codesInThisRow.push(code);
+                        performerData[name].total++;
+                        performerData[name].codes[code] = (performerData[name].codes[code] || 0) + 1;
+                    }
+                }
+
+                if (hasFailCode) {
+                    performerData[name].jobNumbers.push(jRef);
+                    if (!performerData[name].jobNumberCodes[jRef]) {
+                        performerData[name].jobNumberCodes[jRef] = [];
+                    }
+                    performerData[name].jobNumberCodes[jRef].push(...codesInThisRow);
+                }
+            });
+
+            const sortedPerformers = Object.entries(performerData)
+                .filter(([name, data]) => data.total > 0)
+                .sort((a, b) => b[1].total - a[1].total);
+
+            if (sortedPerformers.length === 0) {
+                document.getElementById('topPerformers').style.display = 'none';
+                return;
+            }
+
+            document.getElementById('topPerformers').style.display = 'block';
+
+            const performersHTML = sortedPerformers.map(([name, data], index) => {
+                const sortedCodes = Object.entries(data.codes)
+                    .sort((a, b) => b[1] - a[1]);
+
+                const codesHTML = sortedCodes.map(([code, count]) => `
+                    <div class="fail-code-item" data-code="${code}" data-performer-index="${index}">
+                        <div class="fail-code-name">${getColorBadge(code)} ${code}</div>
+                        <div class="fail-code-count">${count}</div>
+                    </div>
+                `).join('');
+
+                const jobNumbersArray = data.jobNumbers.sort();
+                const uniqueCount = new Set(jobNumbersArray).size;
+                const jobNumbersHTML = jobNumbersArray.map((jobNum) => {
+                    const codes = data.jobNumberCodes[jobNum] || [];
+                    return `<div class="job-number-item" data-jref="${jobNum}" data-codes="${codes.join(',')}">${jobNum}</div>`;
+                }).join('');
+
+                return `
+                    <div class="performer-card" data-performer-index="${index}">
+                        <div class="performer-header">
+                            <div class="performer-name-section">
+                                <div class="performer-name">${name}</div>
+                                <button class="toggle-jobs-btn" onclick="toggleJobNumbers(${index})">
+                                    <span>${jobNumbersArray.length} Instance${jobNumbersArray.length !== 1 ? 's' : ''} (${uniqueCount} unique)</span>
+                                    <span class="arrow">▼</span>
+                                </button>
+                            </div>
+                            <div class="performer-total">${data.total} Total Fail Codes</div>
+                        </div>
+                        <div class="job-numbers-section" id="job-numbers-${index}">
+                            <div class="job-numbers-title">
+                                J Ref Numbers (${jobNumbersArray.length} instances, ${uniqueCount} unique)
+                            </div>
+                            <div class="job-numbers-grid">
+                                ${jobNumbersHTML}
+                            </div>
+                        </div>
+                        <div class="fail-codes-grid">
+                            ${codesHTML}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('performersList').innerHTML = performersHTML;
+
+            document.querySelectorAll('.fail-code-item').forEach(item => {
+                item.addEventListener('mouseenter', showTooltip);
+                item.addEventListener('mousemove', moveTooltip);
+                item.addEventListener('mouseleave', hideTooltip);
+            });
+        }
+
+        function toggleJobNumbers(index) {
+            const section = document.getElementById(`job-numbers-${index}`);
+            const button = document.querySelectorAll('.toggle-jobs-btn')[index];
+            
+            section.classList.toggle('show');
+            button.classList.toggle('expanded');
+        }
+
+        function showTooltip(e) {
+            const code = e.currentTarget.dataset.code;
+            const performerIndex = e.currentTarget.dataset.performerIndex;
+            const description = FAIL_CODE_DESCRIPTIONS[code];
+            
+            if (performerIndex !== undefined) {
+                highlightJobNumbers(performerIndex, code);
+            }
+            
+            if (!description && code) {
+                if (performerIndex === undefined) {
+                    const startDate = document.getElementById('startDate').valueAsDate;
+                    const endDate = document.getElementById('endDate').valueAsDate;
+                    const selectedTeam = document.getElementById('teamFilter').value;
+
+                    const filtered = allData.filter(row => {
+                        const rowDate = parseDate(row['Date received']);
+                        const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                         (rowDate >= startDate && rowDate <= endDate);
+                        const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                        const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                        return dateMatch && teamMatch && teamNumberMatch;
+                    });
+
+                    const teamRankings = getTeamsByFailCode(filtered, code);
+                    
+                    if (teamRankings.length === 0) return;
+
+                    tooltip.querySelector('.tooltip-code').textContent = code;
+                    tooltip.querySelector('.tooltip-description').textContent = '';
+                    
+                    const teamsHTML = `
+                        <div class="tooltip-teams-title">Top Teams:</div>
+                        ${teamRankings.map(([team, count]) => `
+                            <div class="team-list-item">
+                                <span class="team-name">${team}</span>
+                                <span class="team-count">${count}</span>
+                            </div>
+                        `).join('')}
+                    `;
+                    tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
+                    tooltip.classList.add('show');
+                    moveTooltip(e);
+                }
+                return;
+            }
+
+            if (!description) return;
+
+            tooltip.querySelector('.tooltip-code').textContent = code;
+            tooltip.querySelector('.tooltip-description').textContent = description;
+            
+            if (performerIndex === undefined) {
+                const startDate = document.getElementById('startDate').valueAsDate;
+                const endDate = document.getElementById('endDate').valueAsDate;
+                const selectedTeam = document.getElementById('teamFilter').value;
+
+                const filtered = allData.filter(row => {
+                    const rowDate = parseDate(row['Date received']);
+                    const dateMatch = (!startDate || !endDate || !rowDate) || 
+                                     (rowDate >= startDate && rowDate <= endDate);
+                    const teamMatch = selectedTeam === 'all' || row['Team'] === selectedTeam;
+                    const teamNumberMatch = selectedTeamNumbers.size === 0 || selectedTeamNumbers.has(row['Team Number']);
+                    return dateMatch && teamMatch && teamNumberMatch;
+                });
+
+                const teamRankings = getTeamsByFailCode(filtered, code);
+
+                const teamsHTML = teamRankings.length > 0 ? `
+                    <div class="tooltip-teams-title">Top Teams:</div>
+                    ${teamRankings.map(([team, count]) => `
+                        <div class="team-list-item">
+                            <span class="team-name">${team}</span>
+                            <span class="team-count">${count}</span>
+                        </div>
+                    `).join('')}
+                ` : '';
+                tooltip.querySelector('.tooltip-teams').innerHTML = teamsHTML;
+            } else {
+                tooltip.querySelector('.tooltip-teams').innerHTML = '';
+            }
+            
+            tooltip.classList.add('show');
+            moveTooltip(e);
+        }
+
+        function highlightJobNumbers(performerIndex, code) {
+            document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
+                item.classList.remove('highlighted');
+            });
+
+            const performerCard = document.querySelector(`.performer-card[data-performer-index="${performerIndex}"]`);
+            if (!performerCard) return;
+
+            const jobNumberItems = performerCard.querySelectorAll('.job-number-item');
+            jobNumberItems.forEach(item => {
+                const codes = item.dataset.codes.split(',');
+                if (codes.includes(code)) {
+                    item.classList.add('highlighted');
+                }
+            });
+        }
+
+        function moveTooltip(e) {
+            const tooltipRect = tooltip.getBoundingClientRect();
+            let left = e.pageX + 15;
+            let top = e.pageY + 15;
+
+            if (left + tooltipRect.width > window.innerWidth) {
+                left = e.pageX - tooltipRect.width - 15;
+            }
+            if (top + tooltipRect.height > window.innerHeight + window.scrollY) {
+                top = e.pageY - tooltipRect.height - 15;
+            }
+
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('show');
+            document.querySelectorAll('.job-number-item.highlighted').forEach(item => {
+                item.classList.remove('highlighted');
+            });
+        }
+
+        async function exportToPowerPoint() {
+            if (filteredData.length === 0) return;
+            
+            const btn = document.querySelector('#exportBtnContainer button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Generating...';
+            btn.disabled = true;
+
+            try {
+                let pres = new PptxGenJS();
+                pres.layout = 'LAYOUT_16x9';
+                
+                const bgDark = '0F0F23';
+                const accentLight = 'A8C0FF';
+                const textWhite = 'FFFFFF';
+                const cardBg = '1A1A3A';
+
+                pres.defineSlideMaster({
+                    title: 'MASTER_SLIDE',
+                    background: { color: bgDark },
+                    objects: [
+                        { rect: { x: 0, y: 0, w: '100%', h: 0.8, fill: { color: cardBg } } },
+                        { text: { text: 'Fail Code Analysis Dashboard', options: { x: 0.5, y: 0.15, w: 5, h: 0.5, color: accentLight, fontSize: 16, fontFace: 'Inter', bold: true } } },
+                        { text: { text: new Date().toLocaleDateString('en-GB'), options: { x: 7.0, y: 0.15, w: 2.5, h: 0.5, color: '888888', fontSize: 12, align: 'right' } } }
+                    ]
+                });
+                
+                let slide1 = pres.addSlide();
+                slide1.background = { color: bgDark };
+                slide1.addShape(pres.ShapeType.ellipse, { x: -1, y: 1, w: 4, h: 4, fill: { color: '7877C6' }, transparency: 70 });
+                slide1.addShape(pres.ShapeType.ellipse, { x: 7, y: 3, w: 5, h: 5, fill: { color: '4A56E2' }, transparency: 70 });
+                
+                slide1.addText('Fail Code Analysis', {
+                    x: 1, y: 2.2, w: 8, h: 1, 
+                    fontSize: 48, color: accentLight, bold: true, align: 'center', fontFace: 'Inter'
+                });
+                
+                const formatUKDate = (dateStr) => {
+                    if (!dateStr) return '';
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('en-GB');
+                };
+                
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                const dateStr = startDate && endDate ? `${formatUKDate(startDate)} to ${formatUKDate(endDate)}` : 'All Time Data';
+                
+                slide1.addText(`Date Range: ${dateStr}`, {
+                    x: 1, y: 3.2, w: 8, h: 0.5,
+                    fontSize: 20, color: 'AAAAAA', align: 'center', fontFace: 'Inter'
+                });
+
+                const totalIncidents = filteredData.length;
+                let totalFailCodes = 0;
+                filteredData.forEach(row => {
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) totalFailCodes++;
+                    }
+                });
+                const uniqueTeams = new Set(filteredData.map(r => r['Team']).filter(Boolean)).size;
+                
+                const revisitsRequired = filteredData.filter(r => 
+                    r['Revisit required?'] && r['Revisit required?'].toLowerCase() === 'yes'
+                ).length;
+                const revisitsCompleted = filteredData.filter(r => 
+                    r['Revisit completed'] && r['Revisit completed'].toLowerCase() === 'yes'
+                ).length;
+
+                let slide2 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slide2.addText('Executive Summary', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                const addStatBox = (slide, title, value, subtext, x) => {
+                    slide.addShape(pres.ShapeType.roundRect, { x, y: 2.1, w: 2.1, h: 1.8, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText(title, { x, y: 2.3, w: 2.1, h: 0.4, align: 'center', color: 'AAAAAA', fontSize: 13, fontFace: 'Inter' });
+                    slide.addText(value, { x, y: 2.7, w: 2.1, h: 0.7, align: 'center', color: accentLight, fontSize: 36, bold: true, fontFace: 'Inter' });
+                    if (subtext) {
+                        slide.addText(subtext, { x, y: 3.4, w: 2.1, h: 0.3, align: 'center', color: '888888', fontSize: 10, fontFace: 'Inter' });
+                    }
+                };
+
+                addStatBox(slide2, 'Total Incidents', String(totalIncidents), '', 0.5);
+                addStatBox(slide2, 'Total Fail Codes', String(totalFailCodes), '', 2.8);
+                addStatBox(slide2, 'Teams Involved', String(uniqueTeams), '', 5.1);
+                addStatBox(slide2, 'Revisits', `${revisitsCompleted}/${revisitsRequired}`, 'Completed / Required', 7.4);
+
+                let slide3 = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slide3.addText('Top Fail Codes Frequency', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                const failCodeCounts = {};
+                FAIL_CODES.forEach(code => failCodeCounts[code] = 0);
+                filteredData.forEach(row => {
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) {
+                            failCodeCounts[code]++;
+                        }
+                    }
+                });
+                
+                const topCodes = FAIL_CODES
+                    .filter(code => selectedCodes.has(code))
+                    .map(code => ({ code, count: failCodeCounts[code] }))
+                    .filter(item => item.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 15);
+                    
+                if (topCodes.length > 0) {
+                    slide3.addChart(pres.ChartType.bar, [{
+                        name: 'Count',
+                        labels: topCodes.map(c => c.code),
+                        values: topCodes.map(c => c.count)
+                    }], {
+                        x: 0.5, y: 1.8, w: 9, h: 3.5,
+                        barDir: 'col',
+                        chartColors: ['667EEA'],
+                        valAxisLabelColor: textWhite,
+                        valAxisLabelFontSize: 12,
+                        catAxisLabelColor: accentLight,
+                        catAxisLabelFontSize: 12,
+                        showValue: true,
+                        dataLabelColor: textWhite,
+                        valGridLine: { color: '333355', style: 'dash' }
+                    });
+                } else {
+                    slide3.addText('No fail codes match current filters.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
+                }
+
+                // Compute Top 10 Performers Data for Individual Slides + Overall
+                const performerData = {};
+                filteredData.forEach(row => {
+                    const name = row['Team'] || 'Unknown';
+                    if (!performerData[name]) {
+                        performerData[name] = { 
+                            totalIncidents: 0, 
+                            totalCodes: 0, 
+                            red: 0, amber: 0, purple: 0, green: 0,
+                            revisitsReq: 0, revisitsComp: 0,
+                            codeCounts: {}
+                        };
+                    }
+                    
+                    performerData[name].totalIncidents++;
+                    
+                    if (row['Revisit required?'] && row['Revisit required?'].toLowerCase() === 'yes') {
+                        performerData[name].revisitsReq++;
+                    }
+                    if (row['Revisit completed'] && row['Revisit completed'].toLowerCase() === 'yes') {
+                        performerData[name].revisitsComp++;
+                    }
+                    
+                    for (let i = 1; i <= 12; i++) {
+                        const code = row[`Fail Code ${i}`];
+                        if (code && selectedCodes.has(code)) {
+                            performerData[name].totalCodes++;
+                            const color = FAIL_CODE_COLORS[code] || 'purple';
+                            performerData[name][color]++;
+                            performerData[name].codeCounts[code] = (performerData[name].codeCounts[code] || 0) + 1;
+                        }
+                    }
+                });
+                
+                const sortedPerformers = Object.entries(performerData)
+                    .filter(([name, data]) => data.totalCodes > 0)
+                    .sort((a, b) => b[1].totalCodes - a[1].totalCodes)
+                    .slice(0, 10);
+                    
+                // Generate Individual Slides for Top 10
+                sortedPerformers.forEach(([teamName, tData]) => {
+                    let slide = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                    slide.addText(`Team Analysis: ${teamName}`, { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 28, color: textWhite, bold: true, fontFace: 'Inter' });
+                    
+                    // Stats boxes for the team
+                    slide.addShape(pres.ShapeType.roundRect, { x: 0.5, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Total Fail Codes', { x: 0.5, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.totalCodes), { x: 0.5, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+                    
+                    slide.addShape(pres.ShapeType.roundRect, { x: 2.9, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Incidents with Fails', { x: 2.9, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.totalIncidents), { x: 2.9, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+                    
+                    slide.addShape(pres.ShapeType.roundRect, { x: 5.3, y: 1.8, w: 2.2, h: 0.9, fill: { color: cardBg }, line: { color: '333355', width: 1 }, rectRadius: 0.1 });
+                    slide.addText('Revisits Required', { x: 5.3, y: 1.9, w: 2.2, h: 0.3, align: 'center', color: 'AAAAAA', fontSize: 11, fontFace: 'Inter' });
+                    slide.addText(String(tData.revisitsReq), { x: 5.3, y: 2.2, w: 2.2, h: 0.4, align: 'center', color: accentLight, fontSize: 24, bold: true, fontFace: 'Inter' });
+
+                    // Severity breakdown chart (donut)
+                    const donutLabels = [];
+                    const donutValues = [];
+                    const donutColors = [];
+                    if (tData.red > 0) { donutLabels.push('Red'); donutValues.push(tData.red); donutColors.push('FF4757'); }
+                    if (tData.amber > 0) { donutLabels.push('Amber'); donutValues.push(tData.amber); donutColors.push('FFA502'); }
+                    if (tData.purple > 0) { donutLabels.push('Purple'); donutValues.push(tData.purple); donutColors.push('A29BFE'); }
+                    if (tData.green > 0) { donutLabels.push('Green'); donutValues.push(tData.green); donutColors.push('2ECC71'); }
+                    
+                    if (donutValues.length > 0) {
+                        slide.addChart(pres.ChartType.doughnut, [{
+                            name: 'Severity',
+                            labels: donutLabels,
+                            values: donutValues
+                        }], {
+                            x: 0.5, y: 2.9, w: 3, h: 2.5,
+                            showLegend: true, legendPos: 'b', legendColor: textWhite, legendFontSize: 10,
+                            chartColors: donutColors,
+                            dataLabelColor: textWhite,
+                            showValue: true,
+                            holeSize: 50
+                        });
+                    }
+
+                    // Table for top fail codes
+                    const tCodes = Object.entries(tData.codeCounts)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 5);
+                        
+                    if (tCodes.length > 0) {
+                        const tableRows = [
+                            [
+                                { text: 'Code', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } },
+                                { text: 'Count', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } },
+                                { text: 'Description', options: { color: accentLight, bold: true, border: { pt: 1, color: '333355' }, fill: { color: '202040' } } }
+                            ]
+                        ];
+                        
+                        tCodes.forEach(([code, count]) => {
+                            tableRows.push([
+                                { text: code, options: { color: textWhite, border: { pt: 1, color: '333355' } } },
+                                { text: String(count), options: { color: textWhite, border: { pt: 1, color: '333355' } } },
+                                { text: FAIL_CODE_DESCRIPTIONS[code] || 'No description available', options: { color: 'AAAAAA', border: { pt: 1, color: '333355' } } }
+                            ]);
+                        });
+                        
+                        slide.addTable(tableRows, {
+                            x: 3.8, y: 2.9, w: 5.7, colW: [0.8, 0.7, 4.2],
+                            fill: { color: cardBg },
+                            fontSize: 10,
+                            fontFace: 'Inter',
+                            border: { pt: 1, color: '333355' }
+                        });
+                    }
+                });
+
+                // Overall Top 10 Slide
+                let slideOverall = pres.addSlide({ masterName: 'MASTER_SLIDE' });
+                slideOverall.addText('Overall Top Performers by Severity', { x: 0.5, y: 1, w: 9, h: 0.6, fontSize: 32, color: textWhite, bold: true, fontFace: 'Inter' });
+                
+                if (sortedPerformers.length > 0) {
+                    const pLabels = sortedPerformers.map(p => p[0]);
+                    const redData = sortedPerformers.map(p => p[1].red);
+                    const amberData = sortedPerformers.map(p => p[1].amber);
+                    const purpleData = sortedPerformers.map(p => p[1].purple);
+                    const greenData = sortedPerformers.map(p => p[1].green);
+
+                    slideOverall.addChart(pres.ChartType.bar, [
+                        { name: 'Red Codes', labels: pLabels, values: redData },
+                        { name: 'Amber Codes', labels: pLabels, values: amberData },
+                        { name: 'Purple Codes', labels: pLabels, values: purpleData },
+                        { name: 'Green Codes', labels: pLabels, values: greenData }
+                    ], {
+                        x: 0.5, y: 1.8, w: 9, h: 3.5,
+                        barDir: 'col',
+                        barGrouping: 'stacked',
+                        chartColors: ['FF4757', 'FFA502', 'A29BFE', '2ECC71'],
+                        valAxisLabelColor: textWhite,
+                        valAxisLabelFontSize: 12,
+                        catAxisLabelColor: accentLight,
+                        catAxisLabelFontSize: 12,
+                        showValue: true,
+                        dataLabelColor: textWhite,
+                        showLegend: true,
+                        legendPos: 'b',
+                        legendColor: textWhite,
+                        valGridLine: { color: '333355', style: 'dash' }
+                    });
+                } else {
+                    slideOverall.addText('No data for teams.', { x: 0.5, y: 2, w: 9, h: 1, color: 'AAAAAA', align: 'center', fontSize: 16 });
+                }
+
+                await pres.writeFile({ fileName: 'FailCodeAnalysis_Report.pptx' });
+            } catch (err) {
+                console.error(err);
+                alert('Error generating PowerPoint. Check console.');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Initialize with no data message
+        document.getElementById('noData').style.display = 'block';
+        document.getElementById('mainContent').style.display = 'none';
+        document.getElementById('stats').style.display = 'none';
+    </script>
+</body>
+</html>

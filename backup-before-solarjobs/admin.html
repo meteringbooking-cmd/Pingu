@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+
+        /* ── Auth gate overlay (shown while checking session) ── */
+        #auth-gate {
+            position: fixed; inset: 0;
+            background: var(--dark);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+            gap: 1.2rem;
+        }
+        #auth-gate .gate-logo {
+            font-family: 'Syne', sans-serif; font-size: 2.4rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        #auth-gate .gate-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,107,53,0.3);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        #auth-gate .gate-msg { color: var(--text-dim); font-size: 0.82rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Page content hidden until auth passes ── */
+        #page-content { display: none; }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        header { margin-bottom: 2rem; animation: slideDown 0.8s ease-out; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .header-content { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+            text-decoration: none;
+        }
+
+        /* Session pill in header */
+        .session-pill {
+            display: flex; align-items: center; gap: 0.6rem;
+            background: rgba(78,204,163,0.12);
+            border: 1px solid rgba(78,204,163,0.35);
+            color: var(--success);
+            padding: 0.45rem 1rem;
+            border-radius: 99px;
+            font-size: 0.78rem;
+        }
+        .session-pill .dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: var(--success);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(0.8);} }
+        .session-pill .ttl { color: var(--success); font-weight: 600; }
+        .logout-btn {
+            background: none; border: 1px solid var(--dark-lighter);
+            color: var(--text-dim); padding: 0.45rem 0.9rem;
+            border-radius: 8px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+        }
+        .logout-btn:hover { border-color: var(--error); color: var(--error); }
+
+        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--text); }
+        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .stat-card {
+            background: var(--dark-light); padding: 1.5rem; border-radius: 16px;
+            border: 2px solid transparent; transition: all 0.3s ease; animation: fadeInUp 0.6s ease-out;
+        }
+        .stat-card:hover { border-color: var(--primary); transform: translateY(-5px); }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .stat-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .stat-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+        .stat-value {
+            font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin: 2rem 0; }
+        .action-card {
+            background: var(--dark-light); padding: 1.2rem 1.5rem; border-radius: 12px;
+            border: 2px solid transparent; transition: all 0.3s ease;
+            cursor: pointer; text-decoration: none; color: var(--text);
+        }
+        .action-card:hover { border-color: var(--primary); transform: translateY(-5px); box-shadow: 0 10px 30px var(--shadow); }
+        .action-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+        .action-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 0.3rem; }
+        .action-description { color: var(--text-dim); font-size: 0.8rem; }
+        .section-view { display: none; animation: fadeInUp 0.6s ease-out; }
+        .section-view.active { display: block; }
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .section-title { font-family: 'Syne', sans-serif; font-size: 2rem; color: var(--text); }
+        .card {
+            background: var(--dark-light); border-radius: 16px; padding: 2rem;
+            border: 2px solid transparent; transition: all 0.3s ease; margin-bottom: 1.5rem;
+        }
+        .card:hover { border-color: var(--primary); }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-label { color: var(--text); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-input, .form-select, .form-textarea {
+            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
+            color: var(--text); padding: 0.8rem; border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; transition: all 0.3s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--primary); }
+        .form-textarea { resize: vertical; min-height: 100px; }
+        .btn {
+            padding: 0.8rem 1.8rem; border: none; border-radius: 8px;
+            font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s ease; text-decoration: none; display: inline-block;
+        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--shadow); }
+        .btn-secondary { background: var(--dark-lighter); color: var(--text); border: 2px solid var(--text-dim); }
+        .btn-secondary:hover { border-color: var(--primary); }
+        .btn-danger { background: var(--error); color: white; }
+        .btn-danger:hover { background: #E85555; }
+        .btn-success { background: var(--success); color: var(--dark); }
+        .table-container { overflow-x: auto; background: var(--dark-lighter); border-radius: 12px; padding: 1rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        table th, table td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--dark); }
+        table th { color: var(--accent); font-weight: 600; font-family: 'Syne', sans-serif; text-transform: uppercase; font-size: 0.8rem; letter-spacing: 1px; }
+        table td { color: var(--text-dim); }
+        table tr:hover { background: var(--dark-light); }
+        .table-actions { display: flex; gap: 0.5rem; }
+        .table-btn { padding: 0.4rem 0.8rem; font-size: 0.75rem; border-radius: 6px; }
+        .status-badge { display: inline-block; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background: var(--secondary); color: var(--dark); }
+        .status-in-progress { background: #4A9EFF; color: white; }
+        .status-complete { background: var(--success); color: var(--dark); }
+        .status-outstanding { background: var(--error); color: white; }
+        .status-aborted { background: #6C757D; color: white; }
+        .status-cancelled { background: #DC6E3C; color: white; }
+        .timeline { position: relative; padding-left: 2rem; }
+        .timeline::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--dark-lighter); }
+        .timeline-item { position: relative; margin-bottom: 2rem; padding-left: 2rem; }
+        .timeline-item::before { content: ''; position: absolute; left: -2rem; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--primary); border: 3px solid var(--dark); }
+        .timeline-date { color: var(--accent); font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .timeline-content { background: var(--dark-lighter); padding: 1rem; border-radius: 8px; }
+        .timeline-title { font-family: 'Syne', sans-serif; font-weight: 600; margin-bottom: 0.3rem; }
+        .timeline-description { color: var(--text-dim); font-size: 0.85rem; }
+        .filters { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .search-box { flex: 1; min-width: 250px; }
+        .lead-filter-panel {
+            background: var(--dark-lighter); border-radius: 12px; padding: 1.2rem 1.5rem;
+            margin-bottom: 1.5rem; border: 1px solid rgba(0, 217, 255, 0.12);
+        }
+        .lead-filter-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+        .lead-filter-title { color: var(--accent); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1.5px; }
+        .lead-filter-btns { display: flex; gap: 0.5rem; }
+        .lead-mini-btn {
+            background: none; border: 1px solid var(--text-dim); color: var(--text-dim);
+            padding: 0.2rem 0.65rem; border-radius: 6px; font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem; cursor: pointer; transition: all 0.2s ease;
+        }
+        .lead-mini-btn:hover { border-color: var(--accent); color: var(--accent); }
+        .lead-pills-wrap { display: flex; flex-wrap: wrap; gap: 0.55rem; }
+        .lead-pill {
+            display: flex; align-items: center; gap: 0.4rem;
+            background: var(--dark-light); border: 1.5px solid rgba(154,154,176,0.3);
+            border-radius: 8px; padding: 0.4rem 0.85rem; cursor: pointer;
+            font-size: 0.82rem; color: var(--text-dim); transition: all 0.2s ease;
+            user-select: none; -webkit-user-select: none;
+        }
+        .lead-pill:hover { border-color: var(--primary); color: var(--text); }
+        .lead-pill.active { border-color: var(--accent); color: var(--text); background: rgba(0, 217, 255, 0.07); }
+        .lead-pill input[type="checkbox"] {
+            appearance: none; -webkit-appearance: none; width: 14px; height: 14px;
+            border: 2px solid var(--text-dim); border-radius: 4px; background: transparent;
+            cursor: pointer; position: relative; transition: all 0.2s ease; flex-shrink: 0;
+        }
+        .lead-pill input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+        .lead-pill input[type="checkbox"]:checked::after {
+            content: ''; position: absolute; left: 2px; top: -1px;
+            width: 5px; height: 9px; border: 2px solid var(--dark);
+            border-top: none; border-left: none; transform: rotate(45deg);
+        }
+        .pill-count { font-size: 0.7rem; background: rgba(154,154,176,0.2); color: var(--text-dim); padding: 0.05rem 0.4rem; border-radius: 10px; }
+        .lead-pill.active .pill-count { background: rgba(0,217,255,0.18); color: var(--accent); }
+        .results-bar { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--dark-lighter); }
+        .results-bar strong { color: var(--accent); }
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
+            z-index: 1000; align-items: center; justify-content: center; padding: 2rem;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: var(--dark-light); border-radius: 16px; padding: 2.5rem;
+            max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto;
+            border: 2px solid var(--primary); animation: slideUp 0.4s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(50px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .modal-title { font-family: 'Syne', sans-serif; font-size: 1.8rem; color: var(--text); }
+        .close-btn { background: none; border: none; color: var(--text-dim); font-size: 2rem; cursor: pointer; transition: color 0.3s ease; line-height: 1; }
+        .close-btn:hover { color: var(--error); }
+        .status-message {
+            position: fixed; top: 2rem; right: 2rem; padding: 1rem 1.5rem;
+            border-radius: 8px; font-size: 0.9rem; z-index: 1001;
+            animation: slideInRight 0.4s ease; display: none;
+        }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
+        .status-message.show { display: block; }
+        .status-message.success { background: var(--success); color: var(--dark); }
+        .status-message.error { background: var(--error); color: white; }
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(26, 26, 46, 0.95); display: none;
+            align-items: center; justify-content: center; z-index: 999;
+        }
+        .loading-overlay.show { display: flex; }
+        .loading-content { text-align: center; }
+        .loading-spinner {
+            width: 50px; height: 50px; border: 4px solid rgba(255, 107, 53, 0.3);
+            border-radius: 50%; border-top-color: var(--primary);
+            animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+        }
+
+        /* ── Footer ── */
+        .admin-footer {
+            margin-top: 4rem; padding: 2rem 0 3rem; text-align: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .footer-inner {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+        .footer-logo-img {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+            opacity: 0.72;
+            transition: opacity 0.2s, transform 0.2s;
+            vertical-align: middle;
+            cursor: pointer;
+        }
+        .footer-logo-img:hover { opacity: 1; transform: scale(1.15); }
+        .admin-footer p { color: var(--text-dim); font-size: 0.85rem; }
+
+        /* ── Logo lightbox ── */
+        #logo-lightbox {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+        #logo-lightbox.open { display: flex; animation: lbFadeIn 0.2s ease; }
+        @keyframes lbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        #logo-lightbox img {
+            max-width: min(480px, 90vw);
+            max-height: 90vh;
+            border-radius: 20px;
+            box-shadow: 0 0 80px rgba(255,107,53,0.35), 0 0 0 2px rgba(255,255,255,0.08);
+            transform: scale(0.85);
+            animation: lbPop 0.25s cubic-bezier(0.34,1.56,0.64,1) forwards;
+        }
+        @keyframes lbPop { to { transform: scale(1); } }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .stats-grid, .action-grid, .form-grid { grid-template-columns: 1fr; }
+            .filters { flex-direction: column; }
+            .search-box { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ── Auth Gate (shown while verifying session) ── -->
+    <div id="auth-gate">
+        <div class="gate-logo">Pingu - Solar</div>
+        <div class="gate-spinner"></div>
+        <div class="gate-msg">Verifying session…</div>
+    </div>
+
+    <!-- ── Protected Page Content ── -->
+    <div id="page-content">
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <div style="display:flex;align-items:center;gap:0.8rem;flex-wrap:wrap;">
+                    <div class="session-pill">
+                        <div class="dot"></div>
+                        <span id="session-user-name">Signed in</span>
+                        &nbsp;·&nbsp;
+                        <span class="ttl" id="session-ttl">--:--:--</span>
+                    </div>
+                    <button class="logout-btn" onclick="logOut()">Sign Out</button>
+                </div>
+            </div>
+            <h1>Admin Dashboard</h1>
+            <p class="subtitle">Manage jobs, view analytics, and export data</p>
+        </header>
+
+        <div class="stats-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-label">Total Jobs</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">⏳</div>
+                <div class="stat-label">Outstanding</div>
+                <div class="stat-value" id="stat-outstanding">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">✅</div>
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" id="stat-completed">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📅</div>
+                <div class="stat-label">This Month</div>
+                <div class="stat-value" id="stat-month">0</div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="section-view active" id="dashboard-view">
+            <div class="action-grid">
+                <div class="action-card" onclick="showSection('quick-entry')">
+                    <div class="action-icon">⚡</div>
+                    <div class="action-title">Quick Job Entry</div>
+                    <div class="action-description">Add a new job quickly with essential details</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='adminupload.html'">
+                    <div class="action-icon">📤</div>
+                    <div class="action-title">Mass Data Upload</div>
+                    <div class="action-description">Upload CSV files with multiple jobs at once</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='viewtimeline.html'">
+                    <div class="action-icon">📅</div>
+                    <div class="action-title">View Timeline</div>
+                    <div class="action-description">See all jobs in chronological order</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='map.html'">
+                    <div class="action-icon">🗺️</div>
+                    <div class="action-title">View Jobs Map</div>
+                    <div class="action-description">See job locations on an interactive map</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='adminviewjobs.html'">
+                    <div class="action-icon">✏️</div>
+                    <div class="action-title">View All Jobs</div>
+                    <div class="action-description">View all jobs, edit existing job details and information</div>
+                </div>
+                <div class="action-card" onclick="showSection('outstanding')">
+                    <div class="action-icon">⚠️</div>
+                    <div class="action-title">Outstanding Jobs</div>
+                    <div class="action-description">View jobs that need attention</div>
+                </div>
+                <div class="action-card" onclick="showSection('completed')">
+                    <div class="action-icon">🎉</div>
+                    <div class="action-title">View Completed Jobs</div>
+                    <div class="action-description">Browse all finished installations</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='submitfigures.html'">
+                    <div class="action-icon">💵</div>
+                    <div class="action-title">Submit Figures</div>
+                    <div class="action-description">View all completed jobs that require invoicable figures</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/uploaddata.html'">
+                    <div class="action-icon">📡</div>
+                    <div class="action-title">Upload Survey Data</div>
+                    <div class="action-description">Upload and manage survey data submissions</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/picklistgenerator.html'">
+                    <div class="action-icon">📋</div>
+                    <div class="action-title">Picklist Generator</div>
+                    <div class="action-description">Generate material picklists for upcoming installations</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/viewsurvey.html'">
+                    <div class="action-icon">🔍</div>
+                    <div class="action-title">View Surveys</div>
+                    <div class="action-description">Browse and review all submitted site surveys</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/surveymaster.html'">
+                    <div class="action-icon">📊</div>
+                    <div class="action-title">Survey Master Sheet</div>
+                    <div class="action-description">Master overview of all survey data and statuses</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/meterworkrequired.html'">
+                    <div class="action-icon">⚡</div>
+                    <div class="action-title">Meter Work Required</div>
+                    <div class="action-description">Track jobs requiring meter work before installation</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/rippdf.html'">
+                    <div class="action-icon">📄</div>
+                    <div class="action-title">PDF Ripper</div>
+                    <div class="action-description">Extract and process data from PDF documents</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/inventorycheck.html'">
+                    <div class="action-icon">🏭</div>
+                    <div class="action-title">Inventory Checker</div>
+                    <div class="action-description">Check and manage stock levels and inventory</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/teamdatabase.html'">
+                    <div class="action-icon">👷</div>
+                    <div class="action-title">Team Database</div>
+                    <div class="action-description">View and manage team members and engineer records</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='https://pingu-blue.vercel.app/materialsapproval.html'">
+                    <div class="action-icon">📦</div>
+                    <div class="action-title">Materials Approval</div>
+                    <div class="action-description">Review and approve additional materials requested by surveyors</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='stocktake.html'">
+                    <div class="action-icon">🗃️</div>
+                    <div class="action-title">Stocktake</div>
+                    <div class="action-description">Count and record current stock levels</div>
+                </div>
+                <div class="action-card" onclick="window.location.href='stocktakereview.html'">
+                    <div class="action-icon">📊</div>
+                    <div class="action-title">Stocktake Review</div>
+                    <div class="action-description">Browse and compare all stocktake submissions by person and month</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Job Entry -->
+        <div class="section-view" id="quick-entry-view">
+            <div class="section-header">
+                <h2 class="section-title">Quick Job Entry</h2>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Back</button>
+            </div>
+            <div class="card">
+                <form id="quick-entry-form">
+                    <div class="form-grid">
+                        <div class="form-group"><label class="form-label">Job Type *</label><input type="text" class="form-input" id="job-type" required></div>
+                        <div class="form-group"><label class="form-label">Job Number *</label><input type="text" class="form-input" id="job-number" required></div>
+                        <div class="form-group"><label class="form-label">Address *</label><input type="text" class="form-input" id="address" required></div>
+                        <div class="form-group"><label class="form-label">Postcode *</label><input type="text" class="form-input" id="postcode" required></div>
+                        <div class="form-group"><label class="form-label">Booked Date *</label><input type="date" class="form-input" id="booked-date" required></div>
+                        <div class="form-group"><label class="form-label">Projected Completion Date *</label><input type="date" class="form-input" id="completion-date" required></div>
+                        <div class="form-group"><label class="form-label">Days *</label><input type="number" class="form-input" id="days" required></div>
+                        <div class="form-group"><label class="form-label">Panel No. *</label><input type="text" class="form-input" id="panel-no" required></div>
+                        <div class="form-group"><label class="form-label">Lead *</label><input type="text" class="form-input" id="lead" required></div>
+                        <div class="form-group"><label class="form-label">Team Number *</label><input type="text" class="form-input" id="team-number" required></div>
+                        <div class="form-group">
+                            <label class="form-label">Status Update</label>
+                            <select class="form-select" id="status-update">
+                                <option value="">No Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="in-progress">In Progress</option>
+                                <option value="complete">Complete</option>
+                                <option value="aborted">Aborted</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">Add Job</button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('quick-entry-form').reset()">Clear Form</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Timeline View -->
+        <div class="section-view" id="timeline-view">
+            <div class="section-header">
+                <h2 class="section-title">Job Timeline</h2>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Back</button>
+            </div>
+            <div class="card">
+                <div class="timeline" id="timeline-container"></div>
+            </div>
+        </div>
+
+        <!-- Amend Jobs -->
+        <div class="section-view" id="amend-jobs-view">
+            <div class="section-header">
+                <h2 class="section-title">Amend Jobs</h2>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Back</button>
+            </div>
+            <div class="card">
+                <div class="filters">
+                    <div class="search-box">
+                        <input type="text" class="form-input" id="amend-search" placeholder="Search by job number or address...">
+                    </div>
+                    <button class="btn btn-primary" onclick="searchAmendJobs()">Search</button>
+                </div>
+                <div class="table-container">
+                    <table id="amend-jobs-table">
+                        <thead><tr><th>Job Number</th><th>Address</th><th>Booked Date</th><th>Status</th><th>Actions</th></tr></thead>
+                        <tbody id="amend-jobs-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Outstanding Jobs -->
+        <div class="section-view" id="outstanding-view">
+            <div class="section-header">
+                <h2 class="section-title">Outstanding Jobs</h2>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Back</button>
+            </div>
+            <div class="card">
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Job Number</th><th>Address</th><th>Postcode</th><th>Booked Date</th><th>Lead</th><th>Actions</th></tr></thead>
+                        <tbody id="outstanding-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Jobs -->
+        <div class="section-view" id="completed-view">
+            <div class="section-header">
+                <h2 class="section-title">Completed Jobs</h2>
+                <button class="btn btn-secondary" onclick="showSection('dashboard')">← Back</button>
+            </div>
+            <div class="card">
+                <div class="filters">
+                    <div class="search-box">
+                        <input type="text" class="form-input" id="completed-search"
+                               placeholder="Search by job number or address..."
+                               oninput="filterCompletedJobs()">
+                    </div>
+                </div>
+                <div class="lead-filter-panel">
+                    <div class="lead-filter-header">
+                        <span class="lead-filter-title">🔧 Filter by Lead Engineer</span>
+                        <div class="lead-filter-btns">
+                            <button class="lead-mini-btn" onclick="selectAllLeads()">Select All</button>
+                            <button class="lead-mini-btn" onclick="deselectAllLeads()">Clear All</button>
+                        </div>
+                    </div>
+                    <div class="lead-pills-wrap" id="lead-checkboxes">
+                        <span style="color:var(--text-dim);font-size:0.85rem;">Loading engineers…</span>
+                    </div>
+                </div>
+                <div class="results-bar" id="completed-results-bar"></div>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Job Number</th><th>Address</th><th>Booked Date</th><th>Lead</th><th>Days</th><th>Actions</th></tr></thead>
+                        <tbody id="completed-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="admin-footer">
+            <div class="footer-inner">
+                <img
+                    src="https://www.dropbox.com/scl/fi/ghccbr6i2bux4e5w841pj/ChatGPT-Image-Mar-16-2026-11_56_53-AM.png?rlkey=n6ratrtewwmekujp2l5sibfw5&st=f8vwnqju&dl=1"
+                    alt="Pingu logo"
+                    class="footer-logo-img"
+                    onclick="openLogoLightbox()"
+                    title="Click to expand"
+                />
+                <p>Pingu - Solar 2026. Barry Dixon</p>
+            </div>
+        </footer>
+
+        <!-- Logo lightbox -->
+        <div id="logo-lightbox" onclick="closeLogoLightbox()">
+            <img
+                src="https://www.dropbox.com/scl/fi/ghccbr6i2bux4e5w841pj/ChatGPT-Image-Mar-16-2026-11_56_53-AM.png?rlkey=n6ratrtewwmekujp2l5sibfw5&st=f8vwnqju&dl=1"
+                alt="Pingu logo expanded"
+            />
+        </div>
+
+    </div>
+    </div><!-- end #page-content -->
+
+    <!-- Edit Job Modal -->
+    <div class="modal" id="edit-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Edit Job</h2>
+                <button class="close-btn" onclick="closeEditModal()">×</button>
+            </div>
+            <form id="edit-job-form">
+                <input type="hidden" id="edit-job-id">
+                <div class="form-grid">
+                    <div class="form-group"><label class="form-label">Job Type</label><input type="text" class="form-input" id="edit-job-type"></div>
+                    <div class="form-group"><label class="form-label">Job Number</label><input type="text" class="form-input" id="edit-job-number"></div>
+                    <div class="form-group"><label class="form-label">Address</label><input type="text" class="form-input" id="edit-address"></div>
+                    <div class="form-group"><label class="form-label">Postcode</label><input type="text" class="form-input" id="edit-postcode"></div>
+                    <div class="form-group"><label class="form-label">Booked Date</label><input type="date" class="form-input" id="edit-booked-date"></div>
+                    <div class="form-group"><label class="form-label">Projected Completion Date</label><input type="date" class="form-input" id="edit-completion-date"></div>
+                    <div class="form-group"><label class="form-label">Days</label><input type="number" class="form-input" id="edit-days"></div>
+                    <div class="form-group"><label class="form-label">Panel No.</label><input type="text" class="form-input" id="edit-panel-no"></div>
+                    <div class="form-group">
+                        <label class="form-label">Status Update</label>
+                        <select class="form-select" id="edit-status-update">
+                            <option value="">No Status</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="complete">Complete</option>
+                            <option value="aborted">Aborted</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="form-label">Lead</label><input type="text" class="form-input" id="edit-lead"></div>
+                    <div class="form-group"><label class="form-label">Team Number</label><input type="text" class="form-input" id="edit-team-number"></div>
+                </div>
+                <div style="margin-top:2rem;display:flex;gap:1rem;justify-content:flex-end;">
+                    <button type="button" class="btn btn-danger" onclick="deleteJob()">Delete Job</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Export Data</h2>
+                <button class="close-btn" onclick="closeExportModal()">×</button>
+            </div>
+            <div class="form-group" style="margin-bottom:1.5rem;">
+                <label class="form-label">Export Format</label>
+                <select class="form-select" id="export-format">
+                    <option value="csv">CSV (Excel Compatible)</option>
+                    <option value="json">JSON</option>
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:1.5rem;">
+                <label class="form-label">Filter by Status</label>
+                <select class="form-select" id="export-filter">
+                    <option value="all">All Jobs</option>
+                    <option value="pending">Pending Only</option>
+                    <option value="complete">Complete Only</option>
+                    <option value="outstanding">Outstanding Only</option>
+                </select>
+            </div>
+            <div style="margin-top:2rem;display:flex;gap:1rem;justify-content:flex-end;">
+                <button class="btn btn-secondary" onclick="closeExportModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="performExport()">Download Export</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-message" id="status-message"></div>
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div style="color:var(--text);">Loading...</div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy }
+            from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+        try {
+            const app = initializeApp(firebaseConfig);
+            window.db = getFirestore(app);
+            window.firebaseModules = { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, orderBy };
+            console.log('✅ Firebase initialized');
+        } catch (error) {
+            console.error('❌ Firebase error:', error);
+        }
+    </script>
+
+    <script>
+        const SESSION_KEY   = 'adminSession';
+        const COOLDOWN_MS   = 12 * 60 * 60 * 1000;
+        const LOGIN_PAGE    = 'adminlogin!&!.html';
+
+        let sessionCountdownTimer = null;
+
+        async function checkAuthAndInit() {
+            let currentIP = 'unknown';
+            try {
+                currentIP = (await (await fetch('https://api.ipify.org?format=json')).json()).ip;
+            } catch {
+                try { currentIP = (await (await fetch('https://api64.ipify.org?format=json')).json()).ip; } catch {}
+            }
+
+            let session = null;
+            try { session = JSON.parse(localStorage.getItem(SESSION_KEY)); } catch {}
+
+            const now = Date.now();
+            const valid = session &&
+                          session.loginTime &&
+                          (now - session.loginTime) < COOLDOWN_MS &&
+                          (session.ip === currentIP || session.ip === 'Unavailable' || currentIP === 'unknown');
+
+            if (!valid) {
+                localStorage.removeItem(SESSION_KEY);
+                sessionStorage.setItem('loginRedirect', 'admin.html');
+                window.location.replace(LOGIN_PAGE);
+                return;
+            }
+
+            document.getElementById('auth-gate').style.display = 'none';
+            document.getElementById('page-content').style.display = 'block';
+            document.getElementById('session-user-name').textContent = session.name || 'Admin';
+            startSessionCountdown(session.loginTime);
+
+            if (window.db) {
+                loadStats();
+                loadJobs();
+            }
+        }
+
+        function startSessionCountdown(loginTime) {
+            if (sessionCountdownTimer) clearInterval(sessionCountdownTimer);
+            function tick() {
+                const rem = COOLDOWN_MS - (Date.now() - loginTime);
+                if (rem <= 0) {
+                    clearInterval(sessionCountdownTimer);
+                    localStorage.removeItem(SESSION_KEY);
+                    window.location.replace(LOGIN_PAGE);
+                    return;
+                }
+                const h = String(Math.floor(rem / 3600000)).padStart(2,'0');
+                const m = String(Math.floor((rem % 3600000) / 60000)).padStart(2,'0');
+                const s = String(Math.floor((rem % 60000) / 1000)).padStart(2,'0');
+                const el = document.getElementById('session-ttl');
+                if (el) el.textContent = `${h}:${m}:${s}`;
+            }
+            tick();
+            sessionCountdownTimer = setInterval(tick, 1000);
+        }
+
+        function logOut() {
+            if (!confirm('Sign out and return to the login page?')) return;
+            localStorage.removeItem(SESSION_KEY);
+            window.location.replace(LOGIN_PAGE);
+        }
+
+        checkAuthAndInit();
+
+        let allJobs = [];
+        let currentEditJobId = null;
+        let selectedLeads = new Set();
+        let completedLeadsInitialized = false;
+
+        function getFieldValue(job, ...fields) {
+            for (const f of fields) {
+                if (job[f] !== undefined && job[f] !== null && job[f] !== '') return job[f];
+            }
+            return '';
+        }
+        function getStatus(job) {
+            const s = job['Status Update'];
+            return (s !== undefined && s !== null && s !== '') ? s : '';
+        }
+        function isOutstanding(job) {
+            const hasField = 'Status Update' in job;
+            if (hasField) {
+                const s = job['Status Update'];
+                if (s !== undefined && s !== null && s !== '') {
+                    const sl = String(s).toLowerCase();
+                    if (sl === 'complete' || sl === 'aborted' || sl === 'cancelled') return false;
+                    if (sl !== 'in-progress') return false;
+                }
+            }
+            const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
+            if (!dateStr) return false;
+            let d;
+            if (dateStr.includes('/')) {
+                const p = dateStr.split('/');
+                if (p.length === 3) d = new Date(p[2], p[1] - 1, p[0]);
+            } else { d = new Date(dateStr); }
+            if (!d || isNaN(d.getTime())) return false;
+            const today = new Date(); today.setHours(0,0,0,0);
+            d.setHours(0,0,0,0);
+            return d < today;
+        }
+        function isComplete(job) {
+            const s = getStatus(job);
+            return s && s.toLowerCase() === 'complete';
+        }
+        function escapeHtml(text) {
+            if (!text) return '';
+            const d = document.createElement('div'); d.textContent = String(text); return d.innerHTML;
+        }
+        function escapeAttr(text) {
+            return String(text || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        }
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            if (dateString.includes('/')) {
+                const p = dateString.split('/');
+                if (p.length === 3) {
+                    const d = new Date(p[2], p[1]-1, p[0]);
+                    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+                }
+            }
+            const d = new Date(dateString);
+            if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+            return dateString;
+        }
+        function statusBadge(job) {
+            const s = getStatus(job).toLowerCase();
+            if (s === 'complete') return ['status-complete', 'complete'];
+            if (isOutstanding(job)) return ['status-outstanding', 'outstanding'];
+            if (s === 'in-progress') return ['status-in-progress', 'in-progress'];
+            if (s === 'aborted') return ['status-aborted', 'aborted'];
+            if (s === 'cancelled') return ['status-cancelled', 'cancelled'];
+            if (s === 'pending') return ['status-pending', 'pending'];
+            return ['status-pending', 'no status'];
+        }
+        function showStatus(msg, type) {
+            const el = document.getElementById('status-message');
+            el.textContent = msg; el.className = `status-message ${type} show`;
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+        function showLoading(show) {
+            document.getElementById('loading-overlay').classList.toggle('show', show);
+        }
+        function showSection(name) {
+            document.querySelectorAll('.section-view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`${name}-view`).classList.add('active');
+            if (name === 'timeline') loadTimeline();
+            if (name === 'amend-jobs') loadAmendJobs();
+            if (name === 'outstanding') loadOutstandingJobs();
+            if (name === 'completed') loadCompletedJobs();
+        }
+        async function loadJobs() {
+            try {
+                showLoading(true);
+                const { collection, getDocs } = window.firebaseModules;
+                const snap = await getDocs(collection(window.db, 'Solar-jobs'));
+                allJobs = [];
+                snap.forEach(d => allJobs.push({ id: d.id, ...d.data() }));
+                showLoading(false);
+            } catch (err) {
+                showStatus('Failed to load jobs: ' + err.message, 'error');
+                showLoading(false);
+            }
+        }
+        async function loadStats() {
+            await loadJobs();
+            const total = allJobs.length;
+            const outstanding = allJobs.filter(isOutstanding).length;
+            const completed = allJobs.filter(isComplete).length;
+            const now = new Date();
+            const thisMonth = allJobs.filter(j => {
+                const ds = getFieldValue(j, 'Booked Date', 'Projected Completion Date', 'Install Date');
+                if (!ds) return false;
+                let d;
+                if (ds.includes('/')) { const p = ds.split('/'); if (p.length===3) d = new Date(p[2],p[1]-1,p[0]); }
+                else { d = new Date(ds); }
+                if (!d || isNaN(d.getTime())) return false;
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            }).length;
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-outstanding').textContent = outstanding;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-month').textContent = thisMonth;
+        }
+        document.getElementById('quick-entry-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            const sv = document.getElementById('status-update').value;
+            const data = {
+                'Job Type': document.getElementById('job-type').value,
+                'Job Number': document.getElementById('job-number').value,
+                'Address': document.getElementById('address').value,
+                'Postcode': document.getElementById('postcode').value,
+                'Booked Date': document.getElementById('booked-date').value,
+                'Projected Completion Date': document.getElementById('completion-date').value,
+                'Days': document.getElementById('days').value,
+                'Panel No.': document.getElementById('panel-no').value,
+                'Lead': document.getElementById('lead').value,
+                'Team Number': document.getElementById('team-number').value,
+                'uploadDate': new Date().toISOString()
+            };
+            if (sv) data['Status Update'] = sv;
+            try {
+                showLoading(true);
+                const { collection, addDoc } = window.firebaseModules;
+                await addDoc(collection(window.db, 'Solar-jobs'), data);
+                showStatus('Job added successfully!', 'success');
+                document.getElementById('quick-entry-form').reset();
+                await loadStats();
+                showLoading(false);
+            } catch (err) {
+                showStatus('Failed to add job: ' + err.message, 'error');
+                showLoading(false);
+            }
+        });
+        async function loadTimeline() {
+            const c = document.getElementById('timeline-container');
+            const sorted = [...allJobs].sort((a, b) => {
+                const da = new Date(getFieldValue(a,'Booked Date','Projected Completion Date')||'9999-12-31');
+                const db2 = new Date(getFieldValue(b,'Booked Date','Projected Completion Date')||'9999-12-31');
+                return db2 - da;
+            });
+            if (!sorted.length) { c.innerHTML = '<p style="color:var(--text-dim)">No jobs found</p>'; return; }
+            c.innerHTML = sorted.map(job => {
+                const [sc, st] = statusBadge(job);
+                return `<div class="timeline-item">
+                    <div class="timeline-date">${formatDate(getFieldValue(job,'Booked Date','Projected Completion Date'))}</div>
+                    <div class="timeline-content">
+                        <div class="timeline-title">Job #${escapeHtml(job['Job Number']||'N/A')} - ${escapeHtml(job['Address']||'No Address')}</div>
+                        <div class="timeline-description">Lead: ${escapeHtml(job['Lead']||'Unassigned')} | Duration: ${escapeHtml(job['Days']||'N/A')} days | Status: <span class="status-badge ${sc}">${st}</span></div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+        async function loadAmendJobs() {
+            const tbody = document.getElementById('amend-jobs-tbody');
+            if (!allJobs.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No jobs found</td></tr>'; return; }
+            tbody.innerHTML = allJobs.map(job => {
+                const [sc, st] = statusBadge(job);
+                return `<tr>
+                    <td>${escapeHtml(job['Job Number']||'N/A')}</td>
+                    <td>${escapeHtml(job['Address']||'N/A')}</td>
+                    <td>${formatDate(getFieldValue(job,'Booked Date','Projected Completion Date'))}</td>
+                    <td><span class="status-badge ${sc}">${st}</span></td>
+                    <td class="table-actions"><button class="btn btn-primary table-btn" onclick="openEditModal('${escapeAttr(job.id)}')">Edit</button></td>
+                </tr>`;
+            }).join('');
+        }
+        function searchAmendJobs() {
+            const term = document.getElementById('amend-search').value.toLowerCase();
+            const tbody = document.getElementById('amend-jobs-tbody');
+            const filtered = allJobs.filter(j =>
+                (j['Job Number']||'').toLowerCase().includes(term) ||
+                (j['Address']||'').toLowerCase().includes(term)
+            );
+            if (!filtered.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-dim)">No matching jobs found</td></tr>'; return; }
+            tbody.innerHTML = filtered.map(job => {
+                const [sc, st] = statusBadge(job);
+                return `<tr>
+                    <td>${escapeHtml(job['Job Number']||'N/A')}</td>
+                    <td>${escapeHtml(job['Address']||'N/A')}</td>
+                    <td>${formatDate(getFieldValue(job,'Booked Date','Projected Completion Date'))}</td>
+                    <td><span class="status-badge ${sc}">${st}</span></td>
+                    <td class="table-actions"><button class="btn btn-primary table-btn" onclick="openEditModal('${escapeAttr(job.id)}')">Edit</button></td>
+                </tr>`;
+            }).join('');
+        }
+        function openEditModal(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (!job) return;
+            currentEditJobId = jobId;
+            document.getElementById('edit-job-id').value = jobId;
+            document.getElementById('edit-job-type').value = job['Job Type']||'';
+            document.getElementById('edit-job-number').value = job['Job Number']||'';
+            document.getElementById('edit-address').value = job['Address']||'';
+            document.getElementById('edit-postcode').value = job['Postcode']||'';
+            document.getElementById('edit-booked-date').value = job['Booked Date']||'';
+            document.getElementById('edit-completion-date').value = job['Projected Completion Date']||'';
+            document.getElementById('edit-days').value = job['Days']||'';
+            document.getElementById('edit-panel-no').value = job['Panel No.']||'';
+            document.getElementById('edit-status-update').value = getStatus(job);
+            document.getElementById('edit-lead').value = job['Lead']||'';
+            document.getElementById('edit-team-number').value = job['Team Number']||'';
+            document.getElementById('edit-modal').classList.add('show');
+        }
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.remove('show');
+            currentEditJobId = null;
+        }
+        document.getElementById('edit-job-form').addEventListener('submit', async e => {
+            e.preventDefault();
+            if (!currentEditJobId) return;
+            const sv = document.getElementById('edit-status-update').value;
+            const data = {
+                'Job Type': document.getElementById('edit-job-type').value,
+                'Job Number': document.getElementById('edit-job-number').value,
+                'Address': document.getElementById('edit-address').value,
+                'Postcode': document.getElementById('edit-postcode').value,
+                'Booked Date': document.getElementById('edit-booked-date').value,
+                'Projected Completion Date': document.getElementById('edit-completion-date').value,
+                'Days': document.getElementById('edit-days').value,
+                'Panel No.': document.getElementById('edit-panel-no').value,
+                'Lead': document.getElementById('edit-lead').value,
+                'Team Number': document.getElementById('edit-team-number').value
+            };
+            if (sv) data['Status Update'] = sv;
+            try {
+                showLoading(true);
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.db, 'Solar-jobs', currentEditJobId), data);
+                showStatus('Job updated successfully!', 'success');
+                closeEditModal();
+                await loadJobs();
+                await loadStats();
+                loadAmendJobs();
+                showLoading(false);
+            } catch (err) {
+                showStatus('Failed to update job: ' + err.message, 'error');
+                showLoading(false);
+            }
+        });
+        async function deleteJob() {
+            if (!currentEditJobId) return;
+            if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) return;
+            try {
+                showLoading(true);
+                const { doc, deleteDoc } = window.firebaseModules;
+                await deleteDoc(doc(window.db, 'Solar-jobs', currentEditJobId));
+                showStatus('Job deleted successfully!', 'success');
+                closeEditModal();
+                await loadJobs();
+                await loadStats();
+                loadAmendJobs();
+                showLoading(false);
+            } catch (err) {
+                showStatus('Failed to delete job: ' + err.message, 'error');
+                showLoading(false);
+            }
+        }
+        async function loadOutstandingJobs() {
+            const tbody = document.getElementById('outstanding-tbody');
+            const jobs = allJobs.filter(isOutstanding);
+            if (!jobs.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No outstanding jobs</td></tr>'; return; }
+            tbody.innerHTML = jobs.map(job => `<tr>
+                <td>${escapeHtml(job['Job Number']||'N/A')}</td>
+                <td>${escapeHtml(job['Address']||'N/A')}</td>
+                <td>${escapeHtml(job['Postcode']||'N/A')}</td>
+                <td>${formatDate(getFieldValue(job,'Booked Date','Projected Completion Date'))}</td>
+                <td>${escapeHtml(job['Lead']||'Unassigned')}</td>
+                <td class="table-actions"><button class="btn btn-primary table-btn" onclick="openEditModal('${escapeAttr(job.id)}')">Edit</button></td>
+            </tr>`).join('');
+        }
+        function loadCompletedJobs() {
+            const completedJobs = allJobs.filter(isComplete);
+            const counts = {};
+            completedJobs.forEach(j => {
+                const lead = (j['Lead'] || 'Unassigned').trim();
+                counts[lead] = (counts[lead] || 0) + 1;
+            });
+            const leads = Object.keys(counts).sort();
+            if (!completedLeadsInitialized) {
+                leads.forEach(l => selectedLeads.add(l));
+                completedLeadsInitialized = true;
+            }
+            renderLeadCheckboxes(leads, counts);
+            renderCompletedTable(completedJobs);
+        }
+        function renderLeadCheckboxes(leads, counts) {
+            const wrap = document.getElementById('lead-checkboxes');
+            if (!leads.length) { wrap.innerHTML = '<span style="color:var(--text-dim);font-size:0.85rem;">No lead engineers found in completed jobs.</span>'; return; }
+            wrap.innerHTML = leads.map(lead => {
+                const checked = selectedLeads.has(lead);
+                const safeId = 'lc_' + lead.replace(/\W+/g, '_');
+                return `<label class="lead-pill${checked?' active':''}" id="lbl_${safeId}">
+                    <input type="checkbox" id="${safeId}" ${checked?'checked':''}
+                           onchange="toggleLead('${escapeAttr(lead)}', this, '${safeId}')">
+                    ${escapeHtml(lead)}
+                    <span class="pill-count">${counts[lead]||0}</span>
+                </label>`;
+            }).join('');
+        }
+        function toggleLead(lead, checkbox, safeId) {
+            if (checkbox.checked) { selectedLeads.add(lead); } else { selectedLeads.delete(lead); }
+            const lbl = document.getElementById('lbl_' + safeId);
+            if (lbl) lbl.classList.toggle('active', checkbox.checked);
+            renderCompletedTable(allJobs.filter(isComplete));
+        }
+        function selectAllLeads() {
+            allJobs.filter(isComplete).forEach(j => selectedLeads.add((j['Lead']||'Unassigned').trim()));
+            document.querySelectorAll('#lead-checkboxes input[type="checkbox"]').forEach(cb => { cb.checked = true; cb.closest('.lead-pill').classList.add('active'); });
+            renderCompletedTable(allJobs.filter(isComplete));
+        }
+        function deselectAllLeads() {
+            selectedLeads.clear();
+            document.querySelectorAll('#lead-checkboxes input[type="checkbox"]').forEach(cb => { cb.checked = false; cb.closest('.lead-pill').classList.remove('active'); });
+            renderCompletedTable(allJobs.filter(isComplete));
+        }
+        function filterCompletedJobs() { renderCompletedTable(allJobs.filter(isComplete)); }
+        function renderCompletedTable(completedJobs) {
+            const tbody = document.getElementById('completed-tbody');
+            const bar = document.getElementById('completed-results-bar');
+            const term = (document.getElementById('completed-search').value || '').toLowerCase();
+            let filtered = completedJobs.filter(j => selectedLeads.has((j['Lead']||'Unassigned').trim()));
+            if (term) {
+                filtered = filtered.filter(j =>
+                    (j['Job Number']||'').toLowerCase().includes(term) ||
+                    (j['Address']||'').toLowerCase().includes(term)
+                );
+            }
+            bar.innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${completedJobs.length}</strong> completed jobs`;
+            if (!filtered.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim)">No matching completed jobs</td></tr>'; return; }
+            tbody.innerHTML = filtered.map(job => `<tr>
+                <td>${escapeHtml(job['Job Number']||'N/A')}</td>
+                <td>${escapeHtml(job['Address']||'N/A')}</td>
+                <td>${formatDate(getFieldValue(job,'Booked Date','Projected Completion Date'))}</td>
+                <td>${escapeHtml(job['Lead']||'Unassigned')}</td>
+                <td>${escapeHtml(job['Days']||'N/A')} days</td>
+                <td class="table-actions"><button class="btn btn-primary table-btn" onclick="openEditModal('${escapeAttr(job.id)}')">View</button></td>
+            </tr>`).join('');
+        }
+        function exportData() { document.getElementById('export-modal').classList.add('show'); }
+        function closeExportModal() { document.getElementById('export-modal').classList.remove('show'); }
+        function performExport() {
+            const format = document.getElementById('export-format').value;
+            const filter = document.getElementById('export-filter').value;
+            let data = allJobs;
+            if (filter === 'complete') data = allJobs.filter(isComplete);
+            else if (filter === 'outstanding') data = allJobs.filter(isOutstanding);
+            else if (filter !== 'all') data = allJobs.filter(j => getStatus(j) === filter);
+            if (!data.length) { showStatus('No jobs to export with the selected filter', 'error'); return; }
+            if (format === 'csv') exportToCSV(data); else exportToJSON(data);
+            closeExportModal();
+        }
+        function exportToCSV(jobs) {
+            const headers = ['Job Type','Job Number','Address','Postcode','Booked Date','Projected Completion Date','Days','Panel No.','Status Update','Lead','Team Number'];
+            let csv = headers.join(',') + '\n';
+            jobs.forEach(job => {
+                csv += headers.map(h => {
+                    let v = String(job[h]||'');
+                    if (v.includes(',') || v.includes('"') || v.includes('\n')) v = '"' + v.replace(/"/g,'""') + '"';
+                    return v;
+                }).join(',') + '\n';
+            });
+            downloadFile(csv, 'pingu-solar-jobs.csv', 'text/csv');
+            showStatus('CSV exported successfully!', 'success');
+        }
+        function exportToJSON(jobs) {
+            downloadFile(JSON.stringify(jobs,null,2), 'pingu-solar-jobs.json', 'application/json');
+            showStatus('JSON exported successfully!', 'success');
+        }
+        function downloadFile(content, filename, mime) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([content],{type:mime}));
+            a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+
+        // ── Logo lightbox ──
+        function openLogoLightbox() {
+            document.getElementById('logo-lightbox').classList.add('open');
+        }
+        function closeLogoLightbox() {
+            document.getElementById('logo-lightbox').classList.remove('open');
+        }
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeLogoLightbox();
+        });
+    </script>
+</body>
+</html>
