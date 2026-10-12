@@ -3,373 +3,427 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Complaints</title>
+    <title>Complaints Tracker | Pingu</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
+        /* ═══ Pingu design system — base (copy verbatim into each page's <style>) ═══ */
         :root {
-            --primary: #005EB8;
-            --primary-dark: #003d7a;
-            --accent: #00A3E0;
-            --bg-dark: #0A1628;
-            --bg-card: #1a2942;
-            --text-light: #E8EDF2;
-            --text-muted: #8B9AAE;
-            --border: #2a3f5f;
-            --success: #10B981;
-            --amber: #F59E0B;
-            --error: #EF4444;
-            --purple: #8B5CF6;
+            /* Brand + status palette */
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --in-progress: #00D9FF;
+            --complete: #4ECCA3;
+            --aborted: #FF6B6B;
+            --cancelled: #9A9AB0;
+            --short-notice: #90ee90;
+            --on-hold: #FFDE00;
+            --scheduled: #FF6B35;
+            /* Surfaces & type */
+            --bg: #161628;
+            --surface: #1F1F35;
+            --surface-2: #252541;
+            --line: rgba(255,255,255,0.07);
+            --line-2: rgba(255,255,255,0.12);
+            --text-strong: #F4F4F8;
+            --text-soft: #C8C8D6;
+            --radius: 10px;
+            --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
         }
-        * { margin:0; padding:0; box-sizing:border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { min-height: 100%; }
         body {
-            font-family:'Work Sans',sans-serif;
-            background:linear-gradient(135deg, var(--bg-dark) 0%, #0d1f3a 100%);
-            color:var(--text-light); min-height:100vh; padding:2rem;
-            position:relative; overflow-x:hidden;
+            font-family: var(--font); font-size: 14px; line-height: 1.5;
+            background: var(--bg); color: var(--text);
+            -webkit-font-smoothing: antialiased;
         }
-        body::before {
-            content:''; position:fixed; top:0; left:0; right:0; bottom:0;
-            background:
-                radial-gradient(circle at 20% 30%, rgba(0,163,224,0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 70%, rgba(0,94,184,0.06) 0%, transparent 50%);
-            pointer-events:none; z-index:0;
-        }
-        .container { max-width:1400px; margin:0 auto; position:relative; z-index:1; }
-        header { margin-bottom:3rem; animation:slideDown 0.6s ease-out; }
-        @keyframes slideDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeInUp  { from{opacity:0;transform:translateY(30px)}  to{opacity:1;transform:translateY(0)} }
-        @keyframes spin      { to{transform:rotate(360deg)} }
+        button, input, select, textarea { font-family: inherit; }
+        a { color: var(--accent); }
+        .ico { width: 16px; height: 16px; flex: 0 0 auto; vertical-align: -3px; }
+        .ico-lg { width: 20px; height: 20px; flex: 0 0 auto; }
 
-        .header-content { display:flex; align-items:center; gap:1.5rem; margin-bottom:1rem; }
+        /* ── App bar + Pingu wordmark ── */
+        .appbar {
+            position: sticky; top: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            height: 64px; padding: 0 28px;
+            background: rgba(22, 22, 40, 0.92);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--line);
+        }
+        .appbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .logo { display: inline-flex; align-items: center; text-decoration: none; }
+        .wordmark {
+            font-family: 'Inter', var(--font); font-weight: 800; font-size: 28px;
+            letter-spacing: -0.045em; line-height: 1; color: var(--text-strong); padding-top: 6px;
+        }
+        .i-stem { position: relative; display: inline-block; }
+        .i-paw {
+            position: absolute; left: 50%; top: -0.17em; transform: translateX(-50%) rotate(-10deg);
+            width: 0.5em; height: 0.5em; fill: var(--primary);
+            filter: drop-shadow(0 1px 4px rgba(255,107,53,0.35));
+            transition: transform .2s ease;
+        }
+        .logo:hover .i-paw { transform: translateX(-50%) rotate(4deg) scale(1.08); }
+        .logo:hover .wordmark { color: #fff; }
         .back-btn {
-            width:48px; height:48px; background:var(--bg-card); border:1px solid var(--border);
-            border-radius:12px; display:flex; align-items:center; justify-content:center;
-            cursor:pointer; transition:all 0.3s; text-decoration:none; color:var(--text-light); font-size:1.25rem;
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-soft); text-decoration: none; font-size: 13px; font-weight: 500;
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line-2); background: transparent; cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, color .15s ease;
         }
-        .back-btn:hover { background:var(--primary); border-color:var(--accent); transform:translateX(-4px); }
-        h1 {
-            font-size:2.25rem; font-weight:700; letter-spacing:-0.02em;
-            background:linear-gradient(135deg, var(--text-light) 0%, var(--accent) 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+        .back-btn:hover { background: var(--surface-2); color: var(--text-strong); border-color: rgba(255,255,255,0.2); }
+
+        /* ── Page layout ── */
+        .container { padding: 24px 28px 40px; }
+        .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+        h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); line-height: 1.2; }
+        h2 { font-size: 16px; font-weight: 600; color: var(--text-strong); letter-spacing: -0.01em; }
+        h3 { font-size: 14px; font-weight: 600; color: var(--text-strong); }
+        .muted { color: var(--text-dim); }
+        .toolbar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+
+        /* ── Panels / cards ── */
+        .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+        .panel + .panel { margin-top: 16px; }
+        .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -2px 0 14px; }
+        .panel-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text-strong); }
+        .panel-title .ico { color: var(--primary); }
+
+        /* ── Form controls ── */
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-label { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
+        .control-input {
+            height: 38px; background: var(--surface); border: 1px solid var(--line-2);
+            color: var(--text-strong); padding: 0 12px; border-radius: 8px; font-size: 13.5px; width: 100%;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
-        .subtitle { font-family:'DM Mono',monospace; color:var(--text-muted); font-size:0.95rem; margin-left:64px; letter-spacing:0.05em; }
+        textarea.control-input { height: auto; min-height: 84px; padding: 9px 11px; resize: vertical; }
+        .control-input:hover { border-color: rgba(255,255,255,0.2); }
+        .control-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.22); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
 
-        .card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:2.5rem; margin-bottom:2rem; animation:fadeInUp 0.6s ease-out; }
-        .card-title { font-size:1.4rem; font-weight:600; margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem; }
-        .card-title::before { content:''; display:block; width:4px; height:24px; background:linear-gradient(to bottom, var(--accent), var(--primary)); border-radius:2px; }
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            height: 38px; padding: 0 16px; border-radius: 8px; cursor: pointer;
+            font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+            border: 1px solid transparent; transition: background .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: var(--surface-2); color: var(--text-strong); border-color: var(--line-2); }
+        .btn-secondary:hover { background: var(--dark-lighter); border-color: rgba(255,255,255,0.25); }
+        .btn-ghost { background: transparent; color: var(--text-soft); border-color: var(--line-2); }
+        .btn-ghost:hover { background: var(--surface-2); color: var(--text-strong); }
+        .btn-danger { background: rgba(255,107,107,0.12); color: #FF8A8A; border-color: rgba(255,107,107,0.4); }
+        .btn-danger:hover { background: rgba(255,107,107,0.22); }
+        .btn-success { background: rgba(78,204,163,0.14); color: var(--success); border-color: rgba(78,204,163,0.45); }
+        .btn-success:hover { background: rgba(78,204,163,0.24); }
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; }
+        .btn:disabled, button:disabled { opacity: .45; cursor: not-allowed; }
+        .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; height: 38px; }
+        .seg button { background: var(--surface); color: var(--text-soft); border: 0; padding: 0 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+        .seg button + button { border-left: 1px solid var(--line-2); }
+        .seg button:hover, .seg button.active { background: var(--surface-2); color: var(--text-strong); }
 
-        .table-wrapper { overflow-x:auto; border-radius:12px; border:1px solid var(--border); }
-        table { width:100%; border-collapse:collapse; background:var(--bg-dark); }
-        thead { background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
-        th { padding:1rem; text-align:left; font-weight:600; font-size:0.85rem; letter-spacing:0.05em; text-transform:uppercase; white-space:nowrap; }
-        td { padding:1rem; border-bottom:1px solid var(--border); font-size:0.9rem; }
-        tbody tr { transition:background 0.2s; cursor:pointer; }
-        tbody tr:hover { background:rgba(0,163,224,0.07); }
-        tbody tr:last-child td { border-bottom:none; }
-        .empty-state { text-align:center; padding:3rem; color:var(--text-muted); font-style:italic; }
-        .row-amber td:first-child { border-left:3px solid var(--amber); }
-        .row-red   td:first-child { border-left:3px solid var(--error); }
+        /* ── KPI tiles ── */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .stat-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 14px; }
+        .stat-label { display: flex; align-items: center; gap: 7px; color: var(--text-dim); font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .stat-label .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+        .stat-value { font-size: 22px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; line-height: 1.25; margin-top: 2px; font-variant-numeric: tabular-nums; }
 
+        /* ── Tables ── */
+        .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        thead th {
+            position: sticky; top: 0; z-index: 2; background: var(--surface);
+            text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line-2); white-space: nowrap;
+        }
+        tbody td { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--text-soft); vertical-align: middle; }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover td { background: rgba(255,255,255,0.025); }
+        td.strong, .cell-strong { color: var(--text-strong); font-weight: 600; }
+        .mono { font-family: var(--mono); font-size: 12.5px; }
+
+        /* ── Badges / status pills ── */
         .badge {
-            display:inline-flex; align-items:center; gap:0.4rem;
-            padding:0.35rem 0.85rem; border-radius:999px;
-            font-size:0.8rem; font-weight:600; font-family:'DM Mono',monospace; white-space:nowrap;
+            --c: var(--text-dim);
+            display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+            padding: 2px 9px; border-radius: 999px; color: var(--text-strong);
+            background: color-mix(in srgb, var(--c) 18%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
         }
-        .badge-green  { background:rgba(16,185,129,0.15);  color:var(--success); border:1px solid rgba(16,185,129,0.3); }
-        .badge-amber  { background:rgba(245,158,11,0.15);  color:var(--amber);   border:1px solid rgba(245,158,11,0.3); }
-        .badge-red    { background:rgba(239,68,68,0.15);   color:var(--error);   border:1px solid rgba(239,68,68,0.3); }
-        .badge-blue   { background:rgba(0,163,224,0.15);   color:var(--accent);  border:1px solid rgba(0,163,224,0.3); }
-        .badge-purple { background:rgba(139,92,246,0.15);  color:var(--purple);  border:1px solid rgba(139,92,246,0.3); }
+        .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+        .badge.plain::before { display: none; }
+        .tag { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; background: rgba(255,255,255,0.1); color: var(--text-soft); letter-spacing: .03em; }
 
-        .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1.5rem; }
-        .form-group { margin-bottom:0; }
-        .form-group.full-width { grid-column:1/-1; }
-        label { display:block; margin-bottom:0.6rem; font-weight:600; color:var(--text-light); font-size:0.9rem; }
+        /* ── Notices ── */
+        .notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+                  background: rgba(255,255,255,0.03); border: 1px solid var(--line-2); color: var(--text-soft); }
+        .notice .ico { margin-top: 1px; }
+        .notice.info    { border-color: rgba(0,217,255,0.35);  background: rgba(0,217,255,0.06); }
+        .notice.success { border-color: rgba(78,204,163,0.4);  background: rgba(78,204,163,0.07); color: var(--success); }
+        .notice.warning { border-color: rgba(255,200,87,0.4);  background: rgba(255,200,87,0.07); color: var(--warning); }
+        .notice.error   { border-color: rgba(255,107,107,0.45); background: rgba(255,107,107,0.08); color: #FF8A8A; }
+
+        /* ── Modals ── */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(10,10,22,0.72); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+        .modal.show, .modal.active, .modal.open { display: flex; }
+        .modal-content { background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; width: 100%; max-width: 680px; max-height: 88vh; overflow-y: auto; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.75); }
+        .modal-header { position: sticky; top: 0; z-index: 2; background: var(--surface); display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+        .modal-title { font-size: 17px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.01em; }
+        .modal-body { padding: 18px 20px 22px; }
+        .close-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; }
+        .close-btn:hover { background: var(--surface-2); color: var(--text-strong); }
+
+        /* ── Feedback ── */
+        .toast { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: none; max-width: 420px; padding: 12px 16px 12px 14px; border-radius: 10px;
+                 background: #26263F; color: var(--text-strong); font-size: 13.5px; border: 1px solid var(--line-2); border-left: 3px solid var(--success);
+                 box-shadow: 0 16px 40px -12px rgba(0,0,0,0.7); }
+        .toast.show { display: block; }
+        .toast.error { border-left-color: var(--error); }
+        .empty-state, .loading { text-align: center; padding: 56px 16px; color: var(--text-dim); }
+        .empty-state h3 { color: var(--text-strong); font-size: 16px; margin-bottom: 4px; }
+        .empty-state .ico-lg { width: 32px; height: 32px; color: var(--text-dim); margin-bottom: 10px; }
+        .spinner { width: 22px; height: 22px; border: 2px solid var(--line-2); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        *::-webkit-scrollbar { width: 10px; height: 10px; }
+        *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        @media (max-width: 768px) {
+            .appbar, .container { padding-left: 14px; padding-right: 14px; }
+            .wordmark { font-size: 24px; }
+        }
+        /* ═══ end base ═══ */
+
+        /* ── Page: complaints tracker ── */
+        :root { --amber: #F59E0B; --purple: #A78BFA; }
+        .panel { margin-bottom: 16px; }
+        .panel + .panel { margin-top: 0; }
+
+        /* Tables */
+        .table-wrapper { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: auto; }
+        .table-wrapper td { white-space: nowrap; }
+        tbody tr { cursor: pointer; }
+        .empty-state { padding: 40px 16px; cursor: default; }
+        tbody tr:hover td.empty-state { background: transparent; }
+        .job-ref { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--text-strong); }
+        /* Days-to-target row colouring (flat tints + left bar) */
+        .row-amber td { background: color-mix(in srgb, var(--amber) 9%, var(--surface)); }
+        .row-red   td { background: color-mix(in srgb, var(--error) 10%, var(--surface)); }
+        tbody tr.row-amber:hover td { background: color-mix(in srgb, var(--amber) 15%, var(--surface)); }
+        tbody tr.row-red:hover td   { background: color-mix(in srgb, var(--error) 16%, var(--surface)); }
+        .row-amber td:first-child { box-shadow: inset 4px 0 0 var(--amber); }
+        .row-red   td:first-child { box-shadow: inset 4px 0 0 var(--error); }
+        .head-tools { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+        .legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-dim); }
+        .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-sw { width: 12px; height: 12px; border-radius: 3px; background: color-mix(in srgb, var(--c) 22%, var(--surface)); box-shadow: inset 3px 0 0 var(--c); }
+
+        /* Badges */
+        .badge-green  { --c: var(--complete); }
+        .badge-amber  { --c: var(--amber); }
+        .badge-red    { --c: var(--error); }
+        .badge-blue   { --c: var(--in-progress); }
+        .badge-purple { --c: var(--purple); }
+
+        /* Form */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group.half { grid-column: span 2; }
+        .form-group > label, .detail-item label { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
         input[type="text"], input[type="date"], select, textarea {
-            width:100%; padding:0.85rem 1rem;
-            background:var(--bg-dark); border:2px solid var(--border); border-radius:10px;
-            color:var(--text-light); font-family:'Work Sans',sans-serif; font-size:0.95rem;
-            transition:all 0.3s; appearance:auto;
+            height: 38px; width: 100%; background: var(--surface); border: 1px solid var(--line-2);
+            color: var(--text-strong); padding: 0 12px; border-radius: 8px; font-size: 13.5px;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
-        textarea { resize:vertical; min-height:100px; appearance:none; }
-        input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 4px rgba(0,163,224,0.1); }
-        select option { background:var(--bg-card); }
+        select { appearance: none; -webkit-appearance: none; padding-right: 32px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239A9AB0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 10px center; background-size: 15px; }
+        textarea { height: auto; min-height: 100px; padding: 9px 11px; resize: vertical; }
+        input[type="text"]:hover, input[type="date"]:hover, select:hover, textarea:hover { border-color: rgba(255,255,255,0.2); }
+        input[type="text"]:focus, input[type="date"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.22); }
+        input::placeholder, textarea::placeholder { color: #66667E; }
+        select option { background: var(--surface); color: var(--text-strong); }
 
-        select#type option[value="Complaint"]     { color: var(--error); }
-        select#type option[value="Investigation"] { color: var(--purple); }
+        .file-upload-area, .resolution-file-zone {
+            position: relative; border: 1px dashed var(--line-2); border-radius: 10px; background: var(--bg);
+            padding: 18px 14px; text-align: center; cursor: pointer; transition: border-color .15s ease, background .15s ease;
+            display: flex; flex-direction: column; align-items: center; gap: 6px;
+        }
+        .file-upload-area:hover, .resolution-file-zone:hover { border-color: var(--primary); background: rgba(255,107,53,0.04); }
+        .file-upload-input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+        .file-upload-icon, .resolution-file-zone-icon { color: var(--text-dim); display: inline-flex; }
+        .file-upload-text, .resolution-file-zone-label { font-size: 13px; color: var(--text-dim); }
+        .file-upload-text strong, .resolution-file-zone-label strong { color: var(--text-strong); font-weight: 600; }
+        .resolution-file-zone-label strong { display: block; margin-bottom: 1px; }
 
-        .file-upload-area {
-            border:2px dashed var(--border); border-radius:10px; padding:1.5rem;
-            text-align:center; cursor:pointer; transition:all 0.3s;
-            background:var(--bg-dark); position:relative;
-        }
-        .file-upload-area:hover { border-color:var(--accent); background:rgba(0,163,224,0.05); }
-        .file-upload-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-        .file-upload-icon { font-size:2rem; margin-bottom:0.5rem; }
-        .file-upload-text { font-size:0.9rem; color:var(--text-muted); }
-        .file-upload-text strong { color:var(--accent); }
+        .uploaded-files { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+        .uploaded-file { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; align-items: center; gap: 12px; }
+        .uploaded-file img { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+        .file-icon-big { color: var(--text-dim); flex-shrink: 0; display: inline-flex; }
+        .file-icon-big .ico { width: 22px; height: 22px; }
+        .file-details { flex: 1; min-width: 0; }
+        .file-name { font-size: 13px; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .file-size { font-size: 12px; color: var(--text-dim); }
+        .remove-file-btn { height: 28px; padding: 0 10px; border-radius: 7px; cursor: pointer; font-size: 12px; font-weight: 600; flex-shrink: 0;
+            background: rgba(255,107,107,0.12); color: #FF8A8A; border: 1px solid rgba(255,107,107,0.4); }
+        .remove-file-btn:hover { background: rgba(255,107,107,0.22); }
 
-        .uploaded-files { margin-top:0.75rem; display:flex; flex-direction:column; gap:0.5rem; }
-        .uploaded-file {
-            background:var(--bg-card); border:1px solid var(--border); border-radius:8px;
-            padding:0.75rem 1rem; display:flex; align-items:center; gap:1rem;
-        }
-        .uploaded-file img { width:60px; height:60px; object-fit:cover; border-radius:6px; flex-shrink:0; }
-        .file-icon-big { font-size:2rem; flex-shrink:0; }
-        .file-details { flex:1; min-width:0; }
-        .file-name { font-size:0.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .file-size { font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem; }
-        .remove-file-btn {
-            padding:0.4rem 0.8rem; background:rgba(239,68,68,0.15); color:var(--error);
-            border:1px solid rgba(239,68,68,0.3); border-radius:6px; cursor:pointer;
-            font-size:0.8rem; flex-shrink:0; transition:all 0.2s; font-family:'Work Sans',sans-serif;
-        }
-        .remove-file-btn:hover { background:rgba(239,68,68,0.3); }
+        .progress-wrap, .resolution-progress-wrap { margin-top: 14px; display: none; }
+        .progress-wrap.show, .resolution-progress-wrap.show { display: block; }
+        .progress-bar-bg { background: var(--surface-2); border-radius: 99px; height: 6px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; width: 0%; background: var(--primary); border-radius: 99px; transition: width .2s; }
+        .progress-label { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
-        .progress-wrap { margin-top:1rem; display:none; }
-        .progress-wrap.show { display:block; }
-        .progress-bar-bg { background:var(--bg-dark); border-radius:999px; height:8px; overflow:hidden; border:1px solid var(--border); }
-        .progress-bar-fill { height:100%; background:linear-gradient(90deg, var(--primary), var(--accent)); border-radius:999px; transition:width 0.2s; width:0%; }
-        .progress-label { font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem; font-family:'DM Mono',monospace; }
+        .btn-group { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 
-        .btn { padding:0.9rem 2rem; border:none; border-radius:12px; font-weight:600; font-size:0.95rem; cursor:pointer; transition:all 0.3s; font-family:'Work Sans',sans-serif; }
-        .btn-primary { background:linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%); color:white; }
-        .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 12px 24px rgba(0,163,224,0.3); }
-        .btn-secondary { background:var(--bg-dark); color:var(--text-light); border:2px solid var(--border); }
-        .btn-secondary:hover { border-color:var(--accent); }
-        .btn-success { background:linear-gradient(135deg, #059669 0%, var(--success) 100%); color:white; }
-        .btn-success:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 12px 24px rgba(16,185,129,0.3); }
-        .btn:disabled { opacity:0.5; cursor:not-allowed; }
-        .btn-group { display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap; }
+        /* Modals (overlay = .modal, box = .modal-content) */
+        #resolutionOverlay { z-index: 1100; }
+        #previewOverlay { z-index: 1200; }
+        .modal-content.wide { max-width: 760px; }
+        .modal-title-wrap { min-width: 0; }
+        .modal-sub { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+        #modalBadges { margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .modal-body { display: flex; flex-direction: column; gap: 18px; }
+        .modal-section-title, .resolution-section-label { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+        .detail-item { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+        .detail-item:nth-child(odd) { border-right: 1px solid var(--line); }
+        .detail-item:nth-last-child(-n+2) { border-bottom: 0; }
+        .detail-item label { font-size: 12.5px; }
+        .detail-item .value { color: var(--text-strong); font-size: 13px; font-weight: 500; word-break: break-word; }
 
-        /* Detail Modal */
-        .modal-overlay {
-            display:none; position:fixed; inset:0;
-            background:rgba(0,0,0,0.75); z-index:100;
-            align-items:center; justify-content:center;
-            padding:1rem; backdrop-filter:blur(4px);
-        }
-        .modal-overlay.show { display:flex; animation:fadeInUp 0.3s ease-out; }
-        .modal {
-            background:var(--bg-card); border:1px solid var(--border); border-radius:20px;
-            padding:2.5rem; max-width:700px; width:100%; max-height:90vh; overflow-y:auto;
-        }
-        .modal-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:2rem; }
-        .modal-title { font-size:1.5rem; font-weight:700; }
-        .modal-close { background:none; border:none; color:var(--text-muted); font-size:1.5rem; cursor:pointer; line-height:1; }
-        .modal-close:hover { color:var(--text-light); }
-        .modal-section { margin-bottom:1.5rem; }
-        .modal-section-title { font-size:0.85rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text-muted); margin-bottom:1rem; }
-        .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
-        .detail-item label { font-size:0.8rem; color:var(--text-muted); margin-bottom:0.25rem; }
-        .detail-item .value { font-size:0.95rem; font-family:'DM Mono',monospace; }
+        .upload-links { display: flex; flex-direction: column; gap: 6px; }
+        .upload-link-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; text-align: left; cursor: pointer;
+            background: var(--bg); border: 1px solid var(--line); border-radius: 8px; color: var(--text-strong); font-size: 13px;
+            transition: border-color .15s ease, background .15s ease; }
+        .upload-link-btn:hover { border-color: var(--primary); background: var(--surface-2); }
+        .file-link-icon { color: var(--text-dim); display: inline-flex; flex-shrink: 0; }
+        .file-link-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-link-hint { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+        .muted-note { color: var(--text-dim); font-size: 13px; }
 
-        .upload-links { display:flex; flex-direction:column; gap:0.5rem; }
-        .upload-link-btn {
-            display:flex; align-items:center; gap:0.75rem;
-            padding:0.75rem 1rem; background:var(--bg-dark); border:1px solid var(--border);
-            border-radius:8px; color:var(--text-light); font-size:0.9rem; transition:all 0.2s;
-            cursor:pointer; font-family:'Work Sans',sans-serif; text-align:left; width:100%;
-        }
-        .upload-link-btn:hover { border-color:var(--accent); color:var(--accent); }
-        .upload-link-btn .file-link-icon { font-size:1.2rem; flex-shrink:0; }
-        .upload-link-btn .file-link-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .upload-link-btn .file-link-hint { font-size:0.75rem; color:var(--text-muted); white-space:nowrap; }
+        .resolution-summary { background: rgba(78,204,163,0.07); border: 1px solid rgba(78,204,163,0.35); border-radius: 10px; padding: 12px 14px; }
+        .resolution-summary-title { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--success); margin-bottom: 6px; }
+        .resolution-notes-text { font-size: 13.5px; color: var(--text-soft); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 
-        /* Resolution notes display in modal */
-        .resolution-summary {
-            background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25);
-            border-radius:12px; padding:1.25rem; margin-top:1rem;
-        }
-        .resolution-summary-title {
-            font-size:0.8rem; font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
-            color:var(--success); margin-bottom:0.75rem; display:flex; align-items:center; gap:0.5rem;
-        }
-        .resolution-notes-text {
-            font-size:0.9rem; color:var(--text-light); line-height:1.6;
-            font-style:italic; white-space:pre-wrap; word-break:break-word;
-        }
+        .checkbox-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; }
+        .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .checkbox-label { font-weight: 600; font-size: 13.5px; color: var(--text-strong); cursor: pointer; }
+        .status-select-row { display: flex; align-items: center; gap: 10px; }
+        .status-select-row > label { white-space: nowrap; color: var(--text-dim); font-size: 12.5px; font-weight: 500; }
+        .status-select-row select { flex: 1; }
 
-        .checkbox-row { display:flex; align-items:center; gap:1rem; padding:1rem; background:var(--bg-dark); border-radius:10px; border:1px solid var(--border); margin-bottom:1rem; }
-        .checkbox-row input[type="checkbox"] { width:20px; height:20px; cursor:pointer; accent-color:var(--accent); }
-        .checkbox-label { font-weight:600; cursor:pointer; }
-        .status-select-row { display:flex; align-items:center; gap:1rem; }
-        .status-select-row select { flex:1; }
+        .spinner-wrap { text-align: center; padding: 20px; }
 
-        .spinner { width:40px; height:40px; border:4px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin:1rem auto; }
+        /* Resolution modal */
+        .resolution-modal-icon { width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+            background: rgba(78,204,163,0.14); color: var(--success); }
+        .resolution-file-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .resolution-uploaded { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+        .resolution-uploaded-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 12.5px; color: var(--text-strong);
+            background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; }
+        .resolution-uploaded-item > span:first-child { color: var(--text-dim); display: inline-flex; }
+        .resolution-uploaded-item .r-file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .resolution-uploaded-item .r-remove { background: none; border: 0; color: var(--text-dim); cursor: pointer; padding: 2px; display: inline-flex; border-radius: 4px; }
+        .resolution-uploaded-item .r-remove:hover { color: #FF8A8A; }
+        .resolution-btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .optional-tag { font-size: 11.5px; font-weight: 400; color: var(--text-dim); text-transform: none; letter-spacing: 0; margin-left: 4px; }
 
-        /* ── Resolution Modal ─────────────────────────────────────────────────── */
-        .resolution-overlay {
-            display:none; position:fixed; inset:0;
-            background:rgba(0,0,0,0.85); z-index:150;
-            align-items:center; justify-content:center;
-            padding:1rem; backdrop-filter:blur(6px);
-        }
-        .resolution-overlay.show { display:flex; animation:fadeInUp 0.3s ease-out; }
-        .resolution-modal {
-            background:var(--bg-card); border:1px solid rgba(16,185,129,0.35);
-            border-radius:20px; padding:2.5rem; max-width:600px; width:100%;
-            max-height:90vh; overflow-y:auto;
-            box-shadow: 0 0 60px rgba(16,185,129,0.12);
-        }
-        .resolution-modal-header {
-            display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.75rem;
-        }
-        .resolution-modal-title-wrap .resolution-modal-title {
-            font-size:1.4rem; font-weight:700;
-            background:linear-gradient(135deg, var(--success) 0%, #34d399 100%);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-        }
-        .resolution-modal-title-wrap .resolution-modal-sub {
-            font-size:0.85rem; color:var(--text-muted); margin-top:0.3rem;
-        }
-        .resolution-modal-icon {
-            width:48px; height:48px; background:rgba(16,185,129,0.15);
-            border:1px solid rgba(16,185,129,0.3); border-radius:12px;
-            display:flex; align-items:center; justify-content:center; font-size:1.5rem; flex-shrink:0;
-        }
-        .resolution-section-label {
-            font-size:0.8rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase;
-            color:var(--text-muted); margin-bottom:0.75rem; margin-top:1.5rem;
-        }
-        .resolution-section-label:first-of-type { margin-top:0; }
-        .resolution-file-row {
-            display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;
-        }
-        .resolution-file-zone {
-            border:2px dashed var(--border); border-radius:10px; padding:1.25rem;
-            text-align:center; cursor:pointer; transition:all 0.3s;
-            background:var(--bg-dark); position:relative;
-        }
-        .resolution-file-zone:hover { border-color:var(--success); background:rgba(16,185,129,0.05); }
-        .resolution-file-zone .file-upload-input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
-        .resolution-file-zone-icon { font-size:1.75rem; margin-bottom:0.4rem; }
-        .resolution-file-zone-label { font-size:0.8rem; color:var(--text-muted); }
-        .resolution-file-zone-label strong { color:var(--accent); display:block; margin-bottom:0.15rem; }
-        .resolution-uploaded { margin-top:0.5rem; display:flex; flex-direction:column; gap:0.4rem; }
-        .resolution-uploaded-item {
-            background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2);
-            border-radius:6px; padding:0.5rem 0.75rem;
-            display:flex; align-items:center; gap:0.5rem; font-size:0.8rem;
-        }
-        .resolution-uploaded-item .r-file-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .resolution-uploaded-item .r-remove {
-            background:none; border:none; color:var(--error); cursor:pointer; font-size:1rem;
-            padding:0; line-height:1; flex-shrink:0; opacity:0.7;
-        }
-        .resolution-uploaded-item .r-remove:hover { opacity:1; }
-        .resolution-progress-wrap { margin-top:0.75rem; display:none; }
-        .resolution-progress-wrap.show { display:block; }
-        .resolution-btn-row { display:flex; gap:1rem; margin-top:2rem; flex-wrap:wrap; }
-        .resolution-btn-row .btn { flex:1; }
-        .optional-tag {
-            font-size:0.75rem; font-weight:400; color:var(--text-muted);
-            margin-left:0.4rem; font-style:italic;
-        }
+        /* File preview modal */
+        .preview-modal { max-width: min(960px, 100%); max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+        .preview-header { gap: 10px; }
+        .preview-header-icon { color: var(--text-dim); display: inline-flex; }
+        .preview-header-name { flex: 1; min-width: 0; font-weight: 600; font-size: 14px; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .preview-download-btn { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 8px; flex-shrink: 0;
+            background: var(--primary); color: #fff; font-size: 13px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+        .preview-download-btn:hover { background: var(--primary-dark); }
+        .preview-body { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+        .preview-body img { max-width: 100%; max-height: calc(92vh - 70px); object-fit: contain; display: block; }
+        .preview-body iframe { width: 100%; height: calc(92vh - 70px); border: 0; background: #fff; }
+        .preview-unsupported { text-align: center; padding: 48px 24px; }
+        .preview-unsupported .unsupported-icon { color: var(--text-dim); margin-bottom: 10px; }
+        .preview-unsupported .unsupported-icon .ico { width: 36px; height: 36px; }
+        .preview-unsupported p { color: var(--text-soft); margin-bottom: 6px; }
+        .preview-unsupported .unsupported-name { font-family: var(--mono); font-size: 12.5px; color: var(--text-strong); margin-bottom: 18px; }
 
-        /* ── File Preview Modal ────────────────────────────────────────────── */
-        .preview-overlay {
-            display:none; position:fixed; inset:0;
-            background:rgba(0,0,0,0.9); z-index:200;
-            align-items:center; justify-content:center;
-            padding:1rem; backdrop-filter:blur(8px);
-        }
-        .preview-overlay.show { display:flex; animation:fadeInUp 0.3s ease-out; }
-        .preview-modal {
-            background:var(--bg-card); border:1px solid var(--border); border-radius:20px;
-            display:flex; flex-direction:column;
-            max-width:90vw; max-height:92vh; width:960px; overflow:hidden;
-        }
-        .preview-header {
-            display:flex; align-items:center; gap:1rem; padding:1.25rem 1.5rem;
-            border-bottom:1px solid var(--border); flex-shrink:0;
-        }
-        .preview-header-icon { font-size:1.5rem; }
-        .preview-header-name {
-            flex:1; font-weight:600; font-size:1rem;
-            white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-        }
-        .preview-download-btn {
-            display:flex; align-items:center; gap:0.5rem;
-            padding:0.55rem 1.1rem; background:linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color:white; border:none; border-radius:8px; cursor:pointer;
-            font-weight:600; font-size:0.85rem; font-family:'Work Sans',sans-serif;
-            text-decoration:none; white-space:nowrap; transition:all 0.2s; flex-shrink:0;
-        }
-        .preview-download-btn:hover { transform:translateY(-1px); box-shadow:0 6px 16px rgba(0,163,224,0.35); }
-        .preview-close-btn {
-            width:36px; height:36px; background:var(--bg-dark); border:1px solid var(--border);
-            border-radius:8px; display:flex; align-items:center; justify-content:center;
-            cursor:pointer; color:var(--text-muted); font-size:1.2rem; transition:all 0.2s;
-            flex-shrink:0;
-        }
-        .preview-close-btn:hover { color:var(--text-light); border-color:var(--error); background:rgba(239,68,68,0.1); }
-        .preview-body { flex:1; overflow:hidden; display:flex; align-items:center; justify-content:center; position:relative; }
-        .preview-body img {
-            max-width:100%; max-height:calc(92vh - 80px); object-fit:contain;
-            display:block; border-radius:0 0 20px 20px;
-        }
-        .preview-body iframe {
-            width:100%; height:calc(92vh - 80px); border:none;
-            background:white;
-        }
-        .preview-unsupported {
-            text-align:center; padding:4rem 2rem;
-        }
-        .preview-unsupported .unsupported-icon { font-size:4rem; margin-bottom:1rem; }
-        .preview-unsupported p { color:var(--text-muted); font-size:1rem; margin-bottom:1rem; }
-        .preview-unsupported .unsupported-name { font-family:'DM Mono',monospace; color:var(--text-light); font-size:0.9rem; margin-bottom:2rem; }
+        .toast-error { border-left-color: var(--error); }
 
-        .toast { position:fixed; bottom:2rem; right:2rem; padding:1rem 1.5rem; border-radius:12px; font-weight:600; z-index:300; display:none; }
-        .toast.show { display:block; animation:fadeInUp 0.4s ease-out; }
-        .toast-success { background:rgba(16,185,129,0.92); color:white; border:1px solid var(--success); }
-        .toast-error   { background:rgba(239,68,68,0.92);   color:white; border:1px solid var(--error); }
-
-        @media(max-width:768px) {
-            body { padding:1.5rem; }
-            .card { padding:1.5rem; }
-            h1 { font-size:1.75rem; }
-            .subtitle { margin-left:0; margin-top:0.5rem; }
-            .form-grid { grid-template-columns:1fr; }
-            .detail-grid { grid-template-columns:1fr; }
-            .btn-group { flex-direction:column; }
-            .preview-modal { max-width:100vw; border-radius:16px; }
-            .resolution-file-row { grid-template-columns:1fr; }
+        @media (max-width: 768px) {
+            .form-grid { grid-template-columns: 1fr 1fr; }
+            .form-group.half { grid-column: 1 / -1; }
+            .panel-head { flex-wrap: wrap; }
+            .head-tools { width: 100%; justify-content: space-between; gap: 10px; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .detail-item:nth-child(odd) { border-right: 0; }
+            .detail-item:nth-last-child(2) { border-bottom: 1px solid var(--line); }
+            .status-select-row { flex-wrap: wrap; }
+            .status-select-row select { flex-basis: 100%; }
+            .status-select-row .btn { width: 100%; }
+            .resolution-file-row { grid-template-columns: 1fr; }
+            .btn-group .btn { flex: 1; }
         }
+        @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
     </style>
-    <link rel="stylesheet" href="pingu-theme.css">
 </head>
 <body>
+<header class="appbar">
+    <a href="index.html" class="logo" aria-label="Pingu home">
+        <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
+    </a>
+    <div class="appbar-actions">
+        <a href="index.html" class="back-btn"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Back</a>
+    </div>
+</header>
+
 <div class="container">
-    <header>
-        <div class="header-content">
-            <a href="index.html" class="back-btn">←</a>
-            <h1>Complaints Tracker</h1>
-        </div>
-        <p class="subtitle">MANAGE AND TRACK ENGINEER COMPLAINTS</p>
-    </header>
+    <div class="page-head">
+        <h1>Complaints tracker</h1>
+    </div>
 
     <main>
         <!-- Active Complaints Table -->
-        <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.5rem;">
-                <div class="card-title" style="margin-bottom:0;">Active Complaints</div>
-                <button id="historicBtn" class="btn btn-secondary" style="padding:0.6rem 1.4rem;font-size:0.9rem;">🗂 Historic</button>
+        <div class="panel">
+            <div class="panel-head">
+                <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>Active complaints</div>
+                <div class="head-tools">
+                    <div class="legend">
+                        <span class="legend-item"><span class="legend-sw" style="--c:var(--error)"></span>10 days or less</span>
+                        <span class="legend-item"><span class="legend-sw" style="--c:var(--amber)"></span>21 days or less</span>
+                    </div>
+                    <button id="historicBtn" class="btn btn-secondary btn-sm">Historic</button>
+                </div>
             </div>
-            <div id="loadingSpinner" style="text-align:center;padding:2rem;display:none;"><div class="spinner"></div></div>
+            <div id="loadingSpinner" class="spinner-wrap" style="display:none;"><div class="spinner"></div></div>
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th>Date Received</th>
+                            <th>Date received</th>
                             <th>Type</th>
                             <th>Contract</th>
-                            <th>Job Ref</th>
+                            <th>Job ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
-                            <th>Target Date</th>
+                            <th>Target date</th>
                             <th>Informed</th>
                             <th>Status</th>
                             <th>Urgency</th>
@@ -383,19 +437,21 @@
         </div>
 
         <!-- Historic Complaints Table -->
-        <div class="card" id="historicCard" style="display:none;">
-            <div class="card-title">Historic Complaints (Resolved)</div>
+        <div class="panel" id="historicCard" style="display:none;">
+            <div class="panel-head">
+                <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></svg>Historic complaints (resolved)</div>
+            </div>
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th>Date Received</th>
+                            <th>Date received</th>
                             <th>Type</th>
                             <th>Contract</th>
-                            <th>Job Ref</th>
+                            <th>Job ref</th>
                             <th>Engineer</th>
                             <th>FTL</th>
-                            <th>Target Date</th>
+                            <th>Target date</th>
                             <th>Informed</th>
                         </tr>
                     </thead>
@@ -407,19 +463,21 @@
         </div>
 
         <!-- Add Complaint Form -->
-        <div class="card">
-            <div class="card-title">Add New Complaint</div>
+        <div class="panel">
+            <div class="panel-head">
+                <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add new complaint</div>
+            </div>
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="dateReceived">Date Received *</label>
+                    <label for="dateReceived">Date received *</label>
                     <input type="date" id="dateReceived" required>
                 </div>
                 <div class="form-group">
                     <label for="type">Type *</label>
                     <select id="type" required>
                         <option value="">Select Type</option>
-                        <option value="Complaint">⚠️ Complaint</option>
-                        <option value="Investigation">🔍 Investigation</option>
+                        <option value="Complaint">Complaint</option>
+                        <option value="Investigation">Investigation</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -507,11 +565,11 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="jobRef">Job Reference *</label>
+                    <label for="jobRef">Job reference *</label>
                     <input type="text" id="jobRef" placeholder="e.g. SP-12345" required>
                 </div>
                 <div class="form-group">
-                    <label for="targetDate">Target Completion Date *</label>
+                    <label for="targetDate">Target completion date *</label>
                     <input type="date" id="targetDate" required>
                 </div>
 
@@ -519,27 +577,27 @@
                     <label>Photos</label>
                     <div class="file-upload-area">
                         <input type="file" id="photosInput" class="file-upload-input" accept="image/*" multiple>
-                        <div class="file-upload-icon">📷</div>
+                        <div class="file-upload-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
                         <div class="file-upload-text"><strong>Click to upload</strong> photos (multiple allowed)</div>
                     </div>
                     <div class="uploaded-files" id="photosUploaded"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Complaints Card (Word Doc)</label>
+                <div class="form-group half">
+                    <label>Complaints card (Word doc)</label>
                     <div class="file-upload-area">
                         <input type="file" id="complaintCardInput" class="file-upload-input" accept=".doc,.docx">
-                        <div class="file-upload-icon">📝</div>
+                        <div class="file-upload-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
                         <div class="file-upload-text"><strong>Click to upload</strong> .doc / .docx</div>
                     </div>
                     <div class="uploaded-files" id="complaintCardUploaded"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Job Card (PDF)</label>
+                <div class="form-group half">
+                    <label>Job card (PDF)</label>
                     <div class="file-upload-area">
                         <input type="file" id="jobCardInput" class="file-upload-input" accept=".pdf">
-                        <div class="file-upload-icon">📄</div>
+                        <div class="file-upload-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
                         <div class="file-upload-text"><strong>Click to upload</strong> PDF</div>
                     </div>
                     <div class="uploaded-files" id="jobCardUploaded"></div>
@@ -552,128 +610,130 @@
             </div>
 
             <div class="btn-group">
-                <button id="submitBtn" class="btn btn-primary">Submit Complaint</button>
-                <button id="resetBtn"  class="btn btn-secondary">Clear Form</button>
+                <button id="submitBtn" class="btn btn-primary">Submit complaint</button>
+                <button id="resetBtn"  class="btn btn-ghost">Clear form</button>
             </div>
         </div>
     </main>
 </div>
 
 <!-- ── Detail Modal ──────────────────────────────────────────────────────── -->
-<div class="modal-overlay" id="detailModal">
-    <div class="modal">
+<div class="modal modal-overlay" id="detailModal">
+    <div class="modal-content wide">
         <div class="modal-header">
-            <div>
+            <div class="modal-title-wrap">
                 <div class="modal-title" id="modalTitle">Complaint Details</div>
-                <div id="modalBadges" style="margin-top:0.5rem;display:flex;gap:0.5rem;flex-wrap:wrap;"></div>
+                <div id="modalBadges"></div>
             </div>
-            <button class="modal-close" id="modalClose">✕</button>
+            <button class="close-btn" id="modalClose" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
-        <div class="modal-section">
-            <div class="modal-section-title">Details</div>
-            <div class="detail-grid">
-                <div class="detail-item"><label>Date Received</label><div class="value" id="mdDateReceived">—</div></div>
-                <div class="detail-item"><label>Type</label><div class="value" id="mdType">—</div></div>
-                <div class="detail-item"><label>Contract</label><div class="value" id="mdContract">—</div></div>
-                <div class="detail-item"><label>Job Reference</label><div class="value" id="mdJobRef">—</div></div>
-                <div class="detail-item"><label>Engineer</label><div class="value" id="mdEngineer">—</div></div>
-                <div class="detail-item"><label>FTL</label><div class="value" id="mdFtl">—</div></div>
-                <div class="detail-item"><label>Target Completion</label><div class="value" id="mdTargetDate">—</div></div>
-                <div class="detail-item"><label>Days Remaining</label><div class="value" id="mdDaysLeft">—</div></div>
+        <div class="modal-body">
+            <div class="modal-section">
+                <div class="modal-section-title">Details</div>
+                <div class="detail-grid">
+                    <div class="detail-item"><label>Date received</label><div class="value" id="mdDateReceived">—</div></div>
+                    <div class="detail-item"><label>Type</label><div class="value" id="mdType">—</div></div>
+                    <div class="detail-item"><label>Contract</label><div class="value" id="mdContract">—</div></div>
+                    <div class="detail-item"><label>Job reference</label><div class="value" id="mdJobRef">—</div></div>
+                    <div class="detail-item"><label>Engineer</label><div class="value" id="mdEngineer">—</div></div>
+                    <div class="detail-item"><label>FTL</label><div class="value" id="mdFtl">—</div></div>
+                    <div class="detail-item"><label>Target completion</label><div class="value" id="mdTargetDate">—</div></div>
+                    <div class="detail-item"><label>Days remaining</label><div class="value" id="mdDaysLeft">—</div></div>
+                </div>
             </div>
-        </div>
-        <div class="modal-section">
-            <div class="modal-section-title">Uploaded Files</div>
-            <div class="upload-links" id="uploadLinks"><p style="color:var(--text-muted);font-size:0.9rem;">No files uploaded.</p></div>
-        </div>
-        <!-- Resolution summary (shown when already resolved) -->
-        <div class="modal-section" id="resolutionSummarySection" style="display:none;">
-            <div class="modal-section-title">Resolution Details</div>
-            <div class="resolution-summary">
-                <div class="resolution-summary-title">✅ Resolution Notes</div>
-                <div class="resolution-notes-text" id="mdResolutionNotes"></div>
+            <div class="modal-section">
+                <div class="modal-section-title">Uploaded files</div>
+                <div class="upload-links" id="uploadLinks"><p class="muted-note">No files uploaded.</p></div>
             </div>
-            <div class="upload-links" id="resolutionUploadLinks" style="margin-top:0.75rem;"></div>
-        </div>
-        <div class="modal-section">
-            <div class="modal-section-title">Actions</div>
-            <div class="checkbox-row">
-                <input type="checkbox" id="engineerInformed">
-                <label class="checkbox-label" for="engineerInformed">Engineer has been informed</label>
+            <!-- Resolution summary (shown when already resolved) -->
+            <div class="modal-section" id="resolutionSummarySection" style="display:none;">
+                <div class="modal-section-title">Resolution details</div>
+                <div class="resolution-summary">
+                    <div class="resolution-summary-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg>Resolution notes</div>
+                    <div class="resolution-notes-text" id="mdResolutionNotes"></div>
+                </div>
+                <div class="upload-links" id="resolutionUploadLinks" style="margin-top:8px;"></div>
             </div>
-            <div class="status-select-row">
-                <label style="white-space:nowrap;margin-bottom:0;">Update Status:</label>
-                <select id="statusSelect">
-                    <option value="in-progress">In Progress</option>
-                    <option value="resolved">Resolved</option>
-                </select>
-                <button class="btn btn-primary" id="saveStatusBtn" style="white-space:nowrap;padding:0.75rem 1.25rem;">Save Changes</button>
+            <div class="modal-section">
+                <div class="modal-section-title">Actions</div>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="engineerInformed">
+                    <label class="checkbox-label" for="engineerInformed">Engineer has been informed</label>
+                </div>
+                <div class="status-select-row">
+                    <label for="statusSelect">Update status</label>
+                    <select id="statusSelect">
+                        <option value="in-progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                    </select>
+                    <button class="btn btn-primary" id="saveStatusBtn">Save Changes</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- ── Resolution Modal ──────────────────────────────────────────────────── -->
-<div class="resolution-overlay" id="resolutionOverlay">
-    <div class="resolution-modal">
-        <div class="resolution-modal-header">
-            <div class="resolution-modal-title-wrap">
-                <div class="resolution-modal-title">Mark as Resolved</div>
-                <div class="resolution-modal-sub" id="resModalSubtitle">Add any supporting documents or notes before closing.</div>
+<div class="modal resolution-overlay" id="resolutionOverlay">
+    <div class="modal-content resolution-modal">
+        <div class="modal-header">
+            <div class="modal-title-wrap">
+                <div class="modal-title resolution-modal-title">Mark as resolved</div>
+                <div class="modal-sub" id="resModalSubtitle">Add any supporting documents or notes before closing.</div>
             </div>
-            <div class="resolution-modal-icon">✅</div>
+            <div class="resolution-modal-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg></div>
         </div>
-
-        <!-- Notes -->
-        <div class="resolution-section-label">Resolution Notes <span class="optional-tag">optional</span></div>
-        <textarea id="resolutionNotes" placeholder="Describe how the complaint was resolved, any actions taken, outcomes, etc."></textarea>
-
-        <!-- Supporting Docs -->
-        <div class="resolution-section-label">Supporting Documents <span class="optional-tag">optional — any file type</span></div>
-        <div class="resolution-file-row">
-            <!-- Photos -->
+        <div class="modal-body">
             <div>
-                <div class="resolution-file-zone">
-                    <input type="file" id="resPhotosInput" class="file-upload-input" accept="image/*" multiple>
-                    <div class="resolution-file-zone-icon">📷</div>
-                    <div class="resolution-file-zone-label"><strong>Photos</strong>Click to upload</div>
-                </div>
-                <div class="resolution-uploaded" id="resPhotosUploaded"></div>
+                <div class="resolution-section-label">Resolution notes <span class="optional-tag">optional</span></div>
+                <textarea id="resolutionNotes" placeholder="Describe how the complaint was resolved, any actions taken, outcomes, etc."></textarea>
             </div>
-            <!-- Documents -->
+
             <div>
-                <div class="resolution-file-zone">
-                    <input type="file" id="resDocsInput" class="file-upload-input" accept=".pdf,.doc,.docx" multiple>
-                    <div class="resolution-file-zone-icon">📄</div>
-                    <div class="resolution-file-zone-label"><strong>PDFs / Docs</strong>Click to upload</div>
+                <div class="resolution-section-label">Supporting documents <span class="optional-tag">optional — any file type</span></div>
+                <div class="resolution-file-row">
+                    <div>
+                        <div class="resolution-file-zone">
+                            <input type="file" id="resPhotosInput" class="file-upload-input" accept="image/*" multiple>
+                            <div class="resolution-file-zone-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+                            <div class="resolution-file-zone-label"><strong>Photos</strong>Click to upload</div>
+                        </div>
+                        <div class="resolution-uploaded" id="resPhotosUploaded"></div>
+                    </div>
+                    <div>
+                        <div class="resolution-file-zone">
+                            <input type="file" id="resDocsInput" class="file-upload-input" accept=".pdf,.doc,.docx" multiple>
+                            <div class="resolution-file-zone-icon"><svg class="ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></div>
+                            <div class="resolution-file-zone-label"><strong>PDFs / Docs</strong>Click to upload</div>
+                        </div>
+                        <div class="resolution-uploaded" id="resDocsUploaded"></div>
+                    </div>
                 </div>
-                <div class="resolution-uploaded" id="resDocsUploaded"></div>
+
+                <div class="resolution-progress-wrap" id="resProgressWrap">
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="resProgressFill"></div></div>
+                    <div class="progress-label" id="resProgressLabel"></div>
+                </div>
             </div>
-        </div>
 
-        <!-- Progress -->
-        <div class="resolution-progress-wrap" id="resProgressWrap">
-            <div class="progress-bar-bg"><div class="progress-bar-fill" id="resProgressFill"></div></div>
-            <div class="progress-label" id="resProgressLabel"></div>
-        </div>
-
-        <div class="resolution-btn-row">
-            <button class="btn btn-secondary" id="resCancelBtn">Cancel</button>
-            <button class="btn btn-success" id="resConfirmBtn">✅ Confirm Resolution</button>
+            <div class="resolution-btn-row">
+                <button class="btn btn-ghost" id="resCancelBtn">Cancel</button>
+                <button class="btn btn-primary" id="resConfirmBtn">Confirm resolution</button>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- ── File Preview Modal ──────────────────────────────────────────────────── -->
-<div class="preview-overlay" id="previewOverlay">
-    <div class="preview-modal">
-        <div class="preview-header">
-            <span class="preview-header-icon" id="previewIcon">📄</span>
+<div class="modal preview-overlay" id="previewOverlay">
+    <div class="modal-content preview-modal">
+        <div class="modal-header preview-header">
+            <span class="preview-header-icon" id="previewIcon"></span>
             <span class="preview-header-name" id="previewName">filename.pdf</span>
             <a class="preview-download-btn" id="previewDownloadBtn" href="#" download target="_blank">
-                ⬇ Download
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>Download
             </a>
-            <button class="preview-close-btn" id="previewClose">✕</button>
+            <button class="close-btn preview-close-btn" id="previewClose" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
         <div class="preview-body" id="previewBody"></div>
     </div>
@@ -726,13 +786,13 @@
         return Math.ceil((target - today) / 86400000);
     }
     function urgencyBadge(days) {
-        if (days <= 10) return `<span class="badge badge-red">🔴 ${days}d remaining</span>`;
-        if (days <= 21) return `<span class="badge badge-amber">🟠 ${days}d remaining</span>`;
-        return `<span class="badge badge-green">🟢 ${days}d remaining</span>`;
+        if (days <= 10) return `<span class="badge badge-red">${days}d remaining</span>`;
+        if (days <= 21) return `<span class="badge badge-amber">${days}d remaining</span>`;
+        return `<span class="badge badge-green">${days}d remaining</span>`;
     }
     function typeBadge(type) {
-        if (type === 'Investigation') return `<span class="badge badge-purple">🔍 Investigation</span>`;
-        return `<span class="badge badge-red">⚠️ Complaint</span>`;
+        if (type === 'Investigation') return `<span class="badge badge-purple">Investigation</span>`;
+        return `<span class="badge badge-red">Complaint</span>`;
     }
     function formatDate(s) {
         if (!s) return '—';
@@ -740,7 +800,10 @@
         return `${d}/${m}/${y}`;
     }
     function fileTypeIcon(type) {
-        return type === 'photo' ? '🖼️' : type === 'pdf' ? '📄' : '📝';
+        const IMG  = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>';
+        const FILE = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>';
+        const DOC  = FILE;
+        return type === 'photo' ? IMG : type === 'pdf' ? FILE : DOC;
     }
 
     // ── File Preview Modal ────────────────────────────────────────────────────
@@ -748,7 +811,7 @@
         const overlay = document.getElementById('previewOverlay');
         const body    = document.getElementById('previewBody');
         document.getElementById('previewName').textContent = file.name;
-        document.getElementById('previewIcon').textContent = fileTypeIcon(file.type);
+        document.getElementById('previewIcon').innerHTML = fileTypeIcon(file.type);
         const dlBtn = document.getElementById('previewDownloadBtn');
         dlBtn.href = file.url; dlBtn.download = file.name;
         body.innerHTML = '';
@@ -763,11 +826,11 @@
         } else {
             body.innerHTML = `
                 <div class="preview-unsupported">
-                    <div class="unsupported-icon">📝</div>
+                    <div class="unsupported-icon">${fileTypeIcon('word')}</div>
                     <p>Word documents can't be previewed in the browser.</p>
                     <div class="unsupported-name">${file.name}</div>
                     <a class="preview-download-btn" href="${file.url}" download="${file.name}" target="_blank" style="display:inline-flex;text-decoration:none;">
-                        ⬇ Download to open
+                        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>Download to open
                     </a>
                 </div>`;
         }
@@ -842,7 +905,7 @@
         item.innerHTML = `
             <span>${fileTypeIcon(fileType)}</span>
             <span class="r-file-name">${file.name}</span>
-            <button class="r-remove" title="Remove">✕</button>`;
+            <button class="r-remove" title="Remove"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
         item.querySelector('.r-remove').addEventListener('click', () => {
             resFileStore[storeKey] = resFileStore[storeKey].filter(f => f !== file);
             item.remove();
@@ -904,7 +967,7 @@
             results.push(result);
         }
         fill.style.width = '100%';
-        label.textContent = 'Upload complete ✓';
+        label.textContent = 'Upload complete';
         setTimeout(() => { wrap.classList.remove('show'); label.textContent = ''; fill.style.width = '0%'; }, 1800);
         return results;
     }
@@ -931,7 +994,7 @@
             results.push(result);
         }
         fill.style.width = '100%';
-        label.textContent = 'Upload complete ✓';
+        label.textContent = 'Upload complete';
         setTimeout(() => { wrap.classList.remove('show'); label.textContent = ''; fill.style.width = '0%'; }, 1800);
         return results;
     }
@@ -959,7 +1022,7 @@
         const active = allComplaints.filter(c => c.status !== 'resolved');
         tbody.innerHTML = '';
         if (active.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No active complaints ✓</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No active complaints</td></tr>';
             return;
         }
         active.forEach(c => {
@@ -971,11 +1034,11 @@
                 <td>${formatDate(c.dateReceived)}</td>
                 <td>${typeBadge(c.type||'Complaint')}</td>
                 <td>${c.contract||'—'}</td>
-                <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
+                <td><span class="job-ref">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
                 <td>${formatDate(c.targetDate)}</td>
-                <td>${c.engineerInformed ? '<span class="badge badge-green">✓ Yes</span>' : '<span class="badge badge-red">✗ No</span>'}</td>
+                <td>${c.engineerInformed ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-red">No</span>'}</td>
                 <td>${c.status === 'resolved'
                     ? '<span class="badge badge-green">Resolved</span>'
                     : '<span class="badge badge-blue">In Progress</span>'}</td>
@@ -1000,11 +1063,11 @@
                 <td>${formatDate(c.dateReceived)}</td>
                 <td>${typeBadge(c.type||'Complaint')}</td>
                 <td>${c.contract||'—'}</td>
-                <td><span style="font-family:'DM Mono',monospace">${c.jobRef||'—'}</span></td>
+                <td><span class="job-ref">${c.jobRef||'—'}</span></td>
                 <td>${c.engineer||'—'}</td>
                 <td>${c.ftl||'—'}</td>
                 <td>${formatDate(c.targetDate)}</td>
-                <td>${c.engineerInformed ? '<span class="badge badge-green">✓ Yes</span>' : '<span class="badge badge-red">✗ No</span>'}</td>`;
+                <td>${c.engineerInformed ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-red">No</span>'}</td>`;
             tr.addEventListener('click', () => openModal(c.id));
             tbody.appendChild(tr);
         });
@@ -1015,7 +1078,7 @@
         const btn  = document.getElementById('historicBtn');
         const isVisible = card.style.display !== 'none';
         card.style.display = isVisible ? 'none' : 'block';
-        btn.textContent = isVisible ? '🗂 Historic' : '✕ Hide Historic';
+        btn.textContent = isVisible ? 'Historic' : 'Hide historic';
         if (!isVisible) renderHistoric();
     });
 
@@ -1044,7 +1107,7 @@
         linksDiv.innerHTML = '';
         const files = c.uploadedFiles||[];
         if (!files.length) {
-            linksDiv.innerHTML = '<p style="color:var(--text-muted);font-size:0.9rem;">No files uploaded.</p>';
+            linksDiv.innerHTML = '<p class="muted-note">No files uploaded.</p>';
         } else {
             files.forEach(f => {
                 const btn = document.createElement('button');
@@ -1070,7 +1133,7 @@
                 resFiles.forEach(f => {
                     const btn = document.createElement('button');
                     btn.className = 'upload-link-btn';
-                    btn.style.borderColor = 'rgba(16,185,129,0.3)';
+                    btn.style.borderColor = 'rgba(78,204,163,0.35)';
                     btn.innerHTML = `
                         <span class="file-link-icon">${fileTypeIcon(f.type)}</span>
                         <span class="file-link-name">${f.name}</span>
@@ -1127,7 +1190,7 @@
             if (idx !== -1) { allComplaints[idx].status = status; allComplaints[idx].engineerInformed = engineerInformed; }
             renderTable();
             document.getElementById('detailModal').classList.remove('show');
-            showToast('✓ Changes saved.');
+            showToast('Changes saved.');
         } catch(e) { showToast('Error: ' + e.message, 'error'); }
         btn.disabled = false; btn.textContent = 'Save Changes';
     }
@@ -1188,11 +1251,11 @@
             renderTable();
             closeResolutionModal();
             document.getElementById('detailModal').classList.remove('show');
-            showToast('✅ Complaint resolved and saved.');
+            showToast('Complaint resolved and saved.');
         } catch(e) {
             showToast('Error: ' + e.message, 'error');
         }
-        btn.disabled = false; btn.textContent = '✅ Confirm Resolution';
+        btn.disabled = false; btn.textContent = 'Confirm resolution';
     });
 
     // ── Submit new complaint ──────────────────────────────────────────────────
@@ -1220,14 +1283,14 @@
                 status: 'in-progress', engineerInformed: false,
                 uploadedFiles, submittedAt: serverTimestamp()
             });
-            showToast('✓ Complaint submitted successfully.');
+            showToast('Complaint submitted successfully.');
             resetForm();
             await loadComplaints();
         } catch(e) {
             console.error(e);
             showToast('Error: ' + e.message, 'error');
         }
-        btn.disabled = false; btn.textContent = 'Submit Complaint';
+        btn.disabled = false; btn.textContent = 'Submit complaint';
     });
 
     function resetForm() {
