@@ -3,316 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pingu Solar - Live Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Live Dashboard | Pingu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        /* ═══ Pingu design system — base (copy verbatim into each page's <style>) ═══ */
+        :root {
+            /* Brand + status palette */
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --warning: #FFC857;
+            --in-progress: #00D9FF;
+            --complete: #4ECCA3;
+            --aborted: #FF6B6B;
+            --cancelled: #9A9AB0;
+            --short-notice: #90ee90;
+            --on-hold: #FFDE00;
+            --scheduled: #FF6B35;
+            /* Surfaces & type */
+            --bg: #161628;
+            --surface: #1F1F35;
+            --surface-2: #252541;
+            --line: rgba(255,255,255,0.07);
+            --line-2: rgba(255,255,255,0.12);
+            --text-strong: #F4F4F8;
+            --text-soft: #C8C8D6;
+            --radius: 10px;
+            --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
         }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { min-height: 100%; }
         body {
-            font-family: 'JetBrains Mono', monospace;
-            background: #0A0A15;
-            color: #EAEAEA;
-            overflow: hidden;
-            height: 100vh;
+            font-family: var(--font); font-size: 14px; line-height: 1.5;
+            background: var(--bg); color: var(--text);
+            -webkit-font-smoothing: antialiased;
         }
+        button, input, select, textarea { font-family: inherit; }
+        a { color: var(--accent); }
+        .ico { width: 16px; height: 16px; flex: 0 0 auto; vertical-align: -3px; }
+        .ico-lg { width: 20px; height: 20px; flex: 0 0 auto; }
 
-        .dashboard {
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            height: 100vh;
-            padding: 1rem;
-            gap: 1rem;
+        /* ── App bar + Pingu wordmark ── */
+        .appbar {
+            position: sticky; top: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            height: 64px; padding: 0 28px;
+            background: rgba(22, 22, 40, 0.92);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--line);
         }
+        .appbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .logo { display: inline-flex; align-items: center; text-decoration: none; }
+        .wordmark {
+            font-family: 'Inter', var(--font); font-weight: 800; font-size: 28px;
+            letter-spacing: -0.045em; line-height: 1; color: var(--text-strong); padding-top: 6px;
+        }
+        .i-stem { position: relative; display: inline-block; }
+        .i-paw {
+            position: absolute; left: 50%; top: -0.17em; transform: translateX(-50%) rotate(-10deg);
+            width: 0.5em; height: 0.5em; fill: var(--primary);
+            filter: drop-shadow(0 1px 4px rgba(255,107,53,0.35));
+            transition: transform .2s ease;
+        }
+        .logo:hover .i-paw { transform: translateX(-50%) rotate(4deg) scale(1.08); }
+        .logo:hover .wordmark { color: #fff; }
+        .back-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-soft); text-decoration: none; font-size: 13px; font-weight: 500;
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line-2); background: transparent; cursor: pointer;
+            transition: background .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .back-btn:hover { background: var(--surface-2); color: var(--text-strong); border-color: rgba(255,255,255,0.2); }
 
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.5rem;
-            background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(0, 217, 255, 0.1));
-            border-radius: 15px;
-            border: 2px solid rgba(255, 107, 53, 0.3);
-        }
+        /* ── Page layout ── */
+        .container { padding: 24px 28px 40px; }
+        .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 18px; }
+        h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); line-height: 1.2; }
+        h2 { font-size: 16px; font-weight: 600; color: var(--text-strong); letter-spacing: -0.01em; }
+        h3 { font-size: 14px; font-weight: 600; color: var(--text-strong); }
+        .muted { color: var(--text-dim); }
+        .toolbar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
 
-        .logo {
-            font-family: 'Syne', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #FF6B35, #FFC857, #00D9FF);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+        /* ── Panels / cards ── */
+        .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; }
+        .panel + .panel { margin-top: 16px; }
+        .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -2px 0 14px; }
+        .panel-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600; color: var(--text-strong); }
+        .panel-title .ico { color: var(--primary); }
+
+        /* ── Form controls ── */
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-label { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
+        .control-input {
+            height: 38px; background: var(--surface); border: 1px solid var(--line-2);
+            color: var(--text-strong); padding: 0 12px; border-radius: 8px; font-size: 13.5px; width: 100%;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
+        textarea.control-input { height: auto; min-height: 84px; padding: 9px 11px; resize: vertical; }
+        .control-input:hover { border-color: rgba(255,255,255,0.2); }
+        .control-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.22); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        input[type="checkbox"], input[type="radio"] { accent-color: var(--primary); }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+            height: 38px; padding: 0 16px; border-radius: 8px; cursor: pointer;
+            font-size: 13.5px; font-weight: 600; text-decoration: none; white-space: nowrap;
+            border: 1px solid transparent; transition: background .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: var(--surface-2); color: var(--text-strong); border-color: var(--line-2); }
+        .btn-secondary:hover { background: var(--dark-lighter); border-color: rgba(255,255,255,0.25); }
+        .btn-ghost { background: transparent; color: var(--text-soft); border-color: var(--line-2); }
+        .btn-ghost:hover { background: var(--surface-2); color: var(--text-strong); }
+        .btn-danger { background: rgba(255,107,107,0.12); color: #FF8A8A; border-color: rgba(255,107,107,0.4); }
+        .btn-danger:hover { background: rgba(255,107,107,0.22); }
+        .btn-success { background: rgba(78,204,163,0.14); color: var(--success); border-color: rgba(78,204,163,0.45); }
+        .btn-success:hover { background: rgba(78,204,163,0.24); }
+        .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; }
+        .btn:disabled, button:disabled { opacity: .45; cursor: not-allowed; }
+        .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; height: 38px; }
+        .seg button { background: var(--surface); color: var(--text-soft); border: 0; padding: 0 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+        .seg button + button { border-left: 1px solid var(--line-2); }
+        .seg button:hover, .seg button.active { background: var(--surface-2); color: var(--text-strong); }
+
+        /* ── KPI tiles ── */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+        .stat-item { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 14px; }
+        .stat-label { display: flex; align-items: center; gap: 7px; color: var(--text-dim); font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .stat-label .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+        .stat-value { font-size: 22px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; line-height: 1.25; margin-top: 2px; font-variant-numeric: tabular-nums; }
+
+        /* ── Tables ── */
+        .table-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: auto; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+        thead th {
+            position: sticky; top: 0; z-index: 2; background: var(--surface);
+            text-align: left; padding: 10px 14px; font-size: 11.5px; font-weight: 600; color: var(--text-dim);
+            text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line-2); white-space: nowrap;
+        }
+        tbody td { padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--text-soft); vertical-align: middle; }
+        tbody tr:last-child td { border-bottom: 0; }
+        tbody tr:hover td { background: rgba(255,255,255,0.025); }
+        td.strong, .cell-strong { color: var(--text-strong); font-weight: 600; }
+        .mono { font-family: var(--mono); font-size: 12.5px; }
+
+        /* ── Badges / status pills ── */
+        .badge {
+            --c: var(--text-dim);
+            display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+            padding: 2px 9px; border-radius: 999px; color: var(--text-strong);
+            background: color-mix(in srgb, var(--c) 18%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent);
+        }
+        .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
+        .badge.plain::before { display: none; }
+        .tag { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; background: rgba(255,255,255,0.1); color: var(--text-soft); letter-spacing: .03em; }
+
+        /* ── Notices ── */
+        .notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 8px; font-size: 13px;
+                  background: rgba(255,255,255,0.03); border: 1px solid var(--line-2); color: var(--text-soft); }
+        .notice .ico { margin-top: 1px; }
+        .notice.info    { border-color: rgba(0,217,255,0.35);  background: rgba(0,217,255,0.06); }
+        .notice.success { border-color: rgba(78,204,163,0.4);  background: rgba(78,204,163,0.07); color: var(--success); }
+        .notice.warning { border-color: rgba(255,200,87,0.4);  background: rgba(255,200,87,0.07); color: var(--warning); }
+        .notice.error   { border-color: rgba(255,107,107,0.45); background: rgba(255,107,107,0.08); color: #FF8A8A; }
+
+        /* ── Modals ── */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(10,10,22,0.72); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
+        .modal.show, .modal.active, .modal.open { display: flex; }
+        .modal-content { background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; width: 100%; max-width: 680px; max-height: 88vh; overflow-y: auto; box-shadow: 0 30px 80px -20px rgba(0,0,0,0.75); }
+        .modal-header { position: sticky; top: 0; z-index: 2; background: var(--surface); display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+        .modal-title { font-size: 17px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.01em; }
+        .modal-body { padding: 18px 20px 22px; }
+        .close-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text-dim); cursor: pointer; font-size: 20px; line-height: 1; }
+        .close-btn:hover { background: var(--surface-2); color: var(--text-strong); }
+
+        /* ── Feedback ── */
+        .toast { position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: none; max-width: 420px; padding: 12px 16px 12px 14px; border-radius: 10px;
+                 background: #26263F; color: var(--text-strong); font-size: 13.5px; border: 1px solid var(--line-2); border-left: 3px solid var(--success);
+                 box-shadow: 0 16px 40px -12px rgba(0,0,0,0.7); }
+        .toast.show { display: block; }
+        .toast.error { border-left-color: var(--error); }
+        .empty-state, .loading { text-align: center; padding: 56px 16px; color: var(--text-dim); }
+        .empty-state h3 { color: var(--text-strong); font-size: 16px; margin-bottom: 4px; }
+        .empty-state .ico-lg { width: 32px; height: 32px; color: var(--text-dim); margin-bottom: 10px; }
+        .spinner { width: 22px; height: 22px; border: 2px solid var(--line-2); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        *::-webkit-scrollbar { width: 10px; height: 10px; }
+        *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        @media (max-width: 768px) {
+            .appbar, .container { padding-left: 14px; padding-right: 14px; }
+            .wordmark { font-size: 24px; }
+        }
+        /* ═══ end base ═══ */
+
+        /* ═══ Wallboard (TV, full screen) ═══
+           Sizes scale with the viewport so the board fills a 1080p or 4K screen without scrolling. */
+        :root {
+            --wb-gap: clamp(10px, 1.1vw, 28px);
+            --wb-pad: clamp(14px, 1.4vw, 36px);
+            --wb-label: clamp(13px, 1.05vw, 26px);
+            --wb-big: clamp(44px, 5.2vw, 140px);
+            --wb-status: clamp(48px, 6vw, 160px);
+            --wb-text: clamp(14px, 1.15vw, 30px);
+        }
+        html, body { height: 100%; }
+        body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        .appbar.wall-bar { position: relative; height: clamp(64px, 6.4vh, 128px); padding: 0 var(--wb-pad); flex: 0 0 auto; }
+        .wall-bar .wordmark { font-size: clamp(30px, 2.4vw, 64px); }
+        .wall-title { color: var(--text-dim); font-size: var(--wb-text); font-weight: 500; margin-left: clamp(12px, 1.2vw, 30px); padding-left: clamp(12px, 1.2vw, 30px); border-left: 1px solid var(--line-2); align-self: center; }
+        .wall-left { display: flex; align-items: center; }
+        .wall-right { display: flex; align-items: center; gap: clamp(14px, 1.6vw, 40px); }
 
         .live-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.7rem;
-            font-size: 1rem;
-            color: #4ECCA3;
+            display: inline-flex; align-items: center; gap: 0.6em;
+            font-size: var(--wb-label); font-weight: 600; letter-spacing: .08em; color: var(--success);
+            padding: 0.35em 0.8em; border: 1px solid rgba(78,204,163,0.4); background: rgba(78,204,163,0.08); border-radius: 999px;
+        }
+        .live-dot { width: 0.6em; height: 0.6em; background: var(--success); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+        .time { font-size: clamp(28px, 2.4vw, 64px); font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+        .dashboard {
+            flex: 1; min-height: 0;
+            display: grid; grid-template-rows: auto 1fr auto;
+            padding: var(--wb-pad); gap: var(--wb-gap);
         }
 
-        .live-dot {
-            width: 15px;
-            height: 15px;
-            background: #4ECCA3;
-            border-radius: 50%;
-            animation: pulse 2s ease-in-out infinite;
-        }
+        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--wb-gap); min-height: 0; }
+        .left-column { display: grid; grid-template-rows: auto 1fr; gap: var(--wb-gap); min-height: 0; }
 
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
+        /* Big stats */
+        .big-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--wb-gap); }
+        .big-stat-card, .status-card, .section-card, .footer-stat {
+            background: var(--surface); border: 1px solid var(--line); border-radius: clamp(10px, 0.8vw, 20px);
         }
-
-        .time {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: #00D9FF;
+        .big-stat-card { padding: calc(var(--wb-pad) * 0.9) var(--wb-pad); }
+        .big-stat-label, .status-label, .footer-label {
+            font-size: var(--wb-label); font-weight: 500; color: var(--text-dim); line-height: 1.3;
         }
-
-        /* Main Grid */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1rem;
-        }
-
-        .left-column {
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 1rem;
-        }
-
-        /* Big Stats */
-        .big-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1rem;
-        }
-
-        .big-stat-card {
-            background: linear-gradient(135deg, rgba(37, 37, 65, 0.8), rgba(26, 26, 46, 0.8));
-            border-radius: 15px;
-            padding: 1.2rem;
-            border: 2px solid rgba(255, 107, 53, 0.2);
-            transition: all 0.3s ease;
-        }
-
-        .big-stat-card:hover {
-            border-color: #FF6B35;
-            transform: translateY(-5px);
-        }
-
-        .big-stat-label {
-            font-size: 0.8rem;
-            color: #9A9AB0;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 0.7rem;
-        }
-
         .big-stat-value {
-            font-family: 'Syne', sans-serif;
-            font-size: 3.5rem;
-            font-weight: 800;
-            line-height: 1;
-            background: linear-gradient(135deg, #FF6B35, #00D9FF);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: var(--wb-big); font-weight: 700; line-height: 1.05; color: var(--text-strong);
+            letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: 0.12em;
         }
+        .big-stat-sublabel { font-size: calc(var(--wb-label) * 0.9); color: var(--text-dim); margin-top: 0.3em; }
 
-        .big-stat-sublabel {
-            font-size: 0.75rem;
-            color: #9A9AB0;
-            margin-top: 0.4rem;
-        }
-
-        /* Status Grid */
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.8rem;
-        }
-
+        /* Status tiles */
+        .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: var(--wb-gap); min-height: 0; }
         .status-card {
-            background: linear-gradient(135deg, rgba(37, 37, 65, 0.6), rgba(26, 26, 46, 0.6));
-            border-radius: 12px;
-            padding: 0.8rem 1rem;
-            border: 2px solid rgba(255, 107, 53, 0.2);
+            --c: var(--text-dim);
+            position: relative; overflow: hidden;
+            padding: calc(var(--wb-pad) * 0.9) var(--wb-pad);
+            display: flex; flex-direction: column; justify-content: space-between;
+            border-left: clamp(4px, 0.3vw, 8px) solid var(--c);
         }
-
-        .status-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.3rem;
-        }
-
-        .status-label {
-            font-size: 0.7rem;
-            color: #9A9AB0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .status-icon {
-            font-size: 1.2rem;
-        }
-
+        .status-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+        .status-icon { color: var(--c); display: inline-flex; }
+        .status-icon .ico { width: clamp(22px, 1.8vw, 48px); height: clamp(22px, 1.8vw, 48px); }
         .status-value {
-            font-family: 'Syne', sans-serif;
-            font-size: 4rem;
-            font-weight: 800;
-            line-height: 1;
+            font-size: var(--wb-status); font-weight: 700; line-height: 1; color: var(--c);
+            letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
         }
+        .status-week      { --c: var(--scheduled); }
+        .status-progress  { --c: var(--in-progress); }
+        .status-complete  { --c: var(--complete); }
+        .status-aborted   { --c: var(--aborted); }
+        .status-cancelled { --c: var(--cancelled); }
+        .status-overdue   { --c: var(--warning); }
 
-        .status-complete .status-value { color: #4ECCA3; }
-        .status-progress .status-value { color: #00D9FF; }
-        .status-overdue .status-value { color: #FF6B6B; }
-        .status-week .status-value { color: #FFC857; }
-        .status-aborted .status-value { color: #6C757D; }
-        .status-cancelled .status-value { color: #DC6E3C; }
-
-        /* Right Column - Teams & Today */
-        .right-column {
-            display: grid;
-            grid-template-rows: 0.6fr 1.4fr;
-            gap: 1rem;
-        }
-
-        .section-card {
-            background: linear-gradient(135deg, rgba(37, 37, 65, 0.8), rgba(26, 26, 46, 0.8));
-            border-radius: 15px;
-            padding: 1.2rem;
-            border: 2px solid rgba(0, 217, 255, 0.2);
-            overflow: hidden;
-        }
-
+        /* Right column */
+        .right-column { display: grid; grid-template-rows: auto 1fr; gap: var(--wb-gap); min-height: 0; }
+        .section-card { padding: calc(var(--wb-pad) * 0.8) var(--wb-pad); overflow: hidden; min-height: 0; }
         .section-title {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.1rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: #00D9FF;
+            display: flex; align-items: center; gap: 0.5em;
+            font-size: calc(var(--wb-text) * 1.1); font-weight: 600; color: var(--text-strong);
+            margin-bottom: calc(var(--wb-gap) * 0.6);
         }
+        .section-title .ico { width: 1.1em; height: 1.1em; color: var(--primary); }
+        #top-teams, #today-jobs-list { font-size: var(--wb-text); }
+        #top-teams > div[style], #today-jobs-list > div[style] { font-size: var(--wb-text); }
 
         .team-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.7rem;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            margin-bottom: 0.6rem;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            padding: 0.36em 0; border-bottom: 1px solid var(--line);
         }
-
-        .team-name {
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .team-stat {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #FFC857;
-        }
+        .team-item:last-child { border-bottom: 0; }
+        .team-name { font-size: var(--wb-text); font-weight: 600; color: var(--text-strong); }
+        .team-stat { font-size: var(--wb-text); font-weight: 700; color: var(--complete); font-variant-numeric: tabular-nums; }
 
         .today-job {
-            background: rgba(255, 255, 255, 0.03);
-            border-left: 4px solid #FF6B35;
-            padding: 0.7rem;
-            margin-bottom: 0.6rem;
-            border-radius: 6px;
+            display: grid; grid-template-columns: auto 1fr; column-gap: 0.8em; align-items: baseline;
+            background: var(--surface-2); border: 1px solid var(--line); border-left: clamp(3px, 0.25vw, 6px) solid var(--primary);
+            padding: 0.4em 0.8em; margin-bottom: 0.4em; border-radius: 8px;
         }
-
-        .job-number {
-            font-weight: 700;
-            color: #FF6B35;
-            margin-bottom: 0.2rem;
-            font-size: 0.9rem;
-        }
-
-        .job-location {
-            font-size: 0.75rem;
-            color: #9A9AB0;
-        }
-
-        .job-lead {
-            font-size: 0.7rem;
-            color: #00D9FF;
-            margin-top: 0.2rem;
-        }
+        .job-number { grid-column: 1; grid-row: 1; font-family: var(--mono); font-weight: 700; color: var(--text-strong); font-size: var(--wb-text); }
+        .job-lead { grid-column: 2; grid-row: 1; justify-self: end; font-size: calc(var(--wb-text) * 0.8); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        .job-location { grid-column: 1 / -1; grid-row: 2; font-size: calc(var(--wb-text) * 0.85); color: var(--text-soft); margin-top: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* Footer */
-        .footer {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-        }
+        .footer { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--wb-gap); }
+        .footer-stat { padding: calc(var(--wb-pad) * 0.55) var(--wb-pad); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+        .footer-value { font-size: clamp(26px, 2.3vw, 64px); font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 
-        .footer-stat {
-            background: linear-gradient(135deg, rgba(37, 37, 65, 0.6), rgba(26, 26, 46, 0.6));
-            border-radius: 12px;
-            padding: 1rem;
-            text-align: center;
-            border: 2px solid rgba(255, 107, 53, 0.2);
-        }
+        .loading { flex: 1; display: flex; align-items: center; justify-content: center; gap: 16px; font-size: var(--wb-text); color: var(--text-dim); padding: 0; }
+        .loading .spinner { width: 1.4em; height: 1.4em; }
 
-        .footer-label {
-            font-size: 0.7rem;
-            color: #9A9AB0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.4rem;
-        }
-
-        .footer-value {
-            font-family: 'Syne', sans-serif;
-            font-size: 1.6rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #FFC857, #FF6B35);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            font-size: 2rem;
-            color: #9A9AB0;
+        @media (max-width: 900px) {
+            body { overflow: auto; height: auto; }
+            .dashboard { grid-template-rows: none; }
+            .main-grid, .big-stats { grid-template-columns: 1fr; }
+            .status-grid { grid-template-columns: 1fr 1fr; }
+            .footer { grid-template-columns: 1fr 1fr; }
+            .wall-title { display: none; }
         }
     </style>
-    <link rel="stylesheet" href="pingu-theme.css">
 </head>
 <body>
-    <div id="loading" class="loading">
-        <div>Loading Dashboard...</div>
-    </div>
-
-    <div id="dashboard" class="dashboard" style="display: none;">
-        <!-- Header -->
-        <div class="header">
-            <div class="logo">PINGU SOLAR</div>
+    <header class="appbar wall-bar">
+        <div class="wall-left">
+            <span class="logo" aria-label="Pingu">
+                <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
+            </span>
+            <span class="wall-title">Live dashboard</span>
+        </div>
+        <div class="wall-right">
             <div class="live-indicator">
                 <div class="live-dot"></div>
                 <span>LIVE</span>
             </div>
             <div class="time" id="current-time"></div>
         </div>
+    </header>
 
+    <div id="loading" class="loading">
+        <span class="spinner"></span>
+        <div>Loading dashboard...</div>
+    </div>
+
+    <div id="dashboard" class="dashboard" style="display: none;">
         <!-- Main Grid -->
         <div class="main-grid">
             <!-- Left Column -->
@@ -320,17 +362,17 @@
                 <!-- Big Stats -->
                 <div class="big-stats">
                     <div class="big-stat-card">
-                        <div class="big-stat-label">Total Jobs</div>
+                        <div class="big-stat-label">Total jobs</div>
                         <div class="big-stat-value" id="total-jobs">0</div>
-                        <div class="big-stat-sublabel">All Time</div>
+                        <div class="big-stat-sublabel">All time</div>
                     </div>
                     <div class="big-stat-card">
-                        <div class="big-stat-label">This Month</div>
+                        <div class="big-stat-label">This month</div>
                         <div class="big-stat-value" id="month-jobs">0</div>
                         <div class="big-stat-sublabel" id="month-name">January 2026</div>
                     </div>
                     <div class="big-stat-card">
-                        <div class="big-stat-label">This Week</div>
+                        <div class="big-stat-label">This week</div>
                         <div class="big-stat-value" id="week-jobs">0</div>
                         <div class="big-stat-sublabel">Mon - Sun</div>
                     </div>
@@ -340,43 +382,43 @@
                 <div class="status-grid">
                     <div class="status-card status-week">
                         <div class="status-header">
-                            <div class="status-label">Jobs Starting Today</div>
-                            <div class="status-icon">📅</div>
+                            <div class="status-label">Jobs starting today</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
                         </div>
                         <div class="status-value" id="today-jobs">0</div>
                     </div>
                     <div class="status-card status-progress">
                         <div class="status-header">
-                            <div class="status-label">In Progress</div>
-                            <div class="status-icon">🔧</div>
+                            <div class="status-label">In progress</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg></div>
                         </div>
                         <div class="status-value" id="progress-jobs">0</div>
                     </div>
                     <div class="status-card status-complete">
                         <div class="status-header">
                             <div class="status-label">Completed</div>
-                            <div class="status-icon">✅</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg></div>
                         </div>
                         <div class="status-value" id="completed-jobs">0</div>
                     </div>
                     <div class="status-card status-aborted">
                         <div class="status-header">
                             <div class="status-label">Aborted</div>
-                            <div class="status-icon">🛑</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>
                         </div>
                         <div class="status-value" id="aborted-jobs">0</div>
                     </div>
                     <div class="status-card status-cancelled">
                         <div class="status-header">
                             <div class="status-label">Cancelled</div>
-                            <div class="status-icon">❌</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
                         </div>
                         <div class="status-value" id="cancelled-jobs">0</div>
                     </div>
                     <div class="status-card status-overdue">
                         <div class="status-header">
                             <div class="status-label">Outstanding</div>
-                            <div class="status-icon">⚠️</div>
+                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
                         </div>
                         <div class="status-value" id="overdue-jobs">0</div>
                     </div>
@@ -387,13 +429,13 @@
             <div class="right-column">
                 <!-- Top Teams -->
                 <div class="section-card">
-                    <div class="section-title">🏆 Top Teams This Month</div>
+                    <div class="section-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Top teams this month</div>
                     <div id="top-teams"></div>
                 </div>
 
                 <!-- Today's Jobs -->
                 <div class="section-card">
-                    <div class="section-title">📍 Today's Jobs</div>
+                    <div class="section-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Today's jobs</div>
                     <div id="today-jobs-list"></div>
                 </div>
             </div>
@@ -402,25 +444,25 @@
         <!-- Footer Stats -->
         <div class="footer">
             <div class="footer-stat">
-                <div class="footer-label">Total Days</div>
+                <div class="footer-label">Total days</div>
                 <div class="footer-value" id="total-days">0</div>
             </div>
             <div class="footer-stat">
-                <div class="footer-label">Avg Job Length</div>
+                <div class="footer-label">Avg job length</div>
                 <div class="footer-value" id="avg-days">0</div>
             </div>
             <div class="footer-stat">
-                <div class="footer-label">Active Teams</div>
+                <div class="footer-label">Active teams</div>
                 <div class="footer-value" id="active-teams">0</div>
             </div>
             <div class="footer-stat">
-                <div class="footer-label">Completion Rate</div>
+                <div class="footer-label">Completion rate</div>
                 <div class="footer-value" id="completion-rate">0%</div>
             </div>
         </div>
     </div>
 
-    <script type="module">
+<script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 

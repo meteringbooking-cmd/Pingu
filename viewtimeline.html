@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en" data-pingu="std">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Timeline | Pingu - Solar</title>
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>Job Timeline | Pingu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Syne:wght@700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
+            /* Brand + status palette (unchanged colours) */
             --primary: #FF6B35;
             --primary-dark: #E55A2B;
             --secondary: #FFC857;
@@ -28,400 +29,535 @@
             --cancelled: #9A9AB0;
             --short-notice: #90ee90;
             --on-hold: #FFDE00;
+            --scheduled: #FF6B35;
+
+            /* Layout tokens */
+            --bg: #161628;
+            --surface: #1F1F35;
+            --surface-2: var(--dark-light);
+            --line: rgba(255,255,255,0.07);
+            --line-2: rgba(255,255,255,0.12);
+            --text-strong: #F4F4F8;
+            --text-soft: #C8C8D6;
+            --radius: 10px;
+            --lead-w: 210px;
+            --col-min: 104px;
+            --row-h: 66px;
+            --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { min-height: 100%; }
         body {
-            font-family: 'JetBrains Mono', monospace;
-            background: var(--dark);
+            font-family: var(--font);
+            font-size: 14px;
+            line-height: 1.5;
+            background: var(--bg);
             color: var(--text);
-            line-height: 1.6;
-            overflow-x: hidden;
-            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
         }
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%; left: -50%;
-            width: 200%; height: 200%;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
-            animation: float 20s ease-in-out infinite;
-            pointer-events: none;
-            z-index: -1;
+        button { font-family: inherit; }
+        .ico { width: 16px; height: 16px; flex: 0 0 auto; }
+
+        /* ── App bar ─────────────────────────────────────────── */
+        .appbar {
+            position: sticky; top: 0; z-index: 50;
+            display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            height: 64px; padding: 0 28px;
+            background: rgba(22, 22, 40, 0.92);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--line);
         }
-        .container { max-width: 100%; margin: 0 auto; padding: 2rem; }
-        header {
-            margin-bottom: 2rem;
-            animation: slideDown 0.8s ease-out;
-            max-width: 1600px;
-            margin-left: auto; margin-right: auto;
+        .logo { display: inline-flex; align-items: center; text-decoration: none; }
+        .wordmark {
+            font-family: 'Inter', var(--font); font-weight: 800; font-size: 28px;
+            letter-spacing: -0.045em; line-height: 1; color: var(--text-strong); padding-top: 6px;
         }
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-30px); }
-            to { opacity: 1; transform: translateY(0); }
+        .i-stem { position: relative; display: inline-block; }
+        .i-paw {
+            position: absolute; left: 50%; top: -0.17em; transform: translateX(-50%) rotate(-10deg);
+            width: 0.5em; height: 0.5em; fill: var(--primary);
+            filter: drop-shadow(0 1px 4px rgba(255,107,53,0.35));
+            transition: transform .2s ease;
         }
-        .header-content { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-        .logo {
-            font-family: 'Syne', sans-serif;
-            font-size: 2rem; font-weight: 800;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-            text-decoration: none;
-        }
+        .logo:hover .i-paw { transform: translateX(-50%) rotate(4deg) scale(1.08); }
+        .logo:hover .wordmark { color: #fff; }
         .back-btn {
-            background: var(--dark-light); color: var(--text); text-decoration: none;
-            padding: 0.7rem 1.5rem; border-radius: 8px; font-size: 0.9rem;
-            transition: all 0.3s ease; border: 2px solid transparent;
+            display: inline-flex; align-items: center; gap: 6px;
+            color: var(--text-soft); text-decoration: none; font-size: 13px; font-weight: 500;
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line-2);
+            transition: background .15s ease, border-color .15s ease, color .15s ease;
         }
-        .back-btn:hover { background: var(--dark-lighter); border-color: var(--primary); transform: translateX(-5px); }
-        h1 { font-family: 'Syne', sans-serif; font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--text); }
-        .subtitle { color: var(--text-dim); font-size: 0.95rem; }
-        .controls-card {
-            background: var(--dark-light); border-radius: 16px; padding: 2rem;
-            border: 2px solid transparent; animation: fadeInUp 0.6s ease-out;
-            max-width: 1600px; margin-left: auto; margin-right: auto; margin-bottom: 2rem;
+        .back-btn:hover { background: var(--surface-2); color: var(--text-strong); border-color: rgba(255,255,255,0.2); }
+
+        .container { padding: 24px 28px 40px; }
+
+        /* ── Page heading + toolbar ──────────────────────────── */
+        .page-head {
+            display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+            margin-bottom: 18px;
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .controls-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
-        .control-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; }
+        h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); line-height: 1.2; }
+        .subtitle { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+        .toolbar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-label { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
         .control-input {
-            background: var(--dark-lighter); border: 2px solid var(--dark-lighter);
-            color: var(--text); padding: 0.8rem 1rem; border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; transition: all 0.3s ease;
+            height: 38px; background: var(--surface); border: 1px solid var(--line-2);
+            color: var(--text-strong); padding: 0 12px; border-radius: 8px;
+            font-family: var(--font); font-size: 13.5px;
+            transition: border-color .15s ease, box-shadow .15s ease;
         }
-        .control-input:focus { outline: none; border-color: var(--primary); }
+        .control-input:hover { border-color: rgba(255,255,255,0.2); }
+        .control-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.22); }
+        input[type="date"].control-input { width: 160px; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        #days-count { width: 84px; }
+        .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; height: 38px; }
+        .seg button {
+            background: var(--surface); color: var(--text-soft); border: 0; padding: 0 12px;
+            font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .seg button + button { border-left: 1px solid var(--line-2); }
+        .seg button:hover { background: var(--surface-2); color: var(--text-strong); }
+        .btn-primary {
+            height: 38px; padding: 0 16px; border: 0; border-radius: 8px; cursor: pointer;
+            background: var(--primary); color: #fff; font-size: 13.5px; font-weight: 600;
+            transition: background .15s ease;
+        }
+        .btn-primary:hover { background: var(--primary-dark); }
 
-        /* ── Survey legend ── */
-        .survey-legend {
-            display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: center;
-            padding: 0.8rem 1rem; background: var(--dark-lighter); border-radius: 8px;
-            margin-top: 1rem; font-size: 0.78rem; color: var(--text-dim);
-        }
-        .survey-legend strong { color: var(--text); margin-right: 0.3rem; }
-        .legend-swatch { display: inline-flex; align-items: center; gap: 0.45rem; }
-        .swatch {
-            width: 22px; height: 14px; border-radius: 4px; flex-shrink: 0;
-            border: 2px solid transparent;
-        }
-        .swatch-urgent { background: rgba(255,107,107,0.3); border-color: rgba(255,107,107,0.9); box-shadow: 0 0 6px rgba(255,107,107,0.7); }
-        .swatch-pending { background: rgba(154,154,176,0.12); border-color: rgba(154,154,176,0.35); }
-        .swatch-ok { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
-
-        .timeline-container {
-            background: var(--dark-light); border-radius: 16px; padding: 1.5rem;
-            border: 2px solid var(--dark-lighter); animation: fadeInUp 0.8s ease-out;
-            overflow-x: auto; max-width: 100%;
-        }
-        .timeline-wrapper { min-width: 1200px; position: relative; }
-        .timeline-header {
-            display: grid; grid-template-columns: 200px 1fr; gap: 1rem; margin-bottom: 1rem;
-            position: sticky; top: 0; background: var(--dark-light); z-index: 10;
-            padding-bottom: 1rem; border-bottom: 2px solid var(--primary);
-        }
-        .engineer-header { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; }
-        .dates-header { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(120px, 1fr); gap: 1px; }
-        .date-cell { background: var(--dark-lighter); padding: 0.8rem; text-align: center; border-radius: 8px; display: flex; flex-direction: column; gap: 0.2rem; }
-        .date-day { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
-        .date-number { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--text); }
-        .date-month { font-size: 0.75rem; color: var(--text-dim); }
-        .date-cell.today { background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; }
-        .date-cell.today .date-day, .date-cell.today .date-number, .date-cell.today .date-month { color: white; }
-        .timeline-body { display: flex; flex-direction: column; gap: 0.5rem; }
-        .engineer-row { display: grid; grid-template-columns: 200px 1fr; gap: 1rem; min-height: 80px; }
-        .engineer-name {
-            background: var(--dark-lighter); padding: 1rem; border-radius: 8px;
-            font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 0.5rem;
-            position: sticky; left: 0; z-index: 5;
-        }
-        
-        /* ── Team Grouping Highlights ── */
-        .engineer-name.no-lead {
-            background: rgba(255, 107, 107, 0.15);
-            border: 2px solid rgba(255, 107, 107, 0.5);
-            color: #ff9999;
-        }
-        
-        .engineer-icon { font-size: 1.3rem; }
-        .timeline-grid { display: grid; gap: 1px; position: relative; }
-        .day-column { background: var(--dark); border-radius: 4px; position: relative; transition: all 0.2s ease; }
-
-        /* ── Job cards ── */
-        .job-card {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            padding: 0.4rem 0.3rem; border-radius: 6px; font-size: 0.75rem;
-            cursor: pointer; transition: all 0.3s ease; border: 2px solid transparent;
-            display: flex; flex-direction: column; justify-content: center; gap: 0.25rem;
-            user-select: none; overflow: hidden; position: relative; height: 100%; width: 100%;
-        }
-        .job-card.dragging { opacity: 0.4; cursor: grabbing; }
-        .job-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px var(--shadow); border-color: white; z-index: 2; }
-        .job-card.status-in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
-        .job-card.status-complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
-        .job-card.status-aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
-        .job-card.status-cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F); }
-        .job-card.status-short-notice-cancellation { background: linear-gradient(135deg, var(--short-notice), #90ee90); }
-        .job-card.status-on-hold     { background: linear-gradient(135deg, var(--on-hold), #E6B800); }
-
-        /* ── Survey overlays ── */
-        .job-card.survey-urgent {
-            border-color: rgba(255,107,107,0.9) !important;
-            box-shadow: 0 0 0 2px rgba(255,107,107,0.6), 0 0 14px 4px rgba(255,107,107,0.5);
-        }
-        .job-card.survey-urgent::after {
-            content: '🚨';
-            position: absolute; top: 2px; right: 3px;
-            font-size: 0.7rem; z-index: 10; pointer-events: none;
-        }
-
-        .job-card.survey-pending {
-            opacity: 0.38;
-            filter: saturate(0.15) brightness(0.85);
-            border: 2px dashed rgba(154,154,176,0.5) !important;
-        }
-        .job-card.survey-pending::after {
-            content: '⏳';
-            position: absolute; top: 2px; right: 3px;
-            font-size: 0.65rem; z-index: 10; pointer-events: none;
-            opacity: 1; filter: none;
-        }
-        .job-card.survey-pending:hover {
-            opacity: 1;
-            filter: none;
-        }
-
-        .job-card .completion-overlay {
-            position: absolute; top: 0; left: 0; height: 100%;
-            background: linear-gradient(135deg, var(--complete), #3DB88E);
-            pointer-events: none; transition: width 0.3s ease;
-        }
-        .job-number  { font-weight: 800; color: var(--dark); font-size: 0.85rem; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-type    { font-size: 0.7rem; color: var(--dark); opacity: 0.95; font-weight: 600; line-height: 1.2; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-postcode{ font-size: 0.7rem; color: var(--dark); opacity: 0.9; line-height: 1.2; font-weight: 600; pointer-events: none; position: relative; z-index: 1; text-align: center; }
-        .job-days    { font-size: 0.6rem; color: var(--dark); opacity: 0.95; font-weight: 700; line-height: 1; pointer-events: none; position: absolute; bottom: 0.3rem; right: 0.3rem; z-index: 1; background: rgba(255,255,255,0.3); padding: 0.15rem 0.3rem; border-radius: 3px; }
-        .job-survey-done { font-size: 0.6rem; font-weight: 800; line-height: 1; pointer-events: none; position: absolute; bottom: 0.3rem; left: 0.3rem; z-index: 1; background: rgba(78,204,163,0.85); color: #fff; padding: 0.15rem 0.35rem; border-radius: 3px; letter-spacing: 0.04em; }
-        .job-source-badge {
-            position: absolute; top: 2px; left: 3px; z-index: 1;
-            font-size: 0.55rem; font-weight: 700; padding: 0.1rem 0.3rem;
-            border-radius: 3px; pointer-events: none; text-transform: uppercase; letter-spacing: 0.04em;
-        }
-        .source-jobs  { background: rgba(0,217,255,0.3);  color: #fff; }
-        .source-solar { background: rgba(255,107,53,0.35); color: #fff; }
-
-        .job-card.multi-day { grid-column: span var(--span-days); }
-        .job-arrow { position: relative; height: 4px; background: linear-gradient(90deg, var(--accent), var(--primary)); pointer-events: none; z-index: 3; display: flex; align-items: center; justify-content: flex-end; box-shadow: 0 2px 12px rgba(0, 217, 255, 0.6); }
-        .job-arrow::after { content: '→'; color: var(--primary); font-size: 1.5rem; font-weight: 900; margin-right: -10px; text-shadow: 0 0 10px rgba(255, 107, 53, 1); animation: arrowPulse 2s ease-in-out infinite; }
-        @keyframes arrowPulse { 0%, 100% { transform: translateX(0) scale(1); opacity: 1; } 50% { transform: translateX(8px) scale(1.1); opacity: 0.8; } }
-        .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); }
-        .loading { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 1.1rem; }
-
+        /* ── KPI strip ───────────────────────────────────────── */
         .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-            gap: 0.75rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--dark-lighter);
+            display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px;
         }
         .stat-item {
-            text-align: center; background: var(--dark-lighter); border-radius: 10px;
-            padding: 0.75rem 0.5rem; border: 2px solid transparent; transition: border-color 0.2s ease;
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+            padding: 11px 14px;
         }
-        .stat-item:hover { border-color: var(--primary); }
-        .stat-label { color: var(--text-dim); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.3rem; }
-        .stat-value { font-family: 'Syne', sans-serif; font-size: 1.6rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .stat-value.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E);     -webkit-background-clip: text; background-clip: text; }
-        .stat-value.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); -webkit-background-clip: text; background-clip: text; }
-        .stat-value.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A);     -webkit-background-clip: text; background-clip: text; }
-        .stat-value.cancelled   { background: linear-gradient(135deg, var(--cancelled), #7A7A8F);   -webkit-background-clip: text; background-clip: text; }
-        .stat-value.snc         { background: linear-gradient(135deg, #90ee90, #5cb85c);             -webkit-background-clip: text; background-clip: text; }
-        .stat-value.on-hold     { background: linear-gradient(135deg, var(--on-hold), #E6B800);      -webkit-background-clip: text; background-clip: text; }
-        .stat-value.urgent      { background: linear-gradient(135deg, var(--error), #E55A5A);       -webkit-background-clip: text; background-clip: text; }
+        .stat-label { display: flex; align-items: center; gap: 7px; color: var(--text-dim); font-size: 12px; font-weight: 500; white-space: nowrap; }
+        .stat-label .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+        .stat-value { font-size: 22px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; line-height: 1.25; margin-top: 2px; font-variant-numeric: tabular-nums; }
+        .stat-value.urgent { color: var(--error); }
 
-        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); z-index: 1000; align-items: center; justify-content: center; }
+        /* ── Info strip ──────────────────────────────────────── */
+        .info-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: -4px 0 10px; min-height: 0; }
+        .info-strip:has(.debug-info[style*="none"]) { display: none; }
+        .info-pill {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 5px 11px; border-radius: 999px; font-size: 12px; color: var(--text-soft);
+            background: var(--surface); border: 1px solid var(--line); cursor: default;
+        }
+        .info-pill .dot { width: 7px; height: 7px; border-radius: 50%; }
+        .debug-info { font-size: 12px; color: var(--text-dim); margin-left: auto; }
+
+        /* ── Board ───────────────────────────────────────────── */
+        .board {
+            background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+            overflow: hidden;
+        }
+        .board-bar {
+            display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+            padding: 11px 16px; border-bottom: 1px solid var(--line);
+        }
+        .legend { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-dim); }
+        .legend-title { color: var(--text-soft); font-weight: 600; }
+        .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+        .legend-sw { width: 14px; height: 10px; border-radius: 3px; background: color-mix(in srgb, var(--c) 30%, var(--surface)); border-left: 3px solid var(--c); }
+        .legend-sep { width: 1px; height: 16px; background: var(--line-2); }
+        .legend-ring { width: 7px; height: 7px; border-radius: 50%; background: var(--error); box-shadow: 0 0 0 3px rgba(255,107,107,0.25); margin: 0 3px; }
+        .legend-dash { width: 14px; height: 10px; border-radius: 3px; border: 1px dashed rgba(154,154,176,0.8); opacity: .8; }
+        .legend-tag { font-size: 9.5px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(78,204,163,0.2); color: var(--success); letter-spacing: .04em; }
+
+        .timeline-container {
+            overflow: auto;
+            max-height: calc(100vh - 150px);
+            min-height: 260px;
+        }
+        .timeline-wrapper { min-width: calc(var(--lead-w) + var(--cols) * var(--col-min)); position: relative; }
+        .tl-row {
+            display: grid;
+            grid-template-columns: var(--lead-w) repeat(var(--cols), minmax(var(--col-min), 1fr));
+        }
+        .timeline-header {
+            position: sticky; top: 0; z-index: 20;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line-2);
+        }
+        .engineer-header {
+            position: sticky; left: 0; z-index: 21; background: var(--surface);
+            display: flex; align-items: flex-end; padding: 10px 16px;
+            font-size: 11.5px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em;
+            border-right: 1px solid var(--line);
+        }
+        .date-cell {
+            padding: 9px 6px 8px; text-align: center; border-left: 1px solid var(--line);
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+        }
+        .date-cell.week-start { border-left-color: var(--line-2); }
+        .date-day { font-size: 10.5px; font-weight: 600; color: var(--text-dim); letter-spacing: .07em; }
+        .date-number { font-size: 17px; font-weight: 700; color: var(--text-strong); line-height: 1.2; font-variant-numeric: tabular-nums; }
+        .date-month { font-size: 11px; color: var(--text-dim); }
+        .date-cell.weekend .date-number { color: var(--text-dim); }
+        .date-cell.today { background: rgba(255,107,53,0.10); box-shadow: inset 0 -2px 0 var(--primary); }
+        .date-cell.today .date-day, .date-cell.today .date-month { color: var(--primary); }
+        .date-cell.today .date-number { color: var(--primary); }
+
+        .timeline-body { display: flex; flex-direction: column; }
+        .engineer-row { border-bottom: 1px solid var(--line); }
+        .engineer-row:last-child { border-bottom: 0; }
+        .engineer-row:hover .engineer-name { background: #24243C; }
+        .engineer-name {
+            position: sticky; left: 0; z-index: 10;
+            background: var(--surface);
+            border-right: 1px solid var(--line);
+            padding: 12px 16px; display: flex; flex-direction: column; justify-content: center; gap: 2px;
+            transition: background .15s ease;
+        }
+        .eng-title { font-weight: 600; font-size: 13.5px; color: var(--text-strong); line-height: 1.3; }
+        .eng-meta { font-size: 11.5px; color: var(--text-dim); }
+        .engineer-name.no-lead { box-shadow: inset 3px 0 0 var(--error); }
+        .engineer-name.no-lead .eng-meta { color: var(--error); }
+
+        .timeline-grid {
+            display: grid; position: relative;
+            grid-column: 2 / -1;
+            grid-template-columns: repeat(var(--cols), minmax(var(--col-min), 1fr));
+            grid-auto-rows: var(--row-h);
+            row-gap: 6px; padding: 6px 0;
+        }
+        .day-bg { grid-row: 1 / -1; border-left: 1px solid var(--line); margin: -6px 0; pointer-events: none; }
+        .day-bg.week-start { border-left-color: var(--line-2); }
+        .day-bg.weekend { background: rgba(255,255,255,0.018); }
+        .day-bg.today { background: rgba(255,107,53,0.07); }
+
+        /* ── Job cards ───────────────────────────────────────── */
+        .job-card {
+            --c: var(--scheduled);
+            position: relative; z-index: 1;
+            margin: 0 3px; min-width: 0;
+            background: color-mix(in srgb, var(--c) 22%, #1d1d33);
+            border: 1px solid color-mix(in srgb, var(--c) 42%, transparent);
+            border-left: 4px solid var(--c);
+            border-radius: 7px;
+            padding: 6px 8px 5px 9px;
+            display: flex; flex-direction: column; justify-content: space-between; gap: 1px;
+            cursor: pointer; overflow: hidden; user-select: none;
+            transition: background .15s ease, box-shadow .15s ease, transform .15s ease;
+        }
+        .job-card:hover {
+            background: color-mix(in srgb, var(--c) 27%, #1d1d33);
+            box-shadow: 0 6px 18px -8px rgba(0,0,0,0.7), 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent);
+            z-index: 3;
+        }
+        .job-card.status-in-progress { --c: var(--in-progress); }
+        .job-card.status-complete    { --c: var(--complete); }
+        .job-card.status-aborted     { --c: var(--aborted); }
+        .job-card.status-cancelled   { --c: var(--cancelled); }
+        .job-card.status-short-notice-cancellation { --c: var(--short-notice); }
+        .job-card.status-on-hold     { --c: var(--on-hold); }
+
+        .job-line1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+        .job-number {
+            font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--text-strong);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.01em;
+        }
+        .urgent-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--error); flex: 0 0 auto; margin-left: auto; box-shadow: 0 0 0 3px rgba(255,107,107,0.25); }
+        .job-type {
+            font-size: 11.5px; font-weight: 500; color: var(--text-soft); line-height: 1.25;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .job-line3 { display: flex; align-items: center; gap: 4px; min-width: 0; }
+        .job-postcode { font-size: 11px; color: var(--text-dim); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: auto; }
+        .job-tag {
+            font-size: 9.5px; font-weight: 700; line-height: 1; padding: 2px 4px; border-radius: 3px;
+            letter-spacing: .03em; flex: 0 0 auto; font-variant-numeric: tabular-nums;
+        }
+        .job-tag.days { background: rgba(255,255,255,0.10); color: var(--text-soft); }
+        .job-tag.sc { background: rgba(78,204,163,0.22); color: var(--success); }
+        .job-progress { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--complete); }
+
+        /* Survey states */
+        .job-card.survey-urgent { box-shadow: inset 0 0 0 1px rgba(255,107,107,0.65); }
+        .job-card.survey-urgent:hover { box-shadow: 0 6px 18px -8px rgba(0,0,0,0.7), 0 0 0 1.5px var(--error); }
+        .job-card.survey-pending {
+            opacity: 0.62;
+            border-style: dashed; border-left-style: solid;
+        }
+        .job-card.survey-pending:hover { opacity: 1; }
+
+        /* Split-job connector */
+        .job-arrow {
+            align-self: center; height: 0; margin: 0 6px; z-index: 0; pointer-events: none;
+            border-top: 2px dashed rgba(255,107,53,0.55);
+        }
+
+        .empty-state { text-align: center; padding: 64px 16px; color: var(--text-dim); }
+        .empty-state h3 { color: var(--text-strong); font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+        .loading { text-align: center; padding: 64px 16px; color: var(--text-dim); font-size: 14px; }
+
+        /* ── Modals ──────────────────────────────────────────── */
+        .modal { display: none; position: fixed; inset: 0; background: rgba(10,10,22,0.72); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; }
         .modal.show { display: flex; }
-        .modal-content { background: var(--dark-light); border-radius: 16px; padding: 2rem; max-width: 600px; width: 90%; border: 2px solid var(--primary); max-height: 80vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid var(--dark-lighter); }
-        .modal-title { font-family: 'Syne', sans-serif; font-size: 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .close-btn { background: none; border: none; color: var(--text-dim); font-size: 2rem; cursor: pointer; transition: color 0.3s ease; line-height: 1; }
-        .close-btn:hover { color: var(--error); }
-        .modal-body { display: grid; gap: 1rem; }
-        .detail-row { display: grid; grid-template-columns: 120px 1fr; gap: 1rem; padding: 0.8rem; background: var(--dark-lighter); border-radius: 8px; }
-        .detail-label { color: var(--text-dim); font-size: 0.85rem; }
-        .detail-value { color: var(--text); font-weight: 500; }
-        .status-buttons { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem; }
-        .status-btn { padding: 1rem; border: 2px solid transparent; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; color: white; }
-        .status-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-        .status-btn.in-progress { background: linear-gradient(135deg, var(--in-progress), #00B8D9); }
-        .status-btn.complete    { background: linear-gradient(135deg, var(--complete), #3DB88E); }
-        .status-btn.aborted     { background: linear-gradient(135deg, var(--aborted), #E55A5A); }
-        .status-btn.cancelled   { background: linear-gradient(135deg, #FF3B3B, #C92A2A); border: 2px solid #FF6B6B; }
-        .status-btn.on-hold     { background: linear-gradient(135deg, var(--on-hold), #E6B800); color: var(--dark); border: 2px solid #CCA300; }
-        .status-btn.short-notice{ background: linear-gradient(135deg, var(--short-notice), #90ee90); border: 2px solid #C77DFF; }
-        .completion-selector { margin-top: 1.5rem; padding: 1.5rem; background: var(--dark-lighter); border-radius: 8px; }
-        .completion-title { font-size: 0.9rem; color: var(--text-dim); margin-bottom: 1rem; text-align: center; }
-        .day-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 0.5rem; }
-        .day-btn { padding: 0.8rem; background: var(--dark); border: 2px solid var(--dark-lighter); border-radius: 6px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; cursor: pointer; transition: all 0.3s ease; }
-        .day-btn:hover { border-color: var(--primary); }
-        .day-btn.selected { background: linear-gradient(135deg, var(--primary), var(--accent)); border-color: white; color: white; font-weight: 700; }
-        .completion-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-        .action-btn { padding: 0.8rem; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
-        .action-btn.cancel  { background: var(--dark); color: var(--text); border: 2px solid var(--dark-lighter); }
-        .action-btn.confirm { background: linear-gradient(135deg, var(--success), #3DB88E); color: white; }
-        .notes-section { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter); }
-        .notes-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; display: block; }
-        .notes-textarea { width: 100%; background: var(--dark-lighter); border: 2px solid var(--dark-lighter); color: var(--text); padding: 0.8rem; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; min-height: 100px; resize: vertical; transition: all 0.3s ease; }
-        .notes-textarea:focus { outline: none; border-color: var(--primary); }
-        .save-notes-btn { margin-top: 0.5rem; padding: 0.8rem 1.5rem; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; border: none; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease; width: 100%; }
-        .save-notes-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4); }
-        .po-timestamp { font-size: 0.75rem; color: var(--text-dim); margin-top: 0.3rem; font-style: italic; min-height: 1.1em; letter-spacing: 0.02em; }
-        .toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--dark-light); color: var(--text); padding: 1rem 1.5rem; border-radius: 8px; border: 2px solid var(--success); box-shadow: 0 4px 12px rgba(0,0,0,0.5); z-index: 2000; animation: slideIn 0.3s ease-out; display: none; }
-        .toast.show { display: block; }
-        .toast.error { border-color: var(--error); }
-        @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .debug-info { background: var(--dark-lighter); border-radius: 8px; padding: 1rem; margin-top: 1rem; font-size: 0.85rem; color: var(--text-dim); }
-        .invoice-section { margin-top: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(78,236,163,0.1), rgba(0,217,255,0.1)); border-radius: 8px; border: 2px solid var(--success); }
-        .invoice-section.short-notice-style { background: linear-gradient(135deg, rgba(199,125,255,0.1), rgba(182,94,255,0.1)); border: 2px solid var(--short-notice); }
-        .invoice-section.short-notice-style .invoice-title { color: var(--short-notice); }
-        .invoice-title { color: var(--success); margin: 0 0 1rem 0; font-family: 'Syne', sans-serif; font-size: 1.2rem; }
+        .modal-content {
+            background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px;
+            width: 100%; max-width: 680px; max-height: 88vh; overflow-y: auto;
+            box-shadow: 0 30px 80px -20px rgba(0,0,0,0.75);
+        }
+        .modal-header {
+            position: sticky; top: 0; z-index: 2; background: var(--surface);
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
+            padding: 16px 20px; border-bottom: 1px solid var(--line);
+        }
+        .modal-title { font-size: 17px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.01em; display: flex; align-items: center; gap: 10px; }
+        .status-pill {
+            --c: var(--scheduled);
+            display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
+            padding: 3px 10px; border-radius: 999px; color: var(--text-strong);
+            background: color-mix(in srgb, var(--c) 20%, transparent); border: 1px solid color-mix(in srgb, var(--c) 50%, transparent);
+        }
+        .status-pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+        .close-btn {
+            width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+            background: transparent; border: 1px solid transparent; border-radius: 8px; color: var(--text-dim); cursor: pointer;
+        }
+        .close-btn:hover { background: var(--surface-2); color: var(--text-strong); }
+        .modal-body { padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 18px; }
+        .section-title { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
 
-        /* Survey info row in modal */
-        .survey-alert-row {
-            padding: 0.8rem 1rem; border-radius: 8px; font-size: 0.85rem;
-            font-weight: 600; display: flex; align-items: center; gap: 0.6rem;
-        }
-        .survey-alert-urgent {
-            background: rgba(255,107,107,0.15); border: 2px solid rgba(255,107,107,0.7);
-            color: var(--error);
-        }
-        .survey-alert-pending {
-            background: rgba(154,154,176,0.12); border: 1px dashed rgba(154,154,176,0.4);
-            color: var(--text-dim);
-        }
-        .survey-alert-done {
-            background: rgba(78,204,163,0.12); border: 1px solid rgba(78,204,163,0.4);
-            color: var(--success);
-        }
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+        .detail-row { display: grid; grid-template-columns: 112px 1fr; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+        .detail-row:nth-child(odd) { border-right: 1px solid var(--line); }
+        .detail-label { color: var(--text-dim); font-size: 12.5px; }
+        .detail-value { color: var(--text-strong); font-weight: 500; font-size: 13px; word-break: break-word; }
+        .detail-row.wide { grid-column: 1 / -1; border-right: 0; }
 
-        .reason-btn { text-align: left; padding: 0.6rem 1rem; width: 100%; }
+        .status-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .status-btn {
+            --c: var(--scheduled);
+            display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px;
+            padding: 10px 12px; border-radius: 8px; cursor: pointer;
+            font-size: 13px; font-weight: 600; color: var(--text-strong);
+            background: color-mix(in srgb, var(--c) 10%, transparent);
+            border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+            transition: background .15s ease, border-color .15s ease;
+        }
+        .status-btn::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: 0 0 auto; }
+        .status-btn:hover { background: color-mix(in srgb, var(--c) 24%, transparent); border-color: var(--c); }
+        .status-btn.in-progress  { --c: var(--in-progress); }
+        .status-btn.complete     { --c: var(--complete); }
+        .status-btn.aborted      { --c: var(--aborted); }
+        .status-btn.cancelled    { --c: #FF3B3B; }
+        .status-btn.on-hold      { --c: var(--on-hold); }
+        .status-btn.short-notice { --c: var(--short-notice); }
+
+        .completion-selector { padding: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; }
+        .completion-title { font-size: 13px; font-weight: 600; color: var(--text-strong); margin-bottom: 10px; }
+        .day-buttons { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; }
+        .day-btn {
+            padding: 9px 10px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 7px;
+            color: var(--text-soft); font-size: 13px; font-weight: 500; cursor: pointer;
+            transition: border-color .15s ease, background .15s ease, color .15s ease;
+        }
+        .day-btn:hover { border-color: rgba(255,255,255,0.25); color: var(--text-strong); }
+        .day-btn.selected { background: rgba(255,107,53,0.16); border-color: var(--primary); color: var(--text-strong); font-weight: 600; }
+        .completion-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .action-btn { height: 38px; border-radius: 8px; font-size: 13.5px; font-weight: 600; cursor: pointer; border: 1px solid transparent; }
+        .action-btn.cancel  { background: transparent; color: var(--text-soft); border-color: var(--line-2); }
+        .action-btn.cancel:hover { background: var(--surface-2); color: var(--text-strong); }
+        .action-btn.confirm { background: var(--primary); color: #fff; }
+        .action-btn.confirm:hover { background: var(--primary-dark); }
+
+        .reason-sections-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 340px; overflow-y: auto; padding-right: 4px; }
+        .reason-group-title { color: var(--text-dim); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; margin-bottom: 6px; }
+        .reason-list { display: grid; gap: 5px; }
+        .reason-btn { text-align: left; width: 100%; padding: 8px 10px; font-size: 12.5px; }
         .reason-sections-container::-webkit-scrollbar { width: 6px; }
-        .reason-sections-container::-webkit-scrollbar-track { background: var(--dark); }
-        .reason-sections-container::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+        .reason-sections-container::-webkit-scrollbar-thumb { background: var(--line-2); border-radius: 3px; }
 
+        .invoice-section { padding: 14px; border-radius: 10px; background: rgba(78,204,163,0.07); border: 1px solid rgba(78,204,163,0.35); }
+        .invoice-section.short-notice-style { background: rgba(144,238,144,0.07); border-color: rgba(144,238,144,0.35); }
+        .invoice-title { color: var(--text-strong); margin: 0 0 10px; font-size: 14px; font-weight: 600; }
+        .yn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+
+        .notes-section { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; border-top: 1px solid var(--line); }
+        .field { display: flex; flex-direction: column; gap: 6px; padding-top: 14px; }
+        .notes-label { color: var(--text-soft); font-size: 12.5px; font-weight: 600; display: block; }
+        .notes-textarea {
+            width: 100%; background: var(--bg); border: 1px solid var(--line-2); color: var(--text-strong);
+            padding: 9px 11px; border-radius: 8px; font-family: var(--font); font-size: 13.5px;
+            min-height: 84px; resize: vertical; transition: border-color .15s ease, box-shadow .15s ease;
+        }
+        .notes-textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.2); }
+        .field-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .save-notes-btn {
+            height: 34px; padding: 0 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+            background: var(--surface-2); color: var(--text-strong); border: 1px solid var(--line-2);
+            transition: background .15s ease, border-color .15s ease;
+        }
+        .save-notes-btn:hover { background: var(--dark-lighter); border-color: rgba(255,255,255,0.25); }
+        .save-notes-btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+        .save-notes-btn.primary:hover { background: var(--primary-dark); }
+        .save-notes-btn.full { width: 100%; height: 40px; }
+        .po-timestamp { font-size: 12px; color: var(--text-dim); }
+        .additional-costs-section { border-top: 1px solid var(--line); padding-top: 14px; }
+
+        .survey-alert-row { padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+        .survey-alert-row::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+        .survey-alert-urgent { background: rgba(255,107,107,0.10); border: 1px solid rgba(255,107,107,0.45); color: #FF8A8A; }
+        .survey-alert-pending { background: rgba(154,154,176,0.08); border: 1px dashed rgba(154,154,176,0.4); color: var(--text-dim); }
+        .survey-alert-done { background: rgba(78,204,163,0.08); border: 1px solid rgba(78,204,163,0.35); color: var(--success); }
+
+        .cost-job { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--line); }
+        .money-input { width: 100%; }
+
+        .toast {
+            position: fixed; bottom: 24px; right: 24px; z-index: 2000; display: none;
+            max-width: 420px; padding: 12px 16px 12px 14px; border-radius: 10px;
+            background: #26263F; color: var(--text-strong); font-size: 13.5px;
+            border: 1px solid var(--line-2); border-left: 3px solid var(--success);
+            box-shadow: 0 16px 40px -12px rgba(0,0,0,0.7);
+            animation: slideIn .25s ease-out;
+        }
+        .toast.show { display: block; }
+        .toast.error { border-left-color: var(--error); }
+        @keyframes slideIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        *::-webkit-scrollbar { width: 10px; height: 10px; }
+        *::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.14); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
+        *::-webkit-scrollbar-track { background: transparent; }
+
+        @media (max-width: 1400px) { .stats-row { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
         @media (max-width: 768px) {
-            .container { padding: 1rem; }
-            .timeline-wrapper { min-width: 800px; }
-            .engineer-row { grid-template-columns: 150px 1fr; }
-            .timeline-header { grid-template-columns: 150px 1fr; }
-            .status-buttons { grid-template-columns: 1fr; }
+            :root { --lead-w: 118px; --col-min: 122px; }
+            .appbar, .container { padding-left: 14px; padding-right: 14px; }
+            .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .status-buttons { grid-template-columns: 1fr 1fr; }
+            .details-grid { grid-template-columns: 1fr; }
+            .detail-row:nth-child(odd) { border-right: 0; }
+            .reason-sections-container { grid-template-columns: 1fr; }
+            .timeline-container { max-height: none; }
         }
     </style>
-    <link rel="stylesheet" href="pingu-theme.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="header-content">
-                <a href="index.html" class="logo">Pingu - Solar</a>
-                <a href="admin.html" class="back-btn">← Back to Admin</a>
-            </div>
-            <h1>Job Timeline</h1>
-            <p class="subtitle">Visual schedule — Solar-jobs collection · Survey alerts from 30 Mar 2026 · Team grouping from 6 Apr 2026</p>
-        </header>
+    <header class="appbar">
+        <a href="index.html" class="logo" aria-label="Pingu home">
+            <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
+        </a>
+        <a href="admin.html" class="back-btn">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Admin
+        </a>
+    </header>
 
-        <div class="controls-card">
-            <div class="controls-row">
+    <div class="container">
+        <div class="page-head">
+            <div>
+                <h1>Job Timeline</h1>
+            </div>
+            <div class="toolbar">
+                <div class="seg" role="group" aria-label="Move by week">
+                    <button type="button" onclick="shiftWeeks(-1)" title="Previous week">
+                        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Prev
+                    </button>
+                    <button type="button" onclick="goToThisWeek()" title="Go to last week and this week">This week</button>
+                    <button type="button" onclick="shiftWeeks(1)" title="Next week">Next
+                        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                </div>
                 <div class="control-group">
-                    <label class="control-label" for="start-date">Start Date</label>
+                    <label class="control-label" for="start-date">Start date</label>
                     <input type="date" id="start-date" class="control-input">
                 </div>
                 <div class="control-group">
-                    <label class="control-label" for="days-count">Days to Show</label>
+                    <label class="control-label" for="days-count">Days</label>
                     <input type="number" id="days-count" class="control-input" value="14" min="7" max="60">
                 </div>
-                <div class="control-group" style="display: flex; align-items: flex-end;">
-                    <button onclick="updateTimeline()" class="control-input" style="cursor: pointer; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; font-weight: 700; border: none;">
-                        Update Timeline
-                    </button>
+                <button type="button" onclick="updateTimeline()" class="btn-primary">Update</button>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-item"><div class="stat-label">Total jobs</div><div class="stat-value" id="total-jobs">0</div></div>
+            <div class="stat-item"><div class="stat-label">Team leads</div><div class="stat-value" id="total-engineers">0</div></div>
+            <div class="stat-item"><div class="stat-label">Days shown</div><div class="stat-value" id="date-range">14</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--complete)"></span>Complete</div><div class="stat-value" id="total-complete">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--in-progress)"></span>In progress</div><div class="stat-value" id="total-in-progress">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--on-hold)"></span>On hold</div><div class="stat-value" id="total-on-hold">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--aborted)"></span>Aborted</div><div class="stat-value" id="total-aborted">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--cancelled)"></span>Cancelled</div><div class="stat-value" id="total-cancelled">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--short-notice)"></span>Short notice</div><div class="stat-value" id="total-snc">0</div></div>
+            <div class="stat-item"><div class="stat-label"><span class="dot" style="background:var(--error)"></span>Survey urgent</div><div class="stat-value urgent" id="total-urgent">0</div></div>
+        </div>
+
+        <div class="info-strip">
+            <span class="debug-info" id="debug-info" style="display: none;"></span>
+        </div>
+
+        <section class="board">
+            <div class="board-bar">
+                <div class="legend">
+                    <span class="legend-title">Status</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--scheduled)"></span>Scheduled</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--in-progress)"></span>In progress</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--complete)"></span>Complete</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--on-hold)"></span>On hold</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--aborted)"></span>Aborted</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--cancelled)"></span>Cancelled</span>
+                    <span class="legend-item"><span class="legend-sw" style="--c:var(--short-notice)"></span>Short notice</span>
+                </div>
+                <div class="legend">
+                    <span class="legend-title">Survey</span>
+                    <span class="legend-item"><span class="legend-ring"></span>Urgent &mdash; none, install &le;10 days</span>
+                    <span class="legend-item"><span class="legend-dash"></span>Awaiting &mdash; install &gt;10 days</span>
+                    <span class="legend-item"><span class="legend-tag">SC</span>Survey complete</span>
                 </div>
             </div>
-
-            <div class="survey-legend">
-                <strong>Survey Key (installs from 30 Mar 2026):</strong>
-                <div class="legend-swatch"><span class="swatch swatch-urgent"></span> 🚨 Urgent — no survey, install ≤10 days</div>
-                <div class="legend-swatch"><span class="swatch swatch-pending"></span> ⏳ Awaiting — no survey, install &gt;10 days</div>
-                <div class="legend-swatch"><span class="swatch swatch-ok"></span> Normal — survey done or not applicable</div>
+            <div class="timeline-container">
+                <div id="timeline-content">
+                    <div class="loading">Loading timeline&hellip;</div>
+                </div>
             </div>
-
-            <div class="stats-row">
-                <div class="stat-item"><div class="stat-label">Total Jobs</div><div class="stat-value" id="total-jobs">0</div></div>
-                <div class="stat-item"><div class="stat-label">Engineers</div><div class="stat-value" id="total-engineers">0</div></div>
-                <div class="stat-item"><div class="stat-label">Days Shown</div><div class="stat-value" id="date-range">14</div></div>
-                <div class="stat-item"><div class="stat-label">✅ Complete</div><div class="stat-value complete" id="total-complete">0</div></div>
-                <div class="stat-item"><div class="stat-label">🔄 In-Progress</div><div class="stat-value in-progress" id="total-in-progress">0</div></div>
-                <div class="stat-item"><div class="stat-label">⏸️ On Hold</div><div class="stat-value on-hold" id="total-on-hold">0</div></div>
-                <div class="stat-item"><div class="stat-label">⚠️ Aborted</div><div class="stat-value aborted" id="total-aborted">0</div></div>
-                <div class="stat-item"><div class="stat-label">❌ Cancelled</div><div class="stat-value cancelled" id="total-cancelled">0</div></div>
-                <div class="stat-item"><div class="stat-label">🔔 SNC</div><div class="stat-value snc" id="total-snc">0</div></div>
-                <div class="stat-item"><div class="stat-label">🚨 Urgent</div><div class="stat-value urgent" id="total-urgent">0</div></div>
-            </div>
-
-            <div class="debug-info" id="debug-info" style="display: none;"></div>
-            <div class="debug-info" id="email-notifications" style="display: block; background: linear-gradient(135deg, rgba(78,236,163,0.1), rgba(0,217,255,0.1)); border: 2px solid var(--success);">
-                <strong>📧 Email Notifications Active</strong><br>
-                <span style="font-size: 0.8rem;">Automatic emails will be sent when jobs are marked as complete.</span>
-            </div>
-            <div class="debug-info" id="sheets-status" style="display: block; background: linear-gradient(135deg, rgba(0,217,255,0.1), rgba(255,200,87,0.1)); border: 2px solid var(--accent); margin-top: 1rem;">
-                <strong>📊 Google Sheets Integration Active</strong><br>
-                <span style="font-size: 0.8rem;">Delay data syncs to <strong>Delays and Postponements</strong> sheet. You'll be asked to sign in with your Google account on first use.</span>
-            </div>
-            <div class="debug-info" style="display: block; background: linear-gradient(135deg, rgba(255,200,87,0.1), rgba(255,107,53,0.1)); border: 2px solid var(--warning); margin-top: 1rem;">
-                <strong>👷 Team Grouping Active from 6 Apr 2026</strong><br>
-                <span style="font-size: 0.8rem;">Sub-engineers are grouped dynamically under their team lead based on the team database. Unassigned engineers are highlighted.</span>
-            </div>
-        </div>
-
-        <div class="timeline-container">
-            <div id="timeline-content">
-                <div class="loading">Loading timeline from Firebase...</div>
-            </div>
-        </div>
+        </section>
     </div>
 
     <div class="modal" id="status-modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="status-modal-title">Update Job Status</h2>
-                <button class="close-btn" onclick="closeStatusModal()">×</button>
+                <h2 class="modal-title"><span id="status-modal-title">Update Job Status</span><span class="status-pill" id="status-pill"></span></h2>
+                <button class="close-btn" onclick="closeStatusModal()" aria-label="Close">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
             </div>
             <div class="modal-body">
                 <div id="survey-alert" style="display:none;"></div>
 
-                <div class="detail-row"><div class="detail-label">Job Number</div><div class="detail-value" id="status-job-number"></div></div>
-                <div class="detail-row"><div class="detail-label">Source</div><div class="detail-value" id="status-source"></div></div>
-                <div class="detail-row"><div class="detail-label">Address</div><div class="detail-value" id="status-address"></div></div>
-                <div class="detail-row"><div class="detail-label">Postcode</div><div class="detail-value" id="status-postcode"></div></div>
-                <div class="detail-row"><div class="detail-label">Job Type</div><div class="detail-value" id="status-job-type"></div></div>
-                <div class="detail-row"><div class="detail-label">Booked Date</div><div class="detail-value" id="status-booked-date"></div></div>
-                <div class="detail-row"><div class="detail-label">Days</div><div class="detail-value" id="status-days"></div></div>
-                <div class="detail-row"><div class="detail-label">Team Lead</div><div class="detail-value" id="status-lead"></div></div>
-                <div class="detail-row"><div class="detail-label">Field Engineer</div><div class="detail-value" id="status-original-engineer"></div></div>
-                <div class="detail-row"><div class="detail-label">Team Number</div><div class="detail-value" id="status-team"></div></div>
-                <div class="detail-row"><div class="detail-label">Panel Number</div><div class="detail-value" id="status-panel"></div></div>
-                <div class="detail-row"><div class="detail-label">Current Status</div><div class="detail-value" id="status-current"></div></div>
+                <div class="details-grid">
+                    <div class="detail-row"><div class="detail-label">Job number</div><div class="detail-value" id="status-job-number"></div></div>
+                    <div class="detail-row"><div class="detail-label">Job type</div><div class="detail-value" id="status-job-type"></div></div>
+                    <div class="detail-row"><div class="detail-label">Address</div><div class="detail-value" id="status-address"></div></div>
+                    <div class="detail-row"><div class="detail-label">Postcode</div><div class="detail-value" id="status-postcode"></div></div>
+                    <div class="detail-row"><div class="detail-label">Booked date</div><div class="detail-value" id="status-booked-date"></div></div>
+                    <div class="detail-row"><div class="detail-label">Days</div><div class="detail-value" id="status-days"></div></div>
+                    <div class="detail-row"><div class="detail-label">Team lead</div><div class="detail-value" id="status-lead"></div></div>
+                    <div class="detail-row"><div class="detail-label">Field engineer</div><div class="detail-value" id="status-original-engineer"></div></div>
+                    <div class="detail-row"><div class="detail-label">Team number</div><div class="detail-value" id="status-team"></div></div>
+                    <div class="detail-row"><div class="detail-label">Panel number</div><div class="detail-value" id="status-panel"></div></div>
+                    <div class="detail-row"><div class="detail-label">Current status</div><div class="detail-value" id="status-current"></div></div>
+                    <div class="detail-row"><div class="detail-label">Source</div><div class="detail-value" id="status-source"></div></div>
+                </div>
 
-                <div class="status-buttons">
-                    <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">🔄 In-Progress</button>
-                    <button class="status-btn complete" onclick="updateJobStatus('Complete')">✅ Complete</button>
-                    <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">⚠️ Aborted</button>
-                    <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">❌ Cancelled</button>
-                    <button class="status-btn on-hold" onclick="updateJobStatus('On Hold')">⏸️ On Hold</button>
-                    <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')">🔔 Short Notice Cancellation</button>
+                <div>
+                    <div class="section-title">Update status</div>
+                    <div class="status-buttons">
+                        <button class="status-btn in-progress" onclick="updateJobStatus('In-Progress')">In progress</button>
+                        <button class="status-btn complete" onclick="updateJobStatus('Complete')">Complete</button>
+                        <button class="status-btn on-hold" onclick="updateJobStatus('On Hold')">On hold</button>
+                        <button class="status-btn aborted" onclick="updateJobStatus('Aborted')">Aborted</button>
+                        <button class="status-btn cancelled" onclick="updateJobStatus('Cancelled')">Cancelled</button>
+                        <button class="status-btn short-notice" onclick="updateJobStatus('Short Notice Cancellation')">Short notice cancellation</button>
+                    </div>
                 </div>
 
                 <div class="completion-selector" id="completion-selector" style="display: none;">
@@ -434,124 +570,120 @@
                 </div>
 
                 <div class="completion-selector" id="reason-selector" style="display: none;">
-                    <div class="completion-title" id="reason-selector-title">Select Reason</div>
-                    <div class="reason-sections-container" style="display: grid; grid-template-columns: 1fr; gap: 1rem; max-height: 350px; overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1.5rem;">
-                        <!-- Scaffold -->
+                    <div class="completion-title" id="reason-selector-title">Select reason</div>
+                    <div class="reason-sections-container">
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Scaffold</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('S1 - Not Erected')">S1 - Not Erected</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('S2 Needs Modified/ Altered')">S2 - Needs Modified/ Altered</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('S3 New Scaff tag signed as out of date')">S3 - New Scaff tag signed as out of date</button>
+                            <div class="reason-group-title">Scaffold</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="S1 - Not Erected" onclick="selectReason('S1 - Not Erected')">S1 - Not erected</button>
+                                <button class="day-btn reason-btn" data-reason="S2 Needs Modified/ Altered" onclick="selectReason('S2 Needs Modified/ Altered')">S2 - Needs modified / altered</button>
+                                <button class="day-btn reason-btn" data-reason="S3 New Scaff tag signed as out of date" onclick="selectReason('S3 New Scaff tag signed as out of date')">S3 - Scaff tag out of date</button>
                             </div>
                         </div>
-                        <!-- Delivery -->
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Delivery</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('D1 - Wrong Delivery')">D1 - Wrong Delivery</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('D2 Late Delivery')">D2 - Late Delivery</button>
+                            <div class="reason-group-title">Delivery</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="D1 - Wrong Delivery" onclick="selectReason('D1 - Wrong Delivery')">D1 - Wrong delivery</button>
+                                <button class="day-btn reason-btn" data-reason="D2 Late Delivery" onclick="selectReason('D2 Late Delivery')">D2 - Late delivery</button>
                             </div>
                         </div>
-                        <!-- Customer -->
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Customer</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('C1 Cancelled')">C1 - Cancelled</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('C2 Design Query')">C2 - Design Query</button>
+                            <div class="reason-group-title">Customer</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="C1 Cancelled" onclick="selectReason('C1 Cancelled')">C1 - Cancelled</button>
+                                <button class="day-btn reason-btn" data-reason="C2 Design Query" onclick="selectReason('C2 Design Query')">C2 - Design query</button>
                             </div>
                         </div>
-                        <!-- Labour -->
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Labour</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('L1 Hasn\'t turned up at all')">L1 - Hasn't turned up at all</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('L2 Late to site')">L2 - Late to site</button>
+                            <div class="reason-group-title">Labour</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="L1 Hasn't turned up at all" onclick="selectReason('L1 Hasn\'t turned up at all')">L1 - Hasn't turned up at all</button>
+                                <button class="day-btn reason-btn" data-reason="L2 Late to site" onclick="selectReason('L2 Late to site')">L2 - Late to site</button>
                             </div>
                         </div>
-                        <!-- Planning/Design -->
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Planning/Design</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('P1 FSA Wrong')">P1 - FSA Wrong</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('P2 Material List wrong')">P2 - Material List wrong</button>
-                                <button class="day-btn reason-btn" onclick="selectReason('P3 Wrong install Information')">P3 - Wrong install Information</button>
+                            <div class="reason-group-title">Planning / design</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="P1 FSA Wrong" onclick="selectReason('P1 FSA Wrong')">P1 - FSA wrong</button>
+                                <button class="day-btn reason-btn" data-reason="P2 Material List wrong" onclick="selectReason('P2 Material List wrong')">P2 - Material list wrong</button>
+                                <button class="day-btn reason-btn" data-reason="P3 Wrong install Information" onclick="selectReason('P3 Wrong install Information')">P3 - Wrong install information</button>
                             </div>
                         </div>
-                        <!-- Technical Delay -->
                         <div class="reason-group">
-                            <div style="color: var(--accent); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; margin-bottom: 0.4rem; padding-bottom: 2px; border-bottom: 1px solid var(--dark-lighter);">Technical Delay</div>
-                            <div style="display: grid; grid-template-columns: 1fr; gap: 0.35rem;">
-                                <button class="day-btn reason-btn" onclick="selectReason('Technical Delay')">Technical Delay</button>
+                            <div class="reason-group-title">Technical</div>
+                            <div class="reason-list">
+                                <button class="day-btn reason-btn" data-reason="Technical Delay" onclick="selectReason('Technical Delay')">Technical delay</button>
                             </div>
                         </div>
                     </div>
                     <div class="completion-actions">
                         <button class="action-btn cancel" onclick="hideReasonSelector()">Cancel</button>
-                        <button class="action-btn confirm" onclick="confirmStatusWithReason()" style="background: linear-gradient(135deg, var(--warning), var(--primary));">Confirm</button>
+                        <button class="action-btn confirm" onclick="confirmStatusWithReason()">Confirm</button>
                     </div>
                 </div>
 
                 <div class="invoice-section" id="invoice-section" style="display: none;">
-                    <h3 class="invoice-title" id="invoice-title">🏠 Job Completion Details</h3>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label class="notes-label" id="invoice-question-label" style="display: block; margin-bottom: 1rem;">Was the roof type slate?</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                            <button class="day-btn" id="invoice-yes-btn" onclick="selectInvoiceOption(true)" style="padding: 1rem; font-size: 1rem;">✅ Yes</button>
-                            <button class="day-btn" id="invoice-no-btn" onclick="selectInvoiceOption(false)" style="padding: 1rem; font-size: 1rem;">❌ No</button>
-                        </div>
+                    <h3 class="invoice-title" id="invoice-title">Job completion details</h3>
+                    <label class="notes-label" id="invoice-question-label" style="margin-bottom: 8px;">Was the roof type slate?</label>
+                    <div class="yn-grid">
+                        <button class="day-btn" id="invoice-yes-btn" onclick="selectInvoiceOption(true)">Yes</button>
+                        <button class="day-btn" id="invoice-no-btn" onclick="selectInvoiceOption(false)">No</button>
                     </div>
-                    <button class="save-notes-btn" id="submit-invoice-btn" onclick="submitInlineInvoice()" style="background: linear-gradient(135deg, var(--success), #3DB88E);">
-                        💾 Submit & Mark Complete
-                    </button>
+                    <button class="save-notes-btn primary full" id="submit-invoice-btn" onclick="submitInlineInvoice()">Submit &amp; mark complete</button>
                 </div>
 
                 <div class="notes-section">
-                    <label class="notes-label" for="po-numbers">PO Numbers</label>
-                    <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 60px;"></textarea>
-                    <div class="po-timestamp" id="po-timestamp"></div>
-                    <button class="save-notes-btn" onclick="savePONumbers()" style="margin-bottom: 1.5rem;">💾 Save PO Numbers</button>
-
-                    <label class="notes-label" for="job-notes">Job Notes</label>
-                    <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
-                    <button class="save-notes-btn" onclick="saveJobNotes()" style="margin-bottom: 1.5rem;">💾 Save Notes</button>
-
-                    <label class="notes-label" for="job-delays">Were there any delays?</label>
-                    <textarea id="job-delays" class="notes-textarea" placeholder="Describe any delays experienced during this job..." style="min-height: 80px;"></textarea>
-                    <button class="save-notes-btn" onclick="saveJobDelays()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">⏰ Save Delays & Sync to Google Sheets</button>
+                    <div class="field">
+                        <label class="notes-label" for="po-numbers">PO numbers</label>
+                        <textarea id="po-numbers" class="notes-textarea" placeholder="Enter PO numbers..." style="min-height: 56px;"></textarea>
+                        <div class="field-actions">
+                            <div class="po-timestamp" id="po-timestamp"></div>
+                            <button class="save-notes-btn" onclick="savePONumbers()">Save PO numbers</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="notes-label" for="job-notes">Job notes</label>
+                        <textarea id="job-notes" class="notes-textarea" placeholder="Add notes about this job..."></textarea>
+                        <div class="field-actions"><span></span><button class="save-notes-btn" onclick="saveJobNotes()">Save notes</button></div>
+                    </div>
+                    <div class="field">
+                        <label class="notes-label" for="job-delays">Were there any delays?</label>
+                        <textarea id="job-delays" class="notes-textarea" placeholder="Describe any delays experienced during this job..." style="min-height: 72px;"></textarea>
+                        <div class="field-actions"><span class="po-timestamp">Also added to the Delays and Postponements sheet</span><button class="save-notes-btn" onclick="saveJobDelays()">Save delays</button></div>
+                    </div>
                 </div>
 
-                <div class="additional-costs-section" style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 2px solid var(--dark-lighter);">
-                    <button class="save-notes-btn" onclick="showAdditionalCostsModal()" style="background: linear-gradient(135deg, var(--warning), var(--secondary));">
-                        💰 Add Additional Costs
-                    </button>
+                <div class="additional-costs-section">
+                    <button class="save-notes-btn full" onclick="showAdditionalCostsModal()">Add additional costs</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="modal" id="additional-costs-modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 460px;">
             <div class="modal-header">
-                <h2 class="modal-title">💰 Additional Costs</h2>
-                <button class="close-btn" onclick="closeAdditionalCostsModal()">×</button>
+                <h2 class="modal-title">Additional costs</h2>
+                <button class="close-btn" onclick="closeAdditionalCostsModal()" aria-label="Close">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
             </div>
             <div class="modal-body">
-                <div class="detail-row" style="background: linear-gradient(135deg, rgba(255,200,87,0.1), rgba(255,107,53,0.1)); border: 2px solid var(--warning);">
-                    <div class="detail-label">Job Number</div>
+                <div class="cost-job">
+                    <div class="detail-label">Job number</div>
                     <div class="detail-value" id="additional-costs-job-number"></div>
                 </div>
-                <div style="margin-top: 1.5rem;">
-                    <label class="notes-label" for="materials-cost">Materials (£)</label>
-                    <input type="number" id="materials-cost" class="control-input" placeholder="0.00" step="0.01" min="0" style="margin-top: 0.5rem;">
+                <div class="field" style="padding-top:0;">
+                    <label class="notes-label" for="materials-cost">Materials (&pound;)</label>
+                    <input type="number" id="materials-cost" class="control-input money-input" placeholder="0.00" step="0.01" min="0">
                 </div>
-                <div style="margin-top: 1rem;">
-                    <label class="notes-label" for="materials-notes">Materials Notes (Optional)</label>
-                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px; margin-top: 0.5rem;"></textarea>
+                <div class="field" style="padding-top:0;">
+                    <label class="notes-label" for="materials-notes">Materials notes (optional)</label>
+                    <textarea id="materials-notes" class="notes-textarea" placeholder="Describe materials purchased..." style="min-height: 80px;"></textarea>
                 </div>
-                <div class="completion-actions" style="margin-top: 2rem;">
+                <div class="completion-actions" style="margin-top: 0;">
                     <button class="action-btn cancel" onclick="closeAdditionalCostsModal()">Cancel</button>
-                    <button class="action-btn confirm" onclick="submitAdditionalCosts()">💾 Save Costs</button>
+                    <button class="action-btn confirm" onclick="submitAdditionalCosts()">Save costs</button>
                 </div>
             </div>
         </div>
@@ -578,12 +710,12 @@
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
             window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
-            console.log('✅ Firebase initialized');
+            console.log('Firebase initialized');
             emailjs.init("ziLnha91scpGjFABh");
-            console.log('✅ EmailJS initialized');
+            console.log('EmailJS initialized');
             window.addEventListener('DOMContentLoaded', () => { window.initializeTimeline(); });
         } catch (error) {
-            console.error('❌ Firebase error:', error);
+            console.error('Firebase error:', error);
             document.getElementById('timeline-content').innerHTML = '<div class="empty-state">Firebase connection failed</div>';
         }
     </script>
@@ -643,9 +775,9 @@
                         });
                     }
                 });
-                console.log('✅ Dynamic team mapping loaded:', Object.keys(dynamicTeamMap).length, 'engineers mapped.');
+                console.log('Dynamic team mapping loaded:', Object.keys(dynamicTeamMap).length, 'engineers mapped.');
             } catch (error) {
-                console.error('❌ Error loading team database:', error);
+                console.error('Error loading team database:', error);
             }
         }
 
@@ -764,6 +896,28 @@
             return d.toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
         }
 
+        function toInputDate(d) {
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+        function readStartDate() {
+            const v = document.getElementById('start-date').value;
+            if (!v) { const t = new Date(); t.setHours(0,0,0,0); return t; }
+            const [y, m, d] = v.split('-').map(Number);
+            return new Date(y, m - 1, d);
+        }
+        window.shiftWeeks = function(n) {
+            const d = readStartDate(); d.setDate(d.getDate() + 7 * n);
+            document.getElementById('start-date').value = toInputDate(d);
+            buildTimeline();
+        }
+        window.goToThisWeek = function() {
+            const t = new Date(); t.setHours(0,0,0,0);
+            const fromMon = t.getDay() === 0 ? 6 : t.getDay() - 1;
+            t.setDate(t.getDate() - fromMon - 7);
+            document.getElementById('start-date').value = toInputDate(t);
+            buildTimeline();
+        }
+
         function escapeHtml(text) { const div = document.createElement('div'); div.textContent = String(text ?? ''); return div.innerHTML; }
 
         /* ══════════════════════════════════════════════
@@ -776,7 +930,7 @@
             const prevMonday   = new Date(today);
             prevMonday.setDate(today.getDate() - daysFromMon - 7);
             prevMonday.setHours(0,0,0,0);
-            document.getElementById('start-date').valueAsDate = prevMonday;
+            document.getElementById('start-date').value = toInputDate(prevMonday);
             
             // Wait to fetch our dynamic teams before loading jobs
             await fetchTeamDatabase();
@@ -852,7 +1006,7 @@
 
                 allJobs = allJobs.filter(j => j.parsedDate != null);
 
-                console.log(`✅ Loaded ${allJobs.length} jobs from Solar-jobs, surveyMap keys: ${Object.keys(surveyMap).length}`);
+                console.log(`Loaded ${allJobs.length} jobs from Solar-jobs, surveyMap keys: ${Object.keys(surveyMap).length}`);
 
                 const debugEl = document.getElementById('debug-info');
                 debugEl.innerHTML = `<strong>Loaded ${allJobs.length} jobs from Solar-jobs collection. Surveys done: ${Object.keys(surveyMap).length}.</strong>`;
@@ -902,7 +1056,7 @@
                 const engineer       = job.engineer || 'Unassigned';
                 const jobType        = job.jobType  || 'Standard';
                 const completionDate = new Date().toLocaleDateString('en-GB', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#4ECCA3;">✅ Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Team Lead:</td><td>${engineer}</td></tr><tr><td>Field Engineer:</td><td>${job.originalEngineer || engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
+                const emailHTML = `<div style="font-family:Arial,sans-serif;padding:20px;background:#f5f5f5;"><div style="background:white;padding:30px;border-radius:8px;max-width:600px;margin:0 auto;border:3px solid #4ECCA3;"><h1 style="color:#2E9E7B;">Job Completed</h1><table><tr><td>Job Number:</td><td>${jobNumber}</td></tr><tr><td>Postcode:</td><td>${postcode}</td></tr><tr><td>Team Lead:</td><td>${engineer}</td></tr><tr><td>Field Engineer:</td><td>${job.originalEngineer || engineer}</td></tr><tr><td>Job Type:</td><td>${jobType}</td></tr><tr><td>Completion Date:</td><td>${completionDate}</td></tr></table></div></div>`;
                 await emailjs.send('service_w9v5gzh', 'template_rwob6j3', {
                     to_email: 'kevin.boyd@next-gen.uk, dean.bramwell@next-gen.uk, barry.dixon@next-gen.uk, liam.bannister@next-gen.uk',
                     job_number: jobNumber, postcode, engineer, job_type: jobType,
@@ -956,14 +1110,12 @@
             
             if (isShortNotice) {
                 invoiceSection.classList.add('short-notice-style');
-                invoiceTitle.textContent = '🔔 Short Notice Cancellation - Details';
-                submitBtn.style.background = 'linear-gradient(135deg, var(--short-notice), #B65EFF)';
-                submitBtn.textContent = '💾 Submit & Mark as Short Notice Cancellation';
+                invoiceTitle.textContent = 'Short notice cancellation details';
+                submitBtn.textContent = 'Submit & mark as short notice cancellation';
             } else {
                 invoiceSection.classList.remove('short-notice-style');
-                invoiceTitle.textContent = '🏠 Job Completion Details';
-                submitBtn.style.background = 'linear-gradient(135deg, var(--success), #3DB88E)';
-                submitBtn.textContent = '💾 Submit & Mark Complete';
+                invoiceTitle.textContent = 'Job completion details';
+                submitBtn.textContent = 'Submit & mark complete';
             }
             
             // Update button visual states
@@ -1025,7 +1177,7 @@
                 }
                 
                 const typeStr = isRevisit ? (invoiceBoolAnswer ? 'Chargeable' : 'Not Chargeable') : (invoiceBoolAnswer ? 'Slate' : 'Non-slate');
-                showToast(`✅ Job #${jobNumber} marked as ${finalStatus}! Info: ${typeStr}`, 'success');
+                showToast(`Job #${jobNumber} marked as ${finalStatus}! Info: ${typeStr}`, 'success');
                 
                 pendingStatusChange = null; invoiceBoolAnswer = null;
                 closeStatusModal();
@@ -1039,9 +1191,7 @@
            TIMELINE BUILD
         ══════════════════════════════════════════════ */
         function buildTimeline() {
-            const startDateInput = document.getElementById('start-date').value;
-            const startDate = startDateInput ? new Date(startDateInput) : new Date();
-            startDate.setHours(0,0,0,0);
+            const startDate = readStartDate();
             const daysCount = parseInt(document.getElementById('days-count').value) || 14;
             timelineDates   = [];
             for (let i = 0; i < daysCount; i++) {
@@ -1088,37 +1238,41 @@
             document.getElementById('total-urgent').textContent      = countUrgent;
 
             if (Object.keys(engineerJobs).length === 0) {
-                document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><div style="font-size:3rem;margin-bottom:1rem;">📅</div><h3 style="font-family:'Syne',sans-serif;font-size:1.5rem;margin-bottom:0.5rem;">No Jobs Scheduled</h3><p>No jobs found in this date range</p></div>`;
+                document.getElementById('timeline-content').innerHTML = `<div class="empty-state"><h3>No jobs scheduled</h3><p>No jobs found in this date range.</p></div>`;
                 return;
             }
 
-            const html = `<div class="timeline-wrapper">
-                <div class="timeline-header">
-                    <div class="engineer-header">👷 Team Lead</div>
-                    <div class="dates-header">${timelineDates.map(date => {
-                        const isToday = date.toDateString() === new Date().toDateString();
-                        return `<div class="date-cell ${isToday?'today':''}">
+            const todayStr = new Date().toDateString();
+            const dayClass = (date, i) => {
+                const c = [];
+                if (date.getDay() === 0 || date.getDay() === 6) c.push('weekend');
+                if (date.getDay() === 1 && i > 0) c.push('week-start');
+                if (date.toDateString() === todayStr) c.push('today');
+                return c.join(' ');
+            };
+
+            const html = `<div class="timeline-wrapper" style="--cols:${timelineDates.length};">
+                <div class="tl-row timeline-header">
+                    <div class="engineer-header">Team lead</div>
+                    ${timelineDates.map((date, i) => `<div class="date-cell ${dayClass(date, i)}">
                             <div class="date-day">${formatDay(date)}</div>
                             <div class="date-number">${date.getDate()}</div>
                             <div class="date-month">${formatMonth(date)}</div>
-                        </div>`;
-                    }).join('')}</div>
+                        </div>`).join('')}
                 </div>
                 <div class="timeline-body">
                     ${Object.keys(engineerJobs).sort().map(engineer => {
-                        // Check if this grouped name is actually a registered Lead Engineer
                         const engKey = engineer.toLowerCase().trim();
                         const hasLead = knownLeads.has(engKey);
-                        const highlightClass = hasLead ? '' : 'no-lead';
-                        const warningIcon = hasLead ? '' : ' <span style="font-size:0.8em;" title="No Lead Engineer Assigned">⚠️</span>';
-                        
+                        const count = engineerJobs[engineer].length;
+                        const meta = hasLead ? `${count} job${count === 1 ? '' : 's'}` : 'No team lead assigned';
                         return `
-                        <div class="engineer-row">
-                            <div class="engineer-name ${highlightClass}">
-                                <span class="engineer-icon">👤</span>
-                                <span>${escapeHtml(engineer)}${warningIcon}</span>
+                        <div class="tl-row engineer-row">
+                            <div class="engineer-name ${hasLead ? '' : 'no-lead'}" title="${hasLead ? '' : 'Not found as a team lead in the team database'}">
+                                <span class="eng-title">${escapeHtml(engineer)}</span>
+                                <span class="eng-meta">${meta}</span>
                             </div>
-                            <div class="timeline-grid">${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate)}</div>
+                            ${renderEngineerJobs(engineerJobs[engineer], timelineDates, startDate, dayClass)}
                         </div>`;
                     }).join('')}
                 </div>
@@ -1134,7 +1288,7 @@
             return `<span class="job-source-badge ${cls}">${label}</span>`;
         }
 
-        function renderEngineerJobs(jobs, dates, startDate) {
+        function renderEngineerJobs(jobs, dates, startDate, dayClass) {
             const numCols   = dates.length;
             const sortedJobs = [...jobs].sort((a,b) => a.parsedDate - b.parsedDate);
             const gridOccupancy = [];
@@ -1197,7 +1351,10 @@
             });
 
             const totalRows = gridOccupancy.length || 1;
-            let html = `<div class="timeline-grid" style="grid-template-columns: repeat(${numCols}, minmax(120px, 1fr)); grid-template-rows: repeat(${totalRows}, 70px);">`;
+            let html = `<div class="timeline-grid" style="grid-template-rows: repeat(${totalRows}, var(--row-h));">`;
+            dates.forEach((date, i) => {
+                html += `<div class="day-bg ${dayClass ? dayClass(date, i) : ''}" style="grid-column:${i+1};"></div>`;
+            });
 
             jobPlacements.forEach(placement => {
                 const { job, row, col, span } = placement;
@@ -1211,27 +1368,33 @@
                 else if (status === 'On Hold')                   statusClass = 'status-on-hold';
 
                 const srvClass = surveyCardClass(job);
+                const surveyState = getSurveyStatus(job);
 
                 const completedDays     = job.completedDays || [];
                 const jobLength         = job.jobLength || 1;
                 const completionPercent = jobLength>1 && completedDays.length>0 ? (completedDays.length/jobLength)*100 : 0;
-                const textStyle         = span>1 ? 'white-space:normal;word-wrap:break-word;' : '';
+                const jobNo   = job['Job Number'] || job.jobNumber || 'N/A';
+                const tooltip = [jobNo, job.jobType, job['Postcode'], job.originalEngineer && job.originalEngineer !== job.engineer ? `Engineer: ${job.originalEngineer}` : '', `Status: ${status}`]
+                                .filter(Boolean).join(' · ');
 
-                html += `<div class="job-card ${statusClass} ${srvClass}" data-job-id="${job.id}"
+                html += `<div class="job-card ${statusClass} ${srvClass}" data-job-id="${job.id}" title="${escapeHtml(tooltip)}"
                     style="grid-column:${col+1}/span ${span};grid-row:${row+1};">
-                    ${completionPercent>0 && completionPercent<100 ? `<div class="completion-overlay" style="width:${completionPercent}%;"></div>` : ''}
-                    ${sourceBadgeHtml(job.source)}
-                    <div class="job-number">#${escapeHtml(job['Job Number'] || job.jobNumber || 'N/A')}</div>
-                    <div class="job-type" style="${textStyle}">${escapeHtml(job.jobType)}</div>
-                    <div class="job-postcode">${escapeHtml(job['Postcode'] || '')}</div>
-
-                    ${jobLength>1 ? `<div class="job-days">${completedDays.length>0?`${completedDays.length}/`:''}${jobLength}d</div>` : ''}
-                    ${getSurveyStatus(job) === 'complete' ? `<div class="job-survey-done">SC</div>` : ''}
+                    <div class="job-line1">
+                        <span class="job-number">${escapeHtml(jobNo)}</span>
+                        ${surveyState === 'urgent' ? '<span class="urgent-dot" title="Survey urgent"></span>' : ''}
+                    </div>
+                    <div class="job-type">${escapeHtml(job.jobType)}</div>
+                    <div class="job-line3">
+                        <span class="job-postcode">${escapeHtml(job['Postcode'] || '')}</span>
+                        ${surveyState === 'complete' ? '<span class="job-tag sc" title="Survey complete">SC</span>' : ''}
+                        ${jobLength>1 ? `<span class="job-tag days">${completedDays.length>0?`${completedDays.length}/`:''}${jobLength}d</span>` : ''}
+                    </div>
+                    ${completionPercent>0 && completionPercent<100 ? `<div class="job-progress" style="width:${completionPercent}%;"></div>` : ''}
                 </div>`;
             });
 
             arrows.forEach(arrow => {
-                html += `<div class="job-arrow" style="grid-column:${arrow.fromCol+1}/${arrow.toCol+1};grid-row:${arrow.row+1};align-self:center;margin:0 5px;height:4px;"></div>`;
+                html += `<div class="job-arrow" style="grid-column:${arrow.fromCol+1}/${arrow.toCol+1};grid-row:${arrow.row+1};"></div>`;
             });
 
             html += '</div>';
@@ -1255,7 +1418,12 @@
             pendingStatusChange = null; invoiceBoolAnswer = null;
 
             document.getElementById('status-job-number').textContent  = job['Job Number'] || job.jobNumber || 'N/A';
-            document.getElementById('status-source').textContent      = 'SOLAR';
+            document.getElementById('status-modal-title').textContent = `Job ${job['Job Number'] || job.jobNumber || ''}`;
+            const pill = document.getElementById('status-pill');
+            const pillColours = { 'In-Progress':'var(--in-progress)', 'Complete':'var(--complete)', 'Aborted':'var(--aborted)', 'Cancelled':'var(--cancelled)', 'Short Notice Cancellation':'var(--short-notice)', 'On Hold':'var(--on-hold)' };
+            pill.textContent = job.status || 'Scheduled';
+            pill.style.setProperty('--c', pillColours[job.status] || 'var(--scheduled)');
+            document.getElementById('status-source').textContent      = 'Solar-jobs';
             document.getElementById('status-address').textContent     = job.address || job['Address'] || job['1st line of address'] || 'N/A';
             document.getElementById('status-postcode').textContent    = job['Postcode'] || 'N/A';
             document.getElementById('status-job-type').textContent    = job.jobType  || 'Standard';
@@ -1290,17 +1458,17 @@
                 const today   = new Date(); today.setHours(0,0,0,0);
                 const daysOut = Math.ceil((job.parsedDate - today) / 86400000);
                 alertEl.innerHTML = `<div class="survey-alert-row survey-alert-urgent">
-                    🚨 No site survey submitted — install ${daysOut <= 0 ? 'date has passed' : `in ${daysOut} day${daysOut===1?'':'s'}`}!
+                    No site survey submitted — install ${daysOut <= 0 ? 'date has passed' : `in ${daysOut} day${daysOut===1?'':'s'}`}
                 </div>`;
                 alertEl.style.display = 'block';
             } else if (ss === 'pending') {
                 alertEl.innerHTML = `<div class="survey-alert-row survey-alert-pending">
-                    ⏳ Awaiting site survey — install is more than 10 days away
+                    Awaiting site survey — install is more than 10 days away
                 </div>`;
                 alertEl.style.display = 'block';
             } else if (ss === 'complete') {
                 alertEl.innerHTML = `<div class="survey-alert-row survey-alert-done">
-                    ✓ Site survey submitted
+                    Site survey submitted
                 </div>`;
                 alertEl.style.display = 'block';
             } else {
@@ -1362,7 +1530,7 @@
             
             const titleEl = document.getElementById('reason-selector-title');
             if (titleEl) {
-                titleEl.textContent = `Select Reason to mark as ${newStatus}`;
+                titleEl.textContent = `Select a reason to mark as ${newStatus}`;
             }
 
             document.querySelectorAll('.reason-btn').forEach(btn => {
@@ -1384,7 +1552,7 @@
         window.selectReason = function(reason) {
             selectedReason = reason;
             document.querySelectorAll('.reason-btn').forEach(btn => {
-                btn.classList.toggle('selected', btn.textContent.trim() === reason);
+                btn.classList.toggle('selected', btn.dataset.reason === reason);
             });
         }
 
@@ -1439,9 +1607,9 @@
                 };
                 const success = await updateGoogleSheet(shareData);
                 if (success) {
-                    showToast('✅ Google Sheets sync complete!', 'success');
+                    showToast('Google Sheets sync complete!', 'success');
                 } else {
-                    showToast('⚠️ Google Sheets sync failed (saved in Firebase)', 'error');
+                    showToast('Google Sheets sync failed (saved in Firebase)', 'error');
                 }
 
                 closeStatusModal();
@@ -1469,7 +1637,7 @@
             const idx = selectedCompletionDays.indexOf(dayNum);
             if (idx > -1) selectedCompletionDays.splice(idx,1); else selectedCompletionDays.push(dayNum);
             selectedCompletionDays.sort((a,b)=>a-b);
-            document.querySelectorAll('.day-btn').forEach(btn => {
+            document.querySelectorAll('#day-buttons .day-btn').forEach(btn => {
                 const n = parseInt(btn.textContent.replace('Day ',''));
                 btn.classList.toggle('selected', selectedCompletionDays.includes(n));
             });
@@ -1489,7 +1657,7 @@
                 await updateDoc(doc(window.db, collName, jobId), { 'Status Update':'In-Progress', completedDays: selectedCompletionDays });
                 const job = allJobs.find(j=>j.id===jobId);
                 if (job) { job.status='In-Progress'; job['Status Update']='In-Progress'; job.completedDays=selectedCompletionDays; }
-                showToast(`✓ Job #${jobNumber}: Day${selectedCompletionDays.length>1?'s':''} ${selectedCompletionDays.join(', ')} completed`, 'success');
+                showToast(`Job #${jobNumber}: Day${selectedCompletionDays.length>1?'s':''} ${selectedCompletionDays.join(', ')} completed`, 'success');
                 closeStatusModal(); buildTimeline();
             } catch (error) {
                 showToast('Failed to update job completion', 'error');
@@ -1544,8 +1712,8 @@
                     delays
                 };
                 const success = await updateGoogleSheet(shareData);
-                if (success) showToast('✅ Delays saved & synced to Google Sheets!', 'success');
-                else showToast('⚠️ Saved to Firebase — Google Sheets sync failed (check popup blocker)', 'error');
+                if (success) showToast('Delays saved & synced to Google Sheets!', 'success');
+                else showToast('Saved to Firebase — Google Sheets sync failed (check popup blocker)', 'error');
             } catch (error) {
                 showToast('Failed to save delays: ' + error.message, 'error');
             }
