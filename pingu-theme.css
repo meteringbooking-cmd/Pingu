@@ -1,0 +1,390 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PINGU – SOLAR · shared theme layer  (v2 · Oct 2026)
+   Loaded AFTER each page's own <style>, so it refines rather than
+   replaces. Every page keeps its own colours (the CSS variables
+   defined in that page's :root) — this file only changes layout,
+   spacing, surfaces, type and interaction polish.
+
+   Part 1 (all pages)      : full-width layout
+   Part 2 (Pingu pages)    : html[data-pingu="std"] — refreshed look
+   To switch the refresh off for one page, remove its data-pingu
+   attribute. To remove everything, delete the <link> to this file.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ───────────────────────── PART 1 · LAYOUT (all pages) ───────────── */
+:root {
+    --pg-gutter: clamp(16px, 2.4vw, 44px);
+}
+
+html, body { min-height: 100%; }
+
+/* Main wrappers fill the window instead of stopping at 680–1800px */
+.container,
+.wrap,
+.page {
+    max-width: none !important;
+    width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: var(--pg-gutter) !important;
+    padding-right: var(--pg-gutter) !important;
+    box-sizing: border-box;
+}
+/* A wrapper nested inside another doesn't add a second gutter */
+.container .container,
+.container .wrap { padding-left: 0 !important; padding-right: 0 !important; }
+
+/* Inner blocks that were capped at a fixed width now stretch with the page */
+.container > header,
+body > .card#main-card,
+.controls-card,
+.tabs-wrapper,
+.container > .card {
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+body > .card#main-card { width: calc(100% - 2 * var(--pg-gutter)) !important; margin: 1.5rem var(--pg-gutter) !important; }
+
+/* On wide screens, a lone primary button doesn't stretch across the whole page */
+@media (min-width: 1000px) {
+    .card > .submit-btn, .card > .btn-submit, .card > .btn-primary,
+    .survey-form > .submit-btn, .survey-section > .submit-btn,
+    form > .submit-btn, form > .btn-submit, form > .btn-primary, form > .btn,
+    .card > .extract-btn, .card > .btn-continue {
+        width: auto !important;
+        min-width: 280px;
+        padding-left: 2.5rem !important;
+        padding-right: 2.5rem !important;
+        justify-self: start;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Long forms flow into columns on wide screens instead of one long strip */
+.survey-section:has(> .form-group + .form-group),
+.survey-form:has(> .form-group + .form-group),
+.card:has(> .form-group + .form-group + .form-group),
+form:not(.login-form):not(.modal *):not(.modal-content *):has(> .form-group + .form-group + .form-group) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    column-gap: 1.5rem;
+    align-items: start;
+}
+.survey-section:has(> .form-group + .form-group) > :not(.form-group),
+.survey-form:has(> .form-group + .form-group) > :not(.form-group),
+.card:has(> .form-group + .form-group + .form-group) > :not(.form-group),
+form:not(.login-form):not(.modal *):not(.modal-content *):has(> .form-group + .form-group + .form-group) > :not(.form-group) {
+    grid-column: 1 / -1;
+}
+/* Same idea for pages built from .form-row blocks */
+:not(.modal-content):has(> .form-row + .form-row + .form-row) {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
+    column-gap: 1.5rem;
+    align-items: start;
+}
+:not(.modal-content):has(> .form-row + .form-row + .form-row) > :not(.form-row) { grid-column: 1 / -1; }
+/* Repeated item lists (cable lengths etc.) tile across the width */
+.cable-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+    gap: 0.75rem;
+}
+.cable-list > * { margin: 0 !important; }
+
+/* Big inputs (textareas, photo uploads, checkbox lists) keep the full row */
+.form-group:has(textarea),
+.form-group:has(input[type="file"]),
+.form-group:has(.checkbox-group),
+.form-group:has(.radio-group),
+.form-group:has(.photo-upload),
+.form-group:has(.materials-list),
+.form-group.full-width { grid-column: 1 / -1; }
+
+/* Card / tile grids get a little more room per tile on large screens */
+@media (min-width: 2000px) {
+    .stats-section, .stats-grid, .stats-row, .action-grid, .actions-grid,
+    .nav-grid, .cards-grid, .jobs-grid, .dashboard-grid {
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+    }
+}
+
+/* Tables use the full width and scroll sideways on phones */
+.table-container, .table-wrapper, .table-wrap, .jobs-table-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* ─────────────────── PART 2 · REFRESHED LOOK (Pingu pages) ───────── */
+html[data-pingu="std"] {
+    --pg-surface:        var(--dark-light, #252541);
+    --pg-surface-2:      var(--dark-lighter, #2F2F4A);
+    --pg-border:         rgba(255, 255, 255, 0.07);
+    --pg-border-strong:  rgba(255, 255, 255, 0.13);
+    --pg-radius:         14px;
+    --pg-radius-sm:      10px;
+    --pg-shadow:         0 1px 0 rgba(255,255,255,0.04) inset, 0 10px 30px -12px rgba(0,0,0,0.55);
+    --pg-shadow-hover:   0 1px 0 rgba(255,255,255,0.06) inset, 0 18px 40px -14px rgba(0,0,0,0.65);
+    --pg-focus:          0 0 0 3px color-mix(in srgb, var(--primary, #FF6B35) 35%, transparent);
+    --pg-font-ui:        'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --pg-font-data:      'JetBrains Mono', ui-monospace, monospace;
+    scroll-behavior: smooth;
+}
+
+/* Type: clean UI font for reading, mono kept for data & inputs */
+html[data-pingu="std"] body {
+    font-family: var(--pg-font-ui);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--dark, #1A1A2E);
+    background-image:
+        radial-gradient(1200px 600px at 0% -10%, color-mix(in srgb, var(--primary, #FF6B35) 9%, transparent), transparent 60%),
+        radial-gradient(1000px 600px at 100% 0%, color-mix(in srgb, var(--accent, #00D9FF) 7%, transparent), transparent 60%);
+    background-attachment: fixed;
+}
+/* The old floating blobs → still, so the page feels calmer */
+html[data-pingu="std"] body::before { animation: none !important; opacity: 0.6; }
+
+html[data-pingu="std"] input,
+html[data-pingu="std"] select,
+html[data-pingu="std"] textarea,
+html[data-pingu="std"] code,
+html[data-pingu="std"] .job-number,
+html[data-pingu="std"] .stat-value,
+html[data-pingu="std"] .stat-val,
+html[data-pingu="std"] td { font-variant-numeric: tabular-nums; }
+html[data-pingu="std"] input,
+html[data-pingu="std"] select,
+html[data-pingu="std"] textarea { font-family: var(--pg-font-data); }
+html[data-pingu="std"] button,
+html[data-pingu="std"] .btn { font-family: var(--pg-font-ui); }
+
+/* Header: compact, so content starts higher up the screen */
+html[data-pingu="std"] header {
+    padding: 1.4rem 0 1.1rem !important;
+    margin-bottom: 1.25rem !important;
+    border-bottom: 1px solid var(--pg-border);
+    animation: none !important;
+}
+html[data-pingu="std"] .logo {
+    font-size: clamp(1.35rem, 1.6vw, 1.75rem) !important;
+    letter-spacing: -0.01em;
+    text-shadow: none !important;
+}
+html[data-pingu="std"] header h1,
+html[data-pingu="std"] .page-title {
+    font-family: 'Syne', var(--pg-font-ui);
+    font-size: clamp(1.6rem, 2.1vw, 2.3rem) !important;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0.35rem 0 0.2rem !important;
+}
+html[data-pingu="std"] .subtitle {
+    font-size: 0.85rem !important;
+    letter-spacing: 0.02em !important;
+    text-transform: none !important;
+    opacity: 0.9;
+}
+
+/* Surfaces: cards, tiles, panels */
+html[data-pingu="std"] .card,
+html[data-pingu="std"] .stat-card,
+html[data-pingu="std"] .action-card,
+html[data-pingu="std"] .nav-card,
+html[data-pingu="std"] .job-card,
+html[data-pingu="std"] .controls-card,
+html[data-pingu="std"] .survey-section,
+html[data-pingu="std"] .section-card,
+html[data-pingu="std"] .panel,
+html[data-pingu="std"] .stat-item,
+html[data-pingu="std"] .filters-card,
+html[data-pingu="std"] .table-container {
+    border-radius: var(--pg-radius) !important;
+    border: 1px solid var(--pg-border) !important;
+    box-shadow: var(--pg-shadow);
+}
+html[data-pingu="std"] .controls-card { padding-top: 1.1rem; padding-bottom: 1.1rem; }
+html[data-pingu="std"] .stat-card,
+html[data-pingu="std"] .action-card,
+html[data-pingu="std"] .nav-card,
+html[data-pingu="std"] .job-card {
+    transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease !important;
+}
+html[data-pingu="std"] .stat-card:hover,
+html[data-pingu="std"] .action-card:hover,
+html[data-pingu="std"] .nav-card:hover,
+html[data-pingu="std"] .job-card:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: var(--pg-shadow-hover) !important;
+    border-color: color-mix(in srgb, var(--primary, #FF6B35) 45%, transparent) !important;
+}
+/* Stat tiles: tighter, number-first */
+html[data-pingu="std"] .stat-card { padding: 1.25rem 1.4rem !important; }
+html[data-pingu="std"] .stat-label {
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase;
+    opacity: 0.85;
+}
+html[data-pingu="std"] .stat-value {
+    font-size: clamp(1.7rem, 2vw, 2.3rem) !important;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+}
+html[data-pingu="std"] .action-card { padding: 1.25rem 1.4rem !important; }
+html[data-pingu="std"] .action-icon { font-size: 1.6rem !important; margin-bottom: 0.6rem !important; }
+
+/* Buttons */
+html[data-pingu="std"] .btn,
+html[data-pingu="std"] .back-btn,
+html[data-pingu="std"] .submit-btn,
+html[data-pingu="std"] .refresh-btn,
+html[data-pingu="std"] .action-btn,
+html[data-pingu="std"] .btn-primary,
+html[data-pingu="std"] .btn-secondary {
+    border-radius: var(--pg-radius-sm) !important;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease, border-color .15s ease, filter .15s ease !important;
+}
+html[data-pingu="std"] .btn:hover,
+html[data-pingu="std"] .submit-btn:hover,
+html[data-pingu="std"] .btn-primary:hover { filter: brightness(1.08); }
+html[data-pingu="std"] .btn:active,
+html[data-pingu="std"] .submit-btn:active,
+html[data-pingu="std"] .back-btn:active { transform: translateY(1px) scale(0.99) !important; }
+html[data-pingu="std"] .back-btn {
+    border: 1px solid var(--pg-border-strong) !important;
+    background: color-mix(in srgb, var(--pg-surface) 80%, transparent) !important;
+    backdrop-filter: blur(6px);
+    padding: 0.55rem 1rem !important;
+    font-size: 0.82rem !important;
+}
+html[data-pingu="std"] .back-btn:hover { border-color: var(--primary, #FF6B35) !important; }
+html[data-pingu="std"] button:disabled,
+html[data-pingu="std"] .btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; transform: none !important; }
+
+/* Inputs */
+html[data-pingu="std"] .form-input,
+html[data-pingu="std"] .form-select,
+html[data-pingu="std"] .form-textarea,
+html[data-pingu="std"] .filter-input,
+html[data-pingu="std"] .filter-select,
+html[data-pingu="std"] .search-input,
+html[data-pingu="std"] .control-input,
+html[data-pingu="std"] .notes-textarea {
+    border-radius: var(--pg-radius-sm) !important;
+    border: 1px solid var(--pg-border-strong) !important;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease !important;
+}
+html[data-pingu="std"] .form-input:hover,
+html[data-pingu="std"] .form-select:hover,
+html[data-pingu="std"] .filter-input:hover,
+html[data-pingu="std"] .filter-select:hover,
+html[data-pingu="std"] .search-input:hover { border-color: rgba(255,255,255,0.22) !important; }
+html[data-pingu="std"] input:focus-visible,
+html[data-pingu="std"] select:focus-visible,
+html[data-pingu="std"] textarea:focus-visible {
+    outline: none !important;
+    border-color: var(--primary, #FF6B35) !important;
+    box-shadow: var(--pg-focus) !important;
+}
+html[data-pingu="std"] button:focus-visible,
+html[data-pingu="std"] a:focus-visible,
+html[data-pingu="std"] [onclick]:focus-visible {
+    outline: 2px solid var(--primary, #FF6B35);
+    outline-offset: 2px;
+}
+html[data-pingu="std"] .form-label,
+html[data-pingu="std"] .filter-label,
+html[data-pingu="std"] .control-label {
+    font-size: 0.78rem !important;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+
+/* Tables: sticky headings, quiet zebra rows, clear hover */
+html[data-pingu="std"] table { border-collapse: separate !important; border-spacing: 0 !important; width: 100%; }
+html[data-pingu="std"] thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: var(--pg-surface-2) !important;
+    font-size: 0.74rem !important;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--pg-border-strong) !important;
+}
+html[data-pingu="std"] tbody tr:nth-child(even) td { background-color: rgba(255,255,255,0.018); }
+html[data-pingu="std"] tbody tr:hover td { background-color: color-mix(in srgb, var(--primary, #FF6B35) 7%, transparent) !important; }
+html[data-pingu="std"] td { border-bottom: 1px solid var(--pg-border) !important; }
+
+/* Modals: blurred backdrop, softer panel */
+html[data-pingu="std"] .modal,
+html[data-pingu="std"] .modal-overlay {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+html[data-pingu="std"] .modal-content {
+    border-radius: 18px !important;
+    border: 1px solid var(--pg-border-strong) !important;
+    box-shadow: 0 30px 80px -20px rgba(0,0,0,0.7) !important;
+}
+
+/* Badges & pills */
+html[data-pingu="std"] .badge,
+html[data-pingu="std"] .status-badge { border-radius: 999px !important; font-weight: 600; letter-spacing: 0.02em; }
+
+/* Toasts */
+html[data-pingu="std"] .toast {
+    border-radius: 12px !important;
+    box-shadow: 0 16px 40px -12px rgba(0,0,0,0.6) !important;
+    backdrop-filter: blur(8px);
+}
+
+/* Section headings inside cards */
+html[data-pingu="std"] .section-title,
+html[data-pingu="std"] .card-title,
+html[data-pingu="std"] .modal-title { letter-spacing: -0.01em; }
+
+/* Empty / loading states */
+html[data-pingu="std"] .empty-state { padding: 3rem 1rem !important; opacity: 0.9; }
+
+/* Themed scrollbars */
+html[data-pingu="std"] * { scrollbar-width: thin; scrollbar-color: var(--pg-surface-2) transparent; }
+html[data-pingu="std"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-pingu="std"] ::-webkit-scrollbar-track { background: transparent; }
+html[data-pingu="std"] ::-webkit-scrollbar-thumb {
+    background: var(--pg-surface-2);
+    border-radius: 10px;
+    border: 2px solid var(--dark, #1A1A2E);
+}
+html[data-pingu="std"] ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--primary, #FF6B35) 50%, var(--pg-surface-2)); }
+
+/* Selection */
+html[data-pingu="std"] ::selection { background: color-mix(in srgb, var(--primary, #FF6B35) 40%, transparent); color: #fff; }
+
+/* Phones: tighter gutters, single-column forms */
+@media (max-width: 700px) {
+    html[data-pingu="std"] body { font-size: 14px; }
+    html[data-pingu="std"] header { padding: 1rem 0 0.8rem !important; }
+}
+
+/* Respect reduced-motion settings */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* Printing: plain, full-width */
+@media print {
+    html[data-pingu="std"] body { background: #fff !important; color: #000 !important; }
+    html[data-pingu="std"] body::before { display: none !important; }
+    .back-btn, .toast { display: none !important; }
+}
+
+/* Map page: the map fills the rest of the screen */
+#map { min-height: calc(100vh - 180px) !important; }

@@ -1,0 +1,2535 @@
+<!DOCTYPE html>
+<html lang="en" data-pingu="std">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team View | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+        
+        /* Login Screen Styles */
+        .login-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .login-container {
+            background: var(--dark-light);
+            border: 2px solid var(--dark-lighter);
+            border-radius: 24px;
+            padding: 3rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: slideUp 0.6s ease-out;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .login-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        
+        .login-logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+        
+        .login-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.8rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.7rem;
+        }
+        
+        .form-label {
+            color: var(--text);
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .form-select,
+        .form-input {
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 1rem 1.2rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--dark);
+        }
+        
+        .form-select {
+            cursor: pointer;
+        }
+        
+        .form-select option {
+            background: var(--dark-lighter);
+            color: var(--text);
+        }
+        
+        .login-btn {
+            padding: 1.2rem 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        
+        .login-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .login-error {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--error);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .login-error.show {
+            display: block;
+            animation: shake 0.5s ease;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        /* Notifications Summary Styles */
+        .notifications-summary {
+            background: var(--dark-light);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            animation: slideDown 0.8s ease-out;
+        }
+        
+        .notifications-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        
+        .notifications-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .notifications-title h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+        
+        .notification-icon {
+            font-size: 2rem;
+        }
+        
+        .close-notifications {
+            background: none;
+            border: 2px solid var(--dark-lighter);
+            color: var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .close-notifications:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .notification-items {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .notification-item {
+            background: var(--dark-lighter);
+            padding: 1.2rem;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent);
+            display: grid;
+            gap: 0.5rem;
+        }
+        
+        .notification-item.new-job {
+            border-left-color: var(--success);
+        }
+        
+        .notification-item.request-approved {
+            border-left-color: var(--success);
+        }
+        
+        .notification-item.request-denied {
+            border-left-color: var(--error);
+        }
+        
+        .notification-type {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-dim);
+        }
+        
+        .notification-content {
+            font-size: 1rem;
+            color: var(--text);
+        }
+        
+        .notification-time {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+        
+        .no-notifications {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+        }
+        
+        .enable-notifications-banner {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            animation: slideDown 0.8s ease-out;
+        }
+        
+        .notification-banner-content {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .notification-banner-icon {
+            font-size: 2rem;
+        }
+        
+        .notification-banner-text h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: white;
+            margin-bottom: 0.3rem;
+        }
+        
+        .notification-banner-text p {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .enable-notifications-btn {
+            background: white;
+            color: var(--primary);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .enable-notifications-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Main Dashboard Styles */
+        .main-dashboard {
+            display: none;
+        }
+        
+        .main-dashboard.active {
+            display: block;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .user-info {
+            background: var(--dark-light);
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid var(--dark-lighter);
+            display: flex;
+            align-items: center;
+            gap: 0.7rem;
+        }
+        
+        .user-name {
+            color: var(--text);
+            font-weight: 600;
+        }
+        
+        .logout-btn {
+            background: var(--dark-light);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        
+        .logout-btn:hover {
+            background: var(--dark-lighter);
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+        
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .nav-card {
+            background: var(--dark-light);
+            border: 2px solid transparent;
+            border-radius: 16px;
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .nav-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            z-index: 0;
+        }
+        
+        .nav-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(255, 107, 53, 0.3), 0 0 60px rgba(255, 107, 53, 0.2);
+        }
+        
+        .nav-card:hover::before {
+            opacity: 0.08;
+        }
+        
+        .nav-card-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .nav-card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            display: block;
+            filter: drop-shadow(0 4px 8px rgba(255, 107, 53, 0.4));
+        }
+        
+        .nav-card h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        .nav-card p {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            line-height: 1.5;
+        }
+        
+        .nav-card .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--dark);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            margin-top: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-card {
+            background: var(--dark-light);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+        
+        .stat-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .stat-detail {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+        
+        .search-section {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .search-section:focus-within {
+            border-color: var(--primary);
+        }
+        
+        .search-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .search-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .search-icon {
+            font-size: 2rem;
+        }
+        
+        .search-title h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .view-btn {
+            background: var(--dark-lighter);
+            color: var(--text-dim);
+            border: 2px solid transparent;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+        
+        .view-btn:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+        
+        .view-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        .search-controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: end;
+        }
+        
+        .search-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .search-input-group label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .search-input {
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--dark);
+        }
+        
+        .search-btn {
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .search-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+        
+        .results-container {
+            margin-top: 2rem;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .results-count {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+        }
+        
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .job-card {
+            background: var(--dark-lighter);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .job-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+        
+        .job-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+        }
+        
+        .job-card:hover::before {
+            transform: scaleX(1);
+        }
+        
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+        
+        .job-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .job-status {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .job-status.upcoming {
+            background: var(--accent);
+            color: var(--dark);
+        }
+        
+        .job-status.survey-complete {
+            background: #FFC857;
+            color: var(--dark);
+        }
+        
+        .job-status.install-started {
+            background: #FF9F1C;
+            color: var(--dark);
+        }
+        
+        .job-status.install-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+        
+        .job-status.completed {
+            background: var(--success);
+            color: var(--dark);
+        }
+        
+        .job-customer {
+            font-size: 1rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        
+        .job-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        
+        .job-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+        
+        .job-detail-icon {
+            color: var(--accent);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-dim);
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+        
+        .empty-state h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid var(--primary);
+            animation: slideUpModal 0.4s ease;
+        }
+        
+        @keyframes slideUpModal {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+        
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            line-height: 1;
+        }
+        
+        .close-btn:hover {
+            color: var(--error);
+        }
+        
+        .modal-body {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .detail-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+        
+        .detail-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        
+        .detail-value {
+            color: var(--text);
+            font-size: 1.1rem;
+            padding: 0.8rem 1rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+        }
+        
+        .status-update-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+        
+        .status-update-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .status-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+        
+        .status-update-btn {
+            padding: 1rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .status-update-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-update-btn.upcoming {
+            background: var(--accent);
+            color: var(--dark);
+        }
+        
+        .status-update-btn.upcoming:hover {
+            border-color: var(--accent);
+        }
+        
+        .status-update-btn.survey {
+            background: #FFC857;
+            color: var(--dark);
+        }
+        
+        .status-update-btn.survey:hover {
+            border-color: #FFC857;
+        }
+        
+        .status-update-btn.install-start {
+            background: #FF9F1C;
+            color: var(--dark);
+        }
+        
+        .status-update-btn.install-start:hover {
+            border-color: #FF9F1C;
+        }
+        
+        .status-update-btn.install-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+        
+        .status-update-btn.install-complete:hover {
+            border-color: var(--success);
+        }
+        
+        .status-update-btn.current {
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        .status-update-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .status-update-message.success {
+            background: rgba(78, 204, 163, 0.2);
+            color: var(--success);
+        }
+        
+        .status-update-message.error {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--error);
+        }
+        
+        .attachments-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+        
+        .attachments-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+        
+        .attachments-grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .attachment-item {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        
+        .attachment-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+        
+        .attachment-icon {
+            font-size: 2rem;
+        }
+        
+        .attachment-info {
+            flex: 1;
+        }
+        
+        .attachment-name {
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+        
+        .attachment-type {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+        
+        .attachment-download {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+        
+        .attachment-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+        
+        .no-attachments {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+        
+        .loading-attachments {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-dim);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .nav-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .quick-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-buttons {
+                grid-template-columns: 1fr;
+            }
+            
+            .login-container {
+                padding: 2rem;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="pingu-theme.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-screen" id="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <div class="login-logo">Pingu - Solar</div>
+                <h2 class="login-title">Engineer Login</h2>
+                <p class="login-subtitle">Select your name and enter your password</p>
+            </div>
+            
+            <form class="login-form" id="login-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label class="form-label" for="engineer-select">Engineer Name</label>
+                    <select class="form-select" id="engineer-select" required>
+                        <option value="">Loading engineers...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="password-input">Password</label>
+                    <input 
+                        type="password" 
+                        class="form-input" 
+                        id="password-input" 
+                        placeholder="Enter your password"
+                        required
+                    />
+                </div>
+                
+                <div class="login-error" id="login-error"></div>
+                
+                <button type="submit" class="login-btn" id="login-btn">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Main Dashboard -->
+    <div class="main-dashboard" id="main-dashboard">
+        <div class="container">
+            <header>
+                <div class="header-content">
+                    <a href="teamview.html" class="logo">Pingu - Solar</a>
+                    <div class="header-actions">
+                        <div class="user-info">
+                            <span>👷</span>
+                            <span class="user-name" id="logged-in-user"></span>
+                        </div>
+                        <button class="logout-btn" onclick="handleLogout()">🚪 Logout</button>
+                    </div>
+                </div>
+                <h1>Engineer Dashboard</h1>
+                <p class="subtitle">Welcome back! Here's your job overview</p>
+            </header>
+            
+            <main>
+                <!-- Enable Notifications Banner -->
+                <div class="enable-notifications-banner" id="notifications-banner" style="display: none;">
+                    <div class="notification-banner-content">
+                        <span class="notification-banner-icon">🔔</span>
+                        <div class="notification-banner-text">
+                            <h3>Enable Push Notifications</h3>
+                            <p>Get notified about new jobs and request updates</p>
+                        </div>
+                    </div>
+                    <button class="enable-notifications-btn" onclick="enablePushNotifications()">
+                        Enable Notifications
+                    </button>
+                </div>
+                
+                <!-- Notifications Summary -->
+                <div class="notifications-summary" id="notifications-summary" style="display: none;">
+                    <div class="notifications-header">
+                        <div class="notifications-title">
+                            <span class="notification-icon">🔔</span>
+                            <h2>What's New Since Your Last Visit</h2>
+                        </div>
+                        <button class="close-notifications" onclick="closeNotifications()">Dismiss</button>
+                    </div>
+                    <div class="notification-items" id="notification-items">
+                        <div class="loading">Checking for updates...</div>
+                    </div>
+                </div>
+                
+                <div class="quick-stats">
+                    <div class="stat-card">
+                        <div class="stat-label">All Jobs</div>
+                        <div class="stat-value" id="total-jobs">0</div>
+                        <div class="stat-detail">Total assigned</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Upcoming</div>
+                        <div class="stat-value" id="upcoming-jobs">0</div>
+                        <div class="stat-detail">Status: Upcoming</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Week</div>
+                        <div class="stat-value" id="week-jobs">0</div>
+                        <div class="stat-detail">Current week</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value" id="month-jobs">0</div>
+                        <div class="stat-detail">Current month</div>
+                    </div>
+                </div>
+                
+                <div class="nav-grid">
+                    <a href="myjobs.html" class="nav-card">
+                        <div class="nav-card-content">
+                            <span class="nav-card-icon">🔍</span>
+                            <h2>My Jobs</h2>
+                            <p>View all jobs assigned to you</p>
+                            <span class="badge">Quick Access</span>
+                        </div>
+                    </a>
+                    
+                    <div class="nav-card" onclick="showView('historic')">
+                        <div class="nav-card-content">
+                            <span class="nav-card-icon">📋</span>
+                            <h2>Historic Jobs</h2>
+                            <p>View all your completed jobs</p>
+                            <span class="badge">Archive</span>
+                        </div>
+                    </div>
+                    
+                    <a href="viewmysurveys.html" class="nav-card">
+                        <div class="nav-card-content">
+                            <span class="nav-card-icon">📐</span>
+                            <h2>View My Surveys</h2>
+                            <p>View my surveys</p>
+                            <span class="badge">Survey</span>
+                        </div>
+                    </a>
+                    
+                    <a href="additionaldaymaterials.html" class="nav-card">
+                        <div class="nav-card-content">
+                            <span class="nav-card-icon">📝</span>
+                            <h2>Replenishment</h2>
+                            <p>Submit requests for extra resources</p>
+                            <span class="badge">Requests</span>
+                        </div>
+                    </a>
+                </div>
+                
+                <section class="search-section" id="search-section" style="display: none;">
+                    <div class="search-header">
+                        <div class="search-title">
+                            <span class="search-icon">🔍</span>
+                            <h2>My Jobs</h2>
+                        </div>
+                        <div class="view-toggle">
+                            <button class="view-btn active" onclick="setView('grid')">Grid</button>
+                            <button class="view-btn" onclick="setView('list')">List</button>
+                        </div>
+                    </div>
+                    
+                    <div class="search-controls">
+                        <div class="search-input-group">
+                            <label for="search-input">Search by Job Number, Postcode, or Customer Name</label>
+                            <input 
+                                type="text" 
+                                id="search-input" 
+                                class="search-input" 
+                                placeholder="e.g. 12345, SW1A 1AA, or John Smith..."
+                                onkeypress="handleSearchKeypress(event)"
+                            />
+                        </div>
+                        <button class="search-btn" onclick="performSearch()">Search</button>
+                    </div>
+                    
+                    <div class="results-container">
+                        <div class="results-header">
+                            <div class="results-count" id="search-results-count">Enter search term</div>
+                        </div>
+                        <div id="search-results"></div>
+                    </div>
+                </section>
+                
+                <section class="search-section" id="historic-section" style="display: none;">
+                    <div class="search-header">
+                        <div class="search-title">
+                            <span class="search-icon">📋</span>
+                            <h2>Historic Jobs</h2>
+                        </div>
+                        <div class="view-toggle">
+                            <button class="view-btn active" onclick="setHistoricView('grid')">Grid</button>
+                            <button class="view-btn" onclick="setHistoricView('list')">List</button>
+                        </div>
+                    </div>
+                    
+                    <div class="results-container">
+                        <div class="results-header">
+                            <div class="results-count" id="historic-results-count">Loading...</div>
+                        </div>
+                        <div id="historic-results">
+                            <div class="loading">Loading historic jobs...</div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Job Details Modal -->
+    <div class="modal" id="job-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-job-number">Job #12345</h2>
+                <button class="close-btn" onclick="closeJobModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getMessaging, getToken, onMessage } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js';
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+        
+        console.log('Initializing Firebase...');
+        
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const messaging = getMessaging(app);
+            
+            window.db = db;
+            window.messaging = messaging;
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, doc, updateDoc, setDoc, getDoc, getToken, onMessage };
+            
+            console.log('✅ Firebase initialized successfully');
+            
+            // Handle foreground messages (when app is open)
+            onMessage(messaging, (payload) => {
+                console.log('Received foreground message:', payload);
+                
+                // Show notification even when app is open
+                if (Notification.permission === 'granted') {
+                    const notificationTitle = payload.notification.title;
+                    const notificationOptions = {
+                        body: payload.notification.body,
+                        icon: '/icon-192x192.png',
+                        tag: payload.data?.tag || 'pingu-notification',
+                        requireInteraction: true
+                    };
+                    
+                    new Notification(notificationTitle, notificationOptions);
+                }
+                
+                // Optionally refresh job list
+                if (currentUser && payload.data?.type === 'new-job') {
+                    loadAllJobs();
+                }
+            });
+            
+            window.addEventListener('DOMContentLoaded', () => {
+                checkExistingLogin();
+            });
+            
+        } catch (error) {
+            console.error('❌ Firebase initialization error:', error);
+        }
+    </script>
+    
+    <script>
+        let allJobs = [];
+        let myJobs = [];
+        let currentUser = null;
+        let currentView = 'grid';
+        let currentSection = 'none';
+        let teamMembers = [];
+        let lastLoginTimestamp = null;
+        
+        // Helper function to parse dates in DD/MM/YYYY format
+        function parseInstallDate(dateStr) {
+            if (!dateStr) return null;
+            
+            // Check if date is in DD/MM/YYYY format
+            if (dateStr.includes('/')) {
+                const parts = dateStr.split('/');
+                if (parts.length === 3) {
+                    // Convert DD/MM/YYYY to YYYY-MM-DD for proper parsing
+                    const day = parts[0].padStart(2, '0');
+                    const month = parts[1].padStart(2, '0');
+                    const year = parts[2];
+                    const parsedDate = new Date(`${year}-${month}-${day}`);
+                    
+                    // Validate the date
+                    if (!isNaN(parsedDate.getTime())) {
+                        return parsedDate;
+                    }
+                }
+            } else {
+                // Try standard date parsing for other formats
+                const parsedDate = new Date(dateStr);
+                if (!isNaN(parsedDate.getTime())) {
+                    return parsedDate;
+                }
+            }
+            
+            return null;
+        }
+        
+        // Format timestamp for display
+        function formatTimeAgo(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            
+            const minutes = Math.floor(diff / (1000 * 60));
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            if (minutes < 60) {
+                return `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
+            } else if (hours < 24) {
+                return `${hours} hour${hours !== 1 ? 's' : ''} ago`;
+            } else {
+                return `${days} day${days !== 1 ? 's' : ''} ago`;
+            }
+        }
+        
+        // Check if push notifications are supported and enabled
+        function checkNotificationPermission() {
+            if (!('Notification' in window)) {
+                console.log('Push notifications not supported');
+                return false;
+            }
+            
+            if (Notification.permission === 'granted') {
+                return true;
+            } else if (Notification.permission === 'denied') {
+                return false;
+            } else {
+                // Show banner to enable notifications
+                document.getElementById('notifications-banner').style.display = 'flex';
+                return false;
+            }
+        }
+        
+        // Request notification permission and get FCM token
+        async function enablePushNotifications() {
+            try {
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    console.log('Notification permission granted');
+                    document.getElementById('notifications-banner').style.display = 'none';
+                    
+                    // Get FCM token
+                    const { getToken } = window.firebaseModules;
+                    
+                    try {
+                        // Request FCM token
+                        const fcmToken = await getToken(window.messaging, {
+                            vapidKey: 'BJcsazX5PNZdV73fDoWqMzFxv8VBA896d2a2QujnNIQacrHdjNFHi477NGtN9qD98NP-egjRlFAXHCAQMwrxLIQ'
+                        });
+                        
+                        if (fcmToken) {
+                            console.log('FCM Token:', fcmToken);
+                            
+                            // Save token to Firebase
+                            await savePushToken(fcmToken);
+                            
+                            // Show success message
+                            alert('✅ Push notifications enabled! You\'ll now receive updates about new jobs and requests even when the app is closed.');
+                        } else {
+                            console.warn('No FCM token available');
+                            alert('⚠️ Notifications enabled but push may not work. Please refresh and try again.');
+                        }
+                    } catch (tokenError) {
+                        console.error('Error getting FCM token:', tokenError);
+                        alert('⚠️ Notifications enabled but push may not work properly. Error: ' + tokenError.message);
+                    }
+                } else {
+                    alert('❌ Notification permission denied. You can enable it later in your browser settings.');
+                }
+            } catch (error) {
+                console.error('Error requesting notification permission:', error);
+                alert('❌ Failed to enable notifications. Please try again.');
+            }
+        }
+        
+        window.enablePushNotifications = enablePushNotifications;
+        
+        // Save push notification token to Firebase
+        async function savePushToken(fcmToken) {
+            if (!currentUser) return;
+            
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                
+                const tokenDoc = doc(window.db, 'push-tokens', currentUser.id);
+                
+                await setDoc(tokenDoc, {
+                    engineerId: currentUser.id,
+                    engineerName: currentUser.name,
+                    fcmToken: fcmToken,
+                    enabled: true,
+                    enabledAt: new Date().toISOString(),
+                    lastUpdated: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform
+                }, { merge: true });
+                
+                console.log('✅ FCM token saved successfully');
+            } catch (error) {
+                console.error('❌ Error saving FCM token:', error);
+                throw error;
+            }
+        }
+        
+        // Check for changes since last login
+        async function checkForChanges() {
+            if (!currentUser || !lastLoginTimestamp) {
+                console.log('No last login timestamp found');
+                return;
+            }
+            
+            console.log('Checking for changes since:', new Date(lastLoginTimestamp));
+            
+            try {
+                const changes = {
+                    newJobs: [],
+                    requestUpdates: []
+                };
+                
+                // Check for new jobs assigned since last login
+                myJobs.forEach(job => {
+                    const uploadDate = job.uploadDate ? new Date(job.uploadDate).getTime() : 0;
+                    if (uploadDate > lastLoginTimestamp) {
+                        changes.newJobs.push(job);
+                    }
+                });
+                
+                // Check for request updates (approved/denied)
+                const requestUpdates = await checkRequestUpdates();
+                changes.requestUpdates = requestUpdates;
+                
+                // Display notifications if there are changes
+                if (changes.newJobs.length > 0 || changes.requestUpdates.length > 0) {
+                    displayNotifications(changes);
+                } else {
+                    console.log('No changes since last login');
+                }
+                
+            } catch (error) {
+                console.error('Error checking for changes:', error);
+            }
+        }
+        
+        // Check for additional day/material request updates
+        async function checkRequestUpdates() {
+            if (!currentUser) return [];
+            
+            try {
+                const { collection, getDocs, query, where } = window.firebaseModules;
+                
+                const requestsQuery = query(
+                    collection(window.db, 'additional-requests'),
+                    where('engineerName', '==', currentUser.name)
+                );
+                
+                const querySnapshot = await getDocs(requestsQuery);
+                const updates = [];
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const updatedAt = data.updatedAt ? new Date(data.updatedAt).getTime() : 0;
+                    
+                    // Check if request was updated since last login
+                    if (updatedAt > lastLoginTimestamp && data.status && data.status !== 'pending') {
+                        updates.push({
+                            id: doc.id,
+                            ...data
+                        });
+                    }
+                });
+                
+                return updates;
+                
+            } catch (error) {
+                console.error('Error checking request updates:', error);
+                return [];
+            }
+        }
+        
+        // Display notifications summary
+        function displayNotifications(changes) {
+            const summaryDiv = document.getElementById('notifications-summary');
+            const itemsDiv = document.getElementById('notification-items');
+            
+            let html = '';
+            
+            // New jobs notifications
+            if (changes.newJobs.length > 0) {
+                changes.newJobs.forEach(job => {
+                    const uploadDate = job.uploadDate ? new Date(job.uploadDate).getTime() : Date.now();
+                    html += `
+                        <div class="notification-item new-job">
+                            <div class="notification-type">🆕 New Job Assigned</div>
+                            <div class="notification-content">
+                                <strong>Job #${escapeHtml(job['Job Number'] || 'N/A')}</strong> - ${escapeHtml(job['Name'] || 'Unknown')}
+                                <br>Install Date: ${escapeHtml(job['Install Date'] || 'TBD')}
+                            </div>
+                            <div class="notification-time">${formatTimeAgo(uploadDate)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            // Request updates notifications
+            if (changes.requestUpdates.length > 0) {
+                changes.requestUpdates.forEach(request => {
+                    const updatedAt = request.updatedAt ? new Date(request.updatedAt).getTime() : Date.now();
+                    const isApproved = request.status === 'approved';
+                    const statusClass = isApproved ? 'request-approved' : 'request-denied';
+                    const statusIcon = isApproved ? '✅' : '❌';
+                    const statusText = isApproved ? 'Approved' : 'Denied';
+                    
+                    html += `
+                        <div class="notification-item ${statusClass}">
+                            <div class="notification-type">${statusIcon} Request ${statusText}</div>
+                            <div class="notification-content">
+                                <strong>${escapeHtml(request.requestType || 'Request')}</strong> for Job #${escapeHtml(request.jobNumber || 'N/A')}
+                                ${request.adminNotes ? `<br>Note: ${escapeHtml(request.adminNotes)}` : ''}
+                            </div>
+                            <div class="notification-time">${formatTimeAgo(updatedAt)}</div>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (html) {
+                itemsDiv.innerHTML = html;
+                summaryDiv.style.display = 'block';
+            }
+        }
+        
+        // Close notifications summary
+        function closeNotifications() {
+            document.getElementById('notifications-summary').style.display = 'none';
+        }
+        
+        window.closeNotifications = closeNotifications;
+        
+        // Update last login timestamp
+        async function updateLastLogin() {
+            if (!currentUser) return;
+            
+            try {
+                const { doc, setDoc } = window.firebaseModules;
+                
+                const loginDoc = doc(window.db, 'engineer-logins', currentUser.id);
+                const now = Date.now();
+                
+                await setDoc(loginDoc, {
+                    engineerId: currentUser.id,
+                    engineerName: currentUser.name,
+                    lastLogin: now,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+                
+                console.log('Last login timestamp updated');
+                
+            } catch (error) {
+                console.error('Error updating last login:', error);
+            }
+        }
+        
+        // Get last login timestamp
+        async function getLastLogin() {
+            if (!currentUser) return null;
+            
+            try {
+                const { doc, getDoc } = window.firebaseModules;
+                
+                const loginDoc = doc(window.db, 'engineer-logins', currentUser.id);
+                const docSnap = await getDoc(loginDoc);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    return data.lastLogin || null;
+                }
+                
+                return null;
+                
+            } catch (error) {
+                console.error('Error getting last login:', error);
+                return null;
+            }
+        }
+        
+        async function checkExistingLogin() {
+            try {
+                const loginDataStr = localStorage.getItem('loggedInEngineer');
+                
+                if (!loginDataStr) {
+                    // No existing login, show login screen
+                    await loadEngineers();
+                    return;
+                }
+                
+                const loginData = JSON.parse(loginDataStr);
+                
+                // Check if login has expired
+                if (Date.now() > loginData.expiresAt) {
+                    console.log('Login expired');
+                    localStorage.removeItem('loggedInEngineer');
+                    await loadEngineers();
+                    return;
+                }
+                
+                // Login is still valid, load team members and auto-login
+                console.log('Valid login found, auto-logging in...');
+                await loadEngineers();
+                
+                // Find the engineer in the loaded team members
+                const engineer = teamMembers.find(m => m.id === loginData.id);
+                
+                if (!engineer) {
+                    console.log('Engineer not found, clearing login');
+                    localStorage.removeItem('loggedInEngineer');
+                    return;
+                }
+                
+                // Auto-login
+                currentUser = engineer;
+                
+                // Get last login timestamp BEFORE updating it
+                lastLoginTimestamp = await getLastLogin();
+                
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-dashboard').classList.add('active');
+                document.getElementById('logged-in-user').textContent = engineer.name;
+                
+                await loadAllJobs();
+                
+                // Check notification permission
+                checkNotificationPermission();
+                
+                // Check for changes since last login
+                if (lastLoginTimestamp) {
+                    await checkForChanges();
+                }
+                
+                // Update last login timestamp for next time
+                await updateLastLogin();
+                
+            } catch (error) {
+                console.error('Error checking existing login:', error);
+                localStorage.removeItem('loggedInEngineer');
+                await loadEngineers();
+            }
+        }
+        
+        async function loadEngineers() {
+            try {
+                console.log('Loading team members...');
+                const { collection, getDocs } = window.firebaseModules;
+                
+                const teamSnapshot = await getDocs(collection(window.db, 'team-members'));
+                
+                teamMembers = [];
+                teamSnapshot.forEach((doc) => {
+                    teamMembers.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`Loaded ${teamMembers.length} team members`);
+                
+                const select = document.getElementById('engineer-select');
+                select.innerHTML = '<option value="">Select your name...</option>';
+                
+                teamMembers
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                    .forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.id;
+                        option.textContent = member.name;
+                        select.appendChild(option);
+                    });
+                
+            } catch (error) {
+                console.error('Error loading team members:', error);
+                const select = document.getElementById('engineer-select');
+                select.innerHTML = '<option value="">Error loading engineers</option>';
+            }
+        }
+        
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const engineerId = document.getElementById('engineer-select').value;
+            const password = document.getElementById('password-input').value;
+            const errorDiv = document.getElementById('login-error');
+            const loginBtn = document.getElementById('login-btn');
+            
+            errorDiv.classList.remove('show');
+            errorDiv.textContent = '';
+            
+            if (!engineerId) {
+                errorDiv.textContent = 'Please select your name';
+                errorDiv.classList.add('show');
+                return;
+            }
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Logging in...';
+            
+            try {
+                const engineer = teamMembers.find(m => m.id === engineerId);
+                
+                if (!engineer) {
+                    throw new Error('Engineer not found');
+                }
+                
+                if (engineer.password !== password) {
+                    throw new Error('Incorrect password');
+                }
+                
+                currentUser = engineer;
+                
+                // Get last login timestamp BEFORE updating it
+                lastLoginTimestamp = await getLastLogin();
+                
+                // Store login with 6-hour expiration
+                const loginData = {
+                    id: engineer.id,
+                    name: engineer.name,
+                    expiresAt: Date.now() + (6 * 60 * 60 * 1000) // 6 hours in milliseconds
+                };
+                localStorage.setItem('loggedInEngineer', JSON.stringify(loginData));
+                
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('main-dashboard').classList.add('active');
+                document.getElementById('logged-in-user').textContent = engineer.name;
+                
+                await loadAllJobs();
+                
+                // Check notification permission
+                checkNotificationPermission();
+                
+                // Check for changes since last login
+                if (lastLoginTimestamp) {
+                    await checkForChanges();
+                }
+                
+                // Update last login timestamp for next time
+                await updateLastLogin();
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                errorDiv.textContent = error.message || 'Login failed. Please try again.';
+                errorDiv.classList.add('show');
+                
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Login';
+            }
+        }
+        
+        function handleLogout() {
+            localStorage.removeItem('loggedInEngineer');
+            currentUser = null;
+            myJobs = [];
+            allJobs = [];
+            lastLoginTimestamp = null;
+            
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('main-dashboard').classList.remove('active');
+            document.getElementById('notifications-summary').style.display = 'none';
+            document.getElementById('notifications-banner').style.display = 'none';
+            
+            document.getElementById('password-input').value = '';
+            document.getElementById('engineer-select').value = '';
+            
+            showView('none');
+        }
+        
+        window.handleLogin = handleLogin;
+        window.handleLogout = handleLogout;
+        
+        async function loadAllJobs() {
+            try {
+                console.log('Loading all jobs...');
+                const { collection, getDocs, orderBy: orderByFn, query } = window.firebaseModules;
+                
+                const jobsQuery = query(
+                    collection(window.db, 'Solar-jobs'),
+                    orderByFn('uploadDate', 'desc')
+                );
+                
+                const querySnapshot = await getDocs(jobsQuery);
+                
+                allJobs = [];
+                querySnapshot.forEach((doc) => {
+                    allJobs.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                console.log(`Loaded ${allJobs.length} total jobs`);
+                
+                filterMyJobs();
+                updateStats();
+                
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+            }
+        }
+        
+        function filterMyJobs() {
+            if (!currentUser) {
+                myJobs = [];
+                return;
+            }
+            
+            myJobs = allJobs.filter(job => {
+                const leadEngineer = (job['Lead Engineer'] || '').trim();
+                const userName = (currentUser.name || '').trim();
+                return leadEngineer.toLowerCase() === userName.toLowerCase();
+            });
+            
+            console.log(`Filtered to ${myJobs.length} jobs for ${currentUser.name}`);
+        }
+        
+        function updateStats() {
+            const now = new Date();
+            
+            // Get start and end of current week (Monday to Sunday)
+            const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const startOfWeek = new Date(now);
+            const daysToMonday = currentDay === 0 ? -6 : 1 - currentDay; // If Sunday, go back 6 days
+            startOfWeek.setDate(now.getDate() + daysToMonday);
+            startOfWeek.setHours(0, 0, 0, 0);
+            
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6); // Sunday
+            endOfWeek.setHours(23, 59, 59, 999);
+            
+            // Get start and end of current month
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            startOfMonth.setHours(0, 0, 0, 0);
+            
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            endOfMonth.setHours(23, 59, 59, 999);
+            
+            console.log('Current date:', now);
+            console.log('Week range:', startOfWeek, 'to', endOfWeek);
+            console.log('Month range:', startOfMonth, 'to', endOfMonth);
+            
+            let upcomingStatus = 0;
+            let thisWeek = 0;
+            let thisMonth = 0;
+            
+            myJobs.forEach(job => {
+                // Parse the Install Date using helper function
+                const installDate = parseInstallDate(job['Install Date']);
+                
+                const jobStatus = job.status || 'upcoming';
+                
+                // Count jobs with status "upcoming"
+                if (jobStatus === 'upcoming') {
+                    upcomingStatus++;
+                }
+                
+                // Count jobs scheduled this week (current week - Monday to Sunday)
+                if (installDate) {
+                    const dateOnly = new Date(installDate.getFullYear(), installDate.getMonth(), installDate.getDate());
+                    const startOnly = new Date(startOfWeek.getFullYear(), startOfWeek.getMonth(), startOfWeek.getDate());
+                    const endOnly = new Date(endOfWeek.getFullYear(), endOfWeek.getMonth(), endOfWeek.getDate());
+                    
+                    if (dateOnly >= startOnly && dateOnly <= endOnly) {
+                        thisWeek++;
+                        console.log('Job in this week:', job['Job Number'], job['Install Date'], '→', installDate);
+                    }
+                }
+                
+                // Count jobs scheduled this month (current calendar month)
+                if (installDate) {
+                    const dateOnly = new Date(installDate.getFullYear(), installDate.getMonth(), installDate.getDate());
+                    const startOnly = new Date(startOfMonth.getFullYear(), startOfMonth.getMonth(), startOfMonth.getDate());
+                    const endOnly = new Date(endOfMonth.getFullYear(), endOfMonth.getMonth(), endOfMonth.getDate());
+                    
+                    if (dateOnly >= startOnly && dateOnly <= endOnly) {
+                        thisMonth++;
+                        console.log('Job in this month:', job['Job Number'], job['Install Date'], '→', installDate);
+                    }
+                }
+            });
+            
+            console.log('Stats - Total:', myJobs.length, 'Upcoming:', upcomingStatus, 'This Week:', thisWeek, 'This Month:', thisMonth);
+            
+            // Total jobs assigned to this engineer
+            document.getElementById('total-jobs').textContent = myJobs.length;
+            // Jobs with status "upcoming"
+            document.getElementById('upcoming-jobs').textContent = upcomingStatus;
+            // Jobs in the current week
+            document.getElementById('week-jobs').textContent = thisWeek;
+            // Jobs in the current month
+            document.getElementById('month-jobs').textContent = thisMonth;
+        }
+        
+        function showView(view) {
+            currentSection = view;
+            
+            document.getElementById('search-section').style.display = 'none';
+            document.getElementById('historic-section').style.display = 'none';
+            
+            if (view === 'search') {
+                document.getElementById('search-section').style.display = 'block';
+            } else if (view === 'historic') {
+                document.getElementById('historic-section').style.display = 'block';
+                loadHistoricJobs();
+            }
+        }
+        
+        function loadHistoricJobs() {
+            const now = new Date();
+            const historicJobs = myJobs.filter(job => {
+                if (!job['Install Date']) return false;
+                
+                const installDate = parseInstallDate(job['Install Date']);
+                return installDate && installDate <= now;
+            });
+            
+            const container = document.getElementById('historic-results');
+            const count = document.getElementById('historic-results-count');
+            
+            count.textContent = `${historicJobs.length} completed job${historicJobs.length !== 1 ? 's' : ''}`;
+            
+            if (historicJobs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <h3>No Historic Jobs</h3>
+                        <p>Completed jobs will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            displayJobs(historicJobs, container, true);
+        }
+        
+        function performSearch() {
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            
+            if (!searchTerm) {
+                displayJobs(myJobs, document.getElementById('search-results'), false);
+                document.getElementById('search-results-count').textContent = `${myJobs.length} job${myJobs.length !== 1 ? 's' : ''}`;
+                return;
+            }
+            
+            const results = myJobs.filter(job => {
+                const jobNumber = (job['Job Number'] || '').toLowerCase();
+                const postcode = (job['Postcode'] || '').toLowerCase();
+                const customerName = (job['Name'] || '').toLowerCase();
+                
+                return jobNumber.includes(searchTerm) || 
+                       postcode.includes(searchTerm) || 
+                       customerName.includes(searchTerm);
+            });
+            
+            const count = document.getElementById('search-results-count');
+            const container = document.getElementById('search-results');
+            
+            count.textContent = `${results.length} job${results.length !== 1 ? 's' : ''} found`;
+            
+            if (results.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🔍</div>
+                        <h3>No Results Found</h3>
+                        <p>Try a different search term</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            displayJobs(results, container, false);
+        }
+        
+        function handleSearchKeypress(event) {
+            if (event.key === 'Enter') {
+                performSearch();
+            }
+        }
+        
+        function displayJobs(jobs, container, isHistoric = false) {
+            const now = new Date();
+            
+            const html = `
+                <div class="results-grid">
+                    ${jobs.map(job => {
+                        const installDate = parseInstallDate(job['Install Date']);
+                        const isPast = installDate && installDate <= now;
+                        
+                        const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
+                        
+                        let statusText = 'Upcoming';
+                        let statusClass = 'upcoming';
+                        
+                        if (jobStatus === 'survey-complete') {
+                            statusText = 'Survey Complete';
+                            statusClass = 'survey-complete';
+                        } else if (jobStatus === 'install-started') {
+                            statusText = 'Install Started';
+                            statusClass = 'install-started';
+                        } else if (jobStatus === 'install-complete') {
+                            statusText = 'Install Complete';
+                            statusClass = 'install-complete';
+                        } else if (isPast || jobStatus === 'completed') {
+                            statusText = 'Completed';
+                            statusClass = 'completed';
+                        }
+                        
+                        return `
+                            <div class="job-card" onclick="showJobDetails('${job.id}')">
+                                <div class="job-header">
+                                    <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
+                                    <div class="job-status ${statusClass}">${statusText}</div>
+                                </div>
+                                <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown Customer')}</div>
+                                <div class="job-details">
+                                    <div class="job-detail">
+                                        <span class="job-detail-icon">📍</span>
+                                        ${escapeHtml(job['Postcode'] || 'N/A')}
+                                    </div>
+                                    <div class="job-detail">
+                                        <span class="job-detail-icon">📅</span>
+                                        ${escapeHtml(job['Install Date'] || 'Not scheduled')}
+                                    </div>
+                                    <div class="job-detail">
+                                        <span class="job-detail-icon">👷</span>
+                                        ${escapeHtml(job['Lead Engineer'] || 'Unassigned')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        function setView(view) {
+            currentView = view;
+            updateViewButtons(event.target);
+            if (currentSection === 'search') {
+                performSearch();
+            }
+        }
+        
+        function setHistoricView(view) {
+            currentView = view;
+            updateViewButtons(event.target);
+            loadHistoricJobs();
+        }
+        
+        function updateViewButtons(clickedBtn) {
+            const parent = clickedBtn.parentElement;
+            parent.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            clickedBtn.classList.add('active');
+        }
+        
+        async function showJobDetails(jobId) {
+            const job = myJobs.find(j => j.id === jobId);
+            if (!job) return;
+            
+            window.currentJobId = jobId;
+            
+            const modal = document.getElementById('job-modal');
+            const modalBody = document.getElementById('modal-body');
+            const modalTitle = document.getElementById('modal-job-number');
+            
+            modalTitle.textContent = `Job #${job['Job Number'] || 'N/A'}`;
+            
+            const jobStatus = job.status || 'upcoming';
+            
+            modalBody.innerHTML = `
+                <div class="detail-group">
+                    <div class="detail-label">Customer Name</div>
+                    <div class="detail-value">${escapeHtml(job['Name'] || 'N/A')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Phone Number</div>
+                    <div class="detail-value">${escapeHtml(job['Phone Number'] || 'N/A')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Email Address</div>
+                    <div class="detail-value">${escapeHtml(job['Email Address'] || 'N/A')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Address</div>
+                    <div class="detail-value">${escapeHtml(job['1st line of address'] || 'N/A')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Postcode</div>
+                    <div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Install Date</div>
+                    <div class="detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</div>
+                </div>
+                
+                <div class="detail-group">
+                    <div class="detail-label">Lead Engineer</div>
+                    <div class="detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</div>
+                </div>
+                
+                <div class="status-update-section">
+                    <div class="status-update-header">
+                        🔄 Update Job Status
+                    </div>
+                    <div class="status-buttons">
+                        <button 
+                            class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" 
+                            onclick="updateJobStatus('${jobId}', 'upcoming', this)"
+                        >
+                            Upcoming
+                        </button>
+                        <button 
+                            class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" 
+                            onclick="updateJobStatus('${jobId}', 'survey-complete', this)"
+                        >
+                            Survey Complete
+                        </button>
+                        <button 
+                            class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" 
+                            onclick="updateJobStatus('${jobId}', 'install-started', this)"
+                        >
+                            Install Started
+                        </button>
+                        <button 
+                            class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" 
+                            onclick="updateJobStatus('${jobId}', 'install-complete', this)"
+                        >
+                            Install Complete
+                        </button>
+                    </div>
+                    <div id="status-update-message"></div>
+                </div>
+                
+                <div class="attachments-section">
+                    <div class="attachments-header">📎 Associated Files</div>
+                    <div class="attachments-grid" id="attachments-list">
+                        <div class="loading-attachments">Loading files...</div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.add('show');
+            
+            await loadJobFiles(job['Job Number']);
+        }
+        
+        async function updateJobStatus(jobId, newStatus, buttonElement) {
+            const messageDiv = document.getElementById('status-update-message');
+            
+            try {
+                console.log('Updating job status:', jobId, newStatus);
+                const { doc, updateDoc } = window.firebaseModules;
+                const jobRef = doc(window.db, 'Solar-jobs', jobId);
+                
+                await updateDoc(jobRef, {
+                    status: newStatus,
+                    lastStatusUpdate: new Date().toISOString()
+                });
+                
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) {
+                    job.status = newStatus;
+                }
+                
+                const myJob = myJobs.find(j => j.id === jobId);
+                if (myJob) {
+                    myJob.status = newStatus;
+                }
+                
+                messageDiv.innerHTML = '<div class="status-update-message success">✓ Status updated successfully!</div>';
+                
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 3000);
+                
+                const buttons = document.querySelectorAll('.status-update-btn');
+                buttons.forEach(btn => btn.classList.remove('current'));
+                if (buttonElement) {
+                    buttonElement.classList.add('current');
+                }
+                
+                updateStats();
+                
+                if (currentSection === 'search') {
+                    performSearch();
+                } else if (currentSection === 'historic') {
+                    loadHistoricJobs();
+                }
+                
+            } catch (error) {
+                console.error('Error updating status:', error);
+                
+                let errorMsg = '✗ Failed to update status. ';
+                if (error.code === 'permission-denied') {
+                    errorMsg += 'Permission denied. Check Firebase security rules.';
+                } else if (error.code === 'not-found') {
+                    errorMsg += 'Job not found.';
+                } else {
+                    errorMsg += error.message || 'Please try again.';
+                }
+                
+                messageDiv.innerHTML = `<div class="status-update-message error">${errorMsg}</div>`;
+                
+                setTimeout(() => {
+                    messageDiv.innerHTML = '';
+                }, 5000);
+            }
+        }
+        
+        window.updateJobStatus = updateJobStatus;
+        
+        async function loadJobFiles(jobNumber) {
+            const attachmentsList = document.getElementById('attachments-list');
+            
+            try {
+                const { collection, getDocs, query, where } = window.firebaseModules;
+                
+                const fileCollections = [
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF' }
+                ];
+                
+                let allFiles = [];
+                
+                for (const fileCollection of fileCollections) {
+                    const filesQuery = query(
+                        collection(window.db, fileCollection.name),
+                        where('jobNumber', '==', jobNumber)
+                    );
+                    
+                    const querySnapshot = await getDocs(filesQuery);
+                    
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        allFiles.push({
+                            id: doc.id,
+                            ...data,
+                            collectionType: fileCollection.type,
+                            icon: fileCollection.icon
+                        });
+                    });
+                }
+                
+                if (allFiles.length === 0) {
+                    attachmentsList.innerHTML = '<div class="no-attachments">No files attached to this job</div>';
+                } else {
+                    attachmentsList.innerHTML = allFiles.map(file => `
+                        <div class="attachment-item">
+                            <div class="attachment-icon">${file.icon}</div>
+                            <div class="attachment-info">
+                                <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                                <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                            </div>
+                            <a href="${file.downloadURL}" target="_blank" class="attachment-download">
+                                Download
+                            </a>
+                        </div>
+                    `).join('');
+                }
+                
+            } catch (error) {
+                console.error('Error loading files:', error);
+                attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
+            }
+        }
+        
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown size';
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        function closeJobModal() {
+            document.getElementById('job-modal').classList.remove('show');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        document.getElementById('job-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'job-modal') {
+                closeJobModal();
+            }
+        });
+        
+        window.showView = showView;
+    </script>
+</body>
+</html>

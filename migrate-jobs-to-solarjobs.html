@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" data-pingu="std">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migrate jobs → Solar-jobs | Pingu - Solar</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--primary:#FF6B35;--accent:#00D9FF;--dark:#1A1A2E;--dark-light:#252541;--dark-lighter:#2F2F4A;--text:#EAEAEA;--text-dim:#9A9AB0;--success:#4ECCA3;--error:#FF6B6B;--warning:#FFC857}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--dark);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;line-height:1.5}
+  .wrap{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-family:Syne,sans-serif;font-size:28px;margin:0 0 6px}
+  .sub{color:var(--text-dim);margin-bottom:22px}
+  .card{background:var(--dark-light);border:1px solid var(--dark-lighter);border-radius:12px;padding:18px;margin-bottom:18px}
+  .card h2{font-family:Syne,sans-serif;font-size:18px;margin:0 0 10px}
+  ul{margin:6px 0 0 18px;padding:0}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .stat{background:var(--dark);border-radius:10px;padding:12px}
+  .stat .l{color:var(--text-dim);font-size:12px}
+  .stat .v{font-family:Syne,sans-serif;font-size:26px;font-weight:700}
+  .btn{font-family:inherit;font-size:14px;font-weight:700;border:0;border-radius:8px;padding:12px 18px;cursor:pointer;margin-right:8px}
+  .btn-a{background:var(--accent);color:#000}.btn-p{background:var(--primary);color:#fff}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .warn{border-left:4px solid var(--warning)}
+  .ok{color:var(--success)}.err{color:var(--error)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--dark-lighter);vertical-align:top}
+  th{color:var(--text-dim);position:sticky;top:0;background:var(--dark-light)}
+  .tbl{max-height:420px;overflow:auto}
+  .tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:700}
+  .t-new{background:rgba(78,204,163,.2);color:var(--success)}
+  .t-merge{background:rgba(0,217,255,.15);color:var(--accent)}
+  .t-alias{background:rgba(255,200,87,.15);color:var(--warning)}
+  #log{white-space:pre-wrap;font-size:12px;max-height:260px;overflow:auto;background:var(--dark);padding:10px;border-radius:8px}
+  a{color:var(--accent)}
+</style>
+    <link rel="stylesheet" href="pingu-theme.css">
+</head>
+<body>
+<div class="wrap">
+  <a href="admin.html">← Admin</a>
+  <h1>Migrate <code>jobs</code> → <code>Solar-jobs</code></h1>
+  <div class="sub">One-off tool. Makes Solar-jobs the single home for every job.</div>
+
+  <div class="card warn">
+    <h2>What this does</h2>
+    <ul>
+      <li>Copies every record in <b>jobs</b> into <b>Solar-jobs</b> with <b>all</b> its fields (customer name, phone, email, address, install date, engineer status…).</li>
+      <li>If the job is already in Solar-jobs (same document ID, or same Job Number + Job Type) it only <b>fills in blank fields</b> — it never overwrites anything already in Solar-jobs.</li>
+      <li>Otherwise it creates the Solar-jobs record using the <b>same document ID</b>, so existing survey links keep working.</li>
+      <li>Adds matching field names so every page can read every job: <i>Install Date ⇄ Booked Date</i>, <i>Lead Engineer ⇄ Lead</i>, <i>Job Length ⇄ Days</i>, <i>1st line of address → Address</i>. This is also applied to existing Solar-jobs records (blanks only).</li>
+      <li><b>Nothing is deleted.</b> The old jobs collection stays as a backup.</li>
+      <li>Safe to run more than once.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <button class="btn btn-a" id="scanBtn" onclick="scan()">1. Scan (dry run)</button>
+    <button class="btn btn-p" id="runBtn" onclick="run()" disabled>2. Run migration</button>
+    <div class="stats" style="margin-top:16px">
+      <div class="stat"><div class="l">Records in jobs</div><div class="v" id="s-jobs">—</div></div>
+      <div class="stat"><div class="l">Records in Solar-jobs</div><div class="v" id="s-solar">—</div></div>
+      <div class="stat"><div class="l">New Solar-jobs records</div><div class="v ok" id="s-new">—</div></div>
+      <div class="stat"><div class="l">Merged into existing</div><div class="v" style="color:var(--accent)" id="s-merge">—</div></div>
+      <div class="stat"><div class="l">Field-name fixes only</div><div class="v" style="color:var(--warning)" id="s-alias">—</div></div>
+      <div class="stat"><div class="l">Already up to date</div><div class="v" id="s-same">—</div></div>
+    </div>
+  </div>
+
+  <div class="card"><h2>Planned changes</h2><div class="tbl"><table>
+    <thead><tr><th>Action</th><th>Job Number</th><th>Job Type</th><th>Solar-jobs doc</th><th>Fields added</th></tr></thead>
+    <tbody id="plan"><tr><td colspan="5" style="color:var(--text-dim)">Run a scan first.</td></tr></tbody>
+  </table></div></div>
+
+  <div class="card"><h2>Log</h2><div id="log"></div></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+const app = initializeApp({
+  apiKey:"AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0", authDomain:"pingu-solar.firebaseapp.com", projectId:"pingu-solar",
+  storageBucket:"pingu-solar.firebasestorage.app", messagingSenderId:"232764952866", appId:"1:232764952866:web:5923b7f419de6355d6157b"
+});
+const db = getFirestore(app);
+
+let plan = [];
+const $ = id => document.getElementById(id);
+const log = m => { $('log').textContent += m + '\n'; $('log').scrollTop = 1e9; };
+const blank = v => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const key = j => `${String(j['Job Number']||j.jobNumber||'').trim().toLowerCase()}|${String(j['Job Type']||j.jobType||'').trim().toLowerCase()}`;
+const isoToUK = v => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) ? v.split('-').reverse().join('/') : v;
+
+// Fill matching field names (blank-only) on a merged record. Returns object of additions.
+function aliasFills(rec) {
+  const add = {};
+  const pairs = [
+    ['Booked Date',   'Install Date', v => v],
+    ['Install Date',  'Booked Date',  isoToUK],
+    ['Lead',          'Lead Engineer', v => v],
+    ['Lead Engineer', 'Lead',          v => v],
+    ['Days',          'Job Length',    v => v],
+    ['Job Length',    'Days',          v => v],
+    ['Address',       '1st line of address', v => v],
+  ];
+  for (const [target, source, fn] of pairs) {
+    if (blank(rec[target]) && blank(add[target]) && !blank(rec[source])) add[target] = fn(rec[source]);
+  }
+  if (blank(rec.uploadDate)) add.uploadDate = new Date().toISOString();
+  return add;
+}
+
+window.scan = async function () {
+  $('scanBtn').disabled = true; $('runBtn').disabled = true; plan = [];
+  log('Loading collections…');
+  const [solarSnap, jobsSnap] = await Promise.all([getDocs(collection(db, 'Solar-jobs')), getDocs(collection(db, 'jobs'))]);
+  const solarById = new Map(), solarByKey = new Map();
+  solarSnap.forEach(d => { const r = { ...d.data() }; solarById.set(d.id, r); const k = key(r); if (k !== '|' && !solarByKey.has(k)) solarByKey.set(k, d.id); });
+  $('s-jobs').textContent = jobsSnap.size; $('s-solar').textContent = solarSnap.size;
+  log(`jobs: ${jobsSnap.size}, Solar-jobs: ${solarSnap.size}`);
+
+  const touched = new Set();
+  let nNew = 0, nMerge = 0, nAlias = 0, nSame = 0;
+
+  jobsSnap.forEach(d => {
+    const legacy = d.data();
+    let targetId = null;
+    if (solarById.has(d.id)) targetId = d.id;
+    else { const k = key(legacy); if (k !== '|' && solarByKey.has(k)) targetId = solarByKey.get(k); }
+
+    if (!targetId) {
+      const data = { ...legacy };
+      Object.assign(data, aliasFills(data));
+      data._migratedFromJobs = true; data._migratedAt = new Date().toISOString(); data._legacyJobsId = d.id;
+      plan.push({ action: 'new', id: d.id, data, jn: legacy['Job Number'], jt: legacy['Job Type'], fields: Object.keys(legacy).length + ' (all)' });
+      solarById.set(d.id, data); touched.add(d.id); nNew++;
+      const nk = key(data); if (nk !== '|' && !solarByKey.has(nk)) solarByKey.set(nk, d.id);
+      return;
+    }
+    const existing = solarById.get(targetId);
+    const add = {};
+    for (const [f, v] of Object.entries(legacy)) if (blank(existing[f]) && !blank(v)) add[f] = v;
+    Object.assign(add, aliasFills({ ...existing, ...add }));
+    touched.add(targetId);
+    if (Object.keys(add).length) {
+      add._mergedFromJobsAt = new Date().toISOString(); add._legacyJobsId = d.id;
+      const prev = plan.find(p => p.id === targetId);
+      if (prev) Object.assign(prev.data, add);
+      else plan.push({ action: 'merge', id: targetId, data: add, jn: legacy['Job Number'], jt: legacy['Job Type'], fields: Object.keys(add).filter(f => !f.startsWith('_')).join(', ') });
+      Object.assign(existing, add); nMerge++;
+    } else nSame++;
+  });
+
+  // Field-name fixes on Solar-jobs records that had no jobs counterpart
+  solarById.forEach((rec, id) => {
+    if (touched.has(id)) return;
+    const add = aliasFills(rec);
+    if (Object.keys(add).length) { plan.push({ action: 'alias', id, data: add, jn: rec['Job Number'], jt: rec['Job Type'], fields: Object.keys(add).join(', ') }); nAlias++; }
+    else nSame++;
+  });
+
+  $('s-new').textContent = nNew; $('s-merge').textContent = nMerge; $('s-alias').textContent = nAlias; $('s-same').textContent = nSame;
+  const label = { new: '<span class="tag t-new">NEW</span>', merge: '<span class="tag t-merge">MERGE</span>', alias: '<span class="tag t-alias">NAMES</span>' };
+  $('plan').innerHTML = plan.length ? plan.map(p => `<tr><td>${label[p.action]}</td><td>${esc(p.jn)}</td><td>${esc(p.jt)}</td><td>${esc(p.id)}</td><td>${esc(p.fields)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="ok">Nothing to do — Solar-jobs is already complete.</td></tr>';
+  log(`Scan complete: ${plan.length} write(s) planned. Nothing has been written yet.`);
+  $('scanBtn').disabled = false; $('runBtn').disabled = plan.length === 0;
+};
+
+window.run = async function () {
+  if (!plan.length) return;
+  if (!confirm(`Write ${plan.length} record(s) to Solar-jobs?\n\nNothing will be deleted or overwritten.`)) return;
+  $('runBtn').disabled = true; $('scanBtn').disabled = true;
+  try {
+    for (let i = 0; i < plan.length; i += 400) {
+      const batch = writeBatch(db);
+      plan.slice(i, i + 400).forEach(p => batch.set(doc(db, 'Solar-jobs', p.id), p.data, { merge: true }));
+      await batch.commit();
+      log(`Wrote ${Math.min(i + 400, plan.length)} / ${plan.length}`);
+    }
+    log('✅ Migration complete. Click Scan again to confirm nothing is left to do.');
+  } catch (e) { log('❌ ' + e.message); }
+  plan = []; $('scanBtn').disabled = false;
+};
+</script>
+</body>
+</html>
