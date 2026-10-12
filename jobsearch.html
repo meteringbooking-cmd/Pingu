@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="en" data-pingu="std">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Search | Pingu - Solar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35;
+            --primary-dark: #E55A2B;
+            --secondary: #FFC857;
+            --accent: #00D9FF;
+            --dark: #1A1A2E;
+            --dark-light: #252541;
+            --dark-lighter: #2F2F4A;
+            --text: #EAEAEA;
+            --text-dim: #9A9AB0;
+            --success: #4ECCA3;
+            --error: #FF6B6B;
+            --shadow: rgba(255, 107, 53, 0.3);
+        }
+      
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+      
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--dark);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+      
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(255, 107, 53, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 217, 255, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(255, 200, 87, 0.06) 0%, transparent 50%);
+            animation: float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+      
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            33% { transform: translate(30px, -30px) rotate(120deg); }
+            66% { transform: translate(-20px, 20px) rotate(240deg); }
+        }
+      
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+      
+        header {
+            margin-bottom: 2rem;
+            animation: slideDown 0.8s ease-out;
+        }
+      
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+      
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+      
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+      
+        .back-btn {
+            background: var(--dark-light);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.7rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+      
+        .back-btn:hover {
+            background: var(--dark-lighter);
+            border-color: var(--primary);
+            transform: translateX(-5px);
+        }
+      
+        h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+      
+        .subtitle {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+        }
+      
+        .search-section {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+      
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+      
+        .search-section:focus-within {
+            border-color: var(--primary);
+        }
+      
+        .search-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+      
+        .search-icon {
+            font-size: 2rem;
+            filter: drop-shadow(0 4px 8px var(--shadow));
+        }
+      
+        .search-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            color: var(--text);
+        }
+      
+        .search-controls {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: end;
+        }
+      
+        .search-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+      
+        .search-input-group label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+      
+        .search-input {
+            background: var(--dark-lighter);
+            border: 2px solid var(--dark-lighter);
+            color: var(--text);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+      
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--dark);
+        }
+      
+        .search-input::placeholder {
+            color: var(--text-dim);
+            opacity: 0.6;
+        }
+      
+        .search-btn {
+            padding: 1rem 2.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+      
+        .search-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px var(--shadow);
+        }
+      
+        .filter-tags {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+      
+        .filter-tag {
+            background: var(--dark-lighter);
+            color: var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+      
+        .filter-tag:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+      
+        .filter-tag.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: var(--dark);
+            border-color: transparent;
+        }
+      
+        .results-section {
+            margin-top: 2rem;
+        }
+      
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+      
+        .results-count {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+        }
+      
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+      
+        .view-btn {
+            background: var(--dark-light);
+            color: var(--text-dim);
+            border: 2px solid transparent;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+        }
+      
+        .view-btn:hover {
+            border-color: var(--primary);
+            color: var(--text);
+        }
+      
+        .view-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+      
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-dim);
+            font-size: 1.1rem;
+        }
+      
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+      
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+      
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-dim);
+        }
+      
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+      
+        .empty-state h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+      
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 1.5rem;
+            animation: fadeIn 0.6s ease-out;
+        }
+      
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+      
+        .job-card {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 1.8rem;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+      
+        .job-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+      
+        .job-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+      
+        .job-card:hover::before {
+            transform: scaleX(1);
+        }
+      
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.8rem;
+        }
+      
+        .job-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+      
+        .job-status {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+      
+        .job-status.upcoming {
+            background: var(--accent);
+            color: var(--dark);
+        }
+      
+        .job-status.survey-complete {
+            background: #FFC857;
+            color: var(--dark);
+        }
+      
+        .job-status.install-started {
+            background: #FF9F1C;
+            color: var(--dark);
+        }
+      
+        .job-status.install-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+      
+        .job-status.completed {
+            background: var(--success);
+            color: var(--dark);
+        }
+      
+        .job-customer {
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+      
+        .job-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--dark-lighter);
+        }
+      
+        .job-detail {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+      
+        .job-detail-icon {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+      
+        .results-table {
+            background: var(--dark-light);
+            border-radius: 16px;
+            overflow: hidden;
+            animation: fadeIn 0.6s ease-out;
+        }
+      
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+      
+        thead {
+            background: var(--dark-lighter);
+        }
+      
+        th {
+            padding: 1.2rem;
+            text-align: left;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+      
+        tbody tr {
+            border-bottom: 1px solid var(--dark-lighter);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+      
+        tbody tr:hover {
+            background: var(--dark-lighter);
+        }
+      
+        td {
+            padding: 1.2rem;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+      
+        td:first-child {
+            color: var(--text);
+            font-weight: 500;
+        }
+      
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+      
+        .modal.show {
+            display: flex;
+        }
+      
+        .modal-content {
+            background: var(--dark-light);
+            border-radius: 16px;
+            padding: 2.5rem;
+            max-width: 700px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 2px solid var(--primary);
+            animation: slideUp 0.4s ease;
+        }
+      
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+      
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--dark-lighter);
+        }
+      
+        .modal-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+      
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            line-height: 1;
+        }
+      
+        .close-btn:hover {
+            color: var(--error);
+        }
+      
+        .modal-body {
+            display: grid;
+            gap: 1.5rem;
+        }
+      
+        .detail-group {
+            display: grid;
+            gap: 0.5rem;
+        }
+      
+        .detail-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+      
+        .detail-value {
+            color: var(--text);
+            font-size: 1.1rem;
+            padding: 0.8rem 1rem;
+            background: var(--dark-lighter);
+            border-radius: 8px;
+        }
+      
+        .detail-value.editable {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+      
+        .edit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+      
+        .edit-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+      
+        .engineer-select {
+            background: var(--dark);
+            border: 2px solid var(--primary);
+            color: var(--text);
+            padding: 0.6rem;
+            border-radius: 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            cursor: pointer;
+            flex: 1;
+        }
+      
+        .engineer-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+      
+        .save-cancel-btns {
+            display: flex;
+            gap: 0.5rem;
+        }
+      
+        .save-btn {
+            background: var(--success);
+            color: var(--dark);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+      
+        .save-btn:hover {
+            background: #3DB88D;
+            transform: scale(1.05);
+        }
+      
+        .cancel-btn {
+            background: var(--dark-lighter);
+            color: var(--text);
+            border: 2px solid var(--text-dim);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+        }
+      
+        .cancel-btn:hover {
+            border-color: var(--error);
+            color: var(--error);
+        }
+      
+        .status-update-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+      
+        .status-update-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+      
+        .status-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+        }
+      
+        .status-update-btn {
+            padding: 1rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+      
+        .status-update-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+      
+        .status-update-btn.upcoming {
+            background: var(--accent);
+            color: var(--dark);
+        }
+      
+        .status-update-btn.survey {
+            background: #FFC857;
+            color: var(--dark);
+        }
+      
+        .status-update-btn.install-start {
+            background: #FF9F1C;
+            color: var(--dark);
+        }
+      
+        .status-update-btn.install-complete {
+            background: var(--success);
+            color: var(--dark);
+        }
+      
+        .status-update-btn.current {
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+        }
+      
+        .status-update-message {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+      
+        .status-update-message.success {
+            background: rgba(78, 204, 163, 0.2);
+            color: var(--success);
+        }
+      
+        .status-update-message.error {
+            background: rgba(255, 107, 107, 0.2);
+            color: var(--error);
+        }
+      
+        .attachments-section {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 2px solid var(--dark-lighter);
+        }
+      
+        .attachments-header {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+      
+        .attachments-grid {
+            display: grid;
+            gap: 1rem;
+        }
+      
+        .attachment-item {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+      
+        .attachment-item:hover {
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+      
+        .attachment-icon {
+            font-size: 2rem;
+        }
+      
+        .attachment-info {
+            flex: 1;
+        }
+      
+        .attachment-name {
+            color: var(--text);
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.3rem;
+        }
+      
+        .attachment-type {
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+        }
+      
+        .attachment-download {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+      
+        .attachment-download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+      
+        .missing-file-item {
+            background: var(--dark-lighter);
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: all 0.3s ease;
+            border: 2px dashed var(--text-dim);
+        }
+      
+        .missing-file-item:hover {
+            border-color: var(--accent);
+        }
+      
+        .upload-file-btn {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+            color: var(--dark);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-family: 'Syne', sans-serif;
+        }
+      
+        .upload-file-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--shadow);
+        }
+      
+        .upload-file-input {
+            display: none;
+        }
+      
+        .no-attachments {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-dim);
+            font-style: italic;
+        }
+      
+        .loading-attachments {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-dim);
+        }
+      
+        .uploading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+      
+        .uploading-indicator::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+      
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+          
+            .search-controls {
+                grid-template-columns: 1fr;
+            }
+          
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+          
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+          
+            .modal-content {
+                padding: 1.5rem;
+            }
+          
+            .status-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+      
+        .status-message {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            z-index: 1001;
+            animation: slideInRight 0.4s ease;
+            display: none;
+        }
+      
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+      
+        .status-message.show {
+            display: block;
+        }
+      
+        .status-message.success {
+            background: var(--success);
+            color: var(--dark);
+        }
+      
+        .status-message.error {
+            background: var(--error);
+            color: white;
+        }
+    </style>
+    <link rel="stylesheet" href="pingu-theme.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <a href="index.html" class="logo">Pingu - Solar</a>
+                <a href="index.html" class="back-btn">← Back to Home</a>
+            </div>
+            <h1>Job Search</h1>
+            <p class="subtitle">Search and filter through all project jobs</p>
+        </header>
+     
+        <main>
+            <section class="search-section">
+                <div class="search-header">
+                    <span class="search-icon">🔍</span>
+                    <h2>Find Jobs</h2>
+                </div>
+             
+                <div class="search-controls">
+                    <div class="search-input-group">
+                        <label for="search-input">Search by Job Number, Postcode, or Customer Name</label>
+                        <input
+                            type="text"
+                            id="search-input"
+                            class="search-input"
+                            placeholder="e.g. 12345, SW1A 1AA, or John Smith..."
+                            onkeypress="if(event.key==='Enter') performSearch()"
+                        />
+                    </div>
+                    <button class="search-btn" onclick="performSearch()">Search</button>
+                </div>
+             
+                <div class="filter-tags">
+                    <div class="filter-tag active" data-filter="all" onclick="setFilter('all')">All Jobs</div>
+                    <div class="filter-tag" data-filter="this-week" onclick="setFilter('this-week')">This Week</div>
+                    <div class="filter-tag" data-filter="this-month" onclick="setFilter('this-month')">This Month</div>
+                    <div class="filter-tag" data-filter="recent" onclick="setFilter('recent')">Recently Added</div>
+                </div>
+            </section>
+         
+            <section class="results-section">
+                <div class="results-header">
+                    <div class="results-count" id="results-count">Loading jobs...</div>
+                    <div class="view-toggle">
+                        <button class="view-btn active" onclick="setView('grid')">Grid</button>
+                        <button class="view-btn" onclick="setView('table')">Table</button>
+                    </div>
+                </div>
+             
+                <div id="results-container">
+                    <div class="loading">Searching for jobs</div>
+                </div>
+            </section>
+        </main>
+    </div>
+ 
+    <div class="modal" id="job-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-job-number">Job #12345</h2>
+                <button class="close-btn" onclick="closeJobModal()">×</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Job details will be inserted here -->
+            </div>
+        </div>
+    </div>
+ 
+    <!-- Status Message -->
+    <div class="status-message" id="status-message"></div>
+
+    <!-- Hidden container for PDF rendering -->
+    <div id="survey-pdf-content" style="position:absolute; left:-9999px; top:-9999px; width:210mm; background:white; padding:20mm; font-family:Arial, sans-serif; line-height:1.5; color:#000;">
+    </div>
+
+    <!-- jsPDF and html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+ 
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getFirestore, collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+        import { getStorage, ref, getDownloadURL, getBlob } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+     
+        const firebaseConfig = {
+            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+            authDomain: "pingu-solar.firebaseapp.com",
+            projectId: "pingu-solar",
+            storageBucket: "pingu-solar.firebasestorage.app",
+            messagingSenderId: "232764952866",
+            appId: "1:232764952866:web:5923b7f419de6355d6157b",
+            measurementId: "G-PFH059DZ64"
+        };
+     
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const storage = getStorage(app);
+         
+            window.db = db;
+            window.storage = storage;
+            window.firebaseModules = { collection, getDocs, query, where, orderBy, limit, doc, updateDoc, addDoc, ref, getDownloadURL, getBlob };
+         
+            window.addEventListener('DOMContentLoaded', () => {
+                loadAllJobs();
+            });
+         
+        } catch (error) {
+            console.error('Firebase initialization error:', error);
+        }
+    </script>
+ 
+    <script>
+        // Global state
+        let allJobs = [];
+        let filteredJobs = [];
+        let currentView = 'grid';
+        let currentFilter = 'all';
+        let currentJobId = null;
+        let currentJobNumber = null;
+        let leadEngineers = [];
+        let isEditingEngineer = false;
+        let currentSurveyData = null;
+
+        async function loadAllJobs() {
+            try {
+                const { collection, getDocs, orderBy: orderByFn, query, where } = window.firebaseModules;
+                const jobsQuery = query(collection(window.db, 'Solar-jobs'), orderByFn('uploadDate', 'desc'));
+                const querySnapshot = await getDocs(jobsQuery);
+                allJobs = [];
+                querySnapshot.forEach(doc => allJobs.push({ id: doc.id, ...doc.data() }));
+                const engineersQuery = query(collection(window.db, 'team-members'), where('isLeadEngineer', '==', true));
+                const engineersSnapshot = await getDocs(engineersQuery);
+                leadEngineers = [];
+                engineersSnapshot.forEach(doc => leadEngineers.push({ id: doc.id, ...doc.data() }));
+                filteredJobs = [...allJobs];
+                displayResults();
+            } catch (error) {
+                console.error('Error loading jobs:', error);
+                showStatus('Error loading jobs: ' + error.message, 'error');
+                document.getElementById('results-container').innerHTML = `<div class="empty-state"><div class="empty-icon">❌</div><h3>Error Loading Jobs</h3><p>${error.message}</p></div>`;
+            }
+        }
+
+        async function performSearch() {
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            if (!searchTerm) { applyFilter(); return; }
+            filteredJobs = allJobs.filter(job => {
+                return (job['Job Number'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Postcode'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Name'] || '').toLowerCase().includes(searchTerm);
+            });
+            displayResults();
+        }
+
+        function setFilter(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-tag').forEach(tag => tag.classList.remove('active'));
+            event.target.classList.add('active');
+            applyFilter();
+        }
+
+        function applyFilter() {
+            const now = new Date();
+            const searchTerm = document.getElementById('search-input').value.trim().toLowerCase();
+            let jobs = searchTerm ? allJobs.filter(job => {
+                return (job['Job Number'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Postcode'] || '').toLowerCase().includes(searchTerm) ||
+                       (job['Name'] || '').toLowerCase().includes(searchTerm);
+            }) : [...allJobs];
+
+            if (currentFilter !== 'all') {
+                jobs = jobs.filter(job => {
+                    const uploadDate = new Date(job.uploadDate);
+                    const daysDiff = Math.floor((now - uploadDate) / (1000 * 60 * 60 * 24));
+                    switch(currentFilter) {
+                        case 'this-week': return daysDiff <= 7;
+                        case 'this-month': return daysDiff <= 30;
+                        case 'recent': return daysDiff <= 3;
+                        default: return true;
+                    }
+                });
+            }
+            filteredJobs = jobs;
+            displayResults();
+        }
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('results-container');
+            const countEl = document.getElementById('results-count');
+            countEl.textContent = `${filteredJobs.length} job${filteredJobs.length !== 1 ? 's' : ''} found`;
+
+            if (filteredJobs.length === 0) {
+                container.innerHTML = `<div class="empty-state"><div class="empty-icon">🔍</div><h3>No Jobs Found</h3><p>Try adjusting your search or filters</p></div>`;
+                return;
+            }
+
+            currentView === 'grid' ? displayGridView(container) : displayTableView(container);
+        }
+
+        function displayGridView(container) {
+            container.innerHTML = `<div class="results-grid">${filteredJobs.map(job => {
+                const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                const isPast = installDate && installDate <= new Date();
+                const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
+                let statusText = 'Upcoming', statusClass = 'upcoming';
+                if (jobStatus === 'survey-complete') { statusText = 'Survey Complete'; statusClass = 'survey-complete'; }
+                else if (jobStatus === 'install-started') { statusText = 'Install Started'; statusClass = 'install-started'; }
+                else if (jobStatus === 'install-complete') { statusText = 'Install Complete'; statusClass = 'install-complete'; }
+                else if (isPast || jobStatus === 'completed') { statusText = 'Completed'; statusClass = 'completed'; }
+                return `<div class="job-card" onclick="showJobDetails('${job.id}')">
+                    <div class="job-header"><div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div><div class="job-status ${statusClass}">${statusText}</div></div>
+                    <div class="job-customer">${escapeHtml(job['Name'] || 'Unknown Customer')}</div>
+                    <div class="job-details">
+                        <div class="job-detail"><span class="job-detail-icon">📍</span><span class="job-detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</span></div>
+                        <div class="job-detail"><span class="job-detail-icon">📅</span><span class="job-detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</span></div>
+                        <div class="job-detail"><span class="job-detail-icon">👷</span><span class="job-detail-value">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span></div>
+                    </div>
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function displayTableView(container) {
+            container.innerHTML = `<div class="results-table"><table><thead><tr><th>Job Number</th><th>Customer Name</th><th>Postcode</th><th>Install Date</th><th>Lead Engineer</th><th>Status</th></tr></thead><tbody>${filteredJobs.map(job => {
+                const installDate = job['Install Date'] ? new Date(job['Install Date']) : null;
+                const isPast = installDate && installDate <= new Date();
+                const jobStatus = job.status || (isPast ? 'completed' : 'upcoming');
+                let statusText = 'Upcoming';
+                if (jobStatus === 'survey-complete') statusText = 'Survey Complete';
+                else if (jobStatus === 'install-started') statusText = 'Install Started';
+                else if (jobStatus === 'install-complete') statusText = 'Install Complete';
+                else if (isPast || jobStatus === 'completed') statusText = 'Completed';
+                return `<tr onclick="showJobDetails('${job.id}')">
+                    <td>#${escapeHtml(job['Job Number'] || 'N/A')}</td>
+                    <td>${escapeHtml(job['Name'] || 'Unknown')}</td>
+                    <td>${escapeHtml(job['Postcode'] || 'N/A')}</td>
+                    <td>${escapeHtml(job['Install Date'] || 'Not scheduled')}</td>
+                    <td>${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</td>
+                    <td>${statusText}</td>
+                </tr>`;
+            }).join('')}</tbody></table></div>`;
+        }
+
+        async function showJobDetails(jobId) {
+            const job = allJobs.find(j => j.id === jobId);
+            if (!job) return;
+            currentJobId = jobId;
+            currentJobNumber = job['Job Number'];
+            isEditingEngineer = false;
+
+            document.getElementById('modal-job-number').textContent = `Job #${job['Job Number'] || 'N/A'}`;
+            const jobStatus = job.status || 'upcoming';
+
+            document.getElementById('modal-body').innerHTML = `
+                <div class="detail-group"><div class="detail-label">Customer Name</div><div class="detail-value">${escapeHtml(job['Name'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Phone Number</div><div class="detail-value">${escapeHtml(job['Phone Number'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Email Address</div><div class="detail-value">${escapeHtml(job['Email Address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Address</div><div class="detail-value">${escapeHtml(job['1st line of address'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Postcode</div><div class="detail-value">${escapeHtml(job['Postcode'] || 'N/A')}</div></div>
+                <div class="detail-group"><div class="detail-label">Install Date</div><div class="detail-value">${escapeHtml(job['Install Date'] || 'Not scheduled')}</div></div>
+                <div class="detail-group"><div class="detail-label">Lead Engineer</div><div class="detail-value editable" id="lead-engineer-container"><span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span><button class="edit-btn" onclick="editLeadEngineer()">Change</button></div></div>
+                <div class="detail-group"><div class="detail-label">Uploaded</div><div class="detail-value">${formatDate(job.uploadDate)}</div></div>
+                <div class="status-update-section">
+                    <div class="status-update-header">🔄 Update Job Status</div>
+                    <div class="status-buttons">
+                        <button class="status-update-btn upcoming ${jobStatus === 'upcoming' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'upcoming', this)">Upcoming</button>
+                        <button class="status-update-btn survey ${jobStatus === 'survey-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'survey-complete', this)">Survey Complete</button>
+                        <button class="status-update-btn install-start ${jobStatus === 'install-started' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-started', this)">Install Started</button>
+                        <button class="status-update-btn install-complete ${jobStatus === 'install-complete' ? 'current' : ''}" onclick="updateJobStatus('${jobId}', 'install-complete', this)">Install Complete</button>
+                    </div>
+                    <div id="status-update-message"></div>
+                </div>
+                <div class="attachments-section">
+                    <div class="attachments-header">📎 Associated Files</div>
+                    <div class="attachments-grid" id="attachments-list"><div class="loading-attachments">Loading files...</div></div>
+                </div>
+            `;
+
+            document.getElementById('job-modal').classList.add('show');
+            await loadJobFiles(job['Job Number']);
+        }
+
+        async function loadJobFiles(jobNumber) {
+            const attachmentsList = document.getElementById('attachments-list');
+            try {
+                const { collection, getDocs, query, where, orderBy, limit } = window.firebaseModules;
+                const fileCollections = [
+                    { name: 'scaffolding-csv', icon: '🏗️', type: 'Scaffolding CSV', accept: '.csv' },
+                    { name: 'schletter-pdf', icon: '📄', type: 'Schletter Report', accept: '.pdf' },
+                    { name: 'design-pdf', icon: '🎨', type: 'Design PDF', accept: '.pdf' }
+                ];
+
+                let allFiles = [];
+                let missingFiles = [];
+
+                const surveyQuery = query(collection(window.db, 'site-surveys'), where('jobNumber', '==', jobNumber), orderBy('submittedAt', 'desc'), limit(1));
+                const surveySnapshot = await getDocs(surveyQuery);
+                if (!surveySnapshot.empty) {
+                    const surveyDoc = surveySnapshot.docs[0];
+                    currentSurveyData = { id: surveyDoc.id, ...surveyDoc.data() };
+                    allFiles.push({ id: surveyDoc.id, fileName: 'Site Survey Report', collectionType: 'Site Survey', icon: '📋', isSurvey: true });
+                } else {
+                    missingFiles.push({ name: 'site-survey', icon: '📋', type: 'Site Survey', accept: '.pdf', isSurvey: true });
+                }
+
+                for (const fc of fileCollections) {
+                    const q = query(collection(window.db, fc.name), where('jobNumber', '==', jobNumber));
+                    const snap = await getDocs(q);
+                    if (snap.empty) missingFiles.push(fc);
+                    else snap.forEach(d => allFiles.push({ id: d.id, ...d.data(), collectionType: fc.type, icon: fc.icon }));
+                }
+
+                let html = '';
+                html += allFiles.map(file => file.isSurvey ? `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType}</div>
+                        </div>
+                        <button class="attachment-download" onclick="generateAndDownloadSurveyPDF(event)">Download PDF</button>
+                    </div>` : `
+                    <div class="attachment-item">
+                        <div class="attachment-icon">${file.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${escapeHtml(file.fileName)}</div>
+                            <div class="attachment-type">${file.collectionType} • ${formatFileSize(file.fileSize)}</div>
+                        </div>
+                        <a href="${file.downloadURL}" target="_blank" class="attachment-download">Download</a>
+                    </div>`).join('');
+
+                html += missingFiles.map((fc, i) => `
+                    <div class="missing-file-item">
+                        <div class="attachment-icon">${fc.icon}</div>
+                        <div class="attachment-info">
+                            <div class="attachment-name">${fc.type}</div>
+                            <div class="attachment-type">Not uploaded yet</div>
+                        </div>
+                        <input type="file" id="file-input-${i}" class="upload-file-input" accept="${fc.accept}" onchange="handleFileUpload(event, '${fc.name}', '${jobNumber}')"/>
+                        <button class="upload-file-btn" onclick="document.getElementById('file-input-${i}').click()">Upload</button>
+                    </div>`).join('');
+
+                attachmentsList.innerHTML = html || '<div class="no-attachments">No files attached to this job</div>';
+            } catch (error) {
+                console.error('Error loading files:', error);
+                attachmentsList.innerHTML = '<div class="no-attachments">Error loading files</div>';
+            }
+        }
+
+        // === CLOUD FUNCTION VERSION - Generates PDF server-side ===
+        // === DIRECT JSPDF VERSION WITH WORKING HYPERLINKS ===
+        async function generateAndDownloadSurveyPDF(event) {
+            event.preventDefault();
+            if (!currentSurveyData || !currentSurveyData.sections) {
+                alert("No survey data available.");
+                return;
+            }
+
+            const btn = event.target;
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Generating PDF...';
+
+            try {
+                console.log('Creating PDF directly with jsPDF...');
+                
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 20;
+                const maxWidth = pageWidth - (margin * 2);
+                let yPosition = margin;
+                
+                // Helper function to check if we need a new page
+                const checkPageBreak = (requiredSpace) => {
+                    if (yPosition + requiredSpace > pageHeight - margin) {
+                        pdf.addPage();
+                        yPosition = margin;
+                        return true;
+                    }
+                    return false;
+                };
+                
+                // Helper function to add wrapped text
+                const addText = (text, fontSize, style = 'normal', color = [0, 0, 0]) => {
+                    pdf.setFontSize(fontSize);
+                    pdf.setFont('helvetica', style);
+                    pdf.setTextColor(...color);
+                    
+                    const lines = pdf.splitTextToSize(text, maxWidth);
+                    const lineHeight = fontSize * 0.5;
+                    
+                    checkPageBreak(lines.length * lineHeight);
+                    
+                    lines.forEach(line => {
+                        pdf.text(line, margin, yPosition);
+                        yPosition += lineHeight;
+                    });
+                    
+                    return yPosition;
+                };
+                
+                // Title
+                pdf.setFontSize(24);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setTextColor(0, 0, 0);
+                pdf.text('Site Survey Report', pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 12;
+                
+                // Job Number
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(51, 51, 51);
+                pdf.text(`Job #${currentSurveyData.jobNumber || 'N/A'}`, pageWidth / 2, yPosition, { align: 'center' });
+                yPosition += 15;
+                
+                // Customer info
+                addText(`Customer: ${currentSurveyData.customerName || 'N/A'}`, 12, 'normal');
+                yPosition += 2;
+                addText(`Submitted: ${new Date(currentSurveyData.submittedAt).toLocaleString('en-GB')}`, 12, 'normal');
+                yPosition += 10;
+                
+                // Horizontal line
+                pdf.setDrawColor(200, 200, 200);
+                pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+                yPosition += 10;
+                
+                // Sections
+                let imageCounter = 1;
+                
+                for (const section of currentSurveyData.sections) {
+                    checkPageBreak(20);
+                    
+                    // Section title
+                    pdf.setFontSize(16);
+                    pdf.setFont('helvetica', 'bold');
+                    pdf.setTextColor(44, 62, 80);
+                    pdf.text(section.title, margin, yPosition);
+                    yPosition += 8;
+                    
+                    // Underline
+                    pdf.setDrawColor(238, 238, 238);
+                    pdf.line(margin, yPosition, pageWidth - margin, yPosition);
+                    yPosition += 8;
+                    
+                    for (const field of section.fields) {
+                        // Answer text
+                        if (field.answer && field.answer.toString().trim() !== '' && field.answer.toString().trim() !== 'N/A') {
+                            checkPageBreak(15);
+                            
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor(0, 0, 0);
+                            const questionLines = pdf.splitTextToSize(`${field.question}:`, maxWidth);
+                            questionLines.forEach(line => {
+                                pdf.text(line, margin, yPosition);
+                                yPosition += 5;
+                            });
+                            
+                            pdf.setFont('helvetica', 'normal');
+                            pdf.setTextColor(51, 51, 51);
+                            const answerLines = pdf.splitTextToSize(field.answer.toString(), maxWidth - 5);
+                            answerLines.forEach(line => {
+                                pdf.text(line, margin + 5, yPosition);
+                                yPosition += 5;
+                            });
+                            
+                            yPosition += 3;
+                        }
+                        
+                        // Photos section with clickable links
+                        if (field.photos && field.photos.length > 0) {
+                            checkPageBreak(10 + (field.photos.length * 8));
+                            
+                            // Photos header with background
+                            pdf.setFillColor(245, 245, 245);
+                            pdf.rect(margin, yPosition - 5, maxWidth, 8 + (field.photos.length * 8), 'F');
+                            
+                            pdf.setFontSize(11);
+                            pdf.setFont('helvetica', 'bold');
+                            pdf.setTextColor(51, 51, 51);
+                            pdf.text(`${field.question} - Photos (${field.photos.length}):`, margin + 3, yPosition);
+                            yPosition += 8;
+                            
+                            // Add each photo link
+                            for (const url of field.photos) {
+                                const linkText = `Image ${imageCounter} - Click to view`;
+                                
+                                pdf.setFontSize(10);
+                                pdf.setFont('helvetica', 'normal');
+                                pdf.setTextColor(0, 102, 204); // Blue color for links
+                                
+                                // Add the text
+                                pdf.text(linkText, margin + 8, yPosition);
+                                
+                                // Add the clickable link over the text
+                                // textWidth calculation for the link area
+                                const textWidth = pdf.getTextWidth(linkText);
+                                pdf.link(margin + 8, yPosition - 4, textWidth, 6, { url: url });
+                                
+                                // Add underline to show it's a link
+                                pdf.setDrawColor(0, 102, 204);
+                                pdf.line(margin + 8, yPosition + 0.5, margin + 8 + textWidth, yPosition + 0.5);
+                                
+                                yPosition += 8;
+                                imageCounter++;
+                            }
+                            
+                            yPosition += 5;
+                        }
+                    }
+                    
+                    yPosition += 5;
+                }
+                
+                console.log('Saving PDF...');
+                pdf.save(`Site_Survey_${currentSurveyData.jobNumber || 'Unknown'}.pdf`);
+                console.log('PDF generated successfully with working hyperlinks!');
+                
+                showStatus('PDF generated! Click image links to view photos.', 'success');
+
+            } catch (error) {
+                console.error('PDF generation failed:', error);
+                alert('Failed to generate PDF. Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+        window.generateAndDownloadSurveyPDF = generateAndDownloadSurveyPDF;
+
+        // All other functions (unchanged)
+        async function updateJobStatus(jobId, newStatus, buttonElement) {
+            const messageDiv = document.getElementById('status-update-message');
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.db, 'Solar-jobs', jobId), { status: newStatus, lastStatusUpdate: new Date().toISOString() });
+                const job = allJobs.find(j => j.id === jobId);
+                if (job) job.status = newStatus;
+                messageDiv.innerHTML = '<div class="status-update-message success">✓ Status updated successfully!</div>';
+                setTimeout(() => messageDiv.innerHTML = '', 3000);
+                document.querySelectorAll('.status-update-btn').forEach(b => b.classList.remove('current'));
+                if (buttonElement) buttonElement.classList.add('current');
+                displayResults();
+            } catch (error) {
+                console.error('Status update error:', error);
+                messageDiv.innerHTML = `<div class="status-update-message error">✗ Failed: ${error.message}</div>`;
+                setTimeout(() => messageDiv.innerHTML = '', 5000);
+            }
+        }
+        window.updateJobStatus = updateJobStatus;
+
+        function editLeadEngineer() {
+            if (isEditingEngineer) return;
+            isEditingEngineer = true;
+            const job = allJobs.find(j => j.id === currentJobId);
+            const container = document.getElementById('lead-engineer-container');
+            const options = leadEngineers.map(e => `<option value="${escapeHtml(e.name)}" ${e.name === job['Lead Engineer'] ? 'selected' : ''}>${escapeHtml(e.name)}</option>`).join('');
+            container.innerHTML = `
+                <select class="engineer-select" id="engineer-select"><option value="">-- Unassigned --</option>${options}</select>
+                <div class="save-cancel-btns">
+                    <button class="save-btn" onclick="saveLeadEngineer()">Save</button>
+                    <button class="cancel-btn" onclick="cancelEditEngineer()">Cancel</button>
+                </div>
+            `;
+        }
+
+        function cancelEditEngineer() {
+            isEditingEngineer = false;
+            const job = allJobs.find(j => j.id === currentJobId);
+            document.getElementById('lead-engineer-container').innerHTML = `
+                <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'] || 'Unassigned')}</span>
+                <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
+            `;
+        }
+
+        async function saveLeadEngineer() {
+            const newEngineer = document.getElementById('engineer-select').value;
+            try {
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.db, 'Solar-jobs', currentJobId), { 'Lead Engineer': newEngineer || 'Unassigned', 'Lead': newEngineer || 'Unassigned' });
+                const job = allJobs.find(j => j.id === currentJobId);
+                job['Lead Engineer'] = newEngineer || 'Unassigned';
+                isEditingEngineer = false;
+                document.getElementById('lead-engineer-container').innerHTML = `
+                    <span id="lead-engineer-display">${escapeHtml(job['Lead Engineer'])}</span>
+                    <button class="edit-btn" onclick="editLeadEngineer()">Change</button>
+                `;
+                showStatus('Lead engineer updated successfully!', 'success');
+                displayResults();
+            } catch (error) {
+                console.error('Engineer update error:', error);
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function handleFileUpload(event, collectionName, jobNumber) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const uploadButton = event.target.nextElementSibling;
+            const originalText = uploadButton.textContent;
+            uploadButton.innerHTML = '<div class="uploading-indicator">Uploading</div>';
+            uploadButton.disabled = true;
+            try {
+                const { ref, uploadBytes, getDownloadURL, addDoc, collection } = window.firebaseModules;
+                const storageRef = ref(window.storage, `${collectionName}/${jobNumber}_${file.name}`);
+                const snapshot = await uploadBytes(storageRef, file);
+                const downloadURL = await getDownloadURL(snapshot.ref);
+                await addDoc(collection(window.db, collectionName), {
+                    jobNumber, fileName: file.name, fileSize: file.size, downloadURL, uploadDate: new Date().toISOString()
+                });
+                showStatus('File uploaded successfully!', 'success');
+                await loadJobFiles(jobNumber);
+            } catch (error) {
+                console.error('Upload error:', error);
+                showStatus('Upload failed: ' + error.message, 'error');
+                uploadButton.textContent = originalText;
+                uploadButton.disabled = false;
+            }
+        }
+        window.handleFileUpload = handleFileUpload;
+
+        function formatFileSize(bytes) {
+            if (!bytes) return 'Unknown size';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function closeJobModal() {
+            document.getElementById('job-modal').classList.remove('show');
+        }
+
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return text;
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status-message');
+            status.textContent = message;
+            status.className = `status-message ${type} show`;
+            setTimeout(() => status.classList.remove('show'), 3000);
+        }
+
+        document.getElementById('job-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'job-modal') closeJobModal();
+        });
+    </script>
+</body>
+</html>
