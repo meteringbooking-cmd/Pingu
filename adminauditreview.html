@@ -215,7 +215,7 @@
         .stat-item.clickable { cursor: pointer; transition: border-color .15s ease; }
         .stat-item.clickable:hover, .stat-item.active { border-color: rgba(255,107,53,0.55); }
         .filters { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 14px; }
-        .filters .control-group { min-width: 220px; }
+        .filters .control-group { flex: 0 1 auto; }
         .job-no { font-family: var(--mono); font-weight: 700; color: var(--text-strong); font-size: 12.5px; white-space: nowrap; }
         .sub { display: block; color: var(--text-dim); font-size: 12px; margin-top: 2px; }
         .photo-cell { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -263,11 +263,27 @@
         </div>
 
         <div class="filters">
-            <div class="control-group">
+            <div class="control-group" style="min-width:240px">
                 <label class="control-label" for="search">Search</label>
-                <input id="search" class="control-input" placeholder="Job number, postcode or engineer" oninput="render()">
+                <input id="search" class="control-input" placeholder="Job number, postcode or address" oninput="render()">
+            </div>
+            <div class="control-group" style="min-width:190px">
+                <label class="control-label" for="status-filter">Status</label>
+                <select id="status-filter" class="control-input" onchange="filter=this.value; render()">
+                    <option value="open">Open (awaiting + received)</option>
+                    <option value="awaiting">Awaiting photos</option>
+                    <option value="received">Photos received</option>
+                    <option value="nfa">No further action</option>
+                    <option value="all">All statuses</option>
+                </select>
             </div>
             <div class="control-group" style="min-width:180px">
+                <label class="control-label" for="engineer-filter">Engineer</label>
+                <select id="engineer-filter" class="control-input" onchange="render()">
+                    <option value="">All engineers</option>
+                </select>
+            </div>
+            <div class="control-group" style="min-width:200px">
                 <label class="control-label" for="outcome-filter">Outcome</label>
                 <select id="outcome-filter" class="control-input" onchange="render()">
                     <option value="">All outcomes</option>
@@ -276,6 +292,25 @@
                     <option value="pnc">Pass with non-conformances</option>
                 </select>
             </div>
+            <div class="control-group" style="min-width:170px">
+                <label class="control-label" for="sent-filter">Email sent</label>
+                <select id="sent-filter" class="control-input" onchange="toggleDates(); render()">
+                    <option value="">Any time</option>
+                    <option value="0-7">Last 7 days</option>
+                    <option value="8-14">8 to 14 days ago</option>
+                    <option value="15-">More than 14 days ago</option>
+                    <option value="custom">Date range&hellip;</option>
+                </select>
+            </div>
+            <div class="control-group date-range" style="min-width:150px; display:none">
+                <label class="control-label" for="sent-from">From</label>
+                <input type="date" id="sent-from" class="control-input" onchange="render()">
+            </div>
+            <div class="control-group date-range" style="min-width:150px; display:none">
+                <label class="control-label" for="sent-to">To</label>
+                <input type="date" id="sent-to" class="control-input" onchange="render()">
+            </div>
+            <button class="btn btn-ghost" onclick="clearFilters()">Clear filters</button>
         </div>
 
         <div class="table-wrap">
@@ -404,6 +439,11 @@
                         reviewedAt: x.auditReviewedAt || '', reviewedBy: x.auditReviewedBy || '', reviewNote: x.auditReviewNote || ''
                     });
                 });
+                const engSel = document.getElementById('engineer-filter');
+                const keep = engSel.value;
+                const names = [...new Set(jobs.map(j => j.engineer))].sort((a, b) => a.localeCompare(b));
+                engSel.innerHTML = '<option value="">All engineers</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+                if (names.includes(keep)) engSel.value = keep;
                 jobs.sort((a, b) => (b.hasNew - a.hasNew) || (new Date(a.sentAt) - new Date(b.sentAt)));
                 render();
             } catch (e) {
@@ -413,11 +453,34 @@
 
         function bucket(j) { return j.reviewed && !j.hasNew ? 'nfa' : (j.hasNew ? 'received' : 'awaiting'); }
 
-        window.setFilter = function (f) { filter = (filter === f && f !== 'all') ? 'open' : f; render(); };
+        window.setFilter = function (f) { filter = (filter === f && f !== 'all') ? 'open' : f; document.getElementById('status-filter').value = filter; render(); };
+        window.toggleDates = function () {
+            const custom = document.getElementById('sent-filter').value === 'custom';
+            document.querySelectorAll('.date-range').forEach(el => el.style.display = custom ? '' : 'none');
+        };
+        window.clearFilters = function () {
+            ['search', 'engineer-filter', 'outcome-filter', 'sent-filter', 'sent-from', 'sent-to'].forEach(id => document.getElementById(id).value = '');
+            filter = 'open'; document.getElementById('status-filter').value = 'open';
+            toggleDates(); render();
+        };
+        function sentMatches(j) {
+            const mode = document.getElementById('sent-filter').value;
+            if (!mode) return true;
+            const age = daysSince(j.sentAt);
+            if (mode === '0-7') return age <= 7;
+            if (mode === '8-14') return age >= 8 && age <= 14;
+            if (mode === '15-') return age > 14;
+            const from = document.getElementById('sent-from').value, to = document.getElementById('sent-to').value;
+            const d = new Date(j.sentAt);
+            if (from) { const [y, m, dd] = from.split('-').map(Number); if (d < new Date(y, m - 1, dd)) return false; }
+            if (to)   { const [y, m, dd] = to.split('-').map(Number);   if (d >= new Date(y, m - 1, dd + 1)) return false; }
+            return true;
+        }
 
         window.render = function () {
             const q = document.getElementById('search').value.trim().toLowerCase();
             const oc = document.getElementById('outcome-filter').value;
+            const eng = document.getElementById('engineer-filter').value;
             const counts = { awaiting: 0, received: 0, nfa: 0 };
             jobs.forEach(j => counts[bucket(j)]++);
             document.getElementById('stat-awaiting').textContent = counts.awaiting;
@@ -431,7 +494,9 @@
                 if (filter === 'open' && b === 'nfa') return false;
                 if (['awaiting', 'received', 'nfa'].includes(filter) && b !== filter) return false;
                 if (oc && j.key !== oc) return false;
-                if (q && !`${j.jobNumber} ${j.postcode} ${j.engineer} ${j.address}`.toLowerCase().includes(q)) return false;
+                if (eng && j.engineer !== eng) return false;
+                if (!sentMatches(j)) return false;
+                if (q && !`${j.jobNumber} ${j.postcode} ${j.address}`.toLowerCase().includes(q)) return false;
                 return true;
             });
 
