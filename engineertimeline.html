@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"><script src="geko-theme.js"></script>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>Geko — My Schedule</title>
+
+<style>
+/* ══ DARK MODE (default) ══ */
+:root {
+  --bg: var(--ds-bg);
+  --surface: var(--ds-surface-2);
+  --surface2: var(--ds-surface-3);
+  --surface3: #172436;
+  --border: rgb(var(--ds-fg-rgb) / 0.07);
+  --border2: rgb(var(--ds-fg-rgb) / 0.12);
+  --accent: var(--ds-accent);
+  --accent2: var(--ds-info);
+  --danger: var(--ds-danger);
+  --warning: var(--ds-warn);
+  --purple: var(--ds-violet);
+  --text: var(--ds-text);
+  --text-muted: var(--ds-muted);
+  --text-dim: var(--ds-faint);
+  --radius: 14px;
+  --card-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --topbar-bg: rgb(var(--ds-bg-rgb) / 0.97);
+  --input-bg: var(--ds-surface-3);
+  --modal-bg: var(--ds-surface-2);
+  --overlay-bg: rgba(0,0,0,0.8);
+  --note-bg: rgb(var(--ds-info-rgb) / 0.04);
+  --note-border: rgb(var(--ds-info-rgb) / 0.2);
+}
+
+/* ══ LIGHT MODE ══ */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ── Drive-time badges — VERTICAL layout ── */
+.dt-badge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  gap: 0;
+  transform: translateY(-50%);
+}
+.dt-pill {
+  display: flex; align-items: center; gap: 3px;
+  padding: 2px 7px; border-radius: 20px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.03em;
+  white-space: nowrap; border: 1px solid; line-height: 1.5;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.55);
+}
+.dt-pill.dt-ok     { background: rgb(var(--ds-accent-rgb) / 0.12);  border-color: rgb(var(--ds-accent-rgb) / 0.4);  color: var(--ds-accent); }
+.dt-pill.dt-warn   { background: rgb(var(--ds-warn-rgb) / 0.12); border-color: rgb(var(--ds-warn-rgb) / 0.4); color: var(--ds-warn); }
+.dt-pill.dt-danger { background: rgb(var(--ds-danger-rgb) / 0.18);  border-color: rgb(var(--ds-danger-rgb) / 0.6);  color: var(--ds-danger); }
+.dt-pill.dt-loading { background: rgba(107,138,170,0.08); border-color: rgba(107,138,170,0.2); color: rgba(107,138,170,0.5); }
+
+
+
+.dt-connector {
+  width: 1px; height: 8px;
+  background: rgb(var(--ds-fg-rgb) / 0.13);
+}
+.dt-connector.danger { background: rgb(var(--ds-danger-rgb) / 0.5); }
+
+
+
+.tl-job-card.iso-violation {
+  animation: isoFlash 1.8s ease-in-out infinite !important;
+}
+@keyframes isoFlash {
+  0%,100% { box-shadow: 0 0 0 0 rgb(var(--ds-danger-rgb) / 0); border-color: rgb(var(--ds-danger-rgb) / 0.7); }
+  50%      { box-shadow:none; border-color: rgb(var(--ds-danger-rgb) / 0.9); }
+}
+.iso-badge {
+  position: absolute; top: -7px; left: 6px;
+  background: var(--danger); color: #fff;
+  font-size: 8px; font-weight: 800; padding: 2px 6px; border-radius: 3px;
+  text-transform: uppercase; letter-spacing: 0.3px; pointer-events: none; z-index: 21;
+  white-space: nowrap; box-shadow: 0 2px 6px rgb(var(--ds-danger-rgb) / 0.5);
+}
+
+/* ── Live indicator ── */
+#liveIndicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 20px;
+  border: 1px solid rgb(var(--ds-accent-rgb) / 0.2);
+  background: rgb(var(--ds-accent-rgb) / 0.05);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--accent); transition: all 0.3s;
+  flex-shrink: 0;
+}
+#liveIndicator.connecting { border-color: rgb(var(--ds-info-rgb) / 0.2); background: rgb(var(--ds-info-rgb) / 0.05); color: var(--accent2); }
+#liveIndicator.error { border-color: rgb(var(--ds-danger-rgb) / 0.2); background: rgb(var(--ds-danger-rgb) / 0.05); color: var(--danger); }
+
+
+
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow:none;
+  animation: livePulse 2s ease-in-out infinite;
+}
+#liveIndicator.connecting .live-dot { background: var(--accent2); box-shadow:none; }
+#liveIndicator.error .live-dot { background: var(--danger); animation: none; box-shadow: none; }
+@keyframes livePulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(0.8)} }
+
+/* ── Theme toggle ── */
+#themeToggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px 5px 10px; border-radius: 20px;
+  border: 1px solid rgb(var(--ds-fg-rgb) / 0.12);
+  background: rgb(var(--ds-fg-rgb) / 0.05);
+  color: var(--text-muted); font-size: 11px; font-weight: 600;
+  letter-spacing: 0.04em; cursor: pointer;
+  transition: all 0.22s ease; font-family:var(--ds-font);
+  white-space: nowrap; user-select: none; flex-shrink: 0;
+}
+#themeToggle:hover { border-color: rgb(var(--ds-fg-rgb) / 0.22); background: rgb(var(--ds-fg-rgb) / 0.09); color: var(--text); }
+
+
+.theme-toggle-track {
+  width: 30px; height: 16px; border-radius: 8px;
+  background: rgb(var(--ds-fg-rgb) / 0.12); border: 1px solid rgb(var(--ds-fg-rgb) / 0.18);
+  position: relative; flex-shrink: 0; transition: background 0.22s, border-color 0.22s;
+}
+
+.theme-toggle-thumb {
+  position: absolute; top: 2px; left: 2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.22s cubic-bezier(0.32,0.72,0,1), background 0.22s;
+  pointer-events: none;
+}
+
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family:var(--ds-font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.3s, color 0.3s;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgb(var(--ds-accent-rgb) / 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgb(var(--ds-info-rgb) / 0.04) 0%, transparent 60%);
+  transition: background 0.3s;
+}
+
+/* ── LOGIN ── */
+#loginScreen {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 24px;
+}
+.login-box {
+  width: 100%; max-width: 420px;
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 20px; padding: 40px 32px;
+  box-shadow:var(--ds-shadow-sm);
+  position: relative; overflow: hidden;
+}
+.login-box::before {
+  content: ""; position: absolute; top: -60px; right: -60px;
+  width: 200px; height: 200px; border-radius: 50%;
+  background: radial-gradient(circle, rgb(var(--ds-accent-rgb) / 0.07), transparent 70%);
+  pointer-events: none;
+}
+.login-logo { height: 48px; object-fit: contain; margin-bottom: 28px; display: block; filter:none; }
+.login-title { font-family:var(--ds-font); font-size: 22px; font-weight: 700; margin-bottom: 6px; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 30px; }
+.login-field { margin-bottom: 16px; }
+.login-field label { display: block; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px; }
+.login-field input { width: 100%; height: 50px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 16px; padding: 0 14px; font-family:var(--ds-font); outline: none; transition: border-color 0.18s; }
+.login-field input:focus { border-color: var(--accent); }
+.login-field input::placeholder { color: var(--text-dim); }
+.login-btn { width: 100%; height: 52px; background: linear-gradient(90deg, var(--accent), var(--accent2)); border: none; border-radius: 10px; color: var(--ds-bg); font-size: 15px; font-weight: 700; font-family:var(--ds-font); cursor: pointer; margin-top: 8px; letter-spacing: 0.5px; transition: filter 0.18s, transform 0.18s; }
+.login-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.login-error { margin-top: 14px; padding: 10px 14px; border-radius: 8px; background: rgb(var(--ds-danger-rgb) / 0.1); border: 1px solid rgb(var(--ds-danger-rgb) / 0.3); color: var(--danger); font-size: 13px; display: none; }
+.login-error.show { display: block; }
+
+/* ── APP SHELL ── */
+#app { display: none; flex-direction: column; min-height: 100vh; position: relative; z-index: 1; }
+#app.visible { display: flex; }
+
+/* TOPBAR */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--topbar-bg);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  padding: 0 16px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  transition: background 0.3s, border-color 0.3s;
+}
+.topbar-logo {
+  height: 40px; width: 40px; object-fit: cover; object-position: center;
+  flex-shrink: 0;
+  filter:none;
+  border-radius: 8px;
+}
+
+.topbar-center { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center; min-width: 0; }
+.view-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; padding: 3px; gap: 2px; flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
+.view-btn { height: 32px; padding: 0 14px; border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; background: transparent; color: var(--text-muted); font-family:var(--ds-font); transition: all 0.18s; white-space: nowrap; }
+.view-btn.active { background: rgb(var(--ds-accent-rgb) / 0.12); color: var(--accent); }
+.date-nav { display: flex; align-items: center; gap: 4px; }
+.dnb { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; transition: all 0.15s; flex-shrink: 0; }
+.dnb:hover { border-color: var(--border2); color: var(--text); }
+.date-lbl { font-family:var(--ds-font); font-size: 11px; font-weight: 700; text-align: center; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+.today-btn { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgb(var(--ds-accent-rgb) / 0.3); background: rgb(var(--ds-accent-rgb) / 0.07); color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; font-family:var(--ds-font); transition: all 0.15s; flex-shrink: 0; }
+.today-btn:hover { background: rgb(var(--ds-accent-rgb) / 0.13); }
+.topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.user-pill { display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 100px; transition: background 0.3s, border-color 0.3s; }
+.user-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: var(--ds-bg); flex-shrink: 0; }
+.user-name { font-size: 12px; font-weight: 500; }
+@media (max-width: 540px) { .user-name { display: none; } .user-pill { padding: 4px; } }
+.logout-btn { height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 12px; cursor: pointer; font-family:var(--ds-font); transition: all 0.15s; }
+.logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+@media (max-width: 600px) {
+  .topbar { flex-wrap: wrap; height: auto; padding: 10px 14px 10px; gap: 8px; }
+  .topbar-center { order: 3; width: 100%; flex: none; justify-content: center; }
+  .topbar-logo { order: 1; } .topbar-right { order: 2; }
+  .date-lbl { max-width: 180px; font-size: 11px; }
+}
+
+/* CONTENT */
+.content { flex: 1; padding: 20px 16px; width: 100%; }
+@media (min-width: 768px) { .content { padding: 28px 28px; } }
+
+/* DAY STATS BAR */
+.stats-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.stat-pill { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); font-size: 13px; flex: 1; min-width: 0; transition: background 0.3s, border-color 0.3s; }
+.stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.stat-num { font-family:var(--ds-font); font-weight: 700; font-size: 18px; }
+.stat-lbl { color: var(--text-muted); font-size: 11px; white-space: nowrap; }
+
+/* EMPTY */
+.center-msg { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+.center-msg .big { font-size: 48px; margin-bottom: 14px; }
+.center-msg p { font-size: 15px; line-height: 1.6; }
+
+/* ── DAY VIEW TIMELINE ── */
+.timeline-scroll { overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; }
+
+.timeline-wrap {
+  display: flex;
+  position: relative;
+  min-height: 100px;
+}
+.timeline-gutter {
+  width: 52px;
+  flex-shrink: 0;
+  position: relative;
+}
+.timeline-gutter-label {
+  position: absolute;
+  right: 8px;
+  font-family:var(--ds-font);
+  font-size: 10px;
+  color: var(--text-dim);
+  transform: translateY(-50%);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+  transition: color 0.3s;
+}
+
+.timeline-badge-col {
+  width: 80px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.timeline-grid {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}
+.timeline-hour-row { position: absolute; left: 0; right: 0; border-top: 1px solid var(--border); transition: border-color 0.3s; }
+.timeline-hour-row::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed rgb(var(--ds-fg-rgb) / 0.03); }
+
+.timeline-now-line { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 10; pointer-events: none; }
+.timeline-now-line::before { content: ""; position: absolute; left: -4px; top: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); }
+.timeline-now-line-label { position: absolute; right: 6px; top: -9px; font-family:var(--ds-font); font-size: 9px; color: var(--danger); background: var(--bg); padding: 1px 4px; border-radius: 3px; pointer-events: none; transition: background 0.3s; }
+
+/* ── Timeline cards ── */
+.tl-job-card {
+  position: absolute; left: 4px; right: 4px;
+  border-radius: 12px; border: 1px solid var(--border);
+  border-left: 5px solid var(--accent);
+  background: var(--surface); box-shadow: var(--card-shadow);
+  padding: 0 12px;
+  overflow: visible; cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.3s;
+  z-index: 2;
+  display: flex; flex-direction: row; align-items: center; gap: 8px;
+}
+.tl-job-card:active { transform: scale(0.99); }
+@media (min-width: 600px) {
+  .tl-job-card:hover { transform: translateX(3px); box-shadow:var(--ds-shadow-sm); border-color: rgb(var(--ds-fg-rgb) / 0.18); z-index: 5; }
+  
+}
+.tl-job-card::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(135deg, rgb(var(--ds-accent-rgb) / 0.03) 0%, transparent 60%); }
+
+.tl-job-card.status-complete    { border-left-color: var(--accent);   background: rgb(var(--ds-accent-rgb) / 0.04); }
+.tl-job-card.status-en-route    { border-left-color: var(--accent2);  background: rgb(var(--ds-info-rgb) / 0.04); }
+.tl-job-card.status-in-progress { border-left-color: var(--warning);  background: rgb(var(--ds-warn-rgb) / 0.04); }
+.tl-job-card.status-abort       { border-left-color: var(--danger);   background: rgb(var(--ds-danger-rgb) / 0.04); }
+.tl-job-card.status-unassigned  { border-left-color: var(--text-dim); }
+
+/* Flash on live update */
+@keyframes cardFlash {
+  0%   { box-shadow: 0 0 0 0 rgb(var(--ds-accent-rgb) / 0.7); }
+  40%  { box-shadow: 0 0 0 8px rgb(var(--ds-accent-rgb) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--ds-accent-rgb) / 0); }
+}
+.tl-job-card.just-updated { animation: cardFlash 0.8s ease-out forwards; }
+
+@keyframes cardFlashLight {
+  0%   { box-shadow: 0 0 0 0 rgb(var(--ds-accent-rgb) / 0.7); }
+  40%  { box-shadow: 0 0 0 8px rgb(var(--ds-accent-rgb) / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(var(--ds-accent-rgb) / 0); }
+}
+
+.tl-card-inner {
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0; flex: 1; overflow: hidden;
+}
+.tl-time { font-family:var(--ds-font); font-size: 10px; font-weight: 700; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+.tl-sep  { color: var(--text-dim); font-size: 10px; flex-shrink: 0; }
+.tl-type { font-size: 13px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; min-width: 0; }
+.tl-customer { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 2; min-width: 0; }
+.tl-postcode { font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+.tl-id { font-family:var(--ds-font); font-size: 10px; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
+.tl-note-icon { font-size: 11px; flex-shrink: 0; opacity: 0.8; }
+.tl-status-pill {
+  flex-shrink: 0; display: inline-flex; align-items: center;
+  padding: 2px 8px; border-radius: 100px;
+  font-size: 10px; font-weight: 600; border: 1px solid;
+}
+
+/* ── UNSCHEDULED ── */
+.unscheduled-section { margin-top: 24px; }
+.unscheduled-label { font-family:var(--ds-font); font-size: 11px; color: var(--warning); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.unscheduled-label::after { content: ""; flex: 1; height: 1px; background: rgb(var(--ds-warn-rgb) / 0.2); }
+
+/* ── JOB CARD (list / unscheduled) ── */
+.job-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--radius); padding: 18px 20px; cursor: pointer;
+  transition: all 0.2s; position: relative; overflow: hidden;
+  box-shadow: var(--card-shadow); margin-bottom: 10px; width: 100%;
+}
+.job-card::before { content: ""; position: absolute; inset: 0; background: linear-gradient(135deg, rgb(var(--ds-accent-rgb) / 0.03) 0%, transparent 60%); pointer-events: none; }
+.job-card:active { transform: scale(0.99); }
+@media (min-width: 600px) { .job-card:hover { border-color: rgb(var(--ds-fg-rgb) / 0.15); transform: translateY(-2px); box-shadow:var(--ds-shadow-sm); }  }
+.job-card.status-complete    { border-left-color: var(--accent); background: rgb(var(--ds-accent-rgb) / 0.03); }
+.job-card.status-en-route    { border-left-color: var(--accent2); background: rgb(var(--ds-info-rgb) / 0.04); }
+.job-card.status-in-progress { border-left-color: var(--warning); background: rgb(var(--ds-warn-rgb) / 0.04); }
+.job-card.status-abort       { border-left-color: var(--danger); background: rgb(var(--ds-danger-rgb) / 0.04); }
+.job-card.status-unassigned  { border-left-color: var(--text-dim); }
+.job-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.job-type { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.job-id { font-family:var(--ds-font); font-size: 11px; color: var(--accent); font-weight: 700; background: rgb(var(--ds-accent-rgb) / 0.08); border: 1px solid rgb(var(--ds-accent-rgb) / 0.2); padding: 4px 10px; border-radius: 6px; flex-shrink: 0; white-space: nowrap; }
+.job-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-bottom: 14px; }
+@media (min-width: 480px) { .job-meta { grid-template-columns: repeat(3, 1fr); } }
+.job-meta-item { display: flex; flex-direction: column; gap: 3px; }
+.job-meta-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+.job-meta-val { font-size: 15px; color: var(--text); font-weight: 500; }
+.job-time-badge { display: inline-flex; align-items: center; gap: 8px; font-family:var(--ds-font); font-size: 15px; font-weight: 700; color: var(--text); background: var(--surface2); border: 1px solid var(--border2); padding: 8px 14px; border-radius: 10px; margin-bottom: 14px; transition: background 0.3s, border-color 0.3s; }
+.job-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 100px; font-size: 13px; font-weight: 600; border: 1px solid; text-transform: capitalize; }
+.status-badge.complete    { background: rgb(var(--ds-accent-rgb) / 0.1); border-color: rgb(var(--ds-accent-rgb) / 0.3); color: var(--accent); }
+.status-badge.en-route    { background: rgb(var(--ds-info-rgb) / 0.1); border-color: rgb(var(--ds-info-rgb) / 0.3); color: var(--accent2); }
+.status-badge.in-progress { background: rgb(var(--ds-warn-rgb) / 0.1); border-color: rgb(var(--ds-warn-rgb) / 0.3); color: var(--warning); }
+.status-badge.abort       { background: rgb(var(--ds-danger-rgb) / 0.1); border-color: rgb(var(--ds-danger-rgb) / 0.3); color: var(--danger); }
+.status-badge.unassigned  { background: rgba(107,137,170,0.1); border-color: rgba(107,137,170,0.2); color: var(--text-muted); }
+.tap-hint { font-size: 12px; color: var(--text-dim); display: flex; align-items: center; gap: 5px; }
+
+/* ── WEEK VIEW ── */
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+@media (max-width: 600px) { .week-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 6px; } .week-day-col:nth-child(n/**/+8) { display: none; } }
+.week-day-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: background 0.3s, border-color 0.3s; }
+.week-day-header { padding: 10px 10px; border-bottom: 1px solid var(--border); text-align: center; background: var(--surface2); transition: background 0.3s, border-color 0.3s; }
+.week-day-name { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 4px; }
+.week-day-num { font-family:var(--ds-font); font-size: 18px; font-weight: 700; }
+.week-day-col.is-today .week-day-num { color: var(--accent); }
+.week-day-col.is-today { border-color: rgb(var(--ds-accent-rgb) / 0.25); }
+.week-day-col.weekend { opacity: 0.6; }
+.week-day-jobs { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+.week-job-card { background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid; border-radius: 8px; padding: 8px 10px; cursor: pointer; transition: all 0.18s; }
+.week-job-card:active { transform: scale(0.97); }
+@media (min-width: 600px) { .week-job-card:hover { transform: translateY(-2px); box-shadow:var(--ds-shadow-sm); }  }
+.week-job-card.complete    { border-left-color: var(--accent); background: rgb(var(--ds-accent-rgb) / 0.05); }
+.week-job-card.en-route    { border-left-color: var(--accent2); background: rgb(var(--ds-info-rgb) / 0.05); }
+.week-job-card.in-progress { border-left-color: var(--warning); background: rgb(var(--ds-warn-rgb) / 0.05); }
+.week-job-card.abort       { border-left-color: var(--danger); background: rgb(var(--ds-danger-rgb) / 0.05); }
+.week-job-card.unassigned  { border-left-color: var(--text-dim); }
+.week-job-type { font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+.week-job-post { font-size: 10px; color: var(--text-muted); }
+.week-job-id   { font-family:var(--ds-font); font-size: 9px; color: var(--accent); margin-top: 3px; }
+.week-job-time { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.week-empty    { padding: 16px; text-align: center; color: var(--text-dim); font-size: 12px; }
+
+/* ── STATUS MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgb(var(--ds-fg-rgb) / 0.07); backdrop-filter: blur(6px);
+  display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-sheet {
+  background: var(--modal-bg); border: 1px solid var(--border2); border-bottom: none;
+  border-radius: 20px 20px 0 0; width: 100%; max-width: 680px;
+  padding: 22px 20px 40px; transform: translateY(60px);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.3s;
+  max-height: 92vh; overflow-y: auto;
+}
+@media (min-width: 680px) {
+  .modal-overlay { align-items: center; }
+  .modal-sheet { border: 1px solid var(--border2); border-radius: 20px; max-height: 90vh; padding: 28px 28px 36px; }
+  .modal-overlay.open .modal-sheet { transform: translateY(0); }
+}
+.modal-overlay.open .modal-sheet { transform: translateY(0); }
+.modal-drag-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--border2); margin: 0 auto 20px; }
+@media (min-width: 680px) { .modal-drag-handle { display: none; } }
+.modal-job-id { font-family:var(--ds-font); font-size: 12px; color: var(--accent); margin-bottom: 4px; }
+.modal-job-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
+.modal-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); margin-bottom: 12px; margin-top: 18px; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.status-option { padding: 14px 16px; border-radius: 12px; border: 2px solid var(--border); background: var(--surface2); cursor: pointer; transition: all 0.18s; display: flex; flex-direction: column; gap: 3px; -webkit-tap-highlight-color: transparent; }
+.status-option:active { transform: scale(0.97); }
+.status-option.selected { transform: translateY(-2px); }
+.status-option.opt-enroute    { --opt-c: var(--accent2); }
+.status-option.opt-inprogress { --opt-c: var(--warning); }
+.status-option.opt-complete   { --opt-c: var(--accent); }
+.status-option.opt-abort      { --opt-c: var(--danger); }
+.status-option.opt-enroute.selected    { border-color: var(--accent2); background: rgb(var(--ds-info-rgb) / 0.07); }
+.status-option.opt-inprogress.selected { border-color: var(--warning); background: rgb(var(--ds-warn-rgb) / 0.07); }
+.status-option.opt-complete.selected   { border-color: var(--accent); background: rgb(var(--ds-accent-rgb) / 0.07); }
+.status-option.opt-abort.selected      { border-color: var(--danger); background: rgb(var(--ds-danger-rgb) / 0.07); }
+.status-option-icon { font-size: 20px; }
+.status-option-name { font-size: 14px; font-weight: 600; color: var(--opt-c); }
+.status-option-desc { font-size: 11px; color: var(--text-muted); }
+
+/* Navigate section */
+.navigate-section { display: none; margin-top: 14px; background: rgb(var(--ds-info-rgb) / 0.06); border: 1px solid rgb(var(--ds-info-rgb) / 0.2); border-radius: 12px; padding: 14px 16px; }
+.navigate-section.show { display: block; }
+.navigate-section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--accent2); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.navigate-address-display { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 10px; line-height: 1.5; }
+.navigate-btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.nav-btn { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; font-family:var(--ds-font); transition: all 0.18s; text-decoration: none; border: 1px solid; white-space: nowrap; }
+.nav-btn-maps { background: rgb(var(--ds-info-rgb) / 0.1); border-color: rgb(var(--ds-info-rgb) / 0.4); color: var(--accent2); }
+.nav-btn-maps:hover { background: rgb(var(--ds-info-rgb) / 0.2); }
+.nav-btn-copy { background: rgb(var(--ds-fg-rgb) / 0.05); border-color: var(--border2); color: var(--text-muted); }
+
+.nav-btn-copy:hover { background: rgb(var(--ds-fg-rgb) / 0.1); color: var(--text); }
+.nav-btn-copy.copied { border-color: rgb(var(--ds-accent-rgb) / 0.4); color: var(--accent); background: rgb(var(--ds-accent-rgb) / 0.07); }
+
+/* Abort */
+.abort-section { display: none; margin-top: 14px; }
+.abort-section.show { display: block; }
+.abort-section label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--danger); margin-bottom: 8px; }
+.abort-input { width: 100%; height: 50px; background: var(--surface2); border: 2px solid rgb(var(--ds-danger-rgb) / 0.3); border-radius: 10px; color: var(--text); font-size: 16px; letter-spacing: 2px; padding: 0 14px; font-family:var(--ds-font); outline: none; transition: border-color 0.18s; }
+.abort-input:focus { border-color: var(--danger); }
+.abort-input::placeholder { color: var(--text-dim); letter-spacing: 1px; font-size: 13px; }
+
+/* ── NOTES SECTION ── */
+.notes-section { margin-top: 18px; }
+.notes-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.existing-note-box {
+  background: var(--note-bg); border: 1px solid var(--note-border);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+  font-size: 13px; color: var(--text); line-height: 1.6;
+  white-space: pre-wrap; word-break: break-word;
+}
+.existing-note-meta { font-size: 10px; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+.existing-note-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--text-dim); }
+.note-textarea {
+  width: 100%; min-height: 90px; max-height: 220px;
+  background: var(--surface2); border: 1px solid var(--note-border);
+  border-radius: 10px; color: var(--text); font-size: 14px;
+  padding: 12px 14px; font-family:var(--ds-font);
+  outline: none; resize: vertical;
+  transition: border-color 0.18s, background 0.3s;
+  line-height: 1.6;
+}
+.note-textarea:focus { border-color: var(--accent2); }
+.note-textarea::placeholder { color: var(--text-dim); }
+.note-hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+/* Modal actions */
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+.modal-submit-btn { flex: 1; height: 52px; border-radius: 12px; border: none; font-size: 15px; font-weight: 700; font-family:var(--ds-font); cursor: pointer; background: linear-gradient(90deg, var(--accent), var(--accent2)); color: var(--ds-bg); transition: all 0.18s; }
+.modal-submit-btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
+.modal-submit-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.modal-submit-btn:active { transform: scale(0.99); }
+.modal-cancel-btn { height: 52px; padding: 0 22px; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-size: 14px; cursor: pointer; font-family:var(--ds-font); transition: all 0.15s; }
+.modal-cancel-btn:hover { border-color: var(--border2); color: var(--text); }
+.modal-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; transition: background 0.3s, border-color 0.3s; }
+.modal-info-item { display: flex; flex-direction: column; gap: 3px; }
+.modal-info-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-dim); }
+.modal-info-val { font-size: 14px; font-weight: 500; }
+
+/* ── DOCUMENT UPLOAD ── */
+.doc-upload-section { margin-top: 18px; }
+.doc-upload-zone { border: 2px dashed rgb(var(--ds-info-rgb) / 0.25); border-radius: 14px; padding: 22px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: rgb(var(--ds-info-rgb) / 0.03); position: relative; }
+.doc-upload-zone:hover, .doc-upload-zone.dragover { border-color: rgb(var(--ds-info-rgb) / 0.5); background: rgb(var(--ds-info-rgb) / 0.07); }
+.doc-upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.doc-upload-icon { width: 36px; height: 36px; margin: 0 auto 10px; background: rgb(var(--ds-info-rgb) / 0.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.doc-upload-label { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+.doc-upload-hint { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+.doc-queue { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.doc-queue-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; transition: background 0.3s, border-color 0.3s; }
+.doc-queue-icon { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.doc-queue-info { flex: 1; min-width: 0; }
+.doc-queue-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.doc-queue-size { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.doc-queue-remove { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; transition: all 0.15s; font-family:var(--ds-mono); }
+.doc-queue-remove:hover { border-color: var(--danger); color: var(--danger); background: rgb(var(--ds-danger-rgb) / 0.07); }
+.doc-upload-btn { width: 100%; height: 44px; border-radius: 10px; border: 1px solid rgb(var(--ds-info-rgb) / 0.35); background: rgb(var(--ds-info-rgb) / 0.08); color: var(--accent2); font-size: 14px; font-weight: 600; cursor: pointer; font-family:var(--ds-font); margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.18s; }
+.doc-upload-btn:hover { background: rgb(var(--ds-info-rgb) / 0.15); }
+.doc-upload-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.doc-progress-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.doc-progress-info { flex: 1; min-width: 0; }
+.doc-progress-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+.doc-progress-bar-track { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+.doc-progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: 2px; transition: width 0.2s; width: 0%; }
+.doc-progress-pct { font-family:var(--ds-font); font-size: 11px; color: var(--accent2); flex-shrink: 0; }
+.doc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.doc-list-item { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; transition: all 0.15s; text-decoration: none; }
+.doc-list-item:hover { border-color: var(--border2); }
+.doc-list-icon { width: 34px; height: 34px; border-radius: 8px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.doc-list-info { flex: 1; min-width: 0; }
+.doc-list-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.doc-list-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.doc-list-download { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; background: rgb(var(--ds-info-rgb) / 0.1); border: 1px solid rgb(var(--ds-info-rgb) / 0.25); color: var(--accent2); display: flex; align-items: center; justify-content: center; }
+.doc-empty { text-align: center; padding: 16px; color: var(--text-dim); font-size: 13px; }
+
+/* ── JOB PHOTOS ── */
+.photo-upload-section { margin-top: 18px; }
+.photo-cat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.photo-cat-header { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text); display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+.photo-cat-header:hover { background: rgb(var(--ds-fg-rgb) / 0.02); }
+.photo-cat-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; background: rgb(var(--ds-info-rgb) / 0.1); color: var(--accent2); }
+.photo-cat-body { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.photo-item-box { background: rgb(var(--ds-fg-rgb) / 0.045); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.photo-item-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.photo-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+.photo-item-thumb { aspect-ratio: 4/3; border-radius: 6px; overflow: hidden; position: relative; border: 1px solid var(--border); }
+.photo-item-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.photo-item-dropzone {
+  aspect-ratio: 4/3; border: 1.5px dashed rgb(var(--ds-info-rgb) / 0.3); border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; font-size: 10px; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
+  background: rgb(var(--ds-info-rgb) / 0.02); text-align: center; padding: 6px; position: relative;
+}
+.photo-item-dropzone:hover, .photo-item-dropzone.dragover { border-color: var(--accent2); background: rgb(var(--ds-info-rgb) / 0.08); color: var(--accent2); }
+.photo-item-dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 99999; padding: 12px 22px; border-radius: 12px; font-size: 14px; font-weight: 600; opacity: 0; transition: all 0.3s; pointer-events: none; white-space: nowrap; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.ok  { background: rgb(var(--ds-surface-rgb) / 0.97); border: 1px solid rgb(var(--ds-accent-rgb) / 0.4); color: var(--accent); box-shadow:var(--ds-shadow-md); }
+#toast.err { background: rgba(20,5,8,0.97); border: 1px solid rgb(var(--ds-danger-rgb) / 0.4); color: var(--danger); box-shadow:var(--ds-shadow-md); }
+#toast.info { background: rgb(var(--ds-surface-rgb) / 0.97); border: 1px solid rgb(var(--ds-info-rgb) / 0.4); color: var(--accent2); box-shadow:var(--ds-shadow-md); }
+
+
+
+
+/* Loading */
+#loadingOverlay { position: fixed; inset: 0; z-index: 8000; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; transition: background 0.3s; }
+#loadingOverlay.hidden { display: none; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; color: var(--text-muted); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+<link rel="stylesheet" href="geko-ds.css"><link rel="stylesheet" href="geko-icons.css"><script defer src="geko-icons.js"></script></head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Loading schedule…</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- LOGIN -->
+<div id="loginScreen" style="display:none;">
+  <div class="login-box">
+    <img class="login-logo"
+      src="https://www.dropbox.com/scl/fi/90alqdk8bozulywe2c8bw/Tech-inspired-Geko-logo-design.png?rlkey=tcagro1dwoelqxfmxqldrp178&st=xh5pubjr&dl=1"
+      alt="Geko"/>
+    <div class="login-title">Engineer Portal</div>
+    <div class="login-sub">Sign in with your name and password to view your schedule.</div>
+    <div class="login-field">
+      <label>Full Name</label>
+      <input type="text" id="loginName" placeholder="e.g. Alex Johnson" autocomplete="name"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <button class="login-btn" id="loginBtn">Sign In →</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="topbar">
+    <!-- Square Gecko icon — matches scheduling.html sidebar top-left -->
+    <img class="topbar-logo"
+      src="https://www.dropbox.com/scl/fi/z1uitujubjdw2wtoedh0k/Gecko-tech-logo-design.png?rlkey=btn0fgjn6b1s8odpc5saghhgo&st=zm9wjxvr&dl=1"
+      alt="Geko"/>
+
+    <div class="topbar-center">
+      <div class="date-nav">
+        <button class="dnb" id="prevBtn">&#8249;</button>
+        <span class="date-lbl" id="dateLbl">Loading…</span>
+        <button class="dnb" id="nextBtn">&#8250;</button>
+      </div>
+      <button class="today-btn" id="todayBtn">Today</button>
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnDay">Day</button>
+        <button class="view-btn" id="btnWeek">Week</button>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Live indicator -->
+      <div id="liveIndicator" class="connecting">
+        <div class="live-dot"></div>
+        <span id="liveText">Connecting…</span>
+      </div>
+
+      <button id="themeToggle" title="Toggle light / dark mode">
+        <span id="themeIcon" style="font-size:12px">☀️</span>
+        <div class="theme-toggle-track">
+          <div class="theme-toggle-thumb"></div>
+        </div>
+        <span id="themeLabel" style="font-size:11px;font-weight:600;letter-spacing:0.04em">Light</span>
+      </button>
+
+      <div class="user-pill">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <span class="user-name" id="userNameDisplay">Loading…</span>
+      </div>
+      <button class="logout-btn" id="logoutBtn">Out</button>
+    </div>
+  </header>
+
+  <div class="content" id="mainContent"></div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-sheet">
+    <div class="modal-drag-handle"></div>
+    <div class="modal-job-id" id="mJobId"></div>
+    <div class="modal-job-title" id="mJobTitle"></div>
+
+    <div class="modal-info-grid" id="mInfoGrid"></div>
+
+    <div class="modal-section-label">Update Status</div>
+
+    <div class="status-grid">
+      <div class="status-option opt-enroute" data-status="en-route" onclick="selectStatus(this)">
+        <div class="status-option-icon">🚗</div>
+        <div class="status-option-name">En Route</div>
+        <div class="status-option-desc">Travelling to job</div>
+      </div>
+      <div class="status-option opt-inprogress" data-status="in-progress" onclick="selectStatus(this)">
+        <div class="status-option-icon">🔧</div>
+        <div class="status-option-name">In Progress</div>
+        <div class="status-option-desc">Currently on site</div>
+      </div>
+      <div class="status-option opt-complete" data-status="complete" onclick="selectStatus(this)">
+        <div class="status-option-icon">✅</div>
+        <div class="status-option-name">Complete</div>
+        <div class="status-option-desc">Job finished</div>
+      </div>
+      <div class="status-option opt-abort" data-status="abort" onclick="selectStatus(this)">
+        <div class="status-option-icon">🚫</div>
+        <div class="status-option-name">Abort</div>
+        <div class="status-option-desc">Job cannot proceed</div>
+      </div>
+    </div>
+
+    <div class="abort-section" id="abortSection">
+      <label>Abort Authorisation Code <span style="color:var(--danger)">*</span></label>
+      <input class="abort-input" type="text" id="abortCode" placeholder="Enter authorisation code" inputmode="text"/>
+    </div>
+
+    <div class="navigate-section" id="navigateSection">
+      <div class="navigate-section-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        Get Directions
+      </div>
+      <div class="navigate-address-display" id="navigateAddress"></div>
+      <div class="navigate-btn-row">
+        <a class="nav-btn nav-btn-maps" id="mapsLink" href="#" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Open in Maps
+        </a>
+        <button class="nav-btn nav-btn-copy" id="copyAddressBtn" onclick="copyAddress()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy Address
+        </button>
+      </div>
+    </div>
+
+    <!-- NOTES -->
+    <div class="notes-section">
+      <div class="notes-section-header">
+        <div class="modal-section-label" style="margin:0">📝 Job Notes</div>
+      </div>
+      <div id="existingNotesContainer"></div>
+      <textarea class="note-textarea" id="noteInput" placeholder="Add a note… (e.g. customer called ahead, no access, meter in unusual location)"></textarea>
+      <div class="note-hint">Notes are saved alongside your status update and visible to the office team.</div>
+    </div>
+
+    <!-- JOB PHOTOS -->
+    <div class="photo-upload-section">
+      <div class="modal-section-label">📷 Job Photos</div>
+      <div class="photo-cats-container" id="photoCatsContainer"></div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div class="doc-upload-section">
+      <div class="modal-section-label">Documents</div>
+      <div id="docListContainer">
+        <div class="doc-empty" id="docListEmpty" style="display:none;">No documents attached yet.</div>
+        <div class="doc-list" id="docList"></div>
+      </div>
+      <div class="doc-upload-zone" id="docUploadZone">
+        <input type="file" id="docFileInput" multiple
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,.txt,.csv,.heic,.mp4,.mov"
+          onchange="handleFileSelect(event)"/>
+        <div class="doc-upload-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+        </div>
+        <div class="doc-upload-label">Tap to attach files</div>
+        <div class="doc-upload-hint">PDF, Word, Excel, Images, Video · Up to 50 MB per file</div>
+      </div>
+      <div class="doc-queue" id="docQueue"></div>
+      <div class="doc-queue" id="docProgressList"></div>
+      <button class="doc-upload-btn" id="docUploadBtn" style="display:none;" onclick="uploadQueuedFiles()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Upload Files
+      </button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="modal-submit-btn" id="submitStatusBtn" disabled onclick="submitStatus()">Save</button>
+      <button class="modal-cancel-btn" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── Theme toggle ── */
+(function(){
+  const saved = localStorage.getItem('geko-theme');
+  if(saved!=='dark') document.documentElement.classList.add('light-mode');
+  function updateUI(){
+    const isLight = document.documentElement.classList.contains('light-mode');
+    const icon  = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
+    if(icon)  icon.textContent  = isLight ? '🌙' : '☀️';
+    if(label) label.textContent = isLight ? 'Dark' : 'Light';
+  }
+  document.addEventListener('DOMContentLoaded', ()=>{
+    updateUI();
+    document.getElementById('themeToggle').addEventListener('click', ()=>{
+      document.documentElement.classList.toggle('light-mode');
+      const isLight = document.documentElement.classList.contains('light-mode');
+      localStorage.setItem('geko-theme', isLight ? 'light' : 'dark');
+      updateUI();
+    });
+  });
+})();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, getDocs, onSnapshot, doc, updateDoc, arrayUnion }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+const firebaseApp = initializeApp({
+  apiKey:"AIzaSyDVy6E89BBETXvRk6H__HfjSE6k4IfqrqU",
+  authDomain:"geko-scheduling.firebaseapp.com",
+  projectId:"geko-scheduling",
+  storageBucket:"geko-scheduling.firebasestorage.app",
+  messagingSenderId:"824568732787",
+  appId:"1:824568732787:web:c12db983fd6a5b44b01e06"
+});
+
+const db = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
+
+/* ── State ── */
+const SESSION_KEY = 'geko_engineer_session';
+const DAY_START = 7, DAY_END_DEFAULT = 18;
+let currentUser = null;
+let allJobs = [];
+let currentView = 'day';
+let currentDate = today0();
+let activeJobId = null;
+let selectedStatus = null;
+let activeJobAddress = '';
+let activeJobPostcode = '';
+let docQueue = [];
+let unsubscribeJobs = null;
+
+/* ── Job type params ── */
+let jobTypeParams = new Map();
+let engLevels = new Map();
+let engPostcodes = new Map();
+let engIsoMinutes = new Map();
+
+/* ── Hardcoded fallback durations ── */
+const JOB_DURATIONS_FALLBACK = {"dual fuel":2,"single gas":1.5,"single elec":1.5,"comms":0.5};
+
+function getDuration(jobType, engineerName) {
+  const t   = (jobType || '').toLowerCase().trim();
+  const eng = (engineerName || '').toLowerCase().trim();
+  const level = engLevels.get(eng) || '';
+  if (level) {
+    const key = level.toLowerCase() + '|||' + t;
+    if (jobTypeParams.has(key)) return jobTypeParams.get(key);
+    for (const [k, v] of jobTypeParams) {
+      const [kLevel, kType] = k.split('|||');
+      if (kLevel === level.toLowerCase() && (t.includes(kType) || kType.includes(t))) return v;
+    }
+  }
+  for (const [key, v] of Object.entries(JOB_DURATIONS_FALLBACK)) {
+    if (t.includes(key)) return v;
+  }
+  return 1;
+}
+
+/* ── Postcode geocode cache & haversine ── */
+const postcodeCache = new Map();
+const AVG_SPEED_KMH = 53.1;
+
+function normalisePostcode(pc){ return (pc||'').trim().toUpperCase().replace(/\s+/g,''); }
+
+async function geocodePostcodes(postcodes){
+  const toFetch = [...new Set(postcodes.map(normalisePostcode))].filter(pc=>pc&&!postcodeCache.has(pc));
+  if(!toFetch.length) return;
+  const CHUNK = 100;
+  for(let i=0; i<toFetch.length; i+=CHUNK){
+    const chunk = toFetch.slice(i,i+CHUNK);
+    try{
+      const res = await fetch('https://api.postcodes.io/postcodes',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({postcodes: chunk})
+      });
+      if(!res.ok) throw new Error('postcodes.io '+res.status);
+      const json = await res.json();
+      (json.result||[]).forEach(r=>{
+        const key = normalisePostcode(r.query);
+        postcodeCache.set(key, r.result ? {lat:r.result.latitude, lon:r.result.longitude} : null);
+      });
+    } catch(e){
+      console.warn('Postcode geocode failed:',e);
+      chunk.forEach(pc=>postcodeCache.set(pc,null));
+    }
+  }
+}
+
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function driveMinutes(pc1,pc2){
+  const a = postcodeCache.get(normalisePostcode(pc1));
+  const b = postcodeCache.get(normalisePostcode(pc2));
+  if(!a||!b) return null;
+  const km = haversineKm(a.lat,a.lon,b.lat,b.lon);
+  return Math.max(1, Math.round((km*1.4/AVG_SPEED_KMH)*60));
+}
+
+/* ── Helpers ── */
+function today0() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+function sameDay(a,b) { return a&&b&&a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function esc(s) { return String(s||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtTime(h) { const hh=Math.floor(h),mm=Math.round((h-hh)*60); return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`; }
+
+function parseDate(s) {
+  if(!s) return null; s=String(s).trim(); let m;
+  m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m){const d=new Date(+m[3],+m[2]-1,+m[1]);d.setHours(0,0,0,0);return isNaN(d)?null:d;}
+  m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m){const d=new Date(+m[1],+m[2]-1,+m[3]);d.setHours(0,0,0,0);return isNaN(d)?null:d;}
+  const d=new Date(s); if(!isNaN(d)){d.setHours(0,0,0,0);return d;} return null;
+}
+
+function getJobField(job,...keys){ for(const k of keys){if(job[k]!==undefined&&job[k]!=='')return job[k];} return ''; }
+function getEngineerName(job){ return getJobField(job,'engineerName','Engineer','Assigned_To')||''; }
+function getCustomerName(job){ return getJobField(job,'customerName','Full_Name','First_Name')||''; }
+function getPostcode(job)    { return getJobField(job,'postcode','Postcode')||''; }
+function getJobType(job)     { return getJobField(job,'jobType','Job_Type','Service_Type')||''; }
+function getJobDate(job)     { return getJobField(job,'dateOfJob','Date','Appointment_Date')||''; }
+function getJobStatus(job)   { return (getJobField(job,'jobStatus','status','Status')||'unassigned').toLowerCase().replace(/\s+/g,'-'); }
+function getStartHour(job)   { const v=job.startHour; if(v===null||v===undefined||v==='')return null; const n=+v; return isNaN(n)?null:n; }
+function getAddress(job)     { return getJobField(job,'address','Address_Line1')||''; }
+function getPhone(job)       { return getJobField(job,'contactNumber','Phone','Mobile')||''; }
+function getNotes(job)       { return Array.isArray(job.notes)?job.notes:[]; }
+
+function statusClass(s) {
+  s=(s||'').toLowerCase();
+  if(s==='complete') return 'complete';
+  if(s==='en-route'||s==='enroute') return 'en-route';
+  if(s==='in-progress'||s==='inprogress') return 'in-progress';
+  if(s==='abort') return 'abort';
+  return 'unassigned';
+}
+function statusLabel(s) {
+  s=(s||'').toLowerCase();
+  if(s==='en-route'||s==='enroute') return 'En Route';
+  if(s==='in-progress'||s==='inprogress') return 'In Progress';
+  if(s==='complete') return 'Complete';
+  if(s==='abort') return 'Abort';
+  return 'Unassigned';
+}
+
+let toastTimer;
+function toast(msg, type='ok') {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='',3500);
+}
+
+function setLiveUI(state, text){
+  const el = document.getElementById('liveIndicator');
+  const txt = document.getElementById('liveText');
+  el.className = state === 'live' ? '' : state === 'connecting' ? 'connecting' : 'error';
+  if(txt) txt.textContent = text;
+}
+
+function fmtTimestamp(iso){
+  if(!iso) return '';
+  try{const d=new Date(iso);return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+  catch{return '';}
+}
+
+/* ── Notes ── */
+function renderExistingNotes(job){
+  const notes=getNotes(job);
+  const container=document.getElementById('existingNotesContainer');
+  if(!container) return;
+  if(!notes.length){container.innerHTML='';return;}
+  container.innerHTML=notes.slice().reverse().map(n=>`
+    <div class="existing-note-box">
+      ${esc(n.text||'')}
+      <div class="existing-note-meta">
+        <span>${esc(n.addedBy||'—')}</span>
+        <div class="existing-note-meta-dot"></div>
+        <span>${fmtTimestamp(n.addedAt)}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ── Doc helpers ── */
+function fileIcon(name){
+  const ext=(name||'').split('.').pop().toLowerCase();
+  const icons={pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',webp:'🖼️',heic:'🖼️',mp4:'🎥',mov:'🎥',txt:'📃',csv:'📊'};
+  return icons[ext]||'📎';
+}
+function fmtBytes(bytes){
+  if(bytes<1024)return `${bytes} B`;
+  if(bytes<1024*1024)return `${(bytes/1024).toFixed(1)} KB`;
+  return `${(bytes/(1024*1024)).toFixed(1)} MB`;
+}
+function jobStoragePath(jobDocId){return `job_documents/${jobDocId}`;}
+
+async function loadJobDocs(jobDocId){
+  const docListEl=document.getElementById('docList');
+  const docEmptyEl=document.getElementById('docListEmpty');
+  if(!docListEl||!docEmptyEl) return;
+  docListEl.innerHTML='<div class="doc-empty" style="color:var(--text-dim)">Loading documents…</div>';
+  docEmptyEl.style.display='none';
+  try{
+    const job=allJobs.find(j=>j._id===jobDocId);
+    const docs=Array.isArray(job?.attachments)?job.attachments:[];
+    if(!docs.length){docListEl.innerHTML='';docEmptyEl.style.display='block';docEmptyEl.textContent='No documents attached yet.';return;}
+    docEmptyEl.style.display='none';
+    docListEl.innerHTML=docs.map(d=>`
+      <a class="doc-list-item" href="${esc(d.url)}" target="_blank" rel="noopener">
+        <div class="doc-list-icon">${fileIcon(d.name)}</div>
+        <div class="doc-list-info">
+          <div class="doc-list-name">${esc(d.name)}</div>
+          <div class="doc-list-meta">${esc(d.size||'')} · ${esc(fmtTimestamp(d.uploadedAt))} · ${esc(d.uploadedBy||'')}</div>
+        </div>
+        <div class="doc-list-download">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </div>
+      </a>
+    `).join('');
+  }catch(e){docListEl.innerHTML=`<div class="doc-empty" style="color:var(--danger)">Failed to load documents.</div>`;}
+}
+
+window.handleFileSelect=function(event){
+  const files=Array.from(event.target.files||[]);
+  if(!files.length) return;
+  const MAX_SIZE=50*1024*1024;
+  files.forEach(file=>{
+    if(file.size>MAX_SIZE){toast(`${file.name} exceeds 50 MB limit`,'err');return;}
+    if(docQueue.some(f=>f.name===file.name&&f.size===file.size)) return;
+    docQueue.push(file);
+  });
+  event.target.value='';
+  renderDocQueue();
+};
+
+function renderDocQueue(){
+  const qEl=document.getElementById('docQueue');
+  const btnEl=document.getElementById('docUploadBtn');
+  if(!qEl||!btnEl) return;
+  if(!docQueue.length){qEl.innerHTML='';btnEl.style.display='none';return;}
+  qEl.innerHTML=docQueue.map((file,idx)=>`
+    <div class="doc-queue-item">
+      <div class="doc-queue-icon">${fileIcon(file.name)}</div>
+      <div class="doc-queue-info">
+        <div class="doc-queue-name">${esc(file.name)}</div>
+        <div class="doc-queue-size">${fmtBytes(file.size)}</div>
+      </div>
+      <button class="doc-queue-remove" onclick="removeFromQueue(${idx})" title="Remove">×</button>
+    </div>
+  `).join('');
+  btnEl.style.display='flex';
+  btnEl.innerHTML=`
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="17 8 12 3 7 8"/>
+      <line x1="12" y1="3" x2="12" y2="15"/>
+    </svg>
+    Upload ${docQueue.length} file${docQueue.length!==1?'s':''}`;
+}
+window.removeFromQueue=function(idx){docQueue.splice(idx,1);renderDocQueue();};
+
+window.uploadQueuedFiles=async function(){
+  if(!activeJobId||!docQueue.length) return;
+  const uploadBtn=document.getElementById('docUploadBtn');
+  const progressList=document.getElementById('docProgressList');
+  const queueEl=document.getElementById('docQueue');
+  uploadBtn.disabled=true;
+  uploadBtn.innerHTML=`<span class="spinner" style="width:16px;height:16px;border-width:2px;margin-right:6px;"></span>Uploading…`;
+  const filesToUpload=[...docQueue];
+  docQueue=[];queueEl.innerHTML='';progressList.innerHTML='';
+  const progressItems=filesToUpload.map((file,idx)=>{
+    const itemId=`prog_${idx}_${Date.now()}`;
+    progressList.innerHTML+=`
+      <div class="doc-progress-item" id="${itemId}">
+        <div style="font-size:18px">${fileIcon(file.name)}</div>
+        <div class="doc-progress-info">
+          <div class="doc-progress-name">${esc(file.name)}</div>
+          <div class="doc-progress-bar-track"><div class="doc-progress-bar-fill" id="fill_${itemId}"></div></div>
+        </div>
+        <span class="doc-progress-pct" id="pct_${itemId}">0%</span>
+      </div>`;
+    return{file,itemId};
+  });
+  const uploadedMeta=[];let allOk=true;
+  for(const{file,itemId}of progressItems){
+    try{
+      const storagePath=`${jobStoragePath(activeJobId)}/${Date.now()}_${file.name}`;
+      const storageRef=ref(storage,storagePath);
+      const uploadTask=uploadBytesResumable(storageRef,file);
+      await new Promise((resolve,reject)=>{
+        uploadTask.on('state_changed',
+          snapshot=>{
+            const pct=Math.round((snapshot.bytesTransferred/snapshot.totalBytes)*100);
+            const fillEl=document.getElementById(`fill_${itemId}`);
+            const pctEl=document.getElementById(`pct_${itemId}`);
+            if(fillEl)fillEl.style.width=pct+'%';
+            if(pctEl)pctEl.textContent=pct+'%';
+          },
+          err=>reject(err),
+          async()=>{
+            const url=await getDownloadURL(uploadTask.snapshot.ref);
+            uploadedMeta.push({name:file.name,size:fmtBytes(file.size),url,storagePath,uploadedAt:new Date().toISOString(),uploadedBy:currentUser.displayName});
+            const pctEl=document.getElementById(`pct_${itemId}`);
+            if(pctEl){pctEl.textContent='✓';pctEl.style.color='var(--accent)';}
+            resolve();
+          }
+        );
+      });
+    }catch(e){allOk=false;const pctEl=document.getElementById(`pct_${itemId}`);if(pctEl){pctEl.textContent='✗';pctEl.style.color='var(--danger)';}toast(`Failed to upload ${file.name}`,'err');}
+  }
+  if(uploadedMeta.length>0){
+    try{
+      await updateDoc(doc(db,'uploaded_jobs',activeJobId),{attachments:arrayUnion(...uploadedMeta)});
+      const job=allJobs.find(j=>j._id===activeJobId);
+      if(job){if(!Array.isArray(job.attachments))job.attachments=[];job.attachments.push(...uploadedMeta);}
+      if(allOk)toast(`${uploadedMeta.length} file${uploadedMeta.length!==1?'s':''} uploaded ✓`,'ok');
+      else toast(`${uploadedMeta.length} file${uploadedMeta.length!==1?'s':''} uploaded (some failed)`,'err');
+      setTimeout(()=>{progressList.innerHTML='';loadJobDocs(activeJobId);},1200);
+    }catch(e){toast('Files uploaded but metadata save failed: '+(e.code||e.message),'err');}
+  }
+  uploadBtn.disabled=false;uploadBtn.style.display='none';
+};
+
+document.getElementById('docUploadZone').addEventListener('dragover',e=>{e.preventDefault();document.getElementById('docUploadZone').classList.add('dragover');});
+document.getElementById('docUploadZone').addEventListener('dragleave',()=>document.getElementById('docUploadZone').classList.remove('dragover'));
+document.getElementById('docUploadZone').addEventListener('drop',e=>{
+  e.preventDefault();document.getElementById('docUploadZone').classList.remove('dragover');
+  const files=Array.from(e.dataTransfer.files);
+  const MAX_SIZE=50*1024*1024;
+  files.forEach(file=>{
+    if(file.size>MAX_SIZE){toast(`${file.name} exceeds 50 MB limit`,'err');return;}
+    if(docQueue.some(f=>f.name===file.name&&f.size===file.size)) return;
+    docQueue.push(file);
+  });
+  renderDocQueue();
+});
+
+/* ─── JOB PHOTOS UPLOAD LOGIC ─── */
+const PHOTO_CATS = {
+  "Pre Installation Information": [
+    "PV Array Layout",
+    "Photo of customer roof 1",
+    "Photo of customer roof 2",
+    "Photo of customer roof 3"
+  ],
+  "Core Risk assessment": [
+    "Image of engineer in PPE"
+  ],
+  "Working from Height Risk Assessment": [
+    "Scaffolding Tag",
+    "Full scaffold",
+    "Gin wheel",
+    "Platform access",
+    "Edge protection",
+    "Working platform",
+    "Ladder"
+  ],
+  "Pre Install": [
+    "Have you confirmed the location of the I&B with the customer?",
+    "Have you confirmed the cable runs with the customer?",
+    "Polarity plug check",
+    "Electric meter",
+    "Consumer unit"
+  ],
+  "Installation": [
+    "Is bonding up to current standards?",
+    "How many PV circuit isolators have been installed?",
+    "PV isolator terminal screws",
+    "AC isolator terminal screws",
+    "String and cable runs",
+    "Blocks",
+    "PV DB",
+    "Data connections",
+    "Internal battery",
+    "Holes filled with silicone",
+    "Installed panels",
+    "Installed roof rails",
+    "Installed roof hook",
+    "PV cable entry point to property",
+    "Site Investigation"
+  ],
+  "Site Investigation": [
+    "Cutout",
+    "Is the polarity correct?",
+    "Have all outgoing tails from the cutout been sufficiently tightened?",
+    "Completed job"
+  ],
+  "Post Install Engineer": [
+    "Polarity plug check (after install).",
+    "I&B Final position",
+    "PV Distribution Board",
+    "Additional Notes"
+  ]
+};
+
+function renderPhotoCategories(jobDocId) {
+  const container = document.getElementById('photoCatsContainer');
+  if(!container) return;
+  
+  const job = allJobs.find(j => j._id === jobDocId);
+  const attachments = Array.isArray(job?.attachments) ? job.attachments : [];
+
+  let html = '';
+  for(const [cat, items] of Object.entries(PHOTO_CATS)) {
+    const catPhotosCount = items.reduce((acc, item) => {
+      return acc + attachments.filter(a => a.name && a.name.toLowerCase().includes(item.toLowerCase())).length;
+    }, 0);
+
+    const safeCatId = cat.replace(/[^a-zA-Z0-9]/g, '_');
+
+    html += `
+      <div class="photo-cat-card">
+        <div class="photo-cat-header" onclick="const b=document.getElementById('body_${safeCatId}');b.style.display=b.style.display==='none'?'flex':'none';">
+          <span>${cat}</span>
+          <span class="photo-cat-badge">${catPhotosCount} photo${catPhotosCount!==1?'s':''}</span>
+        </div>
+        <div class="photo-cat-body" id="body_${safeCatId}" style="display:${catPhotosCount > 0 ? 'flex' : 'none'};">
+    `;
+
+    items.forEach(item => {
+      const matchedPhotos = attachments.filter(a => a.name && a.name.toLowerCase().includes(item.toLowerCase()));
+      const safeItem = item.replace(/'/g, "\\'");
+
+      html += `
+        <div class="photo-item-box">
+          <div class="photo-item-title">${item}</div>
+          <div class="photo-item-grid">
+            ${matchedPhotos.map(p => `
+              <div class="photo-item-thumb" title="${esc(p.name)}">
+                <a href="${p.url}" target="_blank" rel="noopener"><img src="${p.url}" alt="${item}"/></a>
+              </div>
+            `).join('')}
+            
+            <div class="photo-item-dropzone" 
+                 ondragover="event.preventDefault();this.classList.add('dragover')"
+                 ondragleave="this.classList.remove('dragover')"
+                 ondrop="handlePhotoDrop(event, '${safeItem}')">
+              <input type="file" accept="image/*" capture="environment" multiple onchange="handlePhotoSelect(event, '${safeItem}')"/>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span>+ Add Photo</span>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    html += `
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+window.handlePhotoSelect = async function(event, item) {
+  const files = Array.from(event.target.files || []);
+  if(!files.length || !activeJobId) return;
+  await processAndUploadPhotos(files, item);
+};
+
+window.handlePhotoDrop = async function(event, item) {
+  event.preventDefault();
+  const zone = event.currentTarget;
+  if(zone) zone.classList.remove('dragover');
+  const files = Array.from(event.dataTransfer.files || []);
+  if(!files.length || !activeJobId) return;
+  await processAndUploadPhotos(files, item);
+};
+
+async function processAndUploadPhotos(files, item) {
+  toast(`Uploading ${files.length} photo(s)…`, 'info');
+  const uploadedMeta = [];
+
+  for(const file of files) {
+    try {
+      const storagePath = `${jobStoragePath(activeJobId)}/${Date.now()}_${item.replace(/[^a-zA-Z0-9]/g,'_')}_${file.name}`;
+      const storageRef = ref(storage, storagePath);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+      
+      await new Promise((resolve, reject) => {
+        uploadTask.on('state_changed', null, reject, async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          uploadedMeta.push({
+            name: `${item} - ${file.name}`,
+            size: fmtBytes(file.size),
+            url: url,
+            storagePath: storagePath,
+            uploadedAt: new Date().toISOString(),
+            uploadedBy: currentUser ? (currentUser.name || currentUser.displayName) : 'Engineer'
+          });
+          resolve();
+        });
+      });
+    } catch(e) {
+      toast(`Failed to upload ${file.name}`, 'err');
+    }
+  }
+
+  if(uploadedMeta.length > 0) {
+    try {
+      await updateDoc(doc(db, 'uploaded_jobs', activeJobId), {
+        attachments: arrayUnion(...uploadedMeta)
+      });
+      const job = allJobs.find(j => j._id === activeJobId);
+      if(job) {
+        if(!Array.isArray(job.attachments)) job.attachments = [];
+        job.attachments.push(...uploadedMeta);
+      }
+      toast(`${uploadedMeta.length} photo(s) uploaded ✓`, 'ok');
+      renderPhotoCategories(activeJobId);
+      loadJobDocs(activeJobId);
+    } catch(e) {
+      toast('Photo metadata save failed: ' + e.message, 'err');
+    }
+  }
+}
+
+/* ── Session ── */
+function saveSession(user){localStorage.setItem(SESSION_KEY,JSON.stringify({user,date:new Date().toDateString()}));}
+function loadSession(){
+  try{
+    const raw=localStorage.getItem(SESSION_KEY);if(!raw)return null;
+    const sess=JSON.parse(raw);
+    if(sess.date!==new Date().toDateString()){localStorage.removeItem(SESSION_KEY);return null;}
+    return sess.user;
+  }catch{return null;}
+}
+function clearSession(){localStorage.removeItem(SESSION_KEY);}
+
+/* ── Login ── */
+async function attemptLogin(name,password){
+  const errEl=document.getElementById('loginError');
+  errEl.classList.remove('show');
+  document.getElementById('loginBtn').textContent='Signing in…';
+  document.getElementById('loginBtn').disabled=true;
+  try{
+    const snap=await getDocs(collection(db,'userdatabase'));
+    let matched=null;
+    snap.forEach(d=>{const u={_id:d.id,...d.data()};if((u.name||'').toLowerCase().trim()===name.toLowerCase().trim())matched=u;});
+    if(!matched)throw new Error('No account found with that name.');
+    if(!matched.password||matched.password!==password)throw new Error('Incorrect password.');
+    currentUser={...matched,displayName:matched.name||name};
+    saveSession(currentUser);startApp();
+  }catch(e){
+    errEl.textContent=e.message;errEl.classList.add('show');
+    document.getElementById('loginBtn').textContent='Sign In →';
+    document.getElementById('loginBtn').disabled=false;
+  }
+}
+
+document.getElementById('loginBtn').addEventListener('click',()=>{
+  const name=document.getElementById('loginName').value.trim();
+  const pass=document.getElementById('loginPass').value;
+  if(!name){document.getElementById('loginError').textContent='Please enter your name.';document.getElementById('loginError').classList.add('show');return;}
+  attemptLogin(name,pass);
+});
+document.getElementById('loginName').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginPass').focus();});
+document.getElementById('loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('loginBtn').click();});
+document.getElementById('logoutBtn').addEventListener('click',()=>{
+  clearSession();currentUser=null;allJobs=[];
+  if(unsubscribeJobs){unsubscribeJobs();unsubscribeJobs=null;}
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginName').value='';document.getElementById('loginPass').value='';
+  document.getElementById('loginError').classList.remove('show');
+  setLiveUI('connecting','Connecting…');
+});
+
+/* ── App start ── */
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').classList.add('visible');
+  const fn=currentUser.firstName||currentUser.displayName||'?';
+  const ln=currentUser.lastName||'';
+  const initials=(fn[0]+(ln?ln[0]:fn[1]||'')).toUpperCase();
+  document.getElementById('userAvatar').textContent=initials;
+  document.getElementById('userNameDisplay').textContent=currentUser.displayName;
+  syncDatePicker();loadStaticData();
+}
+
+/* ── Load static data (params/users) then start live listener ── */
+async function loadStaticData(){
+  try{
+    const [paramSnap, userSnap] = await Promise.all([
+      getDocs(collection(db,'job_type_parameters')),
+      getDocs(collection(db,'userdatabase'))
+    ]);
+
+    jobTypeParams.clear();
+    paramSnap.forEach(d=>{
+      const data=d.data();
+      if(!data.level||!data.jobType||!data.durationMinutes) return;
+      const key=data.level.toLowerCase().trim()+'|||'+data.jobType.toLowerCase().trim();
+      jobTypeParams.set(key, data.durationMinutes/60);
+    });
+
+    engLevels.clear(); engPostcodes.clear(); engIsoMinutes.clear();
+    userSnap.forEach(d=>{
+      const data=d.data();
+      if(!data.name) return;
+      const key=data.name.trim().toLowerCase();
+      if(data.level)    engLevels.set(key, data.level.trim());
+      if(data.postcode) engPostcodes.set(key, data.postcode.trim());
+      engIsoMinutes.set(key, data.isochroneMinutes||0);
+    });
+  }catch(e){
+    console.warn('Could not load static data:',e);
+  }
+  startLiveListener();
+}
+
+/* ── Live Firestore listener — replaces old getDocs ── */
+function startLiveListener(){
+  if(unsubscribeJobs){unsubscribeJobs();unsubscribeJobs=null;}
+  setLiveUI('connecting','Connecting…');
+
+  unsubscribeJobs = onSnapshot(
+    collection(db,'uploaded_jobs'),
+    async (snapshot)=>{
+      const isFirstLoad = allJobs.length === 0;
+
+      if(isFirstLoad){
+        // Initial load
+        allJobs = [];
+        snapshot.forEach(d => allJobs.push({_id:d.id,...d.data()}));
+        const allPcs = [
+          ...allJobs.map(j=>getPostcode(j)),
+          ...[...engPostcodes.values()]
+        ].filter(Boolean);
+        await geocodePostcodes(allPcs);
+        setLiveUI('live', `Live · ${allJobs.length} jobs`);
+        render();
+        document.getElementById('loadingOverlay').classList.add('hidden');
+      } else {
+        // Incremental updates
+        const updatedIds = [];
+        const newPostcodes = [];
+
+        snapshot.docChanges().forEach(change => {
+          const newData = {_id:change.doc.id,...change.doc.data()};
+          if(change.type === 'added'){
+            if(!allJobs.find(j=>j._id===newData._id)){
+              allJobs.push(newData);
+              if(newData.postcode) newPostcodes.push(newData.postcode);
+            }
+          } else if(change.type === 'modified'){
+            const idx = allJobs.findIndex(j=>j._id===newData._id);
+            if(idx !== -1){
+              const old = allJobs[idx];
+              const oldStatus = getJobStatus(old);
+              const newStatus = getJobStatus(newData);
+              allJobs[idx] = newData;
+              if(oldStatus !== newStatus){
+                updatedIds.push(newData._id);
+                toast(`${getJobType(newData)||'Job'} updated: ${statusLabel(newStatus)}`,'info');
+              }
+              if(newData.postcode) newPostcodes.push(newData.postcode);
+            }
+          } else if(change.type === 'removed'){
+            allJobs = allJobs.filter(j=>j._id!==change.doc.id);
+          }
+        });
+
+        if(newPostcodes.length) await geocodePostcodes(newPostcodes);
+        setLiveUI('live', `Live · ${allJobs.length} jobs`);
+        render();
+
+        // Flash updated cards
+        if(updatedIds.length){
+          setTimeout(()=>{
+            updatedIds.forEach(id=>{
+              document.querySelectorAll(`[data-job-doc-id="${id}"]`).forEach(el=>{
+                el.classList.remove('just-updated');
+                void el.offsetWidth; // force reflow
+                el.classList.add('just-updated');
+              });
+            });
+          },60);
+        }
+      }
+    },
+    (error)=>{
+      console.error('Firestore listener error:',error);
+      setLiveUI('error','Disconnected');
+      toast('Live connection lost. Retrying…','err');
+      setTimeout(startLiveListener, 5000);
+    }
+  );
+}
+
+/* ── Filter my jobs ── */
+function getMyJobs(){
+  const name=(currentUser.name||currentUser.displayName||'').toLowerCase().trim();
+  return allJobs.filter(j=>{
+    const eng=getEngineerName(j).toLowerCase().trim();
+    const parts=name.split(' ').filter(Boolean);
+    return eng===name||parts.some(p=>p.length>2&&eng.includes(p));
+  });
+}
+
+/* ── Render ── */
+function render(){
+  if(currentView==='day') renderDay(); else renderWeek();
+  updateDateLabel();
+}
+
+function updateDateLabel(){
+  const d=currentDate;
+  if(currentView==='day'){
+    document.getElementById('dateLbl').textContent=window.innerWidth<500
+      ?d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})
+      :d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  }else{
+    const dow=d.getDay(),diff=dow===0?-6:1-dow;
+    const mon=new Date(d);mon.setDate(d.getDate()+diff);
+    const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+    document.getElementById('dateLbl').textContent=
+      `${mon.toLocaleDateString('en-GB',{day:'numeric',month:'short'})} – ${sun.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}`;
+  }
+}
+
+/* ── Drive-time badge renderer ── */
+function renderDriveTimeBadges(badgeColEl, gridEl, sortedJobs, HOUR_PX, engName){
+  badgeColEl.querySelectorAll('.dt-badge').forEach(b=>b.remove());
+  gridEl.querySelectorAll('.tl-job-card').forEach(c=>{
+    c.classList.remove('iso-violation');
+    c.querySelector('.iso-badge')?.remove();
+  });
+
+  const engKey   = (engName||'').trim().toLowerCase();
+  const homePc   = engPostcodes.get(engKey)||'';
+  const isoMins  = engIsoMinutes.get(engKey)||0;
+
+  const SVG_CAR  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/><path d="M5 12h14"/></svg>`;
+  const SVG_HOME = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`;
+
+  function flagCard(job, labelText){
+    const cardEl = gridEl.querySelector(`[data-job-doc-id="${job._id}"]`);
+    if(!cardEl) return;
+    cardEl.classList.add('iso-violation');
+    if(!cardEl.querySelector('.iso-badge')){
+      const b = document.createElement('div');
+      b.className = 'iso-badge';
+      b.textContent = labelText;
+      cardEl.style.overflow = 'visible';
+      cardEl.appendChild(b);
+    }
+  }
+
+  function makeBadge(topPx, driveMins, gapMins, svgIcon, isHomePill){
+    const violation = (driveMins !== null) && (
+      isHomePill
+        ? (isoMins > 0 && driveMins > isoMins)
+        : driveMins > gapMins
+    );
+    const pillCls = driveMins === null ? 'dt-loading'
+      : violation ? 'dt-danger'
+      : (!isHomePill && driveMins > gapMins * 0.75) ? 'dt-warn'
+      : (isHomePill && isoMins > 0 && driveMins > isoMins * 0.75) ? 'dt-warn'
+      : 'dt-ok';
+    const pillText = driveMins === null ? '…' : `${driveMins}m`;
+    const connCls  = violation ? 'dt-connector danger' : 'dt-connector';
+
+    const badge = document.createElement('div');
+    badge.className = 'dt-badge';
+    badge.style.top = topPx + 'px';
+    badge.innerHTML = `
+      <div class="${connCls}"></div>
+      <div class="dt-pill ${pillCls}">${svgIcon} ${pillText}</div>
+      <div class="${connCls}"></div>`;
+    badgeColEl.appendChild(badge);
+    return violation;
+  }
+
+  if(sortedJobs.length > 0 && homePc){
+    const firstJob = sortedJobs[0];
+    const sh = getStartHour(firstJob);
+    if(sh !== null){
+      const topFirst  = (sh - DAY_START) * HOUR_PX;
+      const midTopPx  = topFirst / 2;
+      if(midTopPx > 10){
+        const driveMins = driveMinutes(homePc, getPostcode(firstJob));
+        const violation = makeBadge(midTopPx, driveMins, null, SVG_HOME, true);
+        if(violation && driveMins !== null){
+          flagCard(firstJob, `⚠ ${driveMins}m from home > ${isoMins}m limit`);
+        }
+      }
+    }
+  }
+
+  for(let i = 0; i < sortedJobs.length - 1; i++){
+    const jobA = sortedJobs[i];
+    const jobB = sortedJobs[i + 1];
+    const shA  = getStartHour(jobA);
+    const shB  = getStartHour(jobB);
+    if(shA === null || shB === null) continue;
+
+    const durA    = getDuration(getJobType(jobA), getEngineerName(jobA));
+    const endA    = shA + durA;
+    const gapMins = Math.round((shB - endA) * 60);
+    if(gapMins < 1) continue;
+
+    const topEndA   = (endA - DAY_START) * HOUR_PX;
+    const topStartB = (shB  - DAY_START) * HOUR_PX;
+    const midTopPx  = (topEndA + topStartB) / 2;
+
+    const driveMins = driveMinutes(getPostcode(jobA), getPostcode(jobB));
+    const violation = makeBadge(midTopPx, driveMins, gapMins, SVG_CAR, false);
+    if(violation && driveMins !== null){
+      flagCard(jobA, `⚠ ${driveMins}m drive / ${gapMins}m gap`);
+      flagCard(jobB, `⚠ ${driveMins}m drive / ${gapMins}m gap`);
+    }
+  }
+}
+
+/* ── Day view ── */
+function renderDay(){
+  const HOUR_PX = 100;
+  const myJobs  = getMyJobs().filter(j=>{const d=parseDate(getJobDate(j));return d&&sameDay(d,currentDate);});
+  myJobs.sort((a,b)=>{
+    const sa=getStartHour(a),sb=getStartHour(b);
+    if(sa===null&&sb===null)return 0;if(sa===null)return 1;if(sb===null)return -1;return sa-sb;
+  });
+
+  const total   = myJobs.length;
+  const done    = myJobs.filter(j=>getJobStatus(j)==='complete').length;
+  const enroute = myJobs.filter(j=>statusClass(getJobStatus(j))==='en-route').length;
+  const inprog  = myJobs.filter(j=>statusClass(getJobStatus(j))==='in-progress').length;
+
+  let html = `<div class="stats-bar">
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--ds-muted)"></div><div><div class="stat-num">${total}</div><div class="stat-lbl">Jobs</div></div></div>
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--accent)"></div><div><div class="stat-num">${done}</div><div class="stat-lbl">Done</div></div></div>
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--warning)"></div><div><div class="stat-num">${inprog}</div><div class="stat-lbl">Active</div></div></div>
+    <div class="stat-pill"><div class="stat-dot" style="background:var(--accent2)"></div><div><div class="stat-num">${enroute}</div><div class="stat-lbl">En Route</div></div></div>
+  </div>`;
+
+  if(total === 0){
+    html += `<div class="center-msg"><div class="big">📅</div><p>No jobs scheduled for today.<br><span style="font-size:13px;color:var(--text-dim)">Use the arrows above to check another day.</span></p></div>`;
+    document.getElementById('mainContent').innerHTML = html;
+    return;
+  }
+
+  const scheduled   = myJobs.filter(j=>getStartHour(j)!==null);
+  const unscheduled = myJobs.filter(j=>getStartHour(j)===null);
+
+  let dayEnd = DAY_END_DEFAULT;
+  scheduled.forEach(j=>{
+    const fin = getStartHour(j) + getDuration(getJobType(j), getEngineerName(j));
+    if(fin > dayEnd) dayEnd = fin;
+  });
+  dayEnd = Math.ceil(dayEnd) + 0.5;
+
+  const totalHours = dayEnd - DAY_START;
+  const gridHeight = Math.round(totalHours * HOUR_PX);
+
+  const now     = new Date();
+  const isToday = sameDay(currentDate, today0());
+  const nowHour = now.getHours() + now.getMinutes() / 60;
+  let nowLineHtml = '';
+  if(isToday && nowHour >= DAY_START && nowHour <= dayEnd){
+    const top = Math.round((nowHour - DAY_START) * HOUR_PX);
+    nowLineHtml = `<div class="timeline-now-line" style="top:${top}px">
+      <span class="timeline-now-line-label">${fmtTime(nowHour)}</span>
+    </div>`;
+  }
+
+  let gutterHtml = '', rowsHtml = '';
+  for(let h = DAY_START; h <= Math.ceil(dayEnd); h++){
+    const top = Math.round((h - DAY_START) * HOUR_PX);
+    if(top > gridHeight) break;
+    gutterHtml += `<div class="timeline-gutter-label" style="top:${top}px">${String(h).padStart(2,'0')}:00</div>`;
+    rowsHtml   += `<div class="timeline-hour-row" style="top:${top}px;height:${HOUR_PX}px"></div>`;
+  }
+
+  let cardsHtml = '';
+  scheduled.forEach(job=>{
+    const sh     = getStartHour(job);
+    const dur    = getDuration(getJobType(job), getEngineerName(job));
+    const top    = Math.round((sh - DAY_START) * HOUR_PX);
+    const height = Math.max(Math.round(dur * HOUR_PX) - 6, 36);
+    const status = getJobStatus(job);
+    const sc     = statusClass(status);
+    const timeStr= `${fmtTime(sh)}–${fmtTime(sh + dur)}`;
+    const jid    = esc(job.jobId || job._id);
+    const hasAttachments = Array.isArray(job.attachments) && job.attachments.length > 0;
+    const hasNotes = getNotes(job).length > 0;
+
+    const statusColours = {
+      'complete':    'background:rgba(22,163,74,0.12);border-color:rgba(22,163,74,0.3);color:var(--accent)',
+      'en-route':    'background:rgba(14,165,233,0.12);border-color:rgba(14,165,233,0.3);color:var(--accent2)',
+      'in-progress': 'background:rgba(224,138,11,0.12);border-color:rgba(224,138,11,0.3);color:var(--warning)',
+      'abort':       'background:rgba(229,72,77,0.12);border-color:rgba(229,72,77,0.3);color:var(--danger)',
+    };
+    const pillStyle = statusColours[sc] || 'background:rgba(107,137,170,0.08);border-color:rgba(107,137,170,0.15);color:var(--text-muted)';
+
+    cardsHtml += `<div class="tl-job-card status-${sc}"
+        style="top:${top}px;height:${height}px;overflow:visible"
+        data-job-doc-id="${job._id}"
+        onclick="openJobModal('${job._id}')">
+      <div class="tl-card-inner">
+        <span class="tl-time">${timeStr}</span>
+        <span class="tl-sep">·</span>
+        <span class="tl-type">${esc(getJobType(job) || 'Job')}</span>
+        <span class="tl-sep">·</span>
+        <span class="tl-customer">${esc(getCustomerName(job))}</span>
+        <span class="tl-sep">·</span>
+        <span class="tl-postcode">${esc(getPostcode(job))}</span>
+        <span class="tl-sep">·</span>
+        <span class="tl-id">${jid}</span>
+        ${hasNotes ? `<span class="tl-note-icon" title="Has notes">📝</span>` : ''}
+        ${hasAttachments ? `<span class="tl-note-icon" title="${job.attachments.length} doc(s)">📎</span>` : ''}
+      </div>
+      ${height >= 50 ? `<span class="tl-status-pill" style="${pillStyle}">${statusLabel(status)}</span>` : ''}
+    </div>`;
+  });
+
+  html += `<div class="timeline-scroll">
+    <div class="timeline-wrap">
+      <div class="timeline-gutter" style="height:${gridHeight}px">${gutterHtml}</div>
+      <div class="timeline-badge-col" id="tlBadgeCol" style="height:${gridHeight}px;position:relative;overflow:visible"></div>
+      <div class="timeline-grid" id="tlGrid" style="height:${gridHeight}px;position:relative">
+        ${rowsHtml}
+        ${nowLineHtml}
+        ${cardsHtml}
+      </div>
+    </div>
+  </div>`;
+
+  if(unscheduled.length > 0){
+    html += `<div class="unscheduled-section"><div class="unscheduled-label">⏳ Time not yet scheduled</div>`;
+    unscheduled.forEach(job=>{ html += buildJobCardHTML(job, true); });
+    html += `</div>`;
+  }
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  const badgeColEl = document.getElementById('tlBadgeCol');
+  const gridEl     = document.getElementById('tlGrid');
+  if(badgeColEl && gridEl && scheduled.length > 0){
+    const engName = currentUser.displayName || currentUser.name || '';
+    renderDriveTimeBadges(badgeColEl, gridEl, scheduled, HOUR_PX, engName);
+  }
+}
+
+function buildJobCardHTML(job, unscheduled=false){
+  const sh      = getStartHour(job);
+  const dur     = getDuration(getJobType(job), getEngineerName(job));
+  const timeStr = sh !== null ? `${fmtTime(sh)} – ${fmtTime(sh + dur)}` : 'Time TBC';
+  const status  = getJobStatus(job), sc = statusClass(status);
+  const jid     = job.jobId || job._id;
+  const timeStyle = unscheduled ? ` style="border-color:rgba(224,138,11,0.3);color:var(--warning)"` : '';
+  const timeIcon  = unscheduled ? '⏳ ' : '⏰ ';
+  const hasAttachments = Array.isArray(job.attachments) && job.attachments.length > 0;
+  const notes = getNotes(job);
+
+  return `<div class="job-card status-${sc}" data-job-doc-id="${job._id}" onclick="openJobModal('${job._id}')">
+    <div class="job-card-top">
+      <div class="job-type">${esc(getJobType(job) || 'Job')}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        ${notes.length ? `<span style="font-size:13px;color:var(--text-muted)" title="${notes.length} note(s)">📝 ${notes.length}</span>` : ''}
+        ${hasAttachments ? `<span style="font-size:13px;color:var(--text-muted)" title="${job.attachments.length} document(s)">📎 ${job.attachments.length}</span>` : ''}
+        <div class="job-id">${esc(jid)}</div>
+      </div>
+    </div>
+    <div class="job-time-badge"${timeStyle}>${timeIcon}${timeStr}</div>
+    <div class="job-meta">
+      <div class="job-meta-item"><div class="job-meta-lbl">Customer</div><div class="job-meta-val">${esc(getCustomerName(job))}</div></div>
+      <div class="job-meta-item"><div class="job-meta-lbl">Postcode</div><div class="job-meta-val">${esc(getPostcode(job))}</div></div>
+      ${getAddress(job) ? `<div class="job-meta-item" style="grid-column:1/-1"><div class="job-meta-lbl">Address</div><div class="job-meta-val">${esc(getAddress(job))}</div></div>` : ''}
+    </div>
+    ${notes.length ? `<div style="margin-bottom:12px;padding:10px 12px;border-radius:8px;background:var(--note-bg);border:1px solid var(--note-border);font-size:13px;color:var(--text);line-height:1.5">${esc(notes[notes.length-1].text||'')}<div style="font-size:10px;color:var(--text-muted);margin-top:4px">${esc(notes[notes.length-1].addedBy||'')} · ${fmtTimestamp(notes[notes.length-1].addedAt)}</div></div>` : ''}
+    <div class="job-bottom">
+      <span class="status-badge ${sc}">${statusLabel(status)}</span>
+      <span class="tap-hint">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Tap to update
+      </span>
+    </div>
+  </div>`;
+}
+
+function renderWeek(){
+  const dow  = currentDate.getDay(), diff = dow === 0 ? -6 : 1 - dow;
+  const mon  = new Date(currentDate); mon.setDate(currentDate.getDate() + diff);
+  const cols = Array.from({length:7}, (_,i)=>{ const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+  const myJobs  = getMyJobs();
+  const todayD  = today0();
+
+  let html = `<div class="week-grid">`;
+  cols.forEach(col=>{
+    const isToday   = sameDay(col, todayD);
+    const isWeekend = col.getDay() === 0 || col.getDay() === 6;
+    const dayJobs   = myJobs.filter(j=>{ const d=parseDate(getJobDate(j)); return d&&sameDay(d,col); });
+    dayJobs.sort((a,b)=>{
+      const sa=getStartHour(a),sb=getStartHour(b);
+      if(sa===null&&sb===null)return 0;if(sa===null)return 1;if(sb===null)return -1;return sa-sb;
+    });
+
+    html += `<div class="week-day-col${isToday?' is-today':''}${isWeekend?' weekend':''}">
+      <div class="week-day-header">
+        <div class="week-day-name">${col.toLocaleDateString('en-GB',{weekday:'short'})}</div>
+        <div class="week-day-num">${col.getDate()}</div>
+      </div>
+      <div class="week-day-jobs">`;
+
+    if(!dayJobs.length){ html += `<div class="week-empty">—</div>`; }
+    else{
+      dayJobs.forEach(job=>{
+        const status = getJobStatus(job), sc = statusClass(status);
+        const sh     = getStartHour(job), jid = job.jobId || job._id;
+        const dur    = getDuration(getJobType(job), getEngineerName(job));
+        const hasNotes = getNotes(job).length > 0;
+        const hasAttachments = Array.isArray(job.attachments) && job.attachments.length > 0;
+        html += `<div class="week-job-card ${sc}" data-job-doc-id="${job._id}" onclick="openJobModal('${job._id}')">
+          <div class="week-job-type">${esc(getJobType(job) || 'Job')}</div>
+          <div class="week-job-post">${esc(getPostcode(job))}</div>
+          ${sh !== null ? `<div class="week-job-time">${fmtTime(sh)} – ${fmtTime(sh+dur)}</div>` : ''}
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+            <span class="week-job-id">${esc(jid)}</span>
+            ${hasNotes ? `<span style="font-size:10px;color:var(--text-dim)">📝</span>` : ''}
+            ${hasAttachments ? `<span style="font-size:10px;color:var(--text-dim)">📎</span>` : ''}
+          </div>
+        </div>`;
+      });
+    }
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+  document.getElementById('mainContent').innerHTML = html;
+}
+
+/* ── Job Modal ── */
+window.openJobModal = function(jobDocId){
+  const job = allJobs.find(j=>j._id===jobDocId);
+  if(!job) return;
+  activeJobId = jobDocId; selectedStatus = null;
+  activeJobAddress  = getAddress(job) || '';
+  activeJobPostcode = getPostcode(job) || '';
+
+  docQueue = [];
+  const qEl      = document.getElementById('docQueue');
+  const progEl   = document.getElementById('docProgressList');
+  const uploadBtn= document.getElementById('docUploadBtn');
+  if(qEl) qEl.innerHTML = '';
+  if(progEl) progEl.innerHTML = '';
+  if(uploadBtn) uploadBtn.style.display = 'none';
+  const fileInput = document.getElementById('docFileInput');
+  if(fileInput) fileInput.value = '';
+  const noteInput = document.getElementById('noteInput');
+  if(noteInput) noteInput.value = '';
+
+  const sh     = getStartHour(job);
+  const dur    = getDuration(getJobType(job), getEngineerName(job));
+  const timeStr= sh !== null ? `${fmtTime(sh)} – ${fmtTime(sh + dur)}` : 'Time TBC';
+  const jid    = job.jobId || job._id;
+
+  document.getElementById('mJobId').textContent   = `# ${jid}`;
+  document.getElementById('mJobTitle').textContent = getJobType(job) || 'Job Details';
+  document.getElementById('mInfoGrid').innerHTML = `
+    <div class="modal-info-item"><div class="modal-info-lbl">Customer</div><div class="modal-info-val">${esc(getCustomerName(job))}</div></div>
+    <div class="modal-info-item"><div class="modal-info-lbl">Time</div><div class="modal-info-val">${timeStr}</div></div>
+    <div class="modal-info-item"><div class="modal-info-lbl">Postcode</div><div class="modal-info-val">${esc(getPostcode(job))}</div></div>
+    <div class="modal-info-item"><div class="modal-info-lbl">Contact</div><div class="modal-info-val">${esc(getPhone(job) || '—')}</div></div>
+    ${activeJobAddress ? `<div class="modal-info-item" style="grid-column:1/-1"><div class="modal-info-lbl">Address</div><div class="modal-info-val">${esc(activeJobAddress)}</div></div>` : ''}
+  `;
+
+  const cur = getJobStatus(job);
+  document.querySelectorAll('.status-option').forEach(el=>{
+    el.classList.remove('selected');
+    if(statusClass(cur) === statusClass(el.dataset.status)){ el.classList.add('selected'); selectedStatus = el.dataset.status; }
+  });
+
+  document.getElementById('abortSection').classList.remove('show');
+  document.getElementById('abortCode').value = '';
+  document.getElementById('navigateSection').classList.remove('show');
+  document.getElementById('submitStatusBtn').disabled = false;
+
+  if(cur === 'en-route') buildNavigateSection();
+
+  renderExistingNotes(job);
+  loadJobDocs(jobDocId);
+  renderPhotoCategories(jobDocId);
+  document.getElementById('modalOverlay').classList.add('open');
+};
+
+function buildNavigateSection(){
+  const fullAddress = [activeJobAddress, activeJobPostcode].filter(Boolean).join(', ');
+  const queryStr    = encodeURIComponent(fullAddress || activeJobPostcode);
+  const mapsUrl     = `https://www.google.com/maps/dir/?api=1&destination=${queryStr}`;
+  document.getElementById('navigateAddress').textContent = fullAddress || activeJobPostcode || 'No address available';
+  document.getElementById('mapsLink').href = mapsUrl;
+  document.getElementById('copyAddressBtn').classList.remove('copied');
+  document.getElementById('copyAddressBtn').innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    Copy Address`;
+  document.getElementById('navigateSection').classList.add('show');
+}
+
+window.selectStatus = function(el){
+  document.querySelectorAll('.status-option').forEach(e=>e.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedStatus = el.dataset.status;
+  document.getElementById('submitStatusBtn').disabled = false;
+  document.getElementById('abortSection').classList.toggle('show', selectedStatus === 'abort');
+  if(selectedStatus !== 'abort') document.getElementById('abortCode').value = '';
+  if(selectedStatus === 'en-route') buildNavigateSection();
+  else document.getElementById('navigateSection').classList.remove('show');
+};
+
+window.copyAddress = function(){
+  const fullAddress = [activeJobAddress, activeJobPostcode].filter(Boolean).join(', ');
+  if(!fullAddress){ toast('No address to copy', 'err'); return; }
+  const btn = document.getElementById('copyAddressBtn');
+  const setCopied = () => {
+    btn.classList.add('copied');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Copied!`;
+    toast('Address copied ✓', 'ok');
+    setTimeout(()=>{ btn.classList.remove('copied'); btn.innerHTML=`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy Address`; }, 2500);
+  };
+  if(navigator.clipboard?.writeText){ navigator.clipboard.writeText(fullAddress).then(setCopied).catch(()=>legacyCopy(fullAddress,setCopied)); }
+  else legacyCopy(fullAddress, setCopied);
+};
+function legacyCopy(text, onSuccess){
+  const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;top:-999px;opacity:0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); onSuccess(); } catch(e){ toast('Please copy manually: '+text, 'err'); }
+  document.body.removeChild(ta);
+}
+
+window.closeModal = function(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  activeJobId = null; selectedStatus = null; activeJobAddress = ''; activeJobPostcode = '';
+  docQueue = [];
+};
+
+/* ── Submit status + notes ── */
+window.submitStatus = async function(){
+  if(!selectedStatus && !document.getElementById('noteInput').value.trim() && !activeJobId) return;
+
+  const abortCode = selectedStatus === 'abort' ? document.getElementById('abortCode').value.trim() : '';
+  if(selectedStatus === 'abort' && !abortCode){ toast('Please enter an authorisation code to abort.', 'err'); return; }
+
+  const noteText = document.getElementById('noteInput').value.trim();
+  const btn = document.getElementById('submitStatusBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try{
+    const now = new Date().toISOString();
+    const updates = {};
+
+    if(selectedStatus){
+      const statusMap = {'en-route':'en-route','in-progress':'in-progress','complete':'complete','abort':'abort'};
+      const historyEntry = {status:statusMap[selectedStatus], updatedBy:currentUser.displayName, updatedAt:now, source:'engineer'};
+      if(abortCode) historyEntry.note = abortCode;
+      updates.jobStatus        = statusMap[selectedStatus];
+      updates.status           = statusMap[selectedStatus];
+      updates.statusUpdatedAt  = now;
+      updates.statusUpdatedBy  = currentUser.displayName;
+      updates.statusHistory    = arrayUnion(historyEntry);
+      if(abortCode){ updates.abortCode = abortCode; updates.abortedAt = now; }
+    }
+
+    if(noteText){
+      const noteEntry = {text:noteText, addedBy:currentUser.displayName, addedAt:now};
+      updates.notes = arrayUnion(noteEntry);
+    }
+
+    if(Object.keys(updates).length > 0){
+      await updateDoc(doc(db,'uploaded_jobs',activeJobId), updates);
+      const j = allJobs.find(x=>x._id===activeJobId);
+      if(j){
+        if(selectedStatus){ j.jobStatus=updates.jobStatus; j.status=updates.status; j.statusUpdatedAt=now; j.statusUpdatedBy=currentUser.displayName; if(!Array.isArray(j.statusHistory))j.statusHistory=[]; }
+        if(noteText){ if(!Array.isArray(j.notes))j.notes=[]; j.notes.push({text:noteText, addedBy:currentUser.displayName, addedAt:now}); }
+      }
+    }
+
+    const msgs = [];
+    if(selectedStatus) msgs.push(`Status: ${statusLabel(selectedStatus)}`);
+    if(noteText) msgs.push('Note saved');
+    toast((msgs.join(' · ') || 'Saved') + ' ✓', 'ok');
+    closeModal(); render();
+  }catch(e){
+    toast('Failed to save: '+(e.code||e.message), 'err');
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+};
+
+document.getElementById('noteInput').addEventListener('input', ()=>{
+  const hasNote = document.getElementById('noteInput').value.trim().length > 0;
+  if(hasNote) document.getElementById('submitStatusBtn').disabled = false;
+});
+
+document.getElementById('modalOverlay').addEventListener('click', e=>{
+  if(e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+/* ── Nav ── */
+document.getElementById('prevBtn').addEventListener('click', ()=>navigate(-1));
+document.getElementById('nextBtn').addEventListener('click', ()=>navigate(1));
+document.getElementById('todayBtn').addEventListener('click', ()=>{ currentDate=today0(); render(); });
+document.getElementById('btnDay').addEventListener('click', ()=>setView('day'));
+document.getElementById('btnWeek').addEventListener('click', ()=>setView('week'));
+
+function navigate(dir){
+  currentDate = new Date(currentDate);
+  currentDate.setDate(currentDate.getDate() + dir * (currentView === 'week' ? 7 : 1));
+  render();
+}
+function setView(v){
+  currentView = v;
+  document.getElementById('btnDay').classList.toggle('active', v === 'day');
+  document.getElementById('btnWeek').classList.toggle('active', v === 'week');
+  render();
+}
+function syncDatePicker(){}
+
+/* ── Boot ── */
+const savedUser = loadSession();
+if(savedUser){ currentUser = savedUser; document.getElementById('loginScreen').style.display='none'; startApp(); }
+else{ document.getElementById('loadingOverlay').classList.add('hidden'); document.getElementById('loginScreen').style.display='flex'; }
+</script>
+</body>
+</html>
