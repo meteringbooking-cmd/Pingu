@@ -332,6 +332,28 @@
         .detail-value { color: var(--text-strong); font-weight: 500; font-size: 13px; word-break: break-word; }
         .detail-row.wide { grid-column: 1 / -1; border-right: 0; }
 
+        /* ── Project info (from Pingu-Project.html) ── */
+        .project-box { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+        .project-box-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; background: rgba(255,255,255,0.025); border-bottom: 1px solid var(--line); }
+        .project-box-head .section-title { margin: 0; }
+        .project-link { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; }
+        .project-link:hover { text-decoration: underline; }
+        .project-empty { padding: 12px; color: var(--text-dim); font-size: 13px; }
+        .project-sections { display: grid; grid-template-columns: repeat(3, 1fr); }
+        .project-sec { padding: 10px 12px; border-right: 1px solid var(--line); min-width: 0; }
+        .project-sec:last-child { border-right: 0; }
+        .project-sec-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--text-strong); margin-bottom: 6px; }
+        .project-flag { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--text-dim); }
+        .project-flag.on { color: var(--success); border-color: rgba(78,204,163,0.45); background: rgba(78,204,163,0.1); }
+        .project-kv { font-size: 12.5px; color: var(--text-soft); line-height: 1.6; }
+        .project-kv b { color: var(--text-dim); font-weight: 500; }
+        .project-note { margin-top: 6px; font-size: 12.5px; color: var(--text-soft); white-space: pre-wrap; word-break: break-word; background: rgba(255,255,255,0.03); border-radius: 6px; padding: 6px 8px; }
+        .project-customer { border-bottom: 1px solid var(--line); }
+        .project-customer .details-grid { border: 0; border-radius: 0; }
+        .project-customer .detail-row:last-child { border-right: 0; border-bottom: 0; }
+        .project-customer .detail-row:nth-last-child(2) { border-bottom: 0; }
+        @media (max-width: 640px) { .project-sections { grid-template-columns: 1fr; } .project-sec { border-right: 0; border-bottom: 1px solid var(--line); } .project-sec:last-child { border-bottom: 0; } }
+
         .status-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .status-btn {
             --c: var(--scheduled);
@@ -548,6 +570,22 @@
                     <div class="detail-row"><div class="detail-label">Source</div><div class="detail-value" id="status-source"></div></div>
                 </div>
 
+                <div class="project-box" id="project-box">
+                    <div class="project-box-head">
+                        <div class="section-title">Project</div>
+                        <a class="project-link" id="project-link" href="Pingu-Project.html" target="_blank" rel="noopener">Open project
+                            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a>
+                    </div>
+                    <div class="project-customer">
+                        <div class="details-grid">
+                            <div class="detail-row wide"><div class="detail-label">Customer</div><div class="detail-value" id="project-customer-name"></div></div>
+                            <div class="detail-row"><div class="detail-label">Contact number</div><div class="detail-value" id="project-customer-phone"></div></div>
+                            <div class="detail-row"><div class="detail-label">Email</div><div class="detail-value" id="project-customer-email"></div></div>
+                        </div>
+                    </div>
+                    <div id="project-body"><div class="project-empty">Loading project…</div></div>
+                </div>
+
                 <div>
                     <div class="section-title">Update status</div>
                     <div class="status-buttons">
@@ -693,7 +731,7 @@
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc }
+        import { getFirestore, collection, getDocs, query, orderBy, doc, updateDoc, getDoc }
             from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
         const firebaseConfig = {
@@ -709,7 +747,7 @@
         try {
             const app = initializeApp(firebaseConfig);
             window.db = getFirestore(app);
-            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc };
+            window.firebaseModules = { collection, getDocs, query, orderBy, doc, updateDoc, getDoc };
             console.log('Firebase initialized');
             emailjs.init("ziLnha91scpGjFABh");
             console.log('EmailJS initialized');
@@ -1410,6 +1448,66 @@
         /* ══════════════════════════════════════════════
            STATUS MODAL
         ══════════════════════════════════════════════ */
+        /* ══════════════════════════════════════════════
+           PROJECT INFO (pingu-projects, edited on Pingu-Project.html)
+        ══════════════════════════════════════════════ */
+        function projDate(v) {
+            if (!v) return '';
+            const d = new Date(v + 'T00:00:00');
+            return isNaN(d) ? v : formatDate(d);
+        }
+
+        async function loadProjectInfo(job) {
+            const jn    = String(job['Job Number'] || job.jobNumber || '').trim();
+            const body  = document.getElementById('project-body');
+            const pick  = keys => { for (const k of keys) { if (job[k] != null && String(job[k]).trim() !== '') return String(job[k]); } return ''; };
+            const name  = pick(['Name', 'Customer Name']);
+            const phone = pick(['Phone Number', 'Phone', 'Contact Number']);
+            const email = pick(['Email Address', 'Email', 'Customer Email']);
+
+            document.getElementById('project-customer-name').textContent = name || 'Not recorded';
+            document.getElementById('project-customer-phone').innerHTML  = phone ? `<a href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ''))}" style="color:var(--accent);text-decoration:none;">${escapeHtml(phone)}</a>` : 'Not recorded';
+            document.getElementById('project-customer-email').innerHTML  = email ? `<a href="mailto:${escapeHtml(email).replace(/"/g, '&quot;')}" style="color:var(--accent);text-decoration:none;">${escapeHtml(email)}</a>` : 'Not recorded';
+            document.getElementById('project-link').href = 'Pingu-Project.html?job=' + encodeURIComponent(jn);
+
+            if (!jn || jn === 'N/A') { body.innerHTML = '<div class="project-empty">No job number on this job.</div>'; return; }
+            body.innerHTML = '<div class="project-empty">Loading project…</div>';
+
+            try {
+                const { doc, getDoc } = window.firebaseModules;
+                const snap = await getDoc(doc(window.db, 'pingu-projects', jn.replace(/\//g, '-')));
+                if (currentJob !== job) return; // a different job was opened while loading
+                if (!snap.exists()) {
+                    body.innerHTML = '<div class="project-empty">No project created for this job yet. Use <strong>Open project</strong> to create one.</div>';
+                    return;
+                }
+                const p = snap.data(), s = p.scaffolding || {}, c = p.cable || {}, j = p.job || {};
+                const flag = (on, yes, no) => `<span class="project-flag${on ? ' on' : ''}">${on ? yes : no}</span>`;
+                const note = n => n ? `<div class="project-note">${escapeHtml(n)}</div>` : '';
+                body.innerHTML = `
+                    <div class="project-sections">
+                        <div class="project-sec">
+                            <div class="project-sec-title">Scaffolding ${flag(s.requested, 'Requested', 'Not requested')}</div>
+                            <div class="project-kv"><b>Erection:</b> ${escapeHtml(projDate(s.erectionDate) || '—')}</div>
+                            <div class="project-kv"><b>Dismantle (projected):</b> ${escapeHtml(projDate(s.dismantleDate) || '—')}</div>
+                            ${note(s.notes)}
+                        </div>
+                        <div class="project-sec">
+                            <div class="project-sec-title">Cable ${flag(c.ordered, 'Ordered', 'Not ordered')}</div>
+                            ${note(c.notes) || '<div class="project-kv">—</div>'}
+                        </div>
+                        <div class="project-sec">
+                            <div class="project-sec-title">Job</div>
+                            <div class="project-kv"><b>Panel quantity:</b> ${j.panelQuantity != null && j.panelQuantity !== '' ? escapeHtml(j.panelQuantity) : '—'}</div>
+                            ${note(j.notes)}
+                        </div>
+                    </div>`;
+            } catch (e) {
+                console.error('Project load failed', e);
+                if (currentJob === job) body.innerHTML = '<div class="project-empty">Could not load project: ' + escapeHtml(e.message) + '</div>';
+            }
+        }
+
         function showStatusModal(jobId) {
             const job = allJobs.find(j => j.id === jobId);
             if (!job) return;
@@ -1448,6 +1546,7 @@
             document.getElementById('job-notes').value   = job.notes  || '';
             document.getElementById('po-numbers').value  = job.poNumbers || '';
             document.getElementById('job-delays').value  = job.delays   || '';
+            loadProjectInfo(job);
 
             document.getElementById('po-timestamp').textContent = job.poNumbersUpdatedAt
                 ? `Last saved: ${formatTimestamp(job.poNumbersUpdatedAt)}` : '';
