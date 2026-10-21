@@ -477,7 +477,15 @@
             <!-- Job -->
             <div class="tab-panel" id="tab-job">
                 <div class="form-grid">
-                    <div class="control-group full" id="panels-group">
+                    <div class="control-group full">
+                        <label class="control-label" for="job-system">System</label>
+                        <input type="text" class="control-input" id="job-system" placeholder="e.g. 6.4 kWp, GivEnergy 5 kW inverter + 9.5 kWh battery">
+                    </div>
+                    <div class="control-group" id="arrays-group">
+                        <label class="control-label" for="job-arrays">Number of arrays</label>
+                        <input type="number" class="control-input panel-qty" id="job-arrays" min="0" step="1" placeholder="0">
+                    </div>
+                    <div class="control-group" id="panels-group">
                         <label class="control-label" for="job-panels">Panel quantity</label>
                         <input type="number" class="control-input panel-qty" id="job-panels" min="0" step="1" placeholder="0">
                     </div>
@@ -798,6 +806,8 @@
         $('job-notes').value         = j.notes || '';
         $('scaff-sides').value       = s.sides ? String(s.sides) : '';
         $('job-hours').value         = j.aftercareHours ?? '';
+        $('job-system').value        = j.system || '';
+        $('job-arrays').value        = j.arrays ?? '';
         const co = p.costs || {};
         $('cost-edmundson').value    = co.edmundson ?? '';
         $('cost-pvf').value          = co.pvf ?? '';
@@ -824,6 +834,7 @@
         $('cable-not-needed').style.display = cableNeeded ? 'none' : 'block';
         $('cable-not-needed').textContent = `Cable/consumables aren't needed for ${t.label} jobs.`;
         $('panels-group').style.display = t.kind === 'battery' || t.kind === 'aftercare' ? 'none' : '';
+        $('arrays-group').style.display = t.kind === 'battery' || t.kind === 'aftercare' ? 'none' : '';
         $('hours-group').style.display = t.kind === 'aftercare' ? '' : 'none';
         $('pvf-group').style.display = scaffNeeded ? '' : 'none';
         $('edm-group').style.display = cableNeeded ? '' : 'none';
@@ -962,6 +973,9 @@
         const hours = hoursRaw === '' ? null : Number(hoursRaw);
         if (hours !== null && (isNaN(hours) || hours < 0)) { toast('Aftercare hours must be a number.', true); showTab('job'); return; }
         const sides = numOrNull($('scaff-sides').value);
+        const arraysRaw = $('job-arrays').value.trim();
+        const arrays = arraysRaw === '' ? null : parseInt(arraysRaw, 10);
+        if (arrays !== null && (isNaN(arrays) || arrays < 0)) { toast('Number of arrays must be a whole number.', true); showTab('job'); return; }
 
         // Costs can only be changed while unlocked; otherwise keep what was saved before.
         const costs = isAdmin
@@ -993,6 +1007,8 @@
             job: {
                 panelQuantity: panels,
                 aftercareHours: hours,
+                system: $('job-system').value.trim(),
+                arrays: arrays,
                 notes: $('job-notes').value.trim()
             },
             costs,
@@ -1074,7 +1090,7 @@
     }
 
     // ── Wire up ───────────────────────────────────────────────────────
-    ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
+    ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
         .forEach(id => {
             $(id).addEventListener('input', () => { setDirty(true); refreshIndicators(); });
             $(id).addEventListener('change', () => { setDirty(true); refreshIndicators(); });
