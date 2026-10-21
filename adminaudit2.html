@@ -710,6 +710,26 @@
                         <button class="audit-btn o-pnc" data-status="pnc" onclick="setAuditStatus('pnc')">PNC</button>
                         <button class="audit-btn o-pass pass" data-status="pass" onclick="setAuditStatus('pass')">Pass</button>
                     </div>
+                    <div class="client-outcome-section" style="margin-bottom: 14px;">
+                        <div class="resolved-row">
+                            <button id="btn-audit-resolved" class="btn btn-secondary" onclick="toggleAuditResolved()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg> Audit issue resolved</button>
+                            <input type="hidden" id="audit-resolved-state" value="false">
+                        </div>
+
+                        <div id="audit-resolved-details" class="resolved-details" style="display: none;">
+                            <div class="control-group">
+                                <label class="control-label" for="audit-resolved-date">Resolved date</label>
+                                <input type="date" id="audit-resolved-date" class="control-input filter-input">
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label" for="audit-resolved-notes">Resolution notes</label>
+                                <textarea id="audit-resolved-notes" class="control-input filter-input" style="min-height: 64px;" placeholder="Add notes about how the audit issue was resolved..."></textarea>
+                            </div>
+                            <div style="text-align: right;">
+                                <button class="btn btn-secondary btn-sm" onclick="saveAuditResolutionOnly()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg> Save resolution details</button>
+                            </div>
+                        </div>
+                    </div>
                     <button class="btn btn-primary btn-block" onclick="generateAuditPDF()">
                         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
                         Generate PDF
@@ -1899,6 +1919,47 @@
             if(typeof autoSaveNotes === 'function') autoSaveNotes();
         };
 
+        /* ═══════════════════════════════════════════════
+           AUDIT ISSUE RESOLVED (mirrors Client issue resolved)
+        ═══════════════════════════════════════════════ */
+        function paintAuditResolved(isResolved) {
+            const btn = document.getElementById('btn-audit-resolved');
+            document.getElementById('audit-resolved-state').value = isResolved ? 'true' : 'false';
+            document.getElementById('audit-resolved-details').style.display = isResolved ? 'block' : 'none';
+            btn.style.backgroundColor = isResolved ? 'rgba(78,204,163,0.16)' : '';
+            btn.style.color = isResolved ? '#4ECCA3' : '';
+        }
+
+        function getAuditResolvedFields() {
+            return {
+                auditResolved:      document.getElementById('audit-resolved-state').value === 'true',
+                auditResolvedDate:  document.getElementById('audit-resolved-date').value,
+                auditResolvedNotes: document.getElementById('audit-resolved-notes').value.trim()
+            };
+        }
+
+        window.toggleAuditResolved = function() {
+            const isResolved = document.getElementById('audit-resolved-state').value !== 'true';
+            paintAuditResolved(isResolved);
+            // Default the date to today the first time it's marked resolved
+            const dateEl = document.getElementById('audit-resolved-date');
+            if (isResolved && !dateEl.value) dateEl.value = new Date().toISOString().slice(0, 10);
+        };
+
+        window.saveAuditResolutionOnly = async function() {
+            if (!currentJob) return;
+            const fields = getAuditResolvedFields();
+            try {
+                await writeSolarJob(currentJob, fields);
+                Object.assign(currentJob, fields);
+                showToast('Audit resolution details saved to database', 'success');
+                renderJobs();
+            } catch(e) {
+                console.error(e);
+                showToast('Failed to save audit resolution details', 'error');
+            }
+        };
+
         function autoSaveNotes() {
             if (!currentJob) return;
             localStorage.setItem(`audit_notes_${currentJob.id}`, document.getElementById('audit-notes').value);
@@ -1916,15 +1977,18 @@
             const clientResolved = document.getElementById('client-resolved-state').value === 'true';
             const clientResolvedDate = document.getElementById('client-resolved-date').value;
             const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
-            
+            const auditResolvedFields = getAuditResolvedFields();
+
             try {
-                await writeSolarJob(currentJob, { 
+                await writeSolarJob(currentJob, {
+                    ...auditResolvedFields,
                     auditNotes: notes,
                     clientOutcome: clientOutcome,
                     clientResolved: clientResolved,
                     clientResolvedDate: clientResolvedDate,
                     clientResolvedNotes: clientResolvedNotes
                 });
+                Object.assign(currentJob, auditResolvedFields);
                 currentJob.auditNotes = notes;
                 currentJob.clientOutcome = clientOutcome;
                 currentJob.clientResolved = clientResolved;
@@ -2478,6 +2542,10 @@
                 btnRes.style.color = '';
             }
 
+            document.getElementById('audit-resolved-date').value  = job.auditResolvedDate  || '';
+            document.getElementById('audit-resolved-notes').value = job.auditResolvedNotes || '';
+            paintAuditResolved(job.auditResolved === true);
+
             document.getElementById('audit-notes').oninput = function() {
                 if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
                 autoSaveTimeout = setTimeout(autoSaveNotes, 1000);
@@ -2515,6 +2583,7 @@
             const clientResolved = document.getElementById('client-resolved-state').value === 'true';
             const clientResolvedDate = document.getElementById('client-resolved-date').value;
             const clientResolvedNotes = document.getElementById('client-resolved-notes').value.trim();
+            const auditResolvedFields = getAuditResolvedFields();
 
             try {
                 await writeSolarJob(currentJob, {
@@ -2524,8 +2593,10 @@
                     clientOutcome: clientOutcome,
                     clientResolved: clientResolved,
                     clientResolvedDate: clientResolvedDate,
-                    clientResolvedNotes: clientResolvedNotes
+                    clientResolvedNotes: clientResolvedNotes,
+                    ...auditResolvedFields
                 });
+                Object.assign(currentJob, auditResolvedFields);
                 currentJob.auditStatus = status;
                 currentJob.auditNotes  = notes;
                 currentJob.auditDate   = new Date();

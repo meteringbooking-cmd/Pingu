@@ -564,7 +564,11 @@
                     clientOutcomeElec:   data['clientOutcomeElec'] || '',
                     clientOutcomeRoof:   data['clientOutcomeRoof'] || '',
                     clientResolvedDate:  data['clientResolvedDate'] ? parseDate(data['clientResolvedDate']) : null,
-                    clientResolvedNotes: data['clientResolvedNotes'] || ''
+                    clientResolvedNotes: data['clientResolvedNotes'] || '',
+                    // Set via "Audit issue resolved" under Update Audit Status in adminaudit2.html.
+                    // When ticked, the internal audit notes are shown in the Resolution Notes column.
+                    auditResolved:       data['auditResolved'] === true,
+                    auditNotes:          data['auditNotes'] || ''
                 };
             };
 
@@ -1310,6 +1314,15 @@
             return { text: outcomeStr, color: colorMap[outcomeStr] || C.text };
         }
 
+        // Resolution Notes cell: internal audit notes (only when "Audit issue resolved" is
+        // ticked) plus any client resolution notes. Labelled when both are present.
+        function resolutionNotesCellText(job) {
+            const auditPart  = job.auditResolved && job.auditNotes ? String(job.auditNotes).trim() : '';
+            const clientPart = job.clientResolvedNotes ? String(job.clientResolvedNotes).trim() : '';
+            if (auditPart && clientPart) return `Audit: ${auditPart} | Client: ${clientPart}`;
+            return auditPart || clientPart || ' ';
+        }
+
         const JOB_LIST_ROWS_PER_PAGE = 35;
 
         /* --- Slide(s): full job list for the range, including omitted jobs (as Pending) --- */
@@ -1368,7 +1381,7 @@
                             { text: statusR.label,    options: { color: statusR.color, fill: { color: rowFill }, fontSize: 7, italic: !!statusR.italic, bold: !statusR.italic } },
                             { text: clientE.text,     options: { color: clientE.color, fill: { color: rowFill }, fontSize: 6.5 } },
                             { text: clientR.text,     options: { color: clientR.color, fill: { color: rowFill }, fontSize: 6.5 } },
-                            { text: job.clientResolvedNotes ? String(job.clientResolvedNotes) : ' ', options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.0 } }
+                            { text: resolutionNotesCellText(job), options: { color: C.textDim, fill: { color: rowFill }, fontSize: 6.0 } }
                         ];
                       })
                     : [[{ text: 'No audited jobs fall in this date range.', options: { color: C.textDim, colspan: 9, italic: true, fontSize: 9, fill: { color: C.darkLight } } }]];
