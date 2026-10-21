@@ -1482,23 +1482,29 @@
                     return;
                 }
                 const p = snap.data(), s = p.scaffolding || {}, c = p.cable || {}, j = p.job || {};
+                const code = String(job['Job Type'] || job.jobType || '').toUpperCase();
+                const kind = code.includes('AFTERCARE') ? 'aftercare' : code.includes('BATTERY') ? 'battery' : 'solar';
                 const flag = (on, yes, no) => `<span class="project-flag${on ? ' on' : ''}">${on ? yes : no}</span>`;
                 const note = n => n ? `<div class="project-note">${escapeHtml(n)}</div>` : '';
                 body.innerHTML = `
                     <div class="project-sections">
                         <div class="project-sec">
+                            ${kind !== 'solar' ? '<div class="project-sec-title">Scaffolding <span class="project-flag">Not needed</span></div>' : `
                             <div class="project-sec-title">Scaffolding ${flag(s.requested, 'Requested', 'Not requested')}</div>
+                            <div class="project-kv"><b>Sides:</b> ${s.sides ? escapeHtml(s.sides) : '—'}</div>
                             <div class="project-kv"><b>Erection:</b> ${escapeHtml(projDate(s.erectionDate) || '—')}</div>
-                            <div class="project-kv"><b>Dismantle (projected):</b> ${escapeHtml(projDate(s.dismantleDate) || '—')}</div>
-                            ${note(s.notes)}
+                            <div class="project-kv"><b>Dismantle (projected):</b> ${escapeHtml(projDate(s.dismantleDate) || '—')}</div>`}
+                            ${kind === 'solar' ? note(s.notes) : ''}
                         </div>
                         <div class="project-sec">
-                            <div class="project-sec-title">Cable ${flag(c.ordered, 'Ordered', 'Not ordered')}</div>
-                            ${note(c.notes) || '<div class="project-kv">—</div>'}
+                            ${kind === 'aftercare' ? '<div class="project-sec-title">Cable <span class="project-flag">Not needed</span></div>' : `
+                            <div class="project-sec-title">Cable (Edmundson) ${flag(c.ordered, 'Ordered', 'Not ordered')}</div>
+                            ${note(c.notes) || '<div class="project-kv">—</div>'}`}
                         </div>
                         <div class="project-sec">
                             <div class="project-sec-title">Job</div>
-                            <div class="project-kv"><b>Panel quantity:</b> ${j.panelQuantity != null && j.panelQuantity !== '' ? escapeHtml(j.panelQuantity) : '—'}</div>
+                            ${kind === 'aftercare' ? `<div class="project-kv"><b>Aftercare hours:</b> ${j.aftercareHours != null ? escapeHtml(j.aftercareHours) : '—'}</div>`
+                              : kind === 'battery' ? '' : `<div class="project-kv"><b>Panel quantity:</b> ${j.panelQuantity != null && j.panelQuantity !== '' ? escapeHtml(j.panelQuantity) : '—'}</div>`}
                             ${note(j.notes)}
                         </div>
                     </div>`;
