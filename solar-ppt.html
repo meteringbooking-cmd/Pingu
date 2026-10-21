@@ -568,7 +568,8 @@
                     // Set via "Audit issue resolved" under Update Audit Status in adminaudit2.html.
                     // When ticked, the internal audit notes are shown in the Resolution Notes column.
                     auditResolved:       data['auditResolved'] === true,
-                    auditNotes:          data['auditNotes'] || ''
+                    auditNotes:          data['auditNotes'] || '',
+                    auditResolvedNotes:  data['auditResolvedNotes'] || ''
                 };
             };
 
@@ -811,7 +812,8 @@
             document.getElementById('load-btn').disabled = true;
 
             try {
-                if (allJobs.length === 0) await loadAllJobs();
+                // Always re-fetch so audits/resolutions saved since the page was opened are included
+                await loadAllJobs();
                 console.log(`ℹ️ ${allJobs.length} job(s) available to report on`);
 
                 if (allJobs.length === 0) {
@@ -1317,7 +1319,12 @@
         // Resolution Notes cell: internal audit notes (only when "Audit issue resolved" is
         // ticked) plus any client resolution notes. Labelled when both are present.
         function resolutionNotesCellText(job) {
-            const auditPart  = job.auditResolved && job.auditNotes ? String(job.auditNotes).trim() : '';
+            // When "Audit issue resolved" is ticked, show the internal audit notes AND the
+            // notes typed into the audit Resolution notes box (skipping blanks/duplicates).
+            const auditPart = job.auditResolved
+                ? [...new Set([job.auditNotes, job.auditResolvedNotes]
+                    .map(t => (t ? String(t).trim() : '')).filter(Boolean))].join(' — ')
+                : '';
             const clientPart = job.clientResolvedNotes ? String(job.clientResolvedNotes).trim() : '';
             if (auditPart && clientPart) return `Audit: ${auditPart} | Client: ${clientPart}`;
             return auditPart || clientPart || ' ';
