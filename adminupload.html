@@ -288,6 +288,20 @@
         .match-manual { --c: var(--accent); }
         .match-none   { --c: var(--error); }
 
+        /* ── Paste from Google Sheet → Databricks ── */
+        .paste-panel { margin-bottom: 16px; }
+        .paste-cols { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+        .paste-cols .tag { font-size: 11.5px; padding: 3px 8px; }
+        .paste-cols .arrow { color: var(--text-dim); font-size: 12px; }
+        #db-paste { width: 100%; min-height: 150px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; }
+        .db-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+        .db-preview-wrap { margin-top: 12px; max-height: 420px; }
+        .db-preview-wrap td { white-space: nowrap; }
+        .db-preview-wrap td.wrap { white-space: normal; min-width: 180px; }
+        .db-preview-wrap tr.bad td { background: rgba(255,107,107,0.06); }
+        .row-msg { color: var(--warning); font-size: 12px; }
+        .row-msg.err { color: #FF8A8A; }
+
         @media (max-width: 1100px) { .upload-layout { grid-template-columns: minmax(0, 1fr); } }
         @media (max-width: 768px) {
             .resolution-items { grid-template-columns: minmax(0, 1fr); }
@@ -312,6 +326,30 @@
 <div class="container">
     <div class="page-head">
         <h1>Mass job upload (CSV)</h1>
+    </div>
+
+    <!-- Paste from Google Sheet → Databricks -->
+    <div class="panel paste-panel" id="db-panel">
+        <div class="panel-head">
+            <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Paste from Google Sheet (Databricks)</div>
+        </div>
+        <p class="muted" style="font-size:13px;margin-bottom:10px;">Copy the rows in Google Sheets and paste them below. The columns must be in this order. A header row is skipped automatically. Rows are matched by job number, so pasting a job again updates it.</p>
+        <div class="paste-cols">
+            <span class="tag">Job Number</span><span class="arrow">→</span><span class="tag">Postcode</span><span class="arrow">→</span><span class="tag">Install Date</span><span class="arrow">→</span><span class="tag">Panels</span><span class="arrow">→</span><span class="tag">System</span><span class="arrow">→</span><span class="tag">Inverter</span><span class="arrow">→</span><span class="tag">Arrays</span>
+        </div>
+        <textarea id="db-paste" class="control-input" placeholder="Paste here (Ctrl+V)…" spellcheck="false"></textarea>
+        <div class="db-summary" id="db-summary"></div>
+        <div class="table-wrap db-preview-wrap" id="db-preview-wrap" style="display:none;">
+            <table>
+                <thead><tr><th>#</th><th>Job Number</th><th>Postcode</th><th>Install Date</th><th>Panels</th><th>System</th><th>Inverter</th><th>Arrays</th><th>Status</th></tr></thead>
+                <tbody id="db-preview-body"></tbody>
+            </table>
+        </div>
+        <div id="db-status" class="status hidden"></div>
+        <div class="buttons">
+            <button class="btn btn-primary" id="db-save-btn" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg><span id="db-save-label">Save to Databricks</span></button>
+            <button class="btn btn-ghost" id="db-clear-btn">Clear</button>
+        </div>
     </div>
 
     <div class="upload-layout">
@@ -419,6 +457,154 @@
             window.allTeams = [];
         }
     });
+</script>
+
+<!-- Paste from Google Sheet → Databricks collection (read by Pingu-Project.html) -->
+<script type="module">
+    import { collection, getDocs, doc, writeBatch }
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    const DB_COLLECTION = 'Databricks';
+    const COLS = ['jobNumber', 'postcode', 'installDate', 'panels', 'system', 'inverter', 'arrays'];
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const docId = jn => String(jn).trim().replace(/\//g, '-');
+
+    let rows = [];           // parsed, validated rows ready to save
+    let existingIds = null;  // Set of job numbers already in Databricks
+
+    // Google Sheets copies as tab-separated text. Cells containing line breaks or tabs are wrapped in quotes.
+    function parseTSV(text) {
+        const out = []; let row = [], cell = '', q = false;
+        for (let i = 0; i < text.length; i++) {
+            const c = text[i];
+            if (q) {
+                if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+                else cell += c;
+            } else if (c === '"' && cell === '') q = true;
+            else if (c === '\t') { row.push(cell); cell = ''; }
+            else if (c === '\n' || c === '\r') {
+                if (c === '\r' && text[i + 1] === '\n') i++;
+                row.push(cell); out.push(row); row = []; cell = '';
+            } else cell += c;
+        }
+        if (cell !== '' || row.length) { row.push(cell); out.push(row); }
+        return out.filter(r => r.some(x => String(x).trim() !== ''));
+    }
+
+    function parseDate(v) {
+        const t = String(v || '').trim();
+        if (!t) return null;
+        let m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
+        if (m) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; const d = new Date(y, +m[2] - 1, +m[1]); return isNaN(d) ? null : d; }
+        m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) { const d = new Date(+m[1], +m[2] - 1, +m[3]); return isNaN(d) ? null : d; }
+        const d = new Date(t); return isNaN(d) ? null : d;
+    }
+    const ddmmyyyy = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    function wholeNumber(v) {
+        const t = String(v ?? '').trim().replace(/,/g, '');
+        if (t === '') return { val: null };
+        if (!/^\d+$/.test(t)) return { val: null, bad: true };
+        return { val: parseInt(t, 10) };
+    }
+
+    async function loadExisting() {
+        if (existingIds) return existingIds;
+        try {
+            const snap = await getDocs(collection(window.db, DB_COLLECTION));
+            existingIds = new Set(snap.docs.map(d => d.id));
+        } catch (e) { console.warn('Could not read Databricks', e); existingIds = new Set(); }
+        return existingIds;
+    }
+
+    async function onPaste() {
+        const raw = $('db-paste').value;
+        let table = parseTSV(raw);
+        if (table.length && /job/i.test(table[0][0] || '') && !/\d{3,}/.test(table[0][0] || '')) table = table.slice(1); // header row
+        const existing = await loadExisting();
+
+        const seen = new Map();
+        rows = table.map((cells, i) => {
+            const c = COLS.map((_, k) => String(cells[k] ?? '').replace(/\s*[\r\n]+\s*/g, ' ').trim());
+            const errors = [], warnings = [];
+            const jobNumber = c[0].replace(/^#/, '');
+            if (!jobNumber) errors.push('No job number');
+            const d = parseDate(c[2]);
+            if (c[2] && !d) warnings.push('Install date not recognised');
+            const panels = wholeNumber(c[3]); if (panels.bad) warnings.push('Panels is not a whole number');
+            const arrays = wholeNumber(c[6]); if (arrays.bad) warnings.push('Arrays is not a whole number');
+            if (cells.length > COLS.length && cells.slice(COLS.length).some(x => String(x).trim())) warnings.push('Extra columns ignored');
+            const r = {
+                line: i + 1, jobNumber, errors, warnings,
+                postcode: c[1].toUpperCase().replace(/\s+/g, ' '),
+                installDate: d ? ddmmyyyy(d) : c[2], installDateISO: d ? iso(d) : '',
+                panels: panels.val, system: c[4], inverter: c[5], arrays: arrays.val,
+                exists: jobNumber ? existing.has(docId(jobNumber)) : false
+            };
+            if (jobNumber) {
+                if (seen.has(jobNumber)) { seen.get(jobNumber).warnings.push('Duplicate in paste, later row used'); seen.get(jobNumber).skip = true; }
+                seen.set(jobNumber, r);
+            }
+            return r;
+        });
+        render();
+    }
+
+    function render() {
+        const valid = rows.filter(r => !r.errors.length && !r.skip);
+        const nNew = valid.filter(r => !r.exists).length, nUpd = valid.length - nNew;
+        const nErr = rows.filter(r => r.errors.length).length;
+        $('db-preview-wrap').style.display = rows.length ? 'block' : 'none';
+        $('db-preview-body').innerHTML = rows.map(r => {
+            const status = r.errors.length ? `<span class="row-msg err">${esc(r.errors.join('; '))}</span>`
+                : r.skip ? `<span class="row-msg">Skipped (duplicate)</span>`
+                : `<span class="badge" style="--c:${r.exists ? 'var(--accent)' : 'var(--success)'}">${r.exists ? 'Update' : 'New'}</span>` + (r.warnings.length ? ` <span class="row-msg">${esc(r.warnings.join('; '))}</span>` : '');
+            return `<tr class="${r.errors.length ? 'bad' : ''}"><td class="muted">${r.line}</td><td class="mono">${esc(r.jobNumber)}</td><td>${esc(r.postcode)}</td><td>${esc(r.installDate)}</td><td>${r.panels ?? ''}</td><td class="wrap">${esc(r.system)}</td><td class="wrap">${esc(r.inverter)}</td><td>${r.arrays ?? ''}</td><td>${status}</td></tr>`;
+        }).join('');
+        $('db-summary').innerHTML = rows.length ? [
+            `<span class="badge" style="--c:var(--success)">${nNew} new</span>`,
+            `<span class="badge" style="--c:var(--accent)">${nUpd} update${nUpd === 1 ? '' : 's'}</span>`,
+            nErr ? `<span class="badge" style="--c:var(--error)">${nErr} with errors (won't be saved)</span>` : ''
+        ].join('') : '';
+        $('db-save-btn').disabled = !valid.length;
+        $('db-save-label').textContent = valid.length ? `Save ${valid.length} job${valid.length === 1 ? '' : 's'} to Databricks` : 'Save to Databricks';
+    }
+
+    function status(msg, type) { const el = $('db-status'); el.textContent = msg; el.className = 'status ' + type; }
+
+    async function save() {
+        const valid = rows.filter(r => !r.errors.length && !r.skip);
+        if (!valid.length) return;
+        const btn = $('db-save-btn'); btn.disabled = true;
+        let who = ''; try { who = JSON.parse(localStorage.getItem('adminSession') || '{}').name || ''; } catch {}
+        const now = new Date().toISOString();
+        try {
+            for (let i = 0; i < valid.length; i += 400) {
+                const batch = writeBatch(window.db);
+                valid.slice(i, i + 400).forEach(r => batch.set(doc(window.db, DB_COLLECTION, docId(r.jobNumber)), {
+                    jobNumber: r.jobNumber, postcode: r.postcode,
+                    installDate: r.installDate, installDateISO: r.installDateISO,
+                    panels: r.panels, system: r.system, inverter: r.inverter, arrays: r.arrays,
+                    importedAt: now, importedBy: who
+                }, { merge: true }));
+                await batch.commit();
+            }
+            valid.forEach(r => existingIds?.add(docId(r.jobNumber)));
+            status(`Saved ${valid.length} job${valid.length === 1 ? '' : 's'} to Databricks. They now show on the Job tab in Pingu-Project.`, 'success');
+            $('db-paste').value = ''; rows = []; render();
+        } catch (e) {
+            console.error(e);
+            status('Save failed: ' + e.message, 'error');
+            btn.disabled = false;
+        }
+    }
+
+    let t;
+    $('db-paste').addEventListener('input', () => { clearTimeout(t); t = setTimeout(onPaste, 250); $('db-status').className = 'status hidden'; });
+    $('db-save-btn').addEventListener('click', save);
+    $('db-clear-btn').addEventListener('click', () => { $('db-paste').value = ''; rows = []; render(); $('db-status').className = 'status hidden'; });
 </script>
 
 <script>

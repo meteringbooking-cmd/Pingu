@@ -289,6 +289,13 @@
         .flag.on { color: var(--success); border-color: rgba(78,204,163,0.45); background: rgba(78,204,163,0.1); }
         .list-filter { margin-bottom: 12px; }
 
+        /* Databricks */
+        .db-note { margin-bottom: 14px; }
+        .db-hint { color: var(--accent); font-size: 11.5px; display: none; }
+        .db-hint button { background: none; border: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: 11.5px; padding: 0; margin-left: 4px; }
+        .from-db { border-color: rgba(0,217,255,0.45) !important; }
+        #profile-db-note { margin-top: 12px; }
+
         /* Admin / costs */
         .admin-btn.unlocked { color: var(--secondary); border-color: rgba(255,200,87,0.45); background: rgba(255,200,87,0.08); }
         .tab.admin-only { display: none; }
@@ -416,6 +423,7 @@
             <div class="tab-panel active" id="tab-profile">
                 <div class="details-grid" id="profile-grid"></div>
                 <div class="source-note"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Pulled live from the job record (Solar-jobs). Edit these on the job itself.</div>
+                <div class="notice warning" id="profile-db-note" style="display:none;"></div>
             </div>
 
             <!-- Scaffolding -->
@@ -476,18 +484,27 @@
 
             <!-- Job -->
             <div class="tab-panel" id="tab-job">
+                <div class="notice info db-note" id="db-note" style="display:none;"></div>
                 <div class="form-grid">
                     <div class="control-group full">
                         <label class="control-label" for="job-system">System</label>
-                        <input type="text" class="control-input" id="job-system" placeholder="e.g. 6.4 kWp, GivEnergy 5 kW inverter + 9.5 kWh battery">
+                        <input type="text" class="control-input" id="job-system" placeholder="e.g. 6.4 kWp Aiko panels">
+                        <span class="db-hint" id="hint-system"></span>
+                    </div>
+                    <div class="control-group full">
+                        <label class="control-label" for="job-inverter">Inverter</label>
+                        <input type="text" class="control-input" id="job-inverter" placeholder="e.g. GivEnergy 5 kW hybrid">
+                        <span class="db-hint" id="hint-inverter"></span>
                     </div>
                     <div class="control-group" id="arrays-group">
                         <label class="control-label" for="job-arrays">Number of arrays</label>
                         <input type="number" class="control-input panel-qty" id="job-arrays" min="0" step="1" placeholder="0">
+                        <span class="db-hint" id="hint-arrays"></span>
                     </div>
                     <div class="control-group" id="panels-group">
                         <label class="control-label" for="job-panels">Panel quantity</label>
                         <input type="number" class="control-input panel-qty" id="job-panels" min="0" step="1" placeholder="0">
+                        <span class="db-hint" id="hint-panels"></span>
                     </div>
                     <div class="control-group full" id="hours-group" style="display:none;">
                         <label class="control-label" for="job-hours">Aftercare hours</label>
@@ -573,6 +590,7 @@
     };
 
     const PROJECTS = 'pingu-projects';
+    const DATABRICKS = 'Databricks';
     const JOBS     = 'Solar-jobs';
 
     let db;
@@ -670,6 +688,7 @@
     // ── State ─────────────────────────────────────────────────────────
     let currentJob     = null;   // Solar-jobs record
     let currentProject = null;   // pingu-projects record (null = not created yet)
+    let currentDb      = null;   // Databricks record pasted from the Google Sheet (null = none)
     let allProjects    = [];
     let dirty          = false;
     let isAdmin        = false;
@@ -745,7 +764,10 @@
                 snap = await getDocs(query(collection(db, JOBS), where('Job Number', '==', Number(jn))));
             }
             if (snap.empty) {
-                notice(`No job found with number <strong>${esc(jn)}</strong>. Check the number, or upload the job first.`, 'error');
+                const dbSnap = await getDoc(doc(db, DATABRICKS, projectId(jn))).catch(() => null);
+                notice(dbSnap && dbSnap.exists()
+                    ? `Job <strong>${esc(jn)}</strong> is in Databricks but not in Solar-jobs yet. Upload the job first, then its project can be created.`
+                    : `No job found with number <strong>${esc(jn)}</strong>. Check the number, or upload the job first.`, 'error');
                 $('project-panel').style.display = 'none';
                 currentJob = null; currentProject = null;
                 return;
@@ -755,8 +777,12 @@
             docs.sort((a, b) => String(b.uploadDate || '').localeCompare(String(a.uploadDate || '')));
             currentJob = docs[0];
 
-            const pSnap = await getDoc(doc(db, PROJECTS, projectId(jn)));
+            const [pSnap, dSnap] = await Promise.all([
+                getDoc(doc(db, PROJECTS, projectId(jn))),
+                getDoc(doc(db, DATABRICKS, projectId(jn))).catch(e => { console.warn('Databricks read failed', e); return null; })
+            ]);
             currentProject = pSnap.exists() ? pSnap.data() : null;
+            currentDb = dSnap && dSnap.exists() ? dSnap.data() : null;
 
             notice(docs.length > 1 ? `This job number appears ${docs.length} times in Solar-jobs. Showing the most recent upload.` : '', 'warning');
             renderProject(jn);
@@ -808,6 +834,8 @@
         $('job-hours').value         = j.aftercareHours ?? '';
         $('job-system').value        = j.system || '';
         $('job-arrays').value        = j.arrays ?? '';
+        $('job-inverter').value      = j.inverter || '';
+        applyDatabricks(prof, j);
         const co = p.costs || {};
         $('cost-edmundson').value    = co.edmundson ?? '';
         $('cost-pvf').value          = co.pvf ?? '';
@@ -818,6 +846,54 @@
         $('project-panel').style.display = 'block';
         showTab('profile');
         renderProjects();
+    }
+
+    // Fill empty Job tab fields from the Databricks paste, and flag where saved values differ from it.
+    const DB_FIELDS = [
+        { id: 'job-panels',   hint: 'hint-panels',   key: 'panels',   proj: 'panelQuantity', label: 'panel quantity' },
+        { id: 'job-system',   hint: 'hint-system',   key: 'system',   proj: 'system',        label: 'system' },
+        { id: 'job-inverter', hint: 'hint-inverter', key: 'inverter', proj: 'inverter',      label: 'inverter' },
+        { id: 'job-arrays',   hint: 'hint-arrays',   key: 'arrays',   proj: 'arrays',        label: 'number of arrays' }
+    ];
+    const blank = v => v === null || v === undefined || String(v).trim() === '';
+    function applyDatabricks(prof, j) {
+        const filled = [];
+        DB_FIELDS.forEach(f => {
+            const el = $(f.id), hint = $(f.hint);
+            el.classList.remove('from-db'); hint.style.display = 'none'; hint.innerHTML = '';
+            if (!currentDb || blank(currentDb[f.key])) return;
+            const dbVal = String(currentDb[f.key]).trim();
+            if (blank(j[f.proj])) {
+                el.value = dbVal; el.classList.add('from-db'); filled.push(f.label);
+            } else if (String(j[f.proj]).trim().toLowerCase() !== dbVal.toLowerCase()) {
+                hint.style.display = 'block';
+                hint.innerHTML = `Databricks says <strong>${esc(dbVal)}</strong><button type="button" data-use="${f.id}">Use this</button>`;
+                hint.querySelector('button').onclick = () => { el.value = dbVal; el.classList.add('from-db'); hint.style.display = 'none'; setDirty(true); refreshIndicators(); };
+            }
+        });
+        const note = $('db-note');
+        if (!currentDb) { note.style.display = 'none'; }
+        else {
+            note.style.display = 'flex';
+            const when = currentDb.importedAt ? ' (pasted ' + fmtStamp(currentDb.importedAt) + ')' : '';
+            note.textContent = filled.length
+                ? `Filled in from Databricks${when}: ${filled.join(', ')}. Click ${currentProject ? 'Save changes' : 'Create project'} to keep ${filled.length === 1 ? 'it' : 'them'} on the project.`
+                : `This job is in Databricks${when}.`;
+            if (filled.length) setTimeout(() => setDirty(true), 0);
+        }
+
+        // Postcode / install date cross-check against the job record
+        const issues = [];
+        if (currentDb) {
+            const pc = v => String(v || '').toUpperCase().replace(/\s+/g, '');
+            if (currentDb.postcode && prof.postcode && pc(currentDb.postcode) !== pc(prof.postcode))
+                issues.push(`postcode is ${esc(currentDb.postcode)} in Databricks but ${esc(prof.postcode)} on the job`);
+            const a = parseDate(currentDb.installDate), b = parseDate(prof.installDay);
+            if (a && b && a.toDateString() !== b.toDateString())
+                issues.push(`install date is ${esc(fmtShort(a))} in Databricks but ${esc(fmtShort(b))} on the job`);
+        }
+        $('profile-db-note').style.display = issues.length ? 'flex' : 'none';
+        $('profile-db-note').innerHTML = issues.length ? 'Check: the ' + issues.join('; the ') + '.' : '';
     }
 
     // Show/hide sections depending on the job type, and set the order-by deadlines from the install day.
@@ -1008,6 +1084,7 @@
                 panelQuantity: panels,
                 aftercareHours: hours,
                 system: $('job-system').value.trim(),
+                inverter: $('job-inverter').value.trim(),
                 arrays: arrays,
                 notes: $('job-notes').value.trim()
             },
@@ -1029,6 +1106,8 @@
             setStateBadge();
             refreshIndicators();
             setDirty(false);
+            DB_FIELDS.forEach(f => $(f.id).classList.remove('from-db'));
+            if (currentDb) $('db-note').textContent = 'This job is in Databricks' + (currentDb.importedAt ? ' (pasted ' + fmtStamp(currentDb.importedAt) + ')' : '') + '.';
             toast(wasNew ? `Project created for job #${jn}` : `Project #${jn} saved`);
             upsertProjectInList(projectId(jn), data);
         } catch (e) {
@@ -1090,7 +1169,7 @@
     }
 
     // ── Wire up ───────────────────────────────────────────────────────
-    ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
+    ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-inverter', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
         .forEach(id => {
             $(id).addEventListener('input', () => { setDirty(true); refreshIndicators(); });
             $(id).addEventListener('change', () => { setDirty(true); refreshIndicators(); });
