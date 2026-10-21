@@ -1932,10 +1932,12 @@
 
         window.saveAuditResolutionOnly = async function() {
             if (!currentJob) return;
-            const fields = getAuditResolvedFields();
+            // Save the internal audit notes too — the PPT export shows them for resolved jobs
+            const fields = { ...getAuditResolvedFields(), auditNotes: document.getElementById('audit-notes').value.trim() };
             try {
                 await writeSolarJob(currentJob, fields);
                 Object.assign(currentJob, fields);
+                clearSavedNotes(currentJob.id);
                 showToast('Audit resolution details saved to database', 'success');
                 renderJobs();
             } catch(e) {
@@ -2628,7 +2630,7 @@
                 const preview = { ...currentJob, ['auditStatus' + part]: status, ['auditStatus' + other]: otherStatus };
                 const overall = getOverallAuditStatus(preview);
                 const nowIso  = overall === 'pending' ? '' : new Date().toISOString();
-                const auditResolvedFields = getAuditResolvedFields();
+                const auditResolvedFields = { ...getAuditResolvedFields(), auditNotes: document.getElementById('audit-notes').value.trim() };
                 await writeSolarJob(currentJob, {
                     ['auditStatus' + part]:  status,
                     ['auditStatus' + other]: otherStatus,
