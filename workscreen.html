@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workscreen | Pingu</title>
+    <title>Office Board | Pingu</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         /* ═══ Pingu design system — base (copy verbatim into each page's <style>) ═══ */
@@ -209,99 +209,148 @@
             .wordmark { font-size: 24px; }
         }
         /* ═══ end base ═══ */
-        /* ═══ Workscreen — page styles ═══ */
-        body { min-height: 100vh; display: flex; flex-direction: column; }
-        .appbar { height: 72px; }
-        .clock { display: flex; align-items: baseline; gap: 14px; }
-        .clock-time { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; }
-        .clock-date { color: var(--text-soft); font-size: 15px; font-weight: 500; }
-        .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--success); }
-        .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 0 rgba(78,204,163,0.6); animation: pulse 2s infinite; }
-        .live.off { color: var(--error); }
-        .live.off::before { animation: none; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(78,204,163,0.55); } 70% { box-shadow: 0 0 0 9px rgba(78,204,163,0); } 100% { box-shadow: 0 0 0 0 rgba(78,204,163,0); } }
-
-        .board { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 20px 24px 24px; }
-        .week { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
-        .week.current { border-color: rgba(255,107,53,0.55); box-shadow: 0 0 0 1px rgba(255,107,53,0.25), 0 20px 50px -30px rgba(255,107,53,0.5); }
-        .week-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
-        .week-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
-        .week.current .week-label { color: var(--primary); }
-        .week-range { font-size: 17px; font-weight: 600; color: var(--text-strong); margin-top: 3px; }
-        .now-tag { font-size: 10.5px; padding: 3px 8px; border-radius: 999px; background: var(--primary); color: #fff; letter-spacing: .06em; }
-
-        .week-body { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 18px; flex: 1; min-height: 0; }
-        .total { display: flex; align-items: baseline; gap: 12px; }
-        .total-num { font-size: 76px; line-height: .95; font-weight: 800; letter-spacing: -0.045em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
-        .total-lbl { font-size: 16px; color: var(--text-soft); font-weight: 500; }
-
-        .bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
-        .bar span { height: 100%; transition: width .4s ease; }
-
-        .stats { display: grid; grid-template-columns: 1fr; gap: 8px; }
-        .stat { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
-        .stat-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: var(--text-soft); }
-        .stat-name .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); flex: 0 0 auto; }
-        .stat-num { font-size: 34px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
-        .stat-sub { font-size: 12px; color: var(--text-dim); font-weight: 500; margin-left: 4px; }
-        .stat.muted-stat .stat-num { color: var(--text-dim); font-size: 26px; }
-
-        .pvf { border-radius: 14px; padding: 16px 18px; border: 1px solid rgba(78,204,163,0.45); background: rgba(78,204,163,0.08); }
-        .pvf.alert { border-color: rgba(255,107,107,0.6); background: rgba(255,107,107,0.10); }
-        .pvf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .pvf-title { font-size: 15px; font-weight: 700; color: var(--text-strong); line-height: 1.25; }
-        .pvf-sub { font-size: 12.5px; color: var(--text-soft); margin-top: 2px; }
-        .pvf-num { font-size: 64px; font-weight: 800; line-height: .9; letter-spacing: -0.045em; color: var(--success); font-variant-numeric: tabular-nums; }
-        .pvf.alert .pvf-num { color: #FF7A7A; }
-        .pvf-ok { font-size: 14px; color: var(--success); font-weight: 600; margin-top: 10px; }
-        .pvf-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-        .pvf-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 8px; background: rgba(0,0,0,0.18); font-size: 13.5px; }
-        .pvf-item .jn { font-family: var(--mono); font-weight: 700; color: var(--text-strong); }
-        .pvf-item .who { color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pvf-item .day { color: var(--text-dim); font-size: 12.5px; white-space: nowrap; }
-        .pvf-more { font-size: 12.5px; color: var(--text-dim); padding: 2px 10px; }
-
-        .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 24px 16px; color: var(--text-dim); font-size: 12px; }
-        .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--text-dim); font-size: 16px; }
-        .err { margin: 20px 24px; }
-
-        @media (max-width: 1400px) {
-            .total-num { font-size: 60px; } .pvf-num { font-size: 52px; } .stat-num { font-size: 28px; }
+        /* ═══ Office TV board ═══
+           Everything is laid out on a fixed 1920×1080 stage that is scaled to fit the
+           screen, so it looks the same on any TV and never scrolls. */
+        html, body { height: 100%; overflow: hidden; background: #0f0f1e; }
+        body { display: flex; align-items: center; justify-content: center; }
+        .stage {
+            width: 1920px; height: 1080px; flex: 0 0 auto;
+            transform-origin: center center;
+            background: var(--bg);
+            display: grid; grid-template-rows: 96px 1fr; overflow: hidden; position: relative;
         }
-        @media (max-width: 1100px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-        @media (max-width: 640px) {
-            .board { grid-template-columns: 1fr; padding: 14px; gap: 12px; }
-            .clock-date { display: none; }
-            .clock-time { font-size: 22px; }
-            .foot { padding: 0 14px 14px; }
-        }
-        @media (prefers-reduced-motion: reduce) { .live::before { animation: none; } }
+
+        /* Header */
+        .top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 36px; border-bottom: 1px solid var(--line); }
+        .top .wordmark { font-size: 40px; }
+        .brand { display: flex; align-items: center; gap: 18px; }
+        .brand-sub { font-size: 18px; font-weight: 600; color: var(--text-dim); letter-spacing: .02em; padding-top: 8px; }
+        .clock { text-align: center; line-height: 1; }
+        .clock-time { font-family: var(--mono); font-size: 54px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; }
+        .clock-date { font-size: 17px; color: var(--text-soft); margin-top: 6px; font-weight: 500; }
+        .top-right { display: flex; justify-content: flex-end; align-items: center; gap: 18px; }
+        .live { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 700; letter-spacing: .1em; color: var(--success); }
+        .live::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+        .live.off { color: var(--error); } .live.off::before { animation: none; }
+        .updated { font-size: 14px; color: var(--text-dim); }
+        .fs-btn { background: transparent; border: 1px solid var(--line-2); color: var(--text-soft); border-radius: 10px; padding: 8px 14px; font-size: 14px; cursor: pointer; }
+        .fs-btn:hover { color: var(--text-strong); background: var(--surface-2); }
+        :fullscreen .fs-btn { display: none; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(78,204,163,0.55); } 70% { box-shadow: 0 0 0 12px rgba(78,204,163,0); } 100% { box-shadow: 0 0 0 0 rgba(78,204,163,0); } }
+
+        .main { display: grid; grid-template-rows: 452px 1fr; gap: 22px; padding: 22px 36px 30px; min-height: 0; }
+        .weeks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; min-height: 0; }
+        .lower { display: grid; grid-template-columns: 1.62fr 1fr; gap: 22px; min-height: 0; }
+
+        /* Week cards */
+        .card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; position: relative; }
+        .card.now { border-color: rgba(255,107,53,0.6); box-shadow: 0 0 0 1px rgba(255,107,53,0.3), 0 30px 60px -40px rgba(255,107,53,0.7); }
+        .card-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 26px 0; }
+        .card-label { font-size: 17px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+        .card.now .card-label { color: var(--primary); }
+        .card-range { font-size: 18px; font-weight: 600; color: var(--text-soft); }
+        .now-tag { font-size: 13px; font-weight: 800; letter-spacing: .08em; padding: 4px 11px; border-radius: 999px; background: var(--primary); color: #fff; margin-left: 10px; }
+        .card-body { padding: 8px 26px 24px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+        .big { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+        .big-num { font-size: 120px; font-weight: 800; line-height: .9; letter-spacing: -0.05em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+        .big-lbl { font-size: 22px; color: var(--text-soft); font-weight: 600; line-height: 1.2; }
+        .big-lbl small { display: block; font-size: 16px; color: var(--text-dim); font-weight: 500; }
+
+        .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .mini { background: var(--surface-2); border-radius: 14px; padding: 12px 14px 12px; border-top: 4px solid var(--c); }
+        .mini-num { font-size: 46px; font-weight: 800; line-height: 1; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+        .mini-num.zero { color: var(--text-dim); }
+        .mini-lbl { font-size: 15px; color: var(--text-soft); font-weight: 600; margin-top: 6px; }
+
+        .foot-line { margin-top: auto; display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700; padding: 12px 16px; border-radius: 12px; }
+        .foot-line.bad  { background: rgba(255,107,107,0.14); color: #FF8A8A; border: 1px solid rgba(255,107,107,0.45); }
+        .foot-line.good { background: rgba(78,204,163,0.10); color: var(--success); border: 1px solid rgba(78,204,163,0.35); }
+        .foot-line.info { background: rgba(255,255,255,0.04); color: var(--text-soft); border: 1px solid var(--line-2); font-weight: 600; }
+        .foot-line .n { font-size: 26px; font-variant-numeric: tabular-nums; }
+
+        .ready { margin-bottom: 14px; }
+        .ready-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+        .ready-lbl { font-size: 18px; font-weight: 700; color: var(--text-soft); }
+        .ready-val { font-size: 30px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+        .ready-val small { font-size: 18px; color: var(--text-dim); font-weight: 600; }
+        .meter { height: 14px; border-radius: 999px; background: rgba(255,107,107,0.28); overflow: hidden; }
+        .meter span { display: block; height: 100%; background: var(--success); border-radius: 999px; transition: width .5s ease; }
+        .meter.empty { background: rgba(255,255,255,0.08); }
+        .gaps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .gap { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-size: 15px; font-weight: 600; color: var(--text-soft); }
+        .gap b { font-size: 24px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+        .gap.wide { grid-column: 1 / -1; }
+        .gap.bad { background: rgba(255,107,107,0.13); color: #FFB0B0; }
+        .gap.bad b { color: #FF7A7A; }
+
+        /* Lower tiles */
+        .tile-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 26px 14px; }
+        .tile-title { display: flex; align-items: center; gap: 12px; font-size: 26px; font-weight: 800; color: var(--text-strong); letter-spacing: -0.01em; }
+        .tile-title .count { font-size: 18px; font-weight: 800; padding: 3px 12px; border-radius: 999px; background: var(--c, var(--surface-2)); color: #fff; }
+        .tile-title .ico { width: 28px; height: 28px; color: var(--c, var(--primary)); }
+        .tile-sub { font-size: 16px; color: var(--text-dim); font-weight: 500; margin-top: 2px; }
+        .dots { display: flex; gap: 8px; }
+        .dots i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+        .dots i.on { background: var(--text-strong); }
+        .progress { position: absolute; left: 0; bottom: 0; height: 4px; background: var(--primary); width: 0; }
+        .progress.run { animation: fill linear forwards; }
+        @keyframes fill { from { width: 0; } to { width: 100%; } }
+
+        .rows { padding: 0 26px 24px; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+        .row { display: grid; align-items: center; gap: 16px; padding: 0 16px; height: 50px; border-radius: 12px; background: var(--surface-2); font-size: 19px; color: var(--text-soft); }
+        .row .jn { font-family: var(--mono); font-weight: 700; color: var(--text-strong); font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .row .who { font-weight: 600; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .row .muted { color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .row .day { font-weight: 700; color: var(--text-soft); white-space: nowrap; }
+        .chips { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; justify-content: flex-end; }
+        .chip { font-size: 14px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; background: rgba(255,107,107,0.16); color: #FF9A9A; border: 1px solid rgba(255,107,107,0.4); }
+        .chip.amber { background: rgba(255,200,87,0.14); color: var(--warning); border-color: rgba(255,200,87,0.45); }
+        .pill { --c: var(--scheduled); justify-self: end; font-size: 14px; font-weight: 800; padding: 5px 12px; border-radius: 999px; white-space: nowrap; color: var(--text-strong);
+                background: color-mix(in srgb, var(--c) 22%, transparent); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
+        .more { font-size: 16px; color: var(--text-dim); padding: 2px 16px; font-weight: 600; }
+
+        .all-clear { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--success); }
+        .all-clear .ico { width: 84px; height: 84px; }
+        .all-clear b { font-size: 40px; font-weight: 800; letter-spacing: -0.02em; }
+        .all-clear span { font-size: 19px; color: var(--text-soft); }
+        .empty-today { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--text-dim); }
+
+        .fade { animation: fadeIn .45s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+        .loading-stage { position: absolute; inset: 96px 0 0 0; display: flex; align-items: center; justify-content: center; gap: 16px; font-size: 24px; color: var(--text-dim); background: var(--bg); z-index: 5; }
+        .loading-stage .spinner { width: 34px; height: 34px; border-width: 3px; }
+
+        @media (prefers-reduced-motion: reduce) { .live::before, .fade, .progress.run { animation: none !important; } }
     </style>
 </head>
 <body>
-<header class="appbar">
-    <a href="index.html" class="logo" aria-label="Pingu home">
-        <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
-    </a>
-    <div class="clock"><span class="clock-time" id="clock-time">--:--</span><span class="clock-date" id="clock-date"></span></div>
-    <div class="appbar-actions">
-        <span class="live off" id="live">CONNECTING</span>
-        <button type="button" class="back-btn" onclick="toggleFullscreen()" title="Full screen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>Full screen</button>
-    </div>
-</header>
-
-<div class="loading-screen" id="loading"><span class="spinner"></span>Loading jobs…</div>
-<main class="board" id="board" style="display:none;"></main>
-<div class="foot" id="foot" style="display:none;">
-    <span>Jobs are counted in the week of their install day (Monday to Sunday). Solar survey jobs are not counted.</span>
-    <span id="updated"></span>
+<div class="stage" id="stage">
+    <header class="top">
+        <div class="brand"><span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span><span class="brand-sub">Office board</span></div>
+        <div class="clock"><div class="clock-time" id="clock-time">--:--</div><div class="clock-date" id="clock-date"></div></div>
+        <div class="top-right">
+            <span class="updated" id="updated"></span>
+            <span class="live off" id="live">CONNECTING</span>
+            <button type="button" class="fs-btn" onclick="toggleFullscreen()">Full screen</button>
+        </div>
+    </header>
+    <main class="main">
+        <section class="weeks" id="weeks"></section>
+        <section class="lower">
+            <div class="card" id="actions"></div>
+            <div class="card" id="today"></div>
+        </section>
+    </main>
+    <div class="loading-stage" id="loading"><span class="spinner"></span>Loading jobs…</div>
 </div>
 
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
     import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-    const cfg = {
+    const db = getFirestore(initializeApp({
         apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
         authDomain: "pingu-solar.firebaseapp.com",
         projectId: "pingu-solar",
@@ -309,10 +358,15 @@
         messagingSenderId: "232764952866",
         appId: "1:232764952866:web:5923b7f419de6355d6157b",
         measurementId: "G-PFH059DZ64"
-    };
-    const db = getFirestore(initializeApp(cfg));
+    }));
 
-    // ── Helpers ────────────────────────────────────────────────────────
+    /* ── Settings ─────────────────────────────────────────────────────── */
+    const ROTATE_SECONDS   = 12;                     // how long each action list / today page shows
+    const ROWS_PER_PAGE    = 6;                      // rows that fit in the lower tiles
+    const PVF_NOTICE_DAYS  = 28;                     // PVF request form is due 28 days before install
+    const NOT_UPDATED_DAYS = 28;                     // look back this far for jobs that were never updated
+
+    /* ── Helpers ──────────────────────────────────────────────────────── */
     const $ = id => document.getElementById(id);
     const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const normJob = v => String(v ?? '').trim().replace(/^#/, '').toUpperCase();
@@ -324,147 +378,294 @@
             const p = v.split('/');
             if (p.length === 3) { const d = new Date(+p[2], +p[1] - 1, +p[0]); if (!isNaN(d)) { d.setHours(0, 0, 0, 0); return d; } }
         }
+        if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y, m, d] = v.split('-').map(Number); return new Date(y, m - 1, d); }
         const d = new Date(v); if (isNaN(d)) return null; d.setHours(0, 0, 0, 0); return d;
     }
+    const today0 = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
     const mondayOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
     const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    const daysBetween = (a, b) => Math.round((b - a) / 86400000);
     const fmtDay = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-    const fmtWeekday = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
+    const fmtWd = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-    // Job rules (same as the job timeline)
-    function isSurvey(type) { return /survey/i.test(String(type || '').replace(/_/g, ' ')); }
-    function isSolarInstall(type) {
+    function jobKind(type) {
         const t = String(type || '').toUpperCase().replace(/[^A-Z]+/g, '_');
-        if (t.includes('BATTERY') || t.includes('AFTERCARE') || t.includes('SURVEY')) return false;
-        return t.includes('INSTALL') && (t.includes('SOLAR') || t.includes('PV'));
+        if (/SURVEY/.test(t)) return 'survey';
+        if (t.includes('AFTERCARE')) return 'aftercare';
+        if (t.includes('BATTERY')) return 'battery';
+        if (t.includes('INSTALL') && (t.includes('SOLAR') || t.includes('PV'))) return 'solar';
+        return 'other';
     }
+    const KIND_LABEL = { solar: 'Solar', battery: 'Battery', aftercare: 'Aftercare', other: 'Job' };
     function statusOf(j) {
         const s = String(j['Status Update'] || j.status || '').trim().toLowerCase();
-        if (s === 'complete' || s === 'completed' || s === 'install-complete') return 'complete';
+        if (['complete', 'completed', 'install-complete'].includes(s)) return 'complete';
         if (s === 'aborted') return 'aborted';
         if (s === 'cancelled' || s === 'canceled') return 'cancelled';
         if (s === 'short notice cancellation') return 'shortNotice';
-        return 'other';
+        if (s === 'in-progress' || s === 'in progress') return 'inProgress';
+        if (s === 'on hold') return 'onHold';
+        return 'scheduled';
     }
+    const STATUS = {
+        complete:    { label: 'Complete',     c: 'var(--complete)' },
+        inProgress:  { label: 'In progress',  c: 'var(--in-progress)' },
+        onHold:      { label: 'On hold',      c: 'var(--on-hold)' },
+        aborted:     { label: 'Aborted',      c: 'var(--aborted)' },
+        cancelled:   { label: 'Cancelled',    c: 'var(--cancelled)' },
+        shortNotice: { label: 'Short notice', c: 'var(--short-notice)' },
+        scheduled:   { label: 'Scheduled',    c: 'var(--scheduled)' }
+    };
+    const isCancelled = j => j.status === 'cancelled' || j.status === 'shortNotice';
+    const ICON = {
+        alert: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>',
+        scaffold: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3v18M20 3v18M4 8h16M4 14h16M4 8l16 6"/></svg>',
+        clock: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+        check: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>',
+        van: '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>'
+    };
 
-    // ── Live data ──────────────────────────────────────────────────────
-    const data = { jobs: null, projects: null, sheet: null };
-    let lastUpdate = null;
-    function listen(name, key) {
+    /* ── Live data ────────────────────────────────────────────────────── */
+    const raw = { jobs: null, projects: [], sheet: [], databricks: [] };
+    let lastUpdate = null, model = null;
+    function listen(name, key, required) {
         onSnapshot(collection(db, name), snap => {
-            data[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            raw[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             lastUpdate = new Date();
-            $('live').className = 'live'; $('live').textContent = 'LIVE';
-            render();
+            if (required) { $('live').className = 'live'; $('live').textContent = 'LIVE'; }
+            rebuild();
         }, err => {
             console.error(name, err);
-            if (key === 'jobs') { $('live').className = 'live off'; $('live').textContent = 'OFFLINE'; showError(err); }
-            else { data[key] = []; render(); }   // erect dates are optional extras
+            if (required) { $('live').className = 'live off'; $('live').textContent = 'OFFLINE'; $('loading').innerHTML = `<div class="notice error">Couldn't load jobs: ${esc(err.message)}</div>`; }
         });
     }
 
-    function showError(err) {
-        $('loading').innerHTML = `<div class="notice error err">Couldn't load jobs: ${esc(err.message)}</div>`;
-    }
+    /* ── Work out everything the board shows ──────────────────────────── */
+    function buildModel() {
+        const t = today0();
+        const proj = new Map(raw.projects.map(p => [normJob(p.jobNumber || p.id), p]));
+        const sheet = new Map(raw.sheet.map(r => [normJob(r.jobNumber || r.id), r]));
+        const dbr = new Map(raw.databricks.map(r => [normJob(r.jobNumber || r.id), r]));
 
-    function render() {
-        if (!data.jobs) return;
-        const erect = new Set();
-        (data.projects || []).forEach(p => { if (has(p.scaffolding?.erectionDate)) erect.add(normJob(p.jobNumber || p.id)); });
-        (data.sheet || []).forEach(r => { if (has(r.erectDateISO) || has(r.erectDate)) erect.add(normJob(r.jobNumber || r.id)); });
+        const jobs = raw.jobs.map(j => {
+            const key = normJob(j['Job Number']);
+            const date = parseDate(j['Install Date'] || j['Booked Date']);
+            const len = Math.max(1, parseInt(j['Job Length'] ?? j['Days'] ?? 1, 10) || 1);
+            const p = proj.get(key) || {}, s = sheet.get(key) || {}, d = dbr.get(key) || {};
+            const engineer = String(j['Lead Engineer'] || j['Engineer'] || '').replace(/^["']|["']$/g, '').trim();
+            return {
+                key, jobNumber: String(j['Job Number'] || '').trim(), kind: jobKind(j['Job Type']),
+                date, end: date ? addDays(date, len - 1) : null, len,
+                engineer: /^(unassigned|tbc|tba|n\/a|-)?$/i.test(engineer) ? '' : engineer,
+                postcode: String(j['Postcode'] || '').trim(),
+                status: statusOf(j),
+                erectDate: parseDate(p.scaffolding?.erectionDate) || parseDate(s.erectDateISO) || parseDate(s.erectDate),
+                pvfRequested: !!p.scaffolding?.requested || s.scaffoldRequested === true,
+                // Panel count: the project, else the Databricks or scaffolding sheet paste
+                hasPanels: [p.job?.panelQuantity, d.panels, s.panels].some(v => has(v) && Number(v) > 0),
+                // Edmundson figure entered on the project's Costs tab
+                hasEdmundson: has(p.costs?.edmundson)
+            };
+        }).filter(j => j.date && j.kind !== 'survey');
 
-        const jobs = data.jobs.map(j => ({
-            jobNumber: String(j['Job Number'] || '').trim(),
-            type: j['Job Type'] || '',
-            date: parseDate(j['Install Date'] || j['Booked Date']),
-            engineer: String(j['Lead Engineer'] || j['Engineer'] || '').replace(/^["']|["']$/g, '').trim(),
-            postcode: String(j['Postcode'] || '').trim(),
-            status: statusOf(j)
-        })).filter(j => j.date && !isSurvey(j.type));
+        // Ready to install = panel count, erect date and the Edmundson figure.
+        // Solar installs need all three; battery-only jobs just the Edmundson figure; aftercare nothing.
+        const missingFor = j => {
+            const m = [];
+            if (j.kind === 'solar' || j.kind === 'other') {
+                if (!j.hasPanels) m.push('No panel count');
+                if (!j.erectDate) m.push('No erect date');
+                else if (j.erectDate > j.date) m.push('Erect after install');
+            }
+            if ((j.kind === 'solar' || j.kind === 'battery' || j.kind === 'other') && !j.hasEdmundson) m.push('No Edmundson figure');
+            return m;
+        };
 
-        const thisMon = mondayOf(new Date());
+        const thisMon = mondayOf(t);
+        const inWeek = (start) => { const end = addDays(start, 6); return jobs.filter(j => j.date >= start && j.date <= end); };
         const weeks = [
-            { key: 'last',  label: 'Last week',     start: addDays(thisMon, -7), kind: 'outcome' },
-            { key: 'this',  label: 'This week',     start: thisMon,              kind: 'outcome', current: true },
-            { key: 'next',  label: 'Next week',     start: addDays(thisMon, 7),  kind: 'pvf' },
-            { key: 'after', label: 'Week after',    start: addDays(thisMon, 14), kind: 'pvf' }
-        ];
-        $('board').innerHTML = weeks.map(w => {
-            const end = addDays(w.start, 6);
-            const list = jobs.filter(j => j.date >= w.start && j.date <= end);
-            return `<section class="week${w.current ? ' current' : ''}">
-                <div class="week-head">
-                    <div class="week-label">${w.label}${w.current ? '<span class="now-tag">NOW</span>' : ''}</div>
-                    <div class="week-range">${fmtDay(w.start)} – ${fmtDay(end)}</div>
-                </div>
-                <div class="week-body">${w.kind === 'outcome' ? outcomeBody(list) : pvfBody(list, erect)}</div>
-            </section>`;
-        }).join('');
+            { label: 'Last week',  start: addDays(thisMon, -7), type: 'past' },
+            { label: 'This week',  start: thisMon,              type: 'now' },
+            { label: 'Next week',  start: addDays(thisMon, 7),  type: 'ready' },
+            { label: 'Week after', start: addDays(thisMon, 14), type: 'pvf' }
+        ].map(w => {
+            const list = inWeek(w.start), live = list.filter(j => !isCancelled(j));
+            const count = k => list.filter(j => j.status === k).length;
+            return {
+                ...w, end: addDays(w.start, 6), list,
+                complete: count('complete'), aborted: count('aborted'), cancelled: count('cancelled') + count('shortNotice'),
+                inProgress: count('inProgress') + count('onHold'),
+                notUpdated: list.filter(j => j.end < t && ['scheduled', 'inProgress'].includes(j.status)).length,
+                toCome: list.filter(j => j.date > t && j.status === 'scheduled').length,
+                live, solar: live.filter(j => j.kind === 'solar'),
+                notReady: live.map(j => ({ ...j, missing: missingFor(j) })).filter(j => j.missing.length),
+            };
+        });
 
-        $('loading').style.display = 'none';
-        $('board').style.display = 'grid';
-        $('foot').style.display = 'flex';
-        $('updated').textContent = lastUpdate ? 'Updated ' + lastUpdate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+        const nextWeek = weeks[2];
+        const pvfDue = jobs.filter(j => j.kind === 'solar' && !isCancelled(j) && j.status !== 'complete' && !j.pvfRequested && j.date >= t)
+            .map(j => ({ ...j, dueIn: daysBetween(t, addDays(j.date, -PVF_NOTICE_DAYS)) }))
+            .filter(j => j.dueIn <= 7)                         // overdue, or due within the next week
+            .sort((a, b) => a.dueIn - b.dueIn || a.date - b.date);
+        const notUpdated = jobs.filter(j => j.end < t && daysBetween(j.end, t) <= NOT_UPDATED_DAYS && ['scheduled', 'inProgress'].includes(j.status))
+            .sort((a, b) => a.date - b.date);
+        const onSite = jobs.filter(j => j.date <= t && j.end >= t && !isCancelled(j))
+            .sort((a, b) => (a.engineer || 'zzz').localeCompare(b.engineer || 'zzz') || a.jobNumber.localeCompare(b.jobNumber));
+
+        return { weeks, pvfDue, notUpdated, onSite, nextNotReady: nextWeek.notReady.sort((a, b) => a.date - b.date) };
     }
 
-    function outcomeBody(list) {
-        const n = k => list.filter(j => j.status === k).length;
-        const c = { complete: n('complete'), aborted: n('aborted'), cancelled: n('cancelled') + n('shortNotice'), shortNotice: n('shortNotice') };
-        const other = list.length - c.complete - c.aborted - c.cancelled;
-        const pct = v => list.length ? (v / list.length * 100) + '%' : '0';
-        const stat = (label, num, col, sub = '') => `<div class="stat" style="--c:${col}"><span class="stat-name"><span class="dot"></span>${label}</span><span><span class="stat-num">${num}</span>${sub}</span></div>`;
-        return `
-            <div class="total"><span class="total-num">${list.length}</span><span class="total-lbl">job${list.length === 1 ? '' : 's'}</span></div>
-            <div class="bar" title="Completed / aborted / cancelled">
-                <span style="width:${pct(c.complete)};background:var(--complete)"></span>
-                <span style="width:${pct(c.aborted)};background:var(--aborted)"></span>
-                <span style="width:${pct(c.cancelled)};background:var(--cancelled)"></span>
+    /* ── Week cards ───────────────────────────────────────────────────── */
+    function weekCard(w) {
+        const head = `<div class="card-head"><span class="card-label">${w.label}${w.type === 'now' ? '<span class="now-tag">NOW</span>' : ''}</span><span class="card-range">${fmtDay(w.start)} – ${fmtDay(w.end)}</span></div>`;
+        const big = sub => `<div class="big"><span class="big-num">${w.list.length}</span><span class="big-lbl">job${w.list.length === 1 ? '' : 's'}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
+        const mini = (n, lbl, c) => `<div class="mini" style="--c:${c}"><div class="mini-num${n ? '' : ' zero'}">${n}</div><div class="mini-lbl">${lbl}</div></div>`;
+        const trio = `<div class="trio">${mini(w.complete, 'Completed', 'var(--complete)')}${mini(w.aborted, 'Aborted', 'var(--aborted)')}${mini(w.cancelled, 'Cancelled', 'var(--cancelled)')}</div>`;
+        let body = '';
+        if (w.type === 'past') {
+            body = big() + trio + (w.notUpdated
+                ? `<div class="foot-line bad">${ICON.alert}<span class="n">${w.notUpdated}</span> not updated yet</div>`
+                : `<div class="foot-line good">${ICON.check} All jobs updated</div>`);
+        } else if (w.type === 'now') {
+            const parts = [w.inProgress && `${w.inProgress} in progress`, w.toCome && `${w.toCome} still to come`].filter(Boolean);
+            const info = `<div class="foot-line info">${parts.length ? parts.join(' · ') : 'All jobs have an outcome'}</div>`;
+            body = big() + trio + (w.notUpdated
+                ? `<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;">${info.replace('foot-line info', 'foot-line info" style="margin-top:0')}<div class="foot-line bad" style="margin-top:0">${ICON.alert}<span class="n">${w.notUpdated}</span> finished job${w.notUpdated === 1 ? '' : 's'} not updated</div></div>`
+                : info);
+        } else {
+            const total = w.live.length, ready = total - w.notReady.length;
+            const by = k => w.notReady.filter(j => j.missing.includes(k)).length;
+            const gap = (lbl, n) => `<div class="gap${n ? ' bad' : ''}"><span>${lbl}</span><b>${n}</b></div>`;
+            const pvfNot = w.solar.filter(j => !j.pvfRequested).length;
+            body = big(w.solar.length ? plural(w.solar.length, 'solar install') : '') + `
+                <div class="ready">
+                    <div class="ready-top"><span class="ready-lbl">Ready to install</span><span class="ready-val">${ready}<small> / ${total}</small></span></div>
+                    <div class="meter${total ? '' : ' empty'}"><span style="width:${total ? ready / total * 100 : 0}%"></span></div>
+                </div>
+                <div class="gaps">
+                    ${gap('Need erect date', by('No erect date'))}
+                    ${gap('No panel count', by('No panel count'))}
+                    ${w.type === 'pvf'
+                        ? gap('No Edmundson', by('No Edmundson figure')) + gap('PVF not requested', pvfNot)
+                        : gap('No Edmundson', by('No Edmundson figure')).replace('class="gap', 'class="gap wide')}
+                </div>`;
+        }
+        return `<div class="card${w.type === 'now' ? ' now' : ''}">${head}<div class="card-body">${body}</div></div>`;
+    }
+
+    /* ── Rotating "needs action" tile and paged "today" tile ───────────── */
+    function actionViews(m) {
+        const views = [];
+        if (m.nextNotReady.length) views.push({
+            title: 'Next week: not ready', sub: 'Jobs missing something they need before install day', icon: ICON.alert, c: 'var(--error)',
+            items: m.nextNotReady, cols: '110px 170px 1fr 1.6fr',
+            row: j => `<span class="day">${fmtWd(j.date)}</span><span class="jn">${esc(j.jobNumber)}</span><span class="${j.engineer ? 'who' : 'muted'}">${esc(j.engineer || j.postcode)}</span><span class="chips">${j.missing.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</span>`
+        });
+        if (m.pvfDue.length) views.push({
+            title: 'PVF scaffold requests', sub: `Solar installs with no scaffold request · form due ${PVF_NOTICE_DAYS} days before install`, icon: ICON.scaffold, c: 'var(--warning)',
+            items: m.pvfDue, cols: '110px 170px 1fr 230px',
+            row: j => `<span class="day">${fmtWd(j.date)}</span><span class="jn">${esc(j.jobNumber)}</span><span class="who">${esc(j.engineer || j.postcode)}</span>
+                       <span class="chips">${j.dueIn < 0 ? `<span class="chip">Overdue ${-j.dueIn} day${j.dueIn === -1 ? '' : 's'}</span>` : j.dueIn === 0 ? '<span class="chip">Due today</span>' : `<span class="chip amber">Due in ${j.dueIn} day${j.dueIn === 1 ? '' : 's'}</span>`}</span>`
+        });
+        if (m.notUpdated.length) views.push({
+            title: 'Jobs not updated', sub: `Finished jobs still showing scheduled or in progress · last ${NOT_UPDATED_DAYS} days`, icon: ICON.clock, c: 'var(--error)',
+            items: m.notUpdated, cols: '110px 170px 1fr 190px',
+            row: j => `<span class="day">${fmtWd(j.date)}</span><span class="jn">${esc(j.jobNumber)}</span><span class="who">${esc(j.engineer || '—')}</span><span class="pill" style="--c:${STATUS[j.status].c}">${STATUS[j.status].label}</span>`
+        });
+        return views;
+    }
+    // Split each view into pages of ROWS_PER_PAGE so long lists rotate too
+    function pagesOf(views) {
+        const pages = [];
+        views.forEach(v => {
+            const n = Math.max(1, Math.ceil(v.items.length / ROWS_PER_PAGE));
+            for (let i = 0; i < n; i++) pages.push({ ...v, page: i, pagesInView: n, slice: v.items.slice(i * ROWS_PER_PAGE, (i + 1) * ROWS_PER_PAGE) });
+        });
+        return pages;
+    }
+
+    let actionPages = [], actionIdx = 0, todayPages = [], todayIdx = 0;
+    function renderActions(animate) {
+        const el = $('actions');
+        if (!actionPages.length) {
+            el.innerHTML = `<div class="tile-head"><div><div class="tile-title" style="--c:var(--success)">${ICON.check}Needs action</div></div></div>
+                <div class="all-clear fade">${ICON.check}<b>All clear</b><span>Next week is ready, PVF requests are in, and every job is updated.</span></div>`;
+            return;
+        }
+        actionIdx %= actionPages.length;
+        const p = actionPages[actionIdx];
+        const views = [...new Set(actionPages.map(x => x.title))];
+        el.innerHTML = `
+            <div class="tile-head">
+                <div><div class="tile-title" style="--c:${p.c}">${p.icon}${esc(p.title)}<span class="count">${p.items.length}</span></div><div class="tile-sub">${esc(p.sub)}${p.pagesInView > 1 ? ` · page ${p.page + 1} of ${p.pagesInView}` : ''}</div></div>
+                <div class="dots">${actionPages.map((_, i) => `<i class="${i === actionIdx ? 'on' : ''}"></i>`).join('')}</div>
             </div>
-            <div class="stats">
-                ${stat('Completed', c.complete, 'var(--complete)')}
-                ${stat('Aborted', c.aborted, 'var(--aborted)')}
-                ${stat('Cancelled', c.cancelled, 'var(--cancelled)', c.shortNotice ? `<span class="stat-sub">incl. ${c.shortNotice} short notice</span>` : '')}
-                <div class="stat muted-stat"><span class="stat-name">Scheduled / in progress</span><span class="stat-num">${other}</span></div>
-            </div>`;
+            <div class="rows${animate ? ' fade' : ''}">${p.slice.map(j => `<div class="row" style="grid-template-columns:${p.cols}">${p.row(j)}</div>`).join('')}</div>
+            <div class="progress${actionPages.length > 1 ? ' run' : ''}" style="animation-duration:${ROTATE_SECONDS}s"></div>`;
+    }
+    function renderToday(m, animate) {
+        const el = $('today'), n = m.onSite.length;
+        todayPages = [];
+        for (let i = 0; i < n; i += ROWS_PER_PAGE) todayPages.push(m.onSite.slice(i, i + ROWS_PER_PAGE));
+        todayIdx %= Math.max(1, todayPages.length);
+        const rows = todayPages[todayIdx] || [];
+        el.innerHTML = `
+            <div class="tile-head">
+                <div><div class="tile-title" style="--c:var(--accent)">${ICON.van}On site today<span class="count" style="background:var(--surface-2)">${n}</span></div>
+                <div class="tile-sub">${today0().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}${todayPages.length > 1 ? ` · page ${todayIdx + 1} of ${todayPages.length}` : ''}</div></div>
+                ${todayPages.length > 1 ? `<div class="dots">${todayPages.map((_, i) => `<i class="${i === todayIdx ? 'on' : ''}"></i>`).join('')}</div>` : ''}
+            </div>
+            ${n ? `<div class="rows${animate ? ' fade' : ''}">${rows.map(j => {
+                const dayN = daysBetween(j.date, today0()) + 1;
+                return `<div class="row" style="grid-template-columns:1fr 128px 118px 150px">
+                    <span class="who">${esc(j.engineer || j.postcode)}</span><span class="jn">${esc(j.jobNumber)}</span>
+                    <span class="muted">${KIND_LABEL[j.kind]}${j.len > 1 ? ` ${dayN}/${j.len}` : ''}</span>
+                    <span class="pill" style="--c:${STATUS[j.status].c}">${STATUS[j.status].label}</span></div>`;
+            }).join('')}</div>` : `<div class="empty-today">No jobs on site today</div>`}
+            ${todayPages.length > 1 ? `<div class="progress run" style="animation-duration:${ROTATE_SECONDS}s;background:var(--accent)"></div>` : ''}`;
     }
 
-    function pvfBody(list, erect) {
-        const active = list.filter(j => j.status !== 'cancelled' && j.status !== 'shortNotice');
-        const solar = active.filter(j => isSolarInstall(j.type));
-        const missing = solar.filter(j => !erect.has(normJob(j.jobNumber))).sort((a, b) => a.date - b.date || a.jobNumber.localeCompare(b.jobNumber));
-        const MAX = 8;
-        return `
-            <div class="total"><span class="total-num">${list.length}</span><span class="total-lbl">job${list.length === 1 ? '' : 's'}${solar.length ? ` · ${solar.length} solar install${solar.length === 1 ? '' : 's'}` : ''}</span></div>
-            <div class="pvf${missing.length ? ' alert' : ''}">
-                <div class="pvf-top">
-                    <div><div class="pvf-title">Need PVF erection date</div><div class="pvf-sub">Solar installs with no scaffold erect date</div></div>
-                    <div class="pvf-num">${missing.length}</div>
-                </div>
-                ${missing.length ? `<div class="pvf-list">
-                    ${missing.slice(0, MAX).map(j => `<div class="pvf-item"><span class="jn">${esc(j.jobNumber)}</span><span class="who">${esc(j.engineer || j.postcode)}</span><span class="day">${fmtWeekday(j.date)}</span></div>`).join('')}
-                    ${missing.length > MAX ? `<div class="pvf-more">+ ${missing.length - MAX} more</div>` : ''}
-                </div>` : `<div class="pvf-ok">${solar.length ? 'All solar installs have an erect date.' : 'No solar installs this week.'}</div>`}
-            </div>`;
+    function rebuild() {
+        if (!raw.jobs) return;
+        model = buildModel();
+        $('weeks').innerHTML = model.weeks.map(weekCard).join('');
+        // Keep the rotation position when the data refreshes
+        const cur = actionPages[actionIdx]; actionPages = pagesOf(actionViews(model));
+        const keep = cur ? actionPages.findIndex(p => p.title === cur.title && p.page === cur.page) : -1;
+        actionIdx = keep >= 0 ? keep : 0;
+        renderActions(false);
+        renderToday(model, false);
+        $('loading').style.display = 'none';
+        $('updated').textContent = lastUpdate ? 'Updated ' + lastUpdate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
     }
 
-    // ── Clock; re-draw at midnight so the weeks roll over ───────────────
+    setInterval(() => {
+        if (!model) return;
+        if (actionPages.length > 1) { actionIdx = (actionIdx + 1) % actionPages.length; renderActions(true); }
+        if (todayPages.length > 1) { todayIdx = (todayIdx + 1) % todayPages.length; renderToday(model, true); }
+    }, ROTATE_SECONDS * 1000);
+
+    /* ── Clock, scaling, full screen ──────────────────────────────────── */
     let lastDay = new Date().toDateString();
     function tick() {
         const now = new Date();
         $('clock-time').textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
         $('clock-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-        if (now.toDateString() !== lastDay) { lastDay = now.toDateString(); render(); }
+        if (now.toDateString() !== lastDay) { lastDay = now.toDateString(); rebuild(); }   // weeks roll over at midnight
     }
     tick(); setInterval(tick, 1000);
+    function fit() {
+        const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+        $('stage').style.transform = `scale(${s})`;
+    }
+    fit(); window.addEventListener('resize', fit);
+    window.toggleFullscreen = () => document.fullscreenElement ? document.exitFullscreen?.() : document.documentElement.requestFullscreen?.();
 
-    window.toggleFullscreen = () => {
-        if (document.fullscreenElement) document.exitFullscreen?.();
-        else document.documentElement.requestFullscreen?.();
-    };
-
-    listen('Solar-jobs', 'jobs');
+    listen('Solar-jobs', 'jobs', true);
     listen('pingu-projects', 'projects');
     listen('Scafolding', 'sheet');
+    listen('Databricks', 'databricks');
 </script>
 </body>
 </html>
