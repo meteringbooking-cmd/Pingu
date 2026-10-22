@@ -328,6 +328,7 @@
         .cost-warnings { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
         .flag.money { color: var(--secondary); border-color: rgba(255,200,87,0.4); background: rgba(255,200,87,0.08); display: none; }
         body.is-admin .flag.money { display: inline-block; }
+        .link-btn { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: inherit; }
         .pin-input { font-family: var(--mono); font-size: 20px; letter-spacing: .4em; text-align: center; height: 48px; }
 
         @media (max-width: 1000px) {
@@ -530,6 +531,7 @@
                     <div class="control-group" id="pvf-group">
                         <label class="control-label" for="cost-pvf">PVF scaffold cost</label>
                         <div class="money-input"><span>£</span><input type="number" class="control-input" id="cost-pvf" min="0" step="0.01" placeholder="0.00"></div>
+                        <span class="hint" id="pvf-hint"></span>
                     </div>
                 </div>
                 <div class="cost-cols">
@@ -625,7 +627,9 @@
         pay: {
             solar:     [{ max: 16, amt: 1400 }, { max: 24, amt: 2200 }],
             battery:   600,
-            aftercarePerHour: 100
+            aftercarePerHour: 100,
+            // Standard PVF scaffold charge by number of sides; pre-fills the PVF cost
+            pvfBySides: { 1: 650, 2: 950, 3: 1350 }
         },
         receive: {
             solar:     [{ max: 10, amt: 2150 }, { max: 16, amt: 2350 }, { max: 24, amt: 2500 }],
@@ -697,6 +701,7 @@
     let allProjects    = [];
     let dirty          = false;
     let isAdmin        = false;
+    let pvfAuto        = true;   // true = PVF cost follows the standard rate for the number of sides
     const ADMIN_PASSWORD = '1234';
     const ADMIN_KEY      = 'pinguProjectAdmin';
 
@@ -849,6 +854,8 @@
         const co = p.costs || {};
         $('cost-edmundson').value    = co.edmundson ?? '';
         $('cost-pvf').value          = co.pvf ?? '';
+        // A PVF figure typed in by hand is kept; otherwise it follows the sides.
+        pvfAuto = co.pvf == null || co.pvfSource === 'sides';
         applyJobType(prof);
 
         refreshIndicators();
@@ -1059,7 +1066,23 @@
         } else {
             $('scaff-deadline').style.display = 'none'; $('cable-deadline').style.display = 'none';
         }
+        applyPvfRate();
         renderCosts();
+    }
+
+    function applyPvfRate() {
+        const sides = numOrNull($('scaff-sides').value);
+        const rate = RATES.pay.pvfBySides[sides] ?? null;
+        const hint = $('pvf-hint'), el = $('cost-pvf');
+        hint.innerHTML = '';
+        if (currentKind !== 'solar' && currentKind !== 'unknown') return;
+        if (pvfAuto) {
+            el.value = rate ?? '';
+            hint.textContent = rate != null ? `Standard rate for ${sides} side${sides === 1 ? '' : 's'}. Type over it to enter the actual PVF cost.` : 'Fills in from the number of sides on the Scaffolding tab.';
+        } else if (rate != null && numOrNull(el.value) !== rate) {
+            hint.innerHTML = `Standard rate for ${sides} side${sides === 1 ? '' : 's'} is ${gbp(rate)}. <button type="button" class="link-btn" id="pvf-use-rate">Use the standard rate</button>`;
+            $('pvf-use-rate').onclick = () => { pvfAuto = true; setDirty(true); refreshIndicators(); };
+        }
     }
 
     function setDirty(v) {
@@ -1094,9 +1117,12 @@
         if (arrays !== null && (isNaN(arrays) || arrays < 0)) { toast('Number of arrays must be a whole number.', true); showTab('job'); return; }
 
         // Costs can only be changed while unlocked; otherwise keep what was saved before.
+        // The PVF cost still follows the sides when it's on the standard rate, even when locked.
         const costs = isAdmin
-            ? { edmundson: numOrNull($('cost-edmundson').value), pvf: numOrNull($('cost-pvf').value) }
-            : { edmundson: prev.costs?.edmundson ?? null, pvf: prev.costs?.pvf ?? null };
+            ? { edmundson: numOrNull($('cost-edmundson').value), pvf: numOrNull($('cost-pvf').value), pvfSource: pvfAuto ? 'sides' : 'manual' }
+            : { edmundson: prev.costs?.edmundson ?? null,
+                pvf: pvfAuto ? numOrNull($('cost-pvf').value) : (prev.costs?.pvf ?? null),
+                pvfSource: pvfAuto ? 'sides' : (prev.costs?.pvfSource || 'manual') };
         if ((costs.edmundson != null && costs.edmundson < 0) || (costs.pvf != null && costs.pvf < 0)) { toast('Costs cannot be negative.', true); showTab('costs'); return; }
 
         const prof = profileFromJob(currentJob);
@@ -1211,8 +1237,14 @@
     // ── Wire up ───────────────────────────────────────────────────────
     ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-inverter', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
         .forEach(id => {
-            $(id).addEventListener('input', () => { setDirty(true); refreshIndicators(); });
-            $(id).addEventListener('change', () => { setDirty(true); refreshIndicators(); });
+            $(id).addEventListener('input', () => {
+                if (id === 'cost-pvf') pvfAuto = false;   // typed by hand: keep it
+                setDirty(true); refreshIndicators();
+            });
+            $(id).addEventListener('change', () => {
+                if (id === 'cost-pvf' && $('cost-pvf').value.trim() === '') pvfAuto = true;   // cleared: back to the standard rate
+                setDirty(true); refreshIndicators();
+            });
         });
     $('proj-list').addEventListener('click', e => {
         const b = e.target.closest('.proj-item');
