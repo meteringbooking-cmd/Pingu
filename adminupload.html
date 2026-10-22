@@ -293,7 +293,7 @@
         .paste-cols { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
         .paste-cols .tag { font-size: 11.5px; padding: 3px 8px; }
         .paste-cols .arrow { color: var(--text-dim); font-size: 12px; }
-        #db-paste { width: 100%; min-height: 150px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; }
+        .paste-box { width: 100%; min-height: 150px; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; white-space: pre; overflow: auto; }
         .db-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
         .db-preview-wrap { margin-top: 12px; max-height: 420px; }
         .db-preview-wrap td { white-space: nowrap; }
@@ -340,50 +340,8 @@
         <h1>Mass job upload (CSV)</h1>
     </div>
 
-    <!-- Paste from Google Sheet → Databricks -->
-    <div class="panel paste-panel" id="db-panel">
-        <div class="panel-head">
-            <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>Paste from Google Sheet (Databricks)</div>
-        </div>
-        <p class="muted" style="font-size:13px;margin-bottom:10px;">Copy the rows in Google Sheets and paste them below. The columns must be in this order. A header row is skipped automatically. Rows are matched by job number, so pasting a job again updates it.</p>
-        <div class="paste-cols">
-            <span class="tag">Job Number</span><span class="arrow">→</span><span class="tag">Postcode</span><span class="arrow">→</span><span class="tag">Install Date</span><span class="arrow">→</span><span class="tag">Panels</span><span class="arrow">→</span><span class="tag">System</span><span class="arrow">→</span><span class="tag">Inverter</span><span class="arrow">→</span><span class="tag">Arrays</span>
-        </div>
-        <textarea id="db-paste" class="control-input" placeholder="Paste here (Ctrl+V)…" spellcheck="false"></textarea>
-        <div class="db-summary" id="db-summary"></div>
-        <div class="table-wrap db-preview-wrap" id="db-preview-wrap" style="display:none;">
-            <table>
-                <thead><tr><th>#</th><th>Job Number</th><th>Postcode</th><th>Install Date</th><th>Panels</th><th>System</th><th>Inverter</th><th>Arrays</th><th>Status</th></tr></thead>
-                <tbody id="db-preview-body"></tbody>
-            </table>
-        </div>
-        <div class="recon" id="recon" style="display:none;">
-            <div class="recon-head">
-                <div class="recon-title" id="recon-title"></div>
-                <div class="recon-controls">
-                    <label class="control-label" for="recon-scope">Compare against</label>
-                    <select class="control-input" id="recon-scope">
-                        <option value="range">Pingu jobs with install dates in the pasted range</option>
-                        <option value="upcoming">All Pingu jobs from today onwards</option>
-                        <option value="all">All Pingu jobs</option>
-                    </select>
-                    <button type="button" class="btn btn-ghost btn-sm" id="recon-copy">Copy job numbers</button>
-                </div>
-            </div>
-            <div class="table-wrap" id="recon-table-wrap">
-                <table>
-                    <thead><tr><th>Job Number</th><th>Install Date</th><th>Postcode</th><th>Engineer</th><th>Job Type</th><th>Status</th></tr></thead>
-                    <tbody id="recon-body"></tbody>
-                </table>
-            </div>
-            <div class="recon-note" id="recon-note"></div>
-        </div>
-        <div id="db-status" class="status hidden"></div>
-        <div class="buttons">
-            <button class="btn btn-primary" id="db-save-btn" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg><span id="db-save-label">Save to Databricks</span></button>
-            <button class="btn btn-ghost" id="db-clear-btn">Clear</button>
-        </div>
-    </div>
+    <!-- Google Sheet pastes (Databricks, Scaffolding): built by the importer script below -->
+    <div id="paste-host"></div>
 
     <div class="upload-layout">
         <div class="panel upload-card">
@@ -492,48 +450,65 @@
     });
 </script>
 
-<!-- Paste from Google Sheet → Databricks collection (read by Pingu-Project.html) -->
+<!-- Google Sheet pastes → Firestore (Databricks, Scafolding). Read by Pingu-Project.html and viewtimeline.html -->
 <script type="module">
     import { collection, getDocs, doc, writeBatch }
         from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    const DB_COLLECTION = 'Databricks';
-    const COLS = ['jobNumber', 'postcode', 'installDate', 'panels', 'system', 'inverter', 'arrays'];
-    const $ = id => document.getElementById(id);
-    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const docId = jn => String(jn).trim().replace(/\//g, '-');
+    /* ── Importer definitions ───────────────────────────────────────────
+       Each column: key (field saved), header (name in the sheet), type:
+       job | text | postcode | date | int | bool. Columns are matched by header
+       name when the paste includes a header row, otherwise by position. */
+    const IMPORTERS = [
+        {
+            id: 'db', title: 'Paste from Google Sheet (Databricks)', collection: 'Databricks',
+            feeds: 'the Job tab in Pingu-Project',
+            columns: [
+                { key: 'jobNumber',   header: 'Job Number',   type: 'job' },
+                { key: 'postcode',    header: 'Postcode',     type: 'postcode' },
+                { key: 'installDate', header: 'Install Date', type: 'date' },
+                { key: 'panels',      header: 'Panels',       type: 'int' },
+                { key: 'system',      header: 'System',       type: 'text', wrap: true },
+                { key: 'inverter',    header: 'Inverter',     type: 'text', wrap: true },
+                { key: 'arrays',      header: 'Arrays',       type: 'int' }
+            ],
+            checks: ['postcode', 'installDate']
+        },
+        {
+            id: 'sc', title: 'Paste from Google Sheet (Scaffolding)', collection: 'Scafolding',
+            feeds: 'the Scaffolding tab in Pingu-Project',
+            columns: [
+                { key: 'jobNumber',               header: 'Job Number',                type: 'job' },
+                { key: 'team',                    header: 'Team',                      type: 'text' },
+                { key: 'address',                 header: 'Address',                   type: 'text', wrap: true },
+                { key: 'postcode',                header: 'Postcode',                  type: 'postcode' },
+                { key: 'installDate',             header: 'Install Date',              type: 'date' },
+                { key: 'projectedCompletionDate', header: 'Projected Completion Date', type: 'date' },
+                { key: 'panels',                  header: 'Panels',                    type: 'int' },
+                { key: 'sides',                   header: 'Sides',                     type: 'int', min: 1, max: 3 },
+                { key: 'scaffoldRequested',       header: 'Scaffold Requested',        type: 'bool' },
+                { key: 'cableOrdered',            header: 'Cable Ordered',             type: 'bool' },
+                { key: 'notes',                   header: 'Additional notes',          type: 'text', wrap: true },
+                { key: 'checked',                 header: 'Checked',                   type: 'bool' },
+                { key: 'erectDate',               header: 'Erect Date',                type: 'date' },
+                { key: 'addedToKraken',           header: 'Added onto Kraken',         type: 'text' },
+                { key: 'comments',                header: 'Comments',                  type: 'text', wrap: true }
+            ],
+            // Columns shown in the preview table (all columns are saved)
+            preview: ['jobNumber', 'team', 'postcode', 'installDate', 'panels', 'sides', 'scaffoldRequested', 'erectDate'],
+            checks: ['postcode', 'installDate', 'panels']
+        }
+    ];
 
-    let rows = [];           // parsed, validated rows ready to save
-    let existingIds = null;  // Set of job numbers already in Databricks
-    let pinguJobs = null;    // Map of normalised job number -> job summary, from Solar-jobs
+    /* ── Helpers ─────────────────────────────────────────────────────── */
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const norm = v => String(v ?? '').trim().replace(/^#/, '').toUpperCase();
+    const docId = jn => String(jn).trim().replace(/^#/, '').replace(/\//g, '-');
+    const headerKey = h => String(h || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const pcKey = v => String(v || '').toUpperCase().replace(/\s+/g, '');
     const EXCLUDED_STATUSES = ['CANCELLED', 'SHORT NOTICE CANCELLATION'];
 
-    async function loadPinguJobs() {
-        if (pinguJobs) return pinguJobs;
-        pinguJobs = new Map();
-        try {
-            const snap = await getDocs(collection(window.db, 'Solar-jobs'));
-            snap.forEach(d => {
-                const j = d.data();
-                const jn = norm(j['Job Number']);
-                if (!jn) return;
-                const dateRaw = j['Install Date'] || j['Booked Date'] || '';
-                pinguJobs.set(jn, {
-                    jobNumber: String(j['Job Number']).trim(),
-                    installDate: parseDate(dateRaw), installDateRaw: dateRaw,
-                    postcode: String(j['Postcode'] || '').trim(),
-                    engineer: String(j['Lead Engineer'] || j['Engineer'] || '').replace(/^["']|["']$/g, '').trim(),
-                    jobType: String(j['Job Type'] || ''),
-                    isSurvey: /survey/i.test(String(j['Job Type'] || j['jobType'] || '').replace(/_/g, ' ')),
-                    status: String(j['Status Update'] || j['status'] || 'Scheduled')
-                });
-            });
-        } catch (e) { console.warn('Could not read Solar-jobs', e); pinguJobs = null; }
-        return pinguJobs;
-    }
-
-    // Google Sheets copies as tab-separated text. Cells containing line breaks or tabs are wrapped in quotes.
+    // Google Sheets copies as tab-separated text; cells containing line breaks or tabs are wrapped in quotes.
     function parseTSV(text) {
         const out = []; let row = [], cell = '', q = false;
         for (let i = 0; i < text.length; i++) {
@@ -551,8 +526,9 @@
         if (cell !== '' || row.length) { row.push(cell); out.push(row); }
         return out.filter(r => r.some(x => String(x).trim() !== ''));
     }
-
     function parseDate(v) {
+        if (v && typeof v.toDate === 'function') v = v.toDate();
+        if (v instanceof Date) return isNaN(v) ? null : v;
         const t = String(v || '').trim();
         if (!t) return null;
         let m = t.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/);
@@ -563,176 +539,317 @@
     }
     const ddmmyyyy = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
     const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    function wholeNumber(v) {
-        const t = String(v ?? '').trim().replace(/,/g, '');
-        if (t === '') return { val: null };
-        if (!/^\d+$/.test(t)) return { val: null, bad: true };
-        return { val: parseInt(t, 10) };
-    }
+    const sameDay = (a, b) => a && b && a.toDateString() === b.toDateString();
 
-    async function loadExisting() {
-        if (existingIds) return existingIds;
-        try {
-            const snap = await getDocs(collection(window.db, DB_COLLECTION));
-            existingIds = new Set(snap.docs.map(d => d.id));
-        } catch (e) { console.warn('Could not read Databricks', e); existingIds = new Set(); }
-        return existingIds;
-    }
-
-    async function onPaste() {
-        const raw = $('db-paste').value;
-        let table = parseTSV(raw);
-        if (table.length && /job/i.test(table[0][0] || '') && !/\d{3,}/.test(table[0][0] || '')) table = table.slice(1); // header row
-        const [existing, pingu] = await Promise.all([loadExisting(), loadPinguJobs()]);
-
-        const seen = new Map();
-        rows = table.map((cells, i) => {
-            const c = COLS.map((_, k) => String(cells[k] ?? '').replace(/\s*[\r\n]+\s*/g, ' ').trim());
-            const errors = [], warnings = [];
-            const jobNumber = c[0].replace(/^#/, '');
-            if (!jobNumber) errors.push('No job number');
-            const d = parseDate(c[2]);
-            if (c[2] && !d) warnings.push('Install date not recognised');
-            const panels = wholeNumber(c[3]); if (panels.bad) warnings.push('Panels is not a whole number');
-            const arrays = wholeNumber(c[6]); if (arrays.bad) warnings.push('Arrays is not a whole number');
-            if (cells.length > COLS.length && cells.slice(COLS.length).some(x => String(x).trim())) warnings.push('Extra columns ignored');
-            const r = {
-                line: i + 1, jobNumber, errors, warnings,
-                postcode: c[1].toUpperCase().replace(/\s+/g, ' '),
-                installDate: d ? ddmmyyyy(d) : c[2], installDateISO: d ? iso(d) : '',
-                panels: panels.val, system: c[4], inverter: c[5], arrays: arrays.val,
-                exists: jobNumber ? existing.has(docId(jobNumber)) : false,
-                installDateObj: d
-            };
-            // Cross-check against the job in Pingu (Solar-jobs)
-            if (jobNumber && pingu) {
-                const pj = pingu.get(norm(jobNumber));
-                r.inPingu = !!pj;
-                if (pj) {
-                    const pc = v => String(v || '').toUpperCase().replace(/\s+/g, '');
-                    if (r.postcode && pj.postcode && pc(r.postcode) !== pc(pj.postcode)) warnings.push(`Postcode in Pingu is ${pj.postcode}`);
-                    if (d && pj.installDate && d.toDateString() !== pj.installDate.toDateString()) warnings.push(`Install date in Pingu is ${ddmmyyyy(pj.installDate)}`);
-                }
+    // Turn one sheet cell into a stored value. Returns { val, extra?, warn? }.
+    function convert(col, raw) {
+        const t = String(raw ?? '').replace(/\s*[\r\n]+\s*/g, ' ').trim();
+        switch (col.type) {
+            case 'job':      return { val: t.replace(/^#/, '') };
+            case 'postcode': return { val: t.toUpperCase().replace(/\s+/g, ' ') };
+            case 'date': {
+                if (!t) return { val: '', extra: { [col.key + 'ISO']: '' } };
+                const d = parseDate(t);
+                if (!d) return { val: t, extra: { [col.key + 'ISO']: '' }, warn: `${col.header} not recognised` };
+                return { val: ddmmyyyy(d), extra: { [col.key + 'ISO']: iso(d) }, date: d };
             }
-            if (jobNumber) {
-                if (seen.has(jobNumber)) { seen.get(jobNumber).warnings.push('Duplicate in paste, later row used'); seen.get(jobNumber).skip = true; }
-                seen.set(jobNumber, r);
+            case 'int': {
+                const s = t.replace(/,/g, '');
+                if (!s) return { val: null };
+                if (!/^\d+$/.test(s)) return { val: null, warn: `${col.header} is not a whole number` };
+                const n = parseInt(s, 10);
+                if ((col.min != null && n < col.min) || (col.max != null && n > col.max)) return { val: n, warn: `${col.header} should be ${col.min}–${col.max}` };
+                return { val: n };
             }
-            return r;
-        });
-        render();
-    }
-
-    function render() {
-        const valid = rows.filter(r => !r.errors.length && !r.skip);
-        const nNew = valid.filter(r => !r.exists).length, nUpd = valid.length - nNew;
-        const nErr = rows.filter(r => r.errors.length).length;
-        const nMissing = rows.filter(r => r.inPingu === false && !r.skip).length;
-        $('db-preview-wrap').style.display = rows.length ? 'block' : 'none';
-        $('db-preview-body').innerHTML = rows.map(r => {
-            const missing = r.inPingu === false && !r.errors.length && !r.skip
-                ? ` <span class="badge" style="--c:var(--warning)">Not in Pingu</span>` : '';
-            const status = r.errors.length ? `<span class="row-msg err">${esc(r.errors.join('; '))}</span>`
-                : r.skip ? `<span class="row-msg">Skipped (duplicate)</span>`
-                : r.saved ? `<span class="badge" style="--c:var(--success)">Saved</span>` + missing + (r.warnings.length ? ` <span class="row-msg">${esc(r.warnings.join('; '))}</span>` : '')
-                : `<span class="badge" style="--c:${r.exists ? 'var(--accent)' : 'var(--success)'}">${r.exists ? 'Update' : 'New'}</span>` + missing + (r.warnings.length ? ` <span class="row-msg">${esc(r.warnings.join('; '))}</span>` : '');
-            return `<tr class="${r.errors.length ? 'bad' : (r.inPingu === false && !r.skip ? 'missing' : '')}"><td class="muted">${r.line}</td><td class="mono">${esc(r.jobNumber)}</td><td>${esc(r.postcode)}</td><td>${esc(r.installDate)}</td><td>${r.panels ?? ''}</td><td class="wrap">${esc(r.system)}</td><td class="wrap">${esc(r.inverter)}</td><td>${r.arrays ?? ''}</td><td>${status}</td></tr>`;
-        }).join('');
-        $('db-summary').innerHTML = rows.length ? [
-            `<span class="badge" style="--c:var(--success)">${nNew} new</span>`,
-            `<span class="badge" style="--c:var(--accent)">${nUpd} update${nUpd === 1 ? '' : 's'}</span>`,
-            nErr ? `<span class="badge" style="--c:var(--error)">${nErr} with errors (won't be saved)</span>` : '',
-            pinguJobs ? `<span class="badge" style="--c:${nMissing ? 'var(--warning)' : 'var(--success)'}">${nMissing ? nMissing + ' on the sheet but not in Pingu' : 'All sheet jobs are in Pingu'}</span>` : '<span class="badge" style="--c:var(--error)">Couldn\'t load Pingu jobs to compare</span>'
-        ].join('') : '';
-        renderRecon();
-        $('db-save-btn').disabled = !valid.length;
-        $('db-save-label').textContent = valid.length ? `Save ${valid.length} job${valid.length === 1 ? '' : 's'} to Databricks` : 'Save to Databricks';
-    }
-
-    // Jobs in Pingu that are not on the pasted sheet.
-    let reconList = [];
-    function renderRecon() {
-        const box = $('recon');
-        if (!rows.length || !pinguJobs) { box.style.display = 'none'; return; }
-        const onSheet = new Set(rows.filter(r => r.jobNumber).map(r => norm(r.jobNumber)));
-        const scope = $('recon-scope').value;
-        const dates = rows.map(r => r.installDateObj).filter(Boolean).sort((a, b) => a - b);
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        let from = null, to = null, scopeText = 'all Pingu jobs';
-        if (scope === 'range') {
-            if (dates.length) { from = dates[0]; to = dates[dates.length - 1]; scopeText = `Pingu jobs installing ${ddmmyyyy(from)} to ${ddmmyyyy(to)} (the dates on the sheet)`; }
-            else scopeText = 'all Pingu jobs (no install dates on the sheet to set a range)';
-        } else if (scope === 'upcoming') { from = today; scopeText = 'Pingu jobs installing from today onwards'; }
-
-        reconList = [];
-        pinguJobs.forEach((j, key) => {
-            if (onSheet.has(key)) return;
-            if (EXCLUDED_STATUSES.includes(j.status.toUpperCase())) return;
-            if (j.isSurvey) return; // solar survey jobs aren't on the Google Sheet
-            if (from || to) {
-                if (!j.installDate) return;
-                const d = new Date(j.installDate); d.setHours(0, 0, 0, 0);
-                if (from && d < from) return;
-                if (to && d > to) return;
+            case 'bool': {
+                if (!t) return { val: null };
+                const u = t.toUpperCase();
+                if (['TRUE', 'YES', 'Y', '1', '✓', '✔'].includes(u)) return { val: true };
+                if (['FALSE', 'NO', 'N', '0'].includes(u)) return { val: false };
+                return { val: null, warn: `${col.header} should be TRUE or FALSE` };
             }
-            reconList.push(j);
-        });
-        reconList.sort((a, b) => (a.installDate || 0) - (b.installDate || 0) || a.jobNumber.localeCompare(b.jobNumber));
-
-        box.style.display = 'block';
-        box.classList.toggle('ok', !reconList.length);
-        $('recon-title').textContent = reconList.length
-            ? `${reconList.length} job${reconList.length === 1 ? '' : 's'} in Pingu missing from the Google Sheet`
-            : 'Every Pingu job in this range is on the Google Sheet';
-        $('recon-table-wrap').style.display = reconList.length ? 'block' : 'none';
-        $('recon-copy').style.display = reconList.length ? '' : 'none';
-        $('recon-body').innerHTML = reconList.map(j => `<tr><td class="mono">${esc(j.jobNumber)}</td><td>${j.installDate ? ddmmyyyy(j.installDate) : esc(j.installDateRaw)}</td><td>${esc(j.postcode)}</td><td>${esc(j.engineer)}</td><td>${esc(j.jobType)}</td><td>${esc(j.status)}</td></tr>`).join('');
-        $('recon-note').textContent = `Checked against ${scopeText}. Cancelled and solar survey jobs are left out.`;
-    }
-
-    function status(msg, type) { const el = $('db-status'); el.textContent = msg; el.className = 'status ' + type; }
-
-    async function save() {
-        const valid = rows.filter(r => !r.errors.length && !r.skip);
-        if (!valid.length) return;
-        const btn = $('db-save-btn'); btn.disabled = true;
-        let who = ''; try { who = JSON.parse(localStorage.getItem('adminSession') || '{}').name || ''; } catch {}
-        const now = new Date().toISOString();
-        try {
-            for (let i = 0; i < valid.length; i += 400) {
-                const batch = writeBatch(window.db);
-                valid.slice(i, i + 400).forEach(r => batch.set(doc(window.db, DB_COLLECTION, docId(r.jobNumber)), {
-                    jobNumber: r.jobNumber, postcode: r.postcode,
-                    installDate: r.installDate, installDateISO: r.installDateISO,
-                    panels: r.panels, system: r.system, inverter: r.inverter, arrays: r.arrays,
-                    importedAt: now, importedBy: who
-                }, { merge: true }));
-                await batch.commit();
-            }
-            valid.forEach(r => { existingIds?.add(docId(r.jobNumber)); r.saved = true; });
-            const nMissing = valid.filter(r => r.inPingu === false).length;
-            status(`Saved ${valid.length} job${valid.length === 1 ? '' : 's'} to Databricks. They now show on the Job tab in Pingu-Project.`
-                + (nMissing ? ` ${nMissing === 1 ? '1 of them isn\'t' : nMissing + ' of them aren\'t'} in Pingu yet, so ${nMissing === 1 ? 'it' : 'they'}'ll link up once ${nMissing === 1 ? 'that job is' : 'those jobs are'} uploaded.` : ''), 'success');
-            render();
-            $('db-save-btn').disabled = true; $('db-save-label').textContent = 'Saved';
-        } catch (e) {
-            console.error(e);
-            status('Save failed: ' + e.message, 'error');
-            btn.disabled = false;
+            default: return { val: t };
         }
     }
+    const show = (col, v) => col.type === 'bool' ? (v === true ? 'Yes' : v === false ? 'No' : '') : esc(v ?? '');
 
-    let t;
-    $('db-paste').addEventListener('input', () => { clearTimeout(t); t = setTimeout(onPaste, 250); $('db-status').className = 'status hidden'; });
-    $('db-save-btn').addEventListener('click', save);
-    $('db-clear-btn').addEventListener('click', () => { $('db-paste').value = ''; rows = []; render(); $('db-status').className = 'status hidden'; });
-    $('recon-scope').addEventListener('change', renderRecon);
-    $('recon-copy').addEventListener('click', async () => {
-        const text = reconList.map(j => j.jobNumber).join('\n');
-        try { await navigator.clipboard.writeText(text); $('recon-copy').textContent = 'Copied'; }
-        catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); $('recon-copy').textContent = 'Copied'; }
-        setTimeout(() => $('recon-copy').textContent = 'Copy job numbers', 1500);
-    });
+    /* ── Pingu data shared by both importers (loaded once, refreshed after a minute) ── */
+    const shared = { at: 0, jobs: null, projects: new Map(), databricks: new Map() };
+    async function loadShared() {
+        if (shared.jobs && Date.now() - shared.at < 60000) return shared;
+        const read = name => getDocs(collection(window.db, name)).catch(e => { console.warn('Could not read ' + name, e); return null; });
+        const [jobsSnap, projSnap, dbSnap] = await Promise.all([read('Solar-jobs'), read('pingu-projects'), read('Databricks')]);
+        if (jobsSnap) {
+            shared.jobs = new Map();
+            jobsSnap.forEach(d => {
+                const j = d.data(), jn = norm(j['Job Number']);
+                if (!jn) return;
+                const dateRaw = j['Install Date'] || j['Booked Date'] || '';
+                const type = String(j['Job Type'] || j['jobType'] || '');
+                const panelsRaw = j['Panels'] ?? j['Panel Quantity'] ?? j['No. of Panels'] ?? j['Number of Panels'];
+                shared.jobs.set(jn, {
+                    jobNumber: String(j['Job Number']).trim(),
+                    installDate: parseDate(dateRaw), installDateRaw: dateRaw,
+                    postcode: String(j['Postcode'] || '').trim(),
+                    engineer: String(j['Lead Engineer'] || j['Engineer'] || '').replace(/^["']|["']$/g, '').trim(),
+                    jobType: type,
+                    isSurvey: /survey/i.test(type.replace(/_/g, ' ')),
+                    status: String(j['Status Update'] || j['status'] || 'Scheduled'),
+                    panels: /^\d+$/.test(String(panelsRaw ?? '').trim()) ? parseInt(panelsRaw, 10) : null
+                });
+            });
+        } else shared.jobs = null;
+        shared.projects = new Map(); projSnap?.forEach(d => shared.projects.set(norm(d.id), d.data()));
+        shared.databricks = new Map(); dbSnap?.forEach(d => shared.databricks.set(norm(d.id), d.data()));
+        shared.at = Date.now();
+        return shared;
+    }
+    // Best known panel count in Pingu: the project, then the Databricks paste, then the job record.
+    function pinguPanels(key) {
+        const p = shared.projects.get(key)?.job?.panelQuantity;
+        if (p != null && p !== '') return { n: Number(p), from: 'project' };
+        const d = shared.databricks.get(key)?.panels;
+        if (d != null && d !== '') return { n: Number(d), from: 'Databricks' };
+        const j = shared.jobs?.get(key)?.panels;
+        if (j != null) return { n: j, from: 'job' };
+        return null;
+    }
+
+    /* ── Build one importer panel ────────────────────────────────────── */
+    function buildImporter(cfg) {
+        const previewCols = (cfg.preview || cfg.columns.map(c => c.key)).map(k => cfg.columns.find(c => c.key === k));
+        const panel = document.createElement('div');
+        panel.className = 'panel paste-panel';
+        panel.id = cfg.id + '-panel';
+        panel.innerHTML = `
+            <div class="panel-head">
+                <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>${esc(cfg.title)}</div>
+            </div>
+            <p class="muted" style="font-size:13px;margin-bottom:10px;">Copy the rows in Google Sheets and paste them below. If you include the header row, columns are matched by name; without it they must be in this order. Rows are matched by job number, so pasting a job again updates it.</p>
+            <div class="paste-cols">${cfg.columns.map(c => `<span class="tag">${esc(c.header)}</span>`).join('<span class="arrow">→</span>')}</div>
+            <textarea class="control-input paste-box" data-r="paste" placeholder="Paste here (Ctrl+V)…" spellcheck="false"></textarea>
+            <div class="db-summary" data-r="summary"></div>
+            <div class="notice warning" data-r="header-warn" style="display:none;margin-top:10px;"></div>
+            <div class="table-wrap db-preview-wrap" data-r="preview" style="display:none;">
+                <table>
+                    <thead><tr><th>#</th>${previewCols.map(c => `<th>${esc(c.header)}</th>`).join('')}<th>Status</th></tr></thead>
+                    <tbody data-r="preview-body"></tbody>
+                </table>
+            </div>
+            <div class="recon" data-r="recon" style="display:none;">
+                <div class="recon-head">
+                    <div class="recon-title" data-r="recon-title"></div>
+                    <div class="recon-controls">
+                        <label class="control-label">Compare against</label>
+                        <select class="control-input" data-r="recon-scope">
+                            <option value="range">Pingu jobs with install dates in the pasted range</option>
+                            <option value="upcoming">All Pingu jobs from today onwards</option>
+                            <option value="all">All Pingu jobs</option>
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm" data-r="recon-copy">Copy job numbers</button>
+                    </div>
+                </div>
+                <div class="table-wrap" data-r="recon-table">
+                    <table>
+                        <thead><tr><th>Job Number</th><th>Install Date</th><th>Postcode</th><th>Engineer</th><th>Job Type</th><th>Status</th></tr></thead>
+                        <tbody data-r="recon-body"></tbody>
+                    </table>
+                </div>
+                <div class="recon-note" data-r="recon-note"></div>
+            </div>
+            <div class="status hidden" data-r="status"></div>
+            <div class="buttons">
+                <button class="btn btn-primary" data-r="save" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg><span data-r="save-label">Save to ${esc(cfg.collection)}</span></button>
+                <button class="btn btn-ghost" data-r="clear">Clear</button>
+            </div>`;
+        const $ = r => panel.querySelector(`[data-r="${r}"]`);
+
+        let rows = [], existingIds = null, reconList = [];
+
+        async function loadExisting() {
+            if (existingIds) return existingIds;
+            try { existingIds = new Set((await getDocs(collection(window.db, cfg.collection))).docs.map(d => norm(d.id))); }
+            catch (e) { console.warn('Could not read ' + cfg.collection, e); existingIds = new Set(); }
+            return existingIds;
+        }
+
+        async function onPaste() {
+            let table = parseTSV($('paste').value);
+            if (!table.length) { rows = []; render(); return; }
+
+            // Header row? Map columns by name; otherwise use the fixed order.
+            let colIndex = cfg.columns.map((_, i) => i), headerMsg = '';
+            const first = table[0].map(headerKey);
+            if (first.includes('jobnumber')) {
+                const missing = [];
+                colIndex = cfg.columns.map(c => { const i = first.indexOf(headerKey(c.header)); if (i < 0) missing.push(c.header); return i; });
+                if (missing.length) headerMsg = `These columns weren't found in the pasted header, so they'll be left blank: ${missing.join(', ')}.`;
+                table = table.slice(1);
+            }
+            $('header-warn').style.display = headerMsg ? 'flex' : 'none';
+            $('header-warn').textContent = headerMsg;
+
+            const [existing, sh] = await Promise.all([loadExisting(), loadShared()]);
+            const seen = new Map();
+            rows = table.map((cells, n) => {
+                const r = { line: n + 1, values: {}, extra: {}, dates: {}, errors: [], warnings: [] };
+                cfg.columns.forEach((col, k) => {
+                    const out = convert(col, colIndex[k] >= 0 ? cells[colIndex[k]] : '');
+                    r.values[col.key] = out.val;
+                    Object.assign(r.extra, out.extra || {});
+                    if (out.date) r.dates[col.key] = out.date;
+                    if (out.warn) r.warnings.push(out.warn);
+                });
+                r.jobNumber = r.values.jobNumber;
+                r.key = norm(r.jobNumber);
+                if (!r.jobNumber) r.errors.push('No job number');
+                r.exists = r.key ? existing.has(norm(docId(r.jobNumber))) : false;
+
+                // Cross-check against the job in Pingu
+                if (r.key && sh.jobs) {
+                    const pj = sh.jobs.get(r.key);
+                    r.inPingu = !!pj;
+                    if (pj) {
+                        if (cfg.checks.includes('postcode') && r.values.postcode && pj.postcode && pcKey(r.values.postcode) !== pcKey(pj.postcode))
+                            r.warnings.push(`Postcode in Pingu is ${pj.postcode}`);
+                        if (cfg.checks.includes('installDate') && r.dates.installDate && pj.installDate && !sameDay(r.dates.installDate, pj.installDate))
+                            r.warnings.push(`Install date in Pingu is ${ddmmyyyy(pj.installDate)}`);
+                    }
+                    if (cfg.checks.includes('panels') && r.values.panels != null) {
+                        const known = pinguPanels(r.key);
+                        if (known && known.n !== r.values.panels) r.warnings.push(`Panels in Pingu is ${known.n} (${known.from})`);
+                    }
+                }
+                if (r.key) {
+                    if (seen.has(r.key)) { const prev = seen.get(r.key); prev.skip = true; prev.warnings.push('Duplicate in paste, later row used'); }
+                    seen.set(r.key, r);
+                }
+                return r;
+            });
+            render();
+        }
+
+        function render() {
+            const valid = rows.filter(r => !r.errors.length && !r.skip);
+            const nNew = valid.filter(r => !r.exists).length, nUpd = valid.length - nNew;
+            const nErr = rows.filter(r => r.errors.length).length;
+            const nMissing = rows.filter(r => r.inPingu === false && !r.skip).length;
+            const nWarn = valid.filter(r => r.warnings.length).length;
+            $('preview').style.display = rows.length ? 'block' : 'none';
+            $('preview-body').innerHTML = rows.map(r => {
+                const missing = r.inPingu === false && !r.errors.length && !r.skip ? ` <span class="badge" style="--c:var(--warning)">Not in Pingu</span>` : '';
+                const warn = r.warnings.length ? ` <span class="row-msg">${esc(r.warnings.join('; '))}</span>` : '';
+                const status = r.errors.length ? `<span class="row-msg err">${esc(r.errors.join('; '))}</span>`
+                    : r.skip ? `<span class="row-msg">Skipped (duplicate)</span>`
+                    : r.saved ? `<span class="badge" style="--c:var(--success)">Saved</span>` + missing + warn
+                    : `<span class="badge" style="--c:${r.exists ? 'var(--accent)' : 'var(--success)'}">${r.exists ? 'Update' : 'New'}</span>` + missing + warn;
+                const cls = r.errors.length ? 'bad' : (r.inPingu === false && !r.skip ? 'missing' : '');
+                return `<tr class="${cls}"><td class="muted">${r.line}</td>${previewCols.map(c => `<td class="${c.type === 'job' ? 'mono' : ''}${c.wrap ? ' wrap' : ''}">${show(c, r.values[c.key])}</td>`).join('')}<td class="wrap">${status}</td></tr>`;
+            }).join('');
+            $('summary').innerHTML = rows.length ? [
+                `<span class="badge" style="--c:var(--success)">${nNew} new</span>`,
+                `<span class="badge" style="--c:var(--accent)">${nUpd} update${nUpd === 1 ? '' : 's'}</span>`,
+                nErr ? `<span class="badge" style="--c:var(--error)">${nErr} with errors (won't be saved)</span>` : '',
+                shared.jobs ? `<span class="badge" style="--c:${nMissing ? 'var(--warning)' : 'var(--success)'}">${nMissing ? nMissing + ' on the sheet but not in Pingu' : 'All sheet jobs are in Pingu'}</span>`
+                            : `<span class="badge" style="--c:var(--error)">Couldn't load Pingu jobs to compare</span>`,
+                nWarn ? `<span class="badge" style="--c:var(--warning)">${nWarn} with differences to check</span>` : ''
+            ].join('') : '';
+            if (!rows.some(r => r.saved)) {
+                $('save').disabled = !valid.length;
+                $('save-label').textContent = valid.length ? `Save ${valid.length} job${valid.length === 1 ? '' : 's'} to ${cfg.collection}` : `Save to ${cfg.collection}`;
+            }
+            renderRecon();
+        }
+
+        // Jobs in Pingu that aren't on the pasted sheet
+        function renderRecon() {
+            const box = $('recon');
+            if (!rows.length || !shared.jobs) { box.style.display = 'none'; return; }
+            const onSheet = new Set(rows.filter(r => r.key).map(r => r.key));
+            const scope = $('recon-scope').value;
+            const dates = rows.map(r => r.dates.installDate).filter(Boolean).sort((a, b) => a - b);
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            let from = null, to = null, scopeText = 'all Pingu jobs';
+            if (scope === 'range') {
+                if (dates.length) { from = dates[0]; to = dates[dates.length - 1]; scopeText = `Pingu jobs installing ${ddmmyyyy(from)} to ${ddmmyyyy(to)} (the dates on the sheet)`; }
+                else scopeText = 'all Pingu jobs (no install dates on the sheet to set a range)';
+            } else if (scope === 'upcoming') { from = today; scopeText = 'Pingu jobs installing from today onwards'; }
+
+            reconList = [];
+            shared.jobs.forEach((j, key) => {
+                if (onSheet.has(key) || j.isSurvey || EXCLUDED_STATUSES.includes(j.status.toUpperCase())) return;
+                if (from || to) {
+                    if (!j.installDate) return;
+                    const d = new Date(j.installDate); d.setHours(0, 0, 0, 0);
+                    if ((from && d < from) || (to && d > to)) return;
+                }
+                reconList.push(j);
+            });
+            reconList.sort((a, b) => (a.installDate || 0) - (b.installDate || 0) || a.jobNumber.localeCompare(b.jobNumber));
+
+            box.style.display = 'block';
+            box.classList.toggle('ok', !reconList.length);
+            $('recon-title').textContent = reconList.length
+                ? `${reconList.length} job${reconList.length === 1 ? '' : 's'} in Pingu missing from the Google Sheet`
+                : 'Every Pingu job in this range is on the Google Sheet';
+            $('recon-table').style.display = reconList.length ? 'block' : 'none';
+            $('recon-copy').style.display = reconList.length ? '' : 'none';
+            $('recon-body').innerHTML = reconList.map(j => `<tr><td class="mono">${esc(j.jobNumber)}</td><td>${j.installDate ? ddmmyyyy(j.installDate) : esc(j.installDateRaw)}</td><td>${esc(j.postcode)}</td><td>${esc(j.engineer)}</td><td>${esc(j.jobType)}</td><td>${esc(j.status)}</td></tr>`).join('');
+            $('recon-note').textContent = `Checked against ${scopeText}. Cancelled and solar survey jobs are left out.`;
+        }
+
+        function status(msg, type) { const el = $('status'); el.textContent = msg; el.className = 'status ' + type; }
+
+        async function save() {
+            const valid = rows.filter(r => !r.errors.length && !r.skip);
+            if (!valid.length) return;
+            $('save').disabled = true;
+            let who = ''; try { who = JSON.parse(localStorage.getItem('adminSession') || '{}').name || ''; } catch {}
+            const now = new Date().toISOString();
+            try {
+                for (let i = 0; i < valid.length; i += 400) {
+                    const batch = writeBatch(window.db);
+                    valid.slice(i, i + 400).forEach(r => batch.set(doc(window.db, cfg.collection, docId(r.jobNumber)),
+                        { ...r.values, ...r.extra, importedAt: now, importedBy: who }, { merge: true }));
+                    await batch.commit();
+                }
+                valid.forEach(r => {
+                    r.saved = true; existingIds?.add(norm(docId(r.jobNumber)));
+                    if (cfg.collection === 'Databricks') shared.databricks.set(r.key, { ...r.values });
+                });
+                const nMissing = valid.filter(r => r.inPingu === false).length;
+                status(`Saved ${valid.length} job${valid.length === 1 ? '' : 's'} to ${cfg.collection}. They now show on ${cfg.feeds}.`
+                    + (nMissing ? ` ${nMissing === 1 ? "1 of them isn't" : nMissing + " of them aren't"} in Pingu yet, so ${nMissing === 1 ? "it'll" : "they'll"} link up once ${nMissing === 1 ? 'that job is' : 'those jobs are'} uploaded.` : ''), 'success');
+                render();
+                $('save-label').textContent = 'Saved';
+            } catch (e) {
+                console.error(e);
+                status('Save failed: ' + e.message, 'error');
+                $('save').disabled = false;
+            }
+        }
+
+        let t;
+        $('paste').addEventListener('input', () => {
+            clearTimeout(t); t = setTimeout(onPaste, 250);
+            $('status').className = 'status hidden';
+            rows.forEach(r => r.saved = false);
+        });
+        $('save').addEventListener('click', save);
+        $('clear').addEventListener('click', () => { $('paste').value = ''; rows = []; $('header-warn').style.display = 'none'; $('status').className = 'status hidden'; render(); });
+        $('recon-scope').addEventListener('change', renderRecon);
+        $('recon-copy').addEventListener('click', async () => {
+            const text = reconList.map(j => j.jobNumber).join('\n');
+            try { await navigator.clipboard.writeText(text); }
+            catch { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+            $('recon-copy').textContent = 'Copied';
+            setTimeout(() => $('recon-copy').textContent = 'Copy job numbers', 1500);
+        });
+        return panel;
+    }
+
+    const host = document.getElementById('paste-host');
+    IMPORTERS.forEach(cfg => host.appendChild(buildImporter(cfg)));
 </script>
 
 <script>

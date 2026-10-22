@@ -1476,17 +1476,24 @@
             try {
                 const { doc, getDoc } = window.firebaseModules;
                 const id = jn.replace(/\//g, '-');
-                const [snap, dbSnap] = await Promise.all([
+                const [snap, dbSnap, scSnap] = await Promise.all([
                     getDoc(doc(window.db, 'pingu-projects', id)),
-                    getDoc(doc(window.db, 'Databricks', id)).catch(() => null)
+                    getDoc(doc(window.db, 'Databricks', id)).catch(() => null),
+                    getDoc(doc(window.db, 'Scafolding', id)).catch(() => null)
                 ]);
                 if (currentJob !== job) return; // a different job was opened while loading
                 const dbr = dbSnap && dbSnap.exists() ? dbSnap.data() : null;
-                if (!snap.exists() && !dbr) {
+                const scr = scSnap && scSnap.exists() ? scSnap.data() : null;
+                if (!snap.exists() && !dbr && !scr) {
                     body.innerHTML = '<div class="project-empty">No project created for this job yet. Use <strong>Open project</strong> to create one.</div>';
                     return;
                 }
-                const p = snap.exists() ? snap.data() : {}, s = p.scaffolding || {}, c = p.cable || {};
+                const p = snap.exists() ? snap.data() : {}, c = p.cable || {};
+                // Scaffolding: the project's saved values, falling back to the scaffolding sheet paste.
+                const ps = p.scaffolding || {}, blankS = v => v == null || String(v).trim() === '';
+                const s = { ...ps,
+                    sides:        blankS(ps.sides)        ? ([1, 2, 3].includes(Number(scr?.sides)) ? Number(scr.sides) : null) : ps.sides,
+                    erectionDate: blankS(ps.erectionDate) ? (scr?.erectDateISO || '') : ps.erectionDate };
                 // Job details: the project's saved values, falling back to the Databricks paste.
                 const pj = p.job || {}, blank = v => v == null || String(v).trim() === '';
                 const j = { ...pj,
@@ -1494,7 +1501,7 @@
                     inverter:      blank(pj.inverter)      ? dbr?.inverter : pj.inverter,
                     arrays:        blank(pj.arrays)        ? dbr?.arrays   : pj.arrays,
                     panelQuantity: blank(pj.panelQuantity) ? dbr?.panels   : pj.panelQuantity };
-                const noProject = !snap.exists() ? '<div class="project-empty" style="padding:8px 12px 0;">No project yet. Job details below are from Databricks.</div>' : '';
+                const noProject = !snap.exists() ? '<div class="project-empty" style="padding:8px 12px 0;">No project yet. Details below are from the Google Sheet pastes.</div>' : '';
                 const code = String(job['Job Type'] || job.jobType || '').toUpperCase();
                 const kind = code.includes('AFTERCARE') ? 'aftercare' : code.includes('BATTERY') ? 'battery' : 'solar';
                 const flag = (on, yes, no) => `<span class="project-flag${on ? ' on' : ''}">${on ? yes : no}</span>`;

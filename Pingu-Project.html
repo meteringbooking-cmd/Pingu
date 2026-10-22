@@ -429,6 +429,7 @@
             <!-- Scaffolding -->
             <div class="tab-panel" id="tab-scaffolding">
                 <div class="not-needed" id="scaff-not-needed" style="display:none;"></div>
+                <div class="notice info db-note" id="sc-note" style="display:none;"></div>
                 <div class="form-grid" id="scaff-form">
                     <div class="deadline full" id="scaff-deadline" style="display:none;"></div>
                     <label class="check-card full" id="scaff-card">
@@ -446,10 +447,12 @@
                             <option value="2">2 sides</option>
                             <option value="3">3 sides</option>
                         </select>
+                        <span class="db-hint" id="hint-sides"></span>
                     </div>
                     <div class="control-group">
                         <label class="control-label" for="scaff-erect">Scaffold erection date</label>
                         <input type="date" class="control-input" id="scaff-erect">
+                        <span class="db-hint" id="hint-erect"></span>
                     </div>
                     <div class="control-group">
                         <label class="control-label" for="scaff-dismantle">Projected dismantle date</label>
@@ -591,6 +594,7 @@
 
     const PROJECTS = 'pingu-projects';
     const DATABRICKS = 'Databricks';
+    const SCAFFOLD_SHEET = 'Scafolding';
     const JOBS     = 'Solar-jobs';
 
     let db;
@@ -689,6 +693,7 @@
     let currentJob     = null;   // Solar-jobs record
     let currentProject = null;   // pingu-projects record (null = not created yet)
     let currentDb      = null;   // Databricks record pasted from the Google Sheet (null = none)
+    let currentSc      = null;   // Scafolding record pasted from the scaffolding Google Sheet (null = none)
     let allProjects    = [];
     let dirty          = false;
     let isAdmin        = false;
@@ -764,9 +769,12 @@
                 snap = await getDocs(query(collection(db, JOBS), where('Job Number', '==', Number(jn))));
             }
             if (snap.empty) {
-                const dbSnap = await getDoc(doc(db, DATABRICKS, projectId(jn))).catch(() => null);
-                notice(dbSnap && dbSnap.exists()
-                    ? `Job <strong>${esc(jn)}</strong> is in Databricks but not in Solar-jobs yet. Upload the job first, then its project can be created.`
+                const [dbSnap, scSnap] = await Promise.all([
+                    getDoc(doc(db, DATABRICKS, projectId(jn))).catch(() => null),
+                    getDoc(doc(db, SCAFFOLD_SHEET, projectId(jn))).catch(() => null)]);
+                const inSheets = [dbSnap?.exists() && 'Databricks', scSnap?.exists() && 'the scaffolding sheet'].filter(Boolean);
+                notice(inSheets.length
+                    ? `Job <strong>${esc(jn)}</strong> is in ${inSheets.join(' and ')} but not in Solar-jobs yet. Upload the job first, then its project can be created.`
                     : `No job found with number <strong>${esc(jn)}</strong>. Check the number, or upload the job first.`, 'error');
                 $('project-panel').style.display = 'none';
                 currentJob = null; currentProject = null;
@@ -777,12 +785,14 @@
             docs.sort((a, b) => String(b.uploadDate || '').localeCompare(String(a.uploadDate || '')));
             currentJob = docs[0];
 
-            const [pSnap, dSnap] = await Promise.all([
+            const [pSnap, dSnap, sSnap] = await Promise.all([
                 getDoc(doc(db, PROJECTS, projectId(jn))),
-                getDoc(doc(db, DATABRICKS, projectId(jn))).catch(e => { console.warn('Databricks read failed', e); return null; })
+                getDoc(doc(db, DATABRICKS, projectId(jn))).catch(e => { console.warn('Databricks read failed', e); return null; }),
+                getDoc(doc(db, SCAFFOLD_SHEET, projectId(jn))).catch(e => { console.warn('Scafolding read failed', e); return null; })
             ]);
             currentProject = pSnap.exists() ? pSnap.data() : null;
             currentDb = dSnap && dSnap.exists() ? dSnap.data() : null;
+            currentSc = sSnap && sSnap.exists() ? sSnap.data() : null;
 
             notice(docs.length > 1 ? `This job number appears ${docs.length} times in Solar-jobs. Showing the most recent upload.` : '', 'warning');
             renderProject(jn);
@@ -835,7 +845,7 @@
         $('job-system').value        = j.system || '';
         $('job-arrays').value        = j.arrays ?? '';
         $('job-inverter').value      = j.inverter || '';
-        applyDatabricks(prof, j);
+        applySheets(prof, p);
         const co = p.costs || {};
         $('cost-edmundson').value    = co.edmundson ?? '';
         $('cost-pvf').value          = co.pvf ?? '';
@@ -848,50 +858,79 @@
         renderProjects();
     }
 
-    // Fill empty Job tab fields from the Databricks paste, and flag where saved values differ from it.
-    const DB_FIELDS = [
-        { id: 'job-panels',   hint: 'hint-panels',   key: 'panels',   proj: 'panelQuantity', label: 'panel quantity' },
-        { id: 'job-system',   hint: 'hint-system',   key: 'system',   proj: 'system',        label: 'system' },
-        { id: 'job-inverter', hint: 'hint-inverter', key: 'inverter', proj: 'inverter',      label: 'inverter' },
-        { id: 'job-arrays',   hint: 'hint-arrays',   key: 'arrays',   proj: 'arrays',        label: 'number of arrays' }
-    ];
+    // Google Sheet pastes that feed this page. Empty fields are filled from the sheet;
+    // where the project already has a different value, the sheet's value is offered with "Use this".
     const blank = v => v === null || v === undefined || String(v).trim() === '';
-    function applyDatabricks(prof, j) {
-        const filled = [];
-        DB_FIELDS.forEach(f => {
-            const el = $(f.id), hint = $(f.hint);
-            el.classList.remove('from-db'); hint.style.display = 'none'; hint.innerHTML = '';
-            if (!currentDb || blank(currentDb[f.key])) return;
-            const dbVal = String(currentDb[f.key]).trim();
-            if (blank(j[f.proj])) {
-                el.value = dbVal; el.classList.add('from-db'); filled.push(f.label);
-            } else if (String(j[f.proj]).trim().toLowerCase() !== dbVal.toLowerCase()) {
-                hint.style.display = 'block';
-                hint.innerHTML = `Databricks says <strong>${esc(dbVal)}</strong><button type="button" data-use="${f.id}">Use this</button>`;
-                hint.querySelector('button').onclick = () => { el.value = dbVal; el.classList.add('from-db'); hint.style.display = 'none'; setDirty(true); refreshIndicators(); };
-            }
-        });
-        const note = $('db-note');
-        if (!currentDb) { note.style.display = 'none'; }
-        else {
-            note.style.display = 'flex';
-            const when = currentDb.importedAt ? ' (pasted ' + fmtStamp(currentDb.importedAt) + ')' : '';
-            note.textContent = filled.length
-                ? `Filled in from Databricks${when}: ${filled.join(', ')}. Click ${currentProject ? 'Save changes' : 'Create project'} to keep ${filled.length === 1 ? 'it' : 'them'} on the project.`
-                : `This job is in Databricks${when}.`;
-            if (filled.length) setTimeout(() => setDirty(true), 0);
+    const SHEETS = [
+        {
+            name: 'Databricks', note: 'db-note', record: () => currentDb, section: 'job',
+            fields: [
+                { id: 'job-panels',   hint: 'hint-panels',   key: 'panels',   proj: 'panelQuantity', label: 'panel quantity' },
+                { id: 'job-system',   hint: 'hint-system',   key: 'system',   proj: 'system',        label: 'system' },
+                { id: 'job-inverter', hint: 'hint-inverter', key: 'inverter', proj: 'inverter',      label: 'inverter' },
+                { id: 'job-arrays',   hint: 'hint-arrays',   key: 'arrays',   proj: 'arrays',        label: 'number of arrays' }
+            ]
+        },
+        {
+            name: 'the scaffolding sheet', note: 'sc-note', record: () => currentSc, section: 'scaffolding',
+            fields: [
+                { id: 'scaff-sides', hint: 'hint-sides', key: 'sides', proj: 'sides', label: 'number of sides',
+                  value: v => [1, 2, 3].includes(Number(v)) ? String(Number(v)) : null,
+                  show: v => v + (Number(v) === 1 ? ' side' : ' sides') },
+                { id: 'scaff-erect', hint: 'hint-erect', key: 'erectDateISO', proj: 'erectionDate', label: 'erection date',
+                  value: v => /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? String(v) : null,
+                  show: v => fmtShort(v + 'T00:00:00') }
+            ]
         }
+    ];
+    const ALL_SHEET_FIELDS = SHEETS.flatMap(sh => sh.fields);
 
-        // Postcode / install date cross-check against the job record
+    function sheetNoteText(sh, filled) {
+        const rec = sh.record();
+        const when = rec?.importedAt ? ' (pasted ' + fmtStamp(rec.importedAt) + ')' : '';
+        return filled.length
+            ? `Filled in from ${sh.name}${when}: ${filled.join(', ')}. Click ${currentProject ? 'Save changes' : 'Create project'} to keep ${filled.length === 1 ? 'it' : 'them'} on the project.`
+            : `This job is on ${sh.name}${when}.`;
+    }
+
+    function applySheets(prof, p) {
+        let anyFilled = false;
+        SHEETS.forEach(sh => {
+            const rec = sh.record(), saved = p[sh.section] || {}, filled = [];
+            sh.fields.forEach(f => {
+                const el = $(f.id), hint = $(f.hint);
+                el.classList.remove('from-db'); hint.style.display = 'none'; hint.innerHTML = '';
+                if (!rec || blank(rec[f.key])) return;
+                const val = f.value ? f.value(rec[f.key]) : String(rec[f.key]).trim();
+                if (val == null) return;
+                const shown = f.show ? f.show(val) : val;
+                if (blank(saved[f.proj])) {
+                    el.value = val; el.classList.add('from-db'); filled.push(f.label);
+                } else if (String(saved[f.proj]).trim().toLowerCase() !== val.toLowerCase()) {
+                    hint.style.display = 'block';
+                    hint.innerHTML = `${esc(sh.name.charAt(0).toUpperCase() + sh.name.slice(1))} says <strong>${esc(shown)}</strong><button type="button">Use this</button>`;
+                    hint.querySelector('button').onclick = () => { el.value = val; el.classList.add('from-db'); hint.style.display = 'none'; setDirty(true); refreshIndicators(); };
+                }
+            });
+            const note = $(sh.note);
+            note.style.display = rec ? 'flex' : 'none';
+            if (rec) note.textContent = sheetNoteText(sh, filled);
+            if (filled.length) anyFilled = true;
+        });
+        if (anyFilled) setTimeout(() => setDirty(true), 0);
+
+        // Postcode / install date cross-check of each sheet against the job record
         const issues = [];
-        if (currentDb) {
-            const pc = v => String(v || '').toUpperCase().replace(/\s+/g, '');
-            if (currentDb.postcode && prof.postcode && pc(currentDb.postcode) !== pc(prof.postcode))
-                issues.push(`postcode is ${esc(currentDb.postcode)} in Databricks but ${esc(prof.postcode)} on the job`);
-            const a = parseDate(currentDb.installDate), b = parseDate(prof.installDay);
+        const pc = v => String(v || '').toUpperCase().replace(/\s+/g, '');
+        SHEETS.forEach(sh => {
+            const rec = sh.record();
+            if (!rec) return;
+            if (rec.postcode && prof.postcode && pc(rec.postcode) !== pc(prof.postcode))
+                issues.push(`postcode is ${esc(rec.postcode)} on ${sh.name} but ${esc(prof.postcode)} on the job`);
+            const a = parseDate(rec.installDate), b = parseDate(prof.installDay);
             if (a && b && a.toDateString() !== b.toDateString())
-                issues.push(`install date is ${esc(fmtShort(a))} in Databricks but ${esc(fmtShort(b))} on the job`);
-        }
+                issues.push(`install date is ${esc(fmtShort(a))} on ${sh.name} but ${esc(fmtShort(b))} on the job`);
+        });
         $('profile-db-note').style.display = issues.length ? 'flex' : 'none';
         $('profile-db-note').innerHTML = issues.length ? 'Check: the ' + issues.join('; the ') + '.' : '';
     }
@@ -905,6 +944,7 @@
         const cableNeeded = t.kind !== 'aftercare';
         $('scaff-form').style.display = scaffNeeded ? '' : 'none';
         $('scaff-not-needed').style.display = scaffNeeded ? 'none' : 'block';
+        if (!scaffNeeded) $('sc-note').style.display = 'none';
         $('scaff-not-needed').textContent = `Scaffolding isn't needed for ${t.label} jobs.`;
         $('cable-form').style.display = cableNeeded ? '' : 'none';
         $('cable-not-needed').style.display = cableNeeded ? 'none' : 'block';
@@ -1106,8 +1146,8 @@
             setStateBadge();
             refreshIndicators();
             setDirty(false);
-            DB_FIELDS.forEach(f => $(f.id).classList.remove('from-db'));
-            if (currentDb) $('db-note').textContent = 'This job is in Databricks' + (currentDb.importedAt ? ' (pasted ' + fmtStamp(currentDb.importedAt) + ')' : '') + '.';
+            ALL_SHEET_FIELDS.forEach(f => $(f.id).classList.remove('from-db'));
+            SHEETS.forEach(sh => { if (sh.record()) $(sh.note).textContent = sheetNoteText(sh, []); });
             toast(wasNew ? `Project created for job #${jn}` : `Project #${jn} saved`);
             upsertProjectInList(projectId(jn), data);
         } catch (e) {
