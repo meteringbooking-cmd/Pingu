@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Mass Upload Jobs (CSV) | Pingu</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         /* ═══ Pingu design system — base (copy verbatim into each page's <style>) ═══ */
@@ -302,15 +301,6 @@
         .db-preview-wrap tr.bad td { background: rgba(255,107,107,0.06); }
         .row-msg { color: var(--warning); font-size: 12px; }
         .row-msg.err { color: #FF8A8A; }
-        .sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .week-picker { border: 1px solid var(--line-2); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; background: rgba(255,255,255,0.02); }
-        .week-picker-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
-        .week-quick { font-size: 12.5px; color: var(--text-dim); }
-        .link-btn { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; font-size: inherit; text-decoration: underline; }
-        .week-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-        .week-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line-2); font-family: var(--mono); font-size: 12.5px; color: var(--text-strong); cursor: pointer; }
-        .week-chip.past { color: var(--text-dim); }
-        .week-chip:has(input:checked) { border-color: rgba(255,107,53,0.6); background: rgba(255,107,53,0.1); }
         .override-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text-soft); cursor: pointer; }
         .override-row input { width: 16px; height: 16px; }
         .db-preview-wrap tr.missing td { background: rgba(255,200,87,0.07); }
@@ -473,8 +463,7 @@
        name when the paste includes a header row, otherwise by position. */
     const IMPORTERS = [
         {
-            id: 'db', title: 'Google Sheet: Databricks', collection: 'Databricks',
-            sheet: { spreadsheetId: '1JuPikuR5vFNo_BPRZKAxTcFjUNHWVldeji7qaJp3Ng0', tab: 'Databricks (Import here)' },
+            id: 'db', title: 'Paste from Google Sheet (Databricks)', collection: 'Databricks',
             feeds: 'the Job tab in Pingu-Project',
             columns: [
                 { key: 'jobNumber',   header: 'Job Number',   type: 'job', aliases: 'jobnumber jobno jobnum jobid jobref jobreference' },
@@ -488,9 +477,7 @@
             checks: ['postcode', 'installDate']
         },
         {
-            id: 'sc', title: 'Google Sheet: Scaffolding', collection: 'Scafolding',
-            // One tab per week, named by the week's Monday, e.g. 02.11, 09.11
-            sheet: { spreadsheetId: '1vEJwJj2uRUgX2tWRckVG2v0DA20pmmP7PzusHod6oqk', weeklyTabs: true },
+            id: 'sc', title: 'Paste from Google Sheet (Scaffolding)', collection: 'Scafolding',
             feeds: 'the Scaffolding tab in Pingu-Project',
             columns: [
                 { key: 'jobNumber',               header: 'Job Number',                type: 'job', aliases: 'jobnumber jobno jobnum jobid jobref jobreference' },
@@ -632,131 +619,6 @@
         return null;
     }
 
-    /* ── Google Sheets (read-only), using the same Google sign-in as the job timeline ── */
-    const GOOGLE_CLIENT_ID = '232764952866-opud0c9acmmptr6mih33m95ds1lpjd57.apps.googleusercontent.com';
-    const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-    let gToken = null, gTokenExpiry = 0, tokenClient = null, pendingToken = null;
-    const TOKEN_KEY = 'pinguSheetsToken', RETURN_KEY = 'pinguSheetsReturn', REDIRECT_PREF = 'pinguSheetsUseRedirect';
-    const ss = { get: k => { try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch { return null; } },
-                 set: (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
-                 del: k => { try { sessionStorage.removeItem(k); } catch {} } };
-    function storeToken(token, expiresInSec) {
-        gToken = token; gTokenExpiry = Date.now() + expiresInSec * 1000;
-        ss.set(TOKEN_KEY, { t: gToken, exp: gTokenExpiry });
-    }
-    (function restoreToken() { const v = ss.get(TOKEN_KEY); if (v?.t && v.exp > Date.now()) { gToken = v.t; gTokenExpiry = v.exp; } })();
-    const hasToken = () => gToken && Date.now() < gTokenExpiry - 60000;
-    const preferRedirect = () => { try { return localStorage.getItem(REDIRECT_PREF) === '1'; } catch { return false; } };
-
-    // Sign-in without a pop-up: this page goes to Google and Google sends you back here.
-    // Google only allows this for addresses listed under "Authorised redirect URIs" on the sign-in client.
-    const REDIRECT_URI = location.origin + location.pathname;
-    function redirectSignIn(importerId) {
-        const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-        ss.set(RETURN_KEY, { nonce, id: importerId });
-        try { localStorage.setItem(REDIRECT_PREF, '1'); } catch {}
-        const q = new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, redirect_uri: REDIRECT_URI, response_type: 'token',
-                                        scope: SHEETS_SCOPE, include_granted_scopes: 'true', state: nonce });
-        location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + q.toString());
-    }
-    // Coming back from Google: pick the token out of the address and tidy the address.
-    let returnedFor = null, returnError = null;
-    (function readRedirectResult() {
-        if (!location.hash || !/access_token=|error=/.test(location.hash)) return;
-        const h = new URLSearchParams(location.hash.slice(1)), ret = ss.get(RETURN_KEY);
-        history.replaceState(null, '', location.pathname + location.search);
-        ss.del(RETURN_KEY);
-        if (!ret || h.get('state') !== ret.nonce) { returnError = 'Google sign-in could not be confirmed. Please click Load again.'; return; }
-        if (h.get('error')) { returnedFor = ret.id; returnError = h.get('error') === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in failed: ' + h.get('error'); return; }
-        storeToken(h.get('access_token'), Number(h.get('expires_in') || 3600));
-        returnedFor = ret.id;
-    })();
-    // Set up the Google sign-in client as soon as Google's script has loaded, so a click on
-    // "Load from Google Sheet" can open the sign-in window straight away (browsers block
-    // pop-ups that don't open directly from a click).
-    function initGoogle() {
-        if (tokenClient) return true;
-        if (typeof google === 'undefined' || !google.accounts?.oauth2) return false;
-        tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID, scope: SHEETS_SCOPE,
-            callback: r => {
-                const p = pendingToken; pendingToken = null;
-                if (r.error) { p?.reject(new Error('Google sign-in failed: ' + r.error)); return; }
-                storeToken(r.access_token, r.expires_in); p?.resolve(gToken);
-            },
-            error_callback: e => {
-                const p = pendingToken; pendingToken = null;
-                const err = new Error(e?.type === 'popup_failed_to_open' ? 'POPUP_BLOCKED'
-                    : e?.type === 'popup_closed' ? 'The Google sign-in window was closed before signing in. Click Load again.'
-                    : 'Google sign-in failed.');
-                p?.reject(err);
-            }
-        });
-        return true;
-    }
-    (function waitForGoogle(tries = 0) { if (!initGoogle() && tries < 100) setTimeout(() => waitForGoogle(tries + 1), 150); })();
-
-    // Must be called directly inside a click handler (before any await) so the sign-in window isn't blocked.
-    function getGoogleToken() {
-        if (hasToken()) return Promise.resolve(gToken);
-        if (!initGoogle()) return Promise.reject(new Error('Google sign-in has not loaded yet. Wait a moment and try again.'));
-        if (pendingToken) pendingToken.reject(new Error('Sign-in restarted.'));
-        return new Promise((resolve, reject) => {
-            pendingToken = { resolve, reject };
-            tokenClient.requestAccessToken();
-        });
-    }
-    // Explain a blocked pop-up and offer the no-pop-up sign-in instead.
-    function signInProblemHtml(importerId) {
-        return `<div style="display:flex;flex-direction:column;gap:8px;">
-            <div><strong>Chrome didn't open the Google sign-in window.</strong> On work computers pop-ups are often blocked by IT settings. Sign in in this window instead: you'll go to Google and come straight back here.</div>
-            <div><button type="button" class="btn btn-primary btn-sm" data-redirect="${importerId}">Sign in without a pop-up</button></div>
-            <div class="muted" style="font-size:12px;">First time only: if Google shows "redirect_uri_mismatch", this page's address needs adding to the Google sign-in client
-            (Google Cloud console → APIs &amp; Services → Credentials → the OAuth client <span class="mono">232764952866-opud0c9a…</span> → Authorised redirect URIs):
-            <span class="mono" style="color:var(--text-strong);">${esc(REDIRECT_URI)}</span> <button type="button" class="link-btn" data-copy-uri>Copy</button></div>
-        </div>`;
-    }
-    document.addEventListener('click', e => {
-        const r = e.target.closest('[data-redirect]'); if (r) redirectSignIn(r.dataset.redirect);
-        const c = e.target.closest('[data-copy-uri]');
-        if (c) { navigator.clipboard?.writeText(REDIRECT_URI).then(() => { c.textContent = 'Copied'; setTimeout(() => c.textContent = 'Copy', 1500); }); }
-    });
-    async function sheetsGet(url) {
-        const token = await getGoogleToken();
-        const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-        if (res.status === 401) { gToken = null; ss.del(TOKEN_KEY); throw new Error('Google sign-in expired. Click Load again.'); }
-        if (res.status === 403) throw new Error("Your Google account doesn't have access to this sheet. Ask the owner to share it with you.");
-        if (res.status === 404) throw new Error('The Google Sheet was not found.');
-        if (!res.ok) { let m = ''; try { m = (await res.json()).error?.message || ''; } catch {} throw new Error(`Google Sheets error ${res.status}${m ? ': ' + m : ''}`); }
-        return res.json();
-    }
-    const quoteTab = t => "'" + String(t).replace(/'/g, "''") + "'";
-    async function listTabs(spreadsheetId) {
-        const d = await sheetsGet(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}?fields=sheets.properties(title,hidden)`);
-        return (d.sheets || []).filter(s => !s.properties.hidden).map(s => s.properties.title);
-    }
-    async function readTabs(spreadsheetId, titles) {
-        const q = titles.map(t => 'ranges=' + encodeURIComponent(quoteTab(t))).join('&');
-        try {
-            const d = await sheetsGet(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchGet?${q}&valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`);
-            return (d.valueRanges || []).map(v => (v.values || []).map(r => r.map(c => String(c ?? ''))));
-        } catch (e) {
-            if (/Unable to parse range/i.test(e.message)) throw new Error(`Tab not found: ${titles.join(', ')}. Check the tab name in the Google Sheet.`);
-            throw e;
-        }
-    }
-    // Week tabs are named dd.mm (the week's Monday); pick the year that puts it nearest today.
-    function weekTabDate(title) {
-        const m = String(title).trim().match(/^(\d{1,2})[.\/-](\d{1,2})(?:[.\/-](\d{2,4}))?$/);
-        if (!m) return null;
-        const day = +m[1], mon = +m[2] - 1;
-        if (mon < 0 || mon > 11 || day < 1 || day > 31) return null;
-        if (m[3]) { const y = +m[3] < 100 ? 2000 + +m[3] : +m[3]; return new Date(y, mon, day); }
-        const now = new Date(), y = now.getFullYear();
-        const opts = [y - 1, y, y + 1].map(yy => new Date(yy, mon, day));
-        return opts.sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
-    }
-
     /* ── Build one importer panel ────────────────────────────────────── */
     function buildImporter(cfg) {
         const previewCols = (cfg.preview || cfg.columns.map(c => c.key)).map(k => cfg.columns.find(c => c.key === k));
@@ -766,19 +628,9 @@
         panel.innerHTML = `
             <div class="panel-head">
                 <div class="panel-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>${esc(cfg.title)}</div>
-                ${cfg.sheet ? `<div class="sheet-actions">
-                    <a class="btn btn-ghost btn-sm" href="https://docs.google.com/spreadsheets/d/${cfg.sheet.spreadsheetId}/edit" target="_blank" rel="noopener">Open sheet</a>
-                    <button type="button" class="btn btn-primary btn-sm" data-r="load"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg><span data-r="load-label">Load from Google Sheet</span></button>
-                </div>` : ''}
             </div>
-            ${cfg.sheet?.weeklyTabs ? `<div class="week-picker" data-r="weeks" style="display:none;">
-                <div class="week-picker-head"><span class="control-label">Weeks to load</span>
-                    <span class="week-quick"><button type="button" class="link-btn" data-r="weeks-upcoming">This week onwards</button> · <button type="button" class="link-btn" data-r="weeks-all">All</button> · <button type="button" class="link-btn" data-r="weeks-none">None</button></span></div>
-                <div class="week-chips" data-r="week-chips"></div>
-                <button type="button" class="btn btn-primary btn-sm" data-r="weeks-load" style="margin-top:10px;">Load selected weeks</button>
-            </div>` : ''}
             <div class="notice info" data-r="source" style="display:none;margin-bottom:10px;"></div>
-            <p class="muted" style="font-size:13px;margin-bottom:10px;">${cfg.sheet ? `Click <strong>Load from Google Sheet</strong> to read ${cfg.sheet.weeklyTabs ? 'the weekly tabs' : `the <strong>${esc(cfg.sheet.tab)}</strong> tab`} directly, or copy rows from the sheet and paste them below.` : 'Copy the rows in Google Sheets and paste them below.'} Columns are matched by the header row; pasted rows without a header must be in this order. Rows are matched by job number, so loading a job again updates it.</p>
+            <p class="muted" style="font-size:13px;margin-bottom:10px;">Copy the rows in Google Sheets and paste them below. If you include the header row, columns are matched by name; without it they must be in this order. Rows are matched by job number, so pasting a job again updates it.</p>
             <div class="paste-cols">${cfg.columns.map(c => `<span class="tag">${esc(c.header)}</span>`).join('<span class="arrow">→</span>')}</div>
             <textarea class="control-input paste-box" data-r="paste" placeholder="Paste here (Ctrl+V)…" spellcheck="false"></textarea>
             <div class="db-summary" data-r="summary"></div>
@@ -1056,83 +908,6 @@
         $('override')?.addEventListener('change', () => { if (lastItems.length) { rows.forEach(r => r.saved = false); processItems(lastItems, $('header-warn').textContent); } });
         $('clear').addEventListener('click', () => { $('paste').value = ''; rows = []; lastItems = []; $('header-warn').style.display = 'none'; $('source').style.display = 'none'; $('status').className = 'status hidden'; render(); });
 
-        /* ── Load straight from the Google Sheet ── */
-        let weekTabs = [];
-        function showError(e) {
-            $('source').style.display = 'flex'; $('source').className = 'notice error';
-            if (e.message === 'POPUP_BLOCKED') $('source').innerHTML = signInProblemHtml(cfg.id);
-            else $('source').textContent = e.message;
-        }
-        function setLoading(on, text) {
-            $('load').disabled = on;
-            $('load-label').textContent = on ? (text || 'Loading…') : 'Load from Google Sheet';
-        }
-        async function loadTabs(titles) {
-            const values = await readTabs(cfg.sheet.spreadsheetId, titles);
-            const items = [], missingByTab = [];
-            let headers = null;
-            values.forEach((table, i) => {
-                const m = mapTable(table);
-                if (m.missing.length) { missingByTab.push(`${titles[i]}: ${m.missing.join(', ')}`); headers = headers || m.headers; }
-                m.items.forEach(it => items.push({ ...it, label: (titles.length > 1 || cfg.sheet.weeklyTabs ? titles[i] + ' · ' : 'Row ') + it.rowNo }));
-            });
-            const msg = missingByTab.length
-                ? `Some columns weren't found, so they'll be left blank. ${missingByTab.join('; ')}.` + (headers ? ` Headers in the sheet: ${headers.join(', ')}.` : '')
-                : '';
-            $('paste').value = '';
-            $('status').className = 'status hidden';
-            rows.forEach(r => r.saved = false);
-            await processItems(items, msg);
-            const n = items.filter(it => it.cells.some(c => String(c ?? '').trim() !== '')).length;
-            $('source').style.display = 'flex'; $('source').className = 'notice info';
-            $('source').textContent = `Loaded ${n} row${n === 1 ? '' : 's'} from ${titles.length === 1 ? 'the ' + titles[0] + ' tab' : titles.length + ' tabs (' + titles.join(', ') + ')'} at ${new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Check the results below, then save.`;
-        }
-        function renderWeekChips() {
-            $('week-chips').innerHTML = weekTabs.map((w, i) => `<label class="week-chip${w.past ? ' past' : ''}"><input type="checkbox" data-i="${i}" ${w.on ? 'checked' : ''}> ${esc(w.title)}</label>`).join('')
-                || '<span class="muted">No week tabs (named like 02.11) found in this sheet.</span>';
-            $('week-chips').querySelectorAll('input').forEach(cb => cb.onchange = () => { weekTabs[cb.dataset.i].on = cb.checked; });
-        }
-        if (cfg.sheet) $('load').addEventListener('click', async () => {
-            if (!hasToken() && preferRedirect()) { redirectSignIn(cfg.id); return; }
-            // Ask for sign-in first, inside the click, so the browser allows the Google window.
-            const signIn = getGoogleToken();
-            try {
-                setLoading(true, hasToken() ? 'Loading…' : 'Signing in…');
-                await signIn;
-                if (cfg.sheet.weeklyTabs) {
-                    const all = await listTabs(cfg.sheet.spreadsheetId);
-                    const today = new Date(); today.setHours(0, 0, 0, 0);
-                    weekTabs = all.map(title => ({ title, date: weekTabDate(title) })).filter(w => w.date)
-                        .sort((a, b) => a.date - b.date)
-                        .map(w => { const end = new Date(w.date); end.setDate(end.getDate() + 6); return { ...w, past: end < today, on: end >= today }; });
-                    renderWeekChips();
-                    $('weeks').style.display = 'block';
-                } else {
-                    setLoading(true, 'Reading sheet…');
-                    await loadTabs([cfg.sheet.tab]);
-                }
-            } catch (e) {
-                console.error(e);
-                $('source').style.display = 'flex'; $('source').className = 'notice error';
-                showError(e);
-            } finally { setLoading(false); }
-        });
-        if (cfg.sheet?.weeklyTabs) {
-            const pick = fn => () => { weekTabs.forEach(fn); renderWeekChips(); };
-            $('weeks-upcoming').onclick = pick(w => w.on = !w.past);
-            $('weeks-all').onclick = pick(w => w.on = true);
-            $('weeks-none').onclick = pick(w => w.on = false);
-            $('weeks-load').onclick = async () => {
-                const titles = weekTabs.filter(w => w.on).map(w => w.title);
-                if (!titles.length) { $('source').style.display = 'flex'; $('source').className = 'notice warning'; $('source').textContent = 'Tick at least one week to load.'; return; }
-                if (!hasToken() && preferRedirect()) { redirectSignIn(cfg.id); return; }
-                const signIn = getGoogleToken();   // in case the hour-long sign-in has run out
-                $('weeks-load').disabled = true; $('weeks-load').textContent = 'Loading…';
-                try { await signIn; $('source').className = 'notice info'; await loadTabs(titles); }
-                catch (e) { console.error(e); showError(e); }
-                finally { $('weeks-load').disabled = false; $('weeks-load').textContent = 'Load selected weeks'; }
-            };
-        }
         $('recon-scope').addEventListener('change', renderRecon);
         $('recon-copy').addEventListener('click', async () => {
             const text = reconList.map(j => j.jobNumber).join('\n');
@@ -1141,18 +916,11 @@
             $('recon-copy').textContent = 'Copied';
             setTimeout(() => $('recon-copy').textContent = 'Copy job numbers', 1500);
         });
-        panel.afterSignIn = () => {
-            if (returnError) { $('source').style.display = 'flex'; $('source').className = 'notice error'; $('source').textContent = returnError; }
-            else $('load').click();   // signed in: carry on loading
-            panel.scrollIntoView({ block: 'start' });
-        };
         return panel;
     }
 
     const host = document.getElementById('paste-host');
     IMPORTERS.forEach(cfg => host.appendChild(buildImporter(cfg)));
-    // Back from Google's sign-in page: continue with the section that asked for it.
-    if (returnedFor) { const panel = document.getElementById(returnedFor + '-panel'); if (panel) setTimeout(() => panel.afterSignIn(), 300); }
 </script>
 
 <script>
