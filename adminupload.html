@@ -301,6 +301,8 @@
         .db-preview-wrap tr.bad td { background: rgba(255,107,107,0.06); }
         .row-msg { color: var(--warning); font-size: 12px; }
         .row-msg.err { color: #FF8A8A; }
+        .override-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13px; color: var(--text-soft); cursor: pointer; }
+        .override-row input { width: 16px; height: 16px; }
         .db-preview-wrap tr.missing td { background: rgba(255,200,87,0.07); }
         .db-preview-wrap tr.missing td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
         .recon { margin-top: 16px; border: 1px solid rgba(255,200,87,0.4); border-radius: 10px; overflow: hidden; }
@@ -496,7 +498,9 @@
             ],
             // Columns shown in the preview table (all columns are saved)
             preview: ['jobNumber', 'team', 'postcode', 'installDate', 'panels', 'sides', 'scaffoldRequested', 'erectDate'],
-            checks: ['postcode', 'installDate', 'panels']
+            checks: ['postcode', 'installDate', 'panels'],
+            // On save, make Pingu's panel counts (project + Databricks) match this sheet
+            overridePanels: true
         }
     ];
 
@@ -599,8 +603,8 @@
                 });
             });
         } else shared.jobs = null;
-        shared.projects = new Map(); projSnap?.forEach(d => shared.projects.set(norm(d.id), d.data()));
-        shared.databricks = new Map(); dbSnap?.forEach(d => shared.databricks.set(norm(d.id), d.data()));
+        shared.projects = new Map(); projSnap?.forEach(d => shared.projects.set(norm(d.id), { ...d.data(), __id: d.id }));
+        shared.databricks = new Map(); dbSnap?.forEach(d => shared.databricks.set(norm(d.id), { ...d.data(), __id: d.id }));
         shared.at = Date.now();
         return shared;
     }
@@ -657,6 +661,7 @@
                 </div>
                 <div class="recon-note" data-r="recon-note"></div>
             </div>
+            ${cfg.overridePanels ? `<label class="override-row"><input type="checkbox" data-r="override" checked> When saving, update panel counts in Pingu (project and Databricks) to match this sheet</label>` : ''}
             <div class="status hidden" data-r="status"></div>
             <div class="buttons">
                 <button class="btn btn-primary" data-r="save" disabled><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5M12 3v12"/></svg><span data-r="save-label">Save to ${esc(cfg.collection)}</span></button>
@@ -715,9 +720,27 @@
                         if (cfg.checks.includes('installDate') && r.dates.installDate && pj.installDate && !sameDay(r.dates.installDate, pj.installDate))
                             r.warnings.push(`Install date in Pingu is ${ddmmyyyy(pj.installDate)}`);
                     }
+                    r.panelUpdates = [];
                     if (cfg.checks.includes('panels') && r.values.panels != null) {
-                        const known = pinguPanels(r.key);
-                        if (known && known.n !== r.values.panels) r.warnings.push(`Panels in Pingu is ${known.n} (${known.from})`);
+                        const n = r.values.panels, overriding = cfg.overridePanels && $('override')?.checked;
+                        const proj = sh.projects.get(r.key), dbr = sh.databricks.get(r.key);
+                        const blankV = v => v == null || String(v).trim() === '';
+                        if (proj && (blankV(proj.job?.panelQuantity) || Number(proj.job.panelQuantity) !== n))
+                            r.panelUpdates.push({ coll: 'pingu-projects', id: proj.__id, from: proj.job?.panelQuantity, label: 'project' });
+                        if (dbr && !blankV(dbr.panels) && Number(dbr.panels) !== n)
+                            r.panelUpdates.push({ coll: 'Databricks', id: dbr.__id, from: dbr.panels, label: 'Databricks' });
+                        const diffs = r.panelUpdates.filter(u => !blankV(u.from));
+                        if (overriding && r.panelUpdates.length) {
+                            if (diffs.length) r.warnings.push(`Panels will change to ${n} (${diffs.map(u => u.label + ' was ' + u.from).join(', ')})`);
+                        } else {
+                            r.panelUpdates = [];
+                            const known = pinguPanels(r.key);
+                            if (known && known.n !== n) r.warnings.push(`Panels in Pingu is ${known.n} (${known.from})`);
+                        }
+                        if (overriding && !diffs.length) {
+                            const known = pinguPanels(r.key);
+                            if (known && known.from === 'job' && known.n !== n) r.warnings.push(`Panels on the job record is ${known.n}`);
+                        }
                     }
                 }
                 if (r.key) {
@@ -752,7 +775,9 @@
                 nErr ? `<span class="badge" style="--c:var(--error)">${nErr} with errors (won't be saved)</span>` : '',
                 shared.jobs ? `<span class="badge" style="--c:${nMissing ? 'var(--warning)' : 'var(--success)'}">${nMissing ? nMissing + ' on the sheet but not in Pingu' : 'All sheet jobs are in Pingu'}</span>`
                             : `<span class="badge" style="--c:var(--error)">Couldn't load Pingu jobs to compare</span>`,
-                nWarn ? `<span class="badge" style="--c:var(--warning)">${nWarn} with differences to check</span>` : ''
+                nWarn ? `<span class="badge" style="--c:var(--warning)">${nWarn} with differences to check</span>` : '',
+                (() => { const n = valid.filter(r => r.panelUpdates?.some(u => u.from != null && String(u.from).trim() !== '')).length;
+                         return n ? `<span class="badge" style="--c:var(--accent)">${n} panel count${n === 1 ? '' : 's'} will be updated</span>` : ''; })()
             ].join('') : '';
             if (!rows.some(r => r.saved)) {
                 $('save').disabled = !valid.length;
@@ -807,18 +832,44 @@
             let who = ''; try { who = JSON.parse(localStorage.getItem('adminSession') || '{}').name || ''; } catch {}
             const now = new Date().toISOString();
             try {
-                for (let i = 0; i < valid.length; i += 400) {
+                const overriding = cfg.overridePanels && $('override')?.checked;
+                const by = 'Scaffolding sheet paste' + (who ? ' by ' + who : '');
+                // Up to 3 writes per row (sheet, project, Databricks); Firestore allows 500 per batch.
+                for (let i = 0; i < valid.length; i += 150) {
                     const batch = writeBatch(window.db);
-                    valid.slice(i, i + 400).forEach(r => batch.set(doc(window.db, cfg.collection, docId(r.jobNumber)),
-                        { ...r.values, ...r.extra, importedAt: now, importedBy: who }, { merge: true }));
+                    valid.slice(i, i + 150).forEach(r => {
+                        batch.set(doc(window.db, cfg.collection, docId(r.jobNumber)),
+                            { ...r.values, ...r.extra, importedAt: now, importedBy: who }, { merge: true });
+                        if (!overriding) return;
+                        (r.panelUpdates || []).forEach(u => {
+                            if (u.coll === 'pingu-projects')
+                                // Margin snapshot is cleared; Pingu-Project recalculates it next time the project is saved.
+                                batch.set(doc(window.db, u.coll, u.id), { job: { panelQuantity: r.values.panels }, financials: null, updatedAt: now, updatedBy: by }, { merge: true });
+                            else
+                                batch.set(doc(window.db, u.coll, u.id), { panels: r.values.panels, panelsUpdatedAt: now, panelsUpdatedBy: by }, { merge: true });
+                        });
+                    });
                     await batch.commit();
                 }
                 valid.forEach(r => {
                     r.saved = true; existingIds?.add(norm(docId(r.jobNumber)));
-                    if (cfg.collection === 'Databricks') shared.databricks.set(r.key, { ...r.values });
+                    if (cfg.collection === 'Databricks') shared.databricks.set(r.key, { ...(shared.databricks.get(r.key) || { __id: docId(r.jobNumber) }), ...r.values });
+                });
+                let nPanels = 0;
+                if (cfg.overridePanels && $('override')?.checked) valid.forEach(r => {
+                    if (r.panelUpdates?.length) {
+                        nPanels++;
+                        r.warnings = r.warnings.map(w => w.startsWith('Panels will change to') ? w.replace('Panels will change to', 'Panels updated to') : w);
+                    }
+                    (r.panelUpdates || []).forEach(u => {
+                        const map = u.coll === 'pingu-projects' ? shared.projects : shared.databricks, rec = map.get(r.key);
+                        if (u.coll === 'pingu-projects') rec.job = { ...(rec.job || {}), panelQuantity: r.values.panels }; else rec.panels = r.values.panels;
+                    });
+                    r.panelUpdates = [];
                 });
                 const nMissing = valid.filter(r => r.inPingu === false).length;
                 status(`Saved ${valid.length} job${valid.length === 1 ? '' : 's'} to ${cfg.collection}. They now show on ${cfg.feeds}.`
+                    + (nPanels ? ` Panel counts updated in Pingu on ${nPanels} job${nPanels === 1 ? '' : 's'}.` : '')
                     + (nMissing ? ` ${nMissing === 1 ? "1 of them isn't" : nMissing + " of them aren't"} in Pingu yet, so ${nMissing === 1 ? "it'll" : "they'll"} link up once ${nMissing === 1 ? 'that job is' : 'those jobs are'} uploaded.` : ''), 'success');
                 render();
                 $('save-label').textContent = 'Saved';
@@ -836,6 +887,7 @@
             rows.forEach(r => r.saved = false);
         });
         $('save').addEventListener('click', save);
+        $('override')?.addEventListener('change', () => { if ($('paste').value.trim()) { rows.forEach(r => r.saved = false); onPaste(); } });
         $('clear').addEventListener('click', () => { $('paste').value = ''; rows = []; $('header-warn').style.display = 'none'; $('status').className = 'status hidden'; render(); });
         $('recon-scope').addEventListener('change', renderRecon);
         $('recon-copy').addEventListener('click', async () => {
