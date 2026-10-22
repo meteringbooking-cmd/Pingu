@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Dashboard | Pingu</title>
+    <title>Workscreen | Pingu</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <style>
         /* ═══ Pingu design system — base (copy verbatim into each page's <style>) ═══ */
@@ -209,556 +209,262 @@
             .wordmark { font-size: 24px; }
         }
         /* ═══ end base ═══ */
+        /* ═══ Workscreen — page styles ═══ */
+        body { min-height: 100vh; display: flex; flex-direction: column; }
+        .appbar { height: 72px; }
+        .clock { display: flex; align-items: baseline; gap: 14px; }
+        .clock-time { font-family: var(--mono); font-size: 30px; font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; }
+        .clock-date { color: var(--text-soft); font-size: 15px; font-weight: 500; }
+        .live { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; letter-spacing: .08em; color: var(--success); }
+        .live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 0 rgba(78,204,163,0.6); animation: pulse 2s infinite; }
+        .live.off { color: var(--error); }
+        .live.off::before { animation: none; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(78,204,163,0.55); } 70% { box-shadow: 0 0 0 9px rgba(78,204,163,0); } 100% { box-shadow: 0 0 0 0 rgba(78,204,163,0); } }
 
-        /* ═══ Wallboard (TV, full screen) ═══
-           Sizes scale with the viewport so the board fills a 1080p or 4K screen without scrolling. */
-        :root {
-            --wb-gap: clamp(10px, 1.1vw, 28px);
-            --wb-pad: clamp(14px, 1.4vw, 36px);
-            --wb-label: clamp(13px, 1.05vw, 26px);
-            --wb-big: clamp(44px, 5.2vw, 140px);
-            --wb-status: clamp(48px, 6vw, 160px);
-            --wb-text: clamp(14px, 1.15vw, 30px);
+        .board { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 20px 24px 24px; }
+        .week { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .week.current { border-color: rgba(255,107,53,0.55); box-shadow: 0 0 0 1px rgba(255,107,53,0.25), 0 20px 50px -30px rgba(255,107,53,0.5); }
+        .week-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--line); }
+        .week-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim); }
+        .week.current .week-label { color: var(--primary); }
+        .week-range { font-size: 17px; font-weight: 600; color: var(--text-strong); margin-top: 3px; }
+        .now-tag { font-size: 10.5px; padding: 3px 8px; border-radius: 999px; background: var(--primary); color: #fff; letter-spacing: .06em; }
+
+        .week-body { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 18px; flex: 1; min-height: 0; }
+        .total { display: flex; align-items: baseline; gap: 12px; }
+        .total-num { font-size: 76px; line-height: .95; font-weight: 800; letter-spacing: -0.045em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+        .total-lbl { font-size: 16px; color: var(--text-soft); font-weight: 500; }
+
+        .bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+        .bar span { height: 100%; transition: width .4s ease; }
+
+        .stats { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        .stat { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+        .stat-name { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: var(--text-soft); }
+        .stat-name .dot { width: 11px; height: 11px; border-radius: 50%; background: var(--c); flex: 0 0 auto; }
+        .stat-num { font-size: 34px; font-weight: 800; color: var(--text-strong); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; }
+        .stat-sub { font-size: 12px; color: var(--text-dim); font-weight: 500; margin-left: 4px; }
+        .stat.muted-stat .stat-num { color: var(--text-dim); font-size: 26px; }
+
+        .pvf { border-radius: 14px; padding: 16px 18px; border: 1px solid rgba(78,204,163,0.45); background: rgba(78,204,163,0.08); }
+        .pvf.alert { border-color: rgba(255,107,107,0.6); background: rgba(255,107,107,0.10); }
+        .pvf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .pvf-title { font-size: 15px; font-weight: 700; color: var(--text-strong); line-height: 1.25; }
+        .pvf-sub { font-size: 12.5px; color: var(--text-soft); margin-top: 2px; }
+        .pvf-num { font-size: 64px; font-weight: 800; line-height: .9; letter-spacing: -0.045em; color: var(--success); font-variant-numeric: tabular-nums; }
+        .pvf.alert .pvf-num { color: #FF7A7A; }
+        .pvf-ok { font-size: 14px; color: var(--success); font-weight: 600; margin-top: 10px; }
+        .pvf-list { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+        .pvf-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: baseline; padding: 7px 10px; border-radius: 8px; background: rgba(0,0,0,0.18); font-size: 13.5px; }
+        .pvf-item .jn { font-family: var(--mono); font-weight: 700; color: var(--text-strong); }
+        .pvf-item .who { color: var(--text-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pvf-item .day { color: var(--text-dim); font-size: 12.5px; white-space: nowrap; }
+        .pvf-more { font-size: 12.5px; color: var(--text-dim); padding: 2px 10px; }
+
+        .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 0 24px 16px; color: var(--text-dim); font-size: 12px; }
+        .loading-screen { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--text-dim); font-size: 16px; }
+        .err { margin: 20px 24px; }
+
+        @media (max-width: 1400px) {
+            .total-num { font-size: 60px; } .pvf-num { font-size: 52px; } .stat-num { font-size: 28px; }
         }
-        html, body { height: 100%; }
-        body { overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-
-        .appbar.wall-bar { position: relative; height: clamp(64px, 6.4vh, 128px); padding: 0 var(--wb-pad); flex: 0 0 auto; }
-        .wall-bar .wordmark { font-size: clamp(30px, 2.4vw, 64px); }
-        .wall-title { color: var(--text-dim); font-size: var(--wb-text); font-weight: 500; margin-left: clamp(12px, 1.2vw, 30px); padding-left: clamp(12px, 1.2vw, 30px); border-left: 1px solid var(--line-2); align-self: center; }
-        .wall-left { display: flex; align-items: center; }
-        .wall-right { display: flex; align-items: center; gap: clamp(14px, 1.6vw, 40px); }
-
-        .live-indicator {
-            display: inline-flex; align-items: center; gap: 0.6em;
-            font-size: var(--wb-label); font-weight: 600; letter-spacing: .08em; color: var(--success);
-            padding: 0.35em 0.8em; border: 1px solid rgba(78,204,163,0.4); background: rgba(78,204,163,0.08); border-radius: 999px;
+        @media (max-width: 1100px) { .board { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 640px) {
+            .board { grid-template-columns: 1fr; padding: 14px; gap: 12px; }
+            .clock-date { display: none; }
+            .clock-time { font-size: 22px; }
+            .foot { padding: 0 14px 14px; }
         }
-        .live-dot { width: 0.6em; height: 0.6em; background: var(--success); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-        .time { font-size: clamp(28px, 2.4vw, 64px); font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-
-        .dashboard {
-            flex: 1; min-height: 0;
-            display: grid; grid-template-rows: auto 1fr auto;
-            padding: var(--wb-pad); gap: var(--wb-gap);
-        }
-
-        .main-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--wb-gap); min-height: 0; }
-        .left-column { display: grid; grid-template-rows: auto 1fr; gap: var(--wb-gap); min-height: 0; }
-
-        /* Big stats */
-        .big-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--wb-gap); }
-        .big-stat-card, .status-card, .section-card, .footer-stat {
-            background: var(--surface); border: 1px solid var(--line); border-radius: clamp(10px, 0.8vw, 20px);
-        }
-        .big-stat-card { padding: calc(var(--wb-pad) * 0.9) var(--wb-pad); }
-        .big-stat-label, .status-label, .footer-label {
-            font-size: var(--wb-label); font-weight: 500; color: var(--text-dim); line-height: 1.3;
-        }
-        .big-stat-value {
-            font-size: var(--wb-big); font-weight: 700; line-height: 1.05; color: var(--text-strong);
-            letter-spacing: -0.03em; font-variant-numeric: tabular-nums; margin-top: 0.12em;
-        }
-        .big-stat-sublabel { font-size: calc(var(--wb-label) * 0.9); color: var(--text-dim); margin-top: 0.3em; }
-
-        /* Status tiles */
-        .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 1fr; gap: var(--wb-gap); min-height: 0; }
-        .status-card {
-            --c: var(--text-dim);
-            position: relative; overflow: hidden;
-            padding: calc(var(--wb-pad) * 0.9) var(--wb-pad);
-            display: flex; flex-direction: column; justify-content: space-between;
-            border-left: clamp(4px, 0.3vw, 8px) solid var(--c);
-        }
-        .status-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-        .status-icon { color: var(--c); display: inline-flex; }
-        .status-icon .ico { width: clamp(22px, 1.8vw, 48px); height: clamp(22px, 1.8vw, 48px); }
-        .status-value {
-            font-size: var(--wb-status); font-weight: 700; line-height: 1; color: var(--c);
-            letter-spacing: -0.03em; font-variant-numeric: tabular-nums;
-        }
-        .status-week      { --c: var(--scheduled); }
-        .status-progress  { --c: var(--in-progress); }
-        .status-complete  { --c: var(--complete); }
-        .status-aborted   { --c: var(--aborted); }
-        .status-cancelled { --c: var(--cancelled); }
-        .status-overdue   { --c: var(--warning); }
-
-        /* Right column */
-        .right-column { display: grid; grid-template-rows: auto 1fr; gap: var(--wb-gap); min-height: 0; }
-        .section-card { padding: calc(var(--wb-pad) * 0.8) var(--wb-pad); overflow: hidden; min-height: 0; }
-        .section-title {
-            display: flex; align-items: center; gap: 0.5em;
-            font-size: calc(var(--wb-text) * 1.1); font-weight: 600; color: var(--text-strong);
-            margin-bottom: calc(var(--wb-gap) * 0.6);
-        }
-        .section-title .ico { width: 1.1em; height: 1.1em; color: var(--primary); }
-        #top-teams, #today-jobs-list { font-size: var(--wb-text); }
-        #top-teams > div[style], #today-jobs-list > div[style] { font-size: var(--wb-text); }
-
-        .team-item {
-            display: flex; justify-content: space-between; align-items: center; gap: 12px;
-            padding: 0.36em 0; border-bottom: 1px solid var(--line);
-        }
-        .team-item:last-child { border-bottom: 0; }
-        .team-name { font-size: var(--wb-text); font-weight: 600; color: var(--text-strong); }
-        .team-stat { font-size: var(--wb-text); font-weight: 700; color: var(--complete); font-variant-numeric: tabular-nums; }
-
-        .today-job {
-            display: grid; grid-template-columns: auto 1fr; column-gap: 0.8em; align-items: baseline;
-            background: var(--surface-2); border: 1px solid var(--line); border-left: clamp(3px, 0.25vw, 6px) solid var(--primary);
-            padding: 0.4em 0.8em; margin-bottom: 0.4em; border-radius: 8px;
-        }
-        .job-number { grid-column: 1; grid-row: 1; font-family: var(--mono); font-weight: 700; color: var(--text-strong); font-size: var(--wb-text); }
-        .job-lead { grid-column: 2; grid-row: 1; justify-self: end; font-size: calc(var(--wb-text) * 0.8); color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-        .job-location { grid-column: 1 / -1; grid-row: 2; font-size: calc(var(--wb-text) * 0.85); color: var(--text-soft); margin-top: 0.1em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        /* Footer */
-        .footer { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--wb-gap); }
-        .footer-stat { padding: calc(var(--wb-pad) * 0.55) var(--wb-pad); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
-        .footer-value { font-size: clamp(26px, 2.3vw, 64px); font-weight: 700; color: var(--text-strong); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-
-        .loading { flex: 1; display: flex; align-items: center; justify-content: center; gap: 16px; font-size: var(--wb-text); color: var(--text-dim); padding: 0; }
-        .loading .spinner { width: 1.4em; height: 1.4em; }
-
-        @media (max-width: 900px) {
-            body { overflow: auto; height: auto; }
-            .dashboard { grid-template-rows: none; }
-            .main-grid, .big-stats { grid-template-columns: 1fr; }
-            .status-grid { grid-template-columns: 1fr 1fr; }
-            .footer { grid-template-columns: 1fr 1fr; }
-            .wall-title { display: none; }
-        }
+        @media (prefers-reduced-motion: reduce) { .live::before { animation: none; } }
     </style>
 </head>
 <body>
-    <header class="appbar wall-bar">
-        <div class="wall-left">
-            <span class="logo" aria-label="Pingu">
-                <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
-            </span>
-            <span class="wall-title">Live dashboard</span>
-        </div>
-        <div class="wall-right">
-            <div class="live-indicator">
-                <div class="live-dot"></div>
-                <span>LIVE</span>
-            </div>
-            <div class="time" id="current-time"></div>
-        </div>
-    </header>
-
-    <div id="loading" class="loading">
-        <span class="spinner"></span>
-        <div>Loading dashboard...</div>
+<header class="appbar">
+    <a href="index.html" class="logo" aria-label="Pingu home">
+        <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
+    </a>
+    <div class="clock"><span class="clock-time" id="clock-time">--:--</span><span class="clock-date" id="clock-date"></span></div>
+    <div class="appbar-actions">
+        <span class="live off" id="live">CONNECTING</span>
+        <button type="button" class="back-btn" onclick="toggleFullscreen()" title="Full screen"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>Full screen</button>
     </div>
+</header>
 
-    <div id="dashboard" class="dashboard" style="display: none;">
-        <!-- Main Grid -->
-        <div class="main-grid">
-            <!-- Left Column -->
-            <div class="left-column">
-                <!-- Big Stats -->
-                <div class="big-stats">
-                    <div class="big-stat-card">
-                        <div class="big-stat-label">Total jobs</div>
-                        <div class="big-stat-value" id="total-jobs">0</div>
-                        <div class="big-stat-sublabel">All time</div>
-                    </div>
-                    <div class="big-stat-card">
-                        <div class="big-stat-label">This month</div>
-                        <div class="big-stat-value" id="month-jobs">0</div>
-                        <div class="big-stat-sublabel" id="month-name">January 2026</div>
-                    </div>
-                    <div class="big-stat-card">
-                        <div class="big-stat-label">This week</div>
-                        <div class="big-stat-value" id="week-jobs">0</div>
-                        <div class="big-stat-sublabel">Mon - Sun</div>
-                    </div>
-                </div>
-
-                <!-- Status Grid -->
-                <div class="status-grid">
-                    <div class="status-card status-week">
-                        <div class="status-header">
-                            <div class="status-label">Jobs starting today</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div>
-                        </div>
-                        <div class="status-value" id="today-jobs">0</div>
-                    </div>
-                    <div class="status-card status-progress">
-                        <div class="status-header">
-                            <div class="status-label">In progress</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg></div>
-                        </div>
-                        <div class="status-value" id="progress-jobs">0</div>
-                    </div>
-                    <div class="status-card status-complete">
-                        <div class="status-header">
-                            <div class="status-label">Completed</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.1V12a10 10 0 1 1-5.9-9.1"/><path d="m9 11 3 3L22 4"/></svg></div>
-                        </div>
-                        <div class="status-value" id="completed-jobs">0</div>
-                    </div>
-                    <div class="status-card status-aborted">
-                        <div class="status-header">
-                            <div class="status-label">Aborted</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg></div>
-                        </div>
-                        <div class="status-value" id="aborted-jobs">0</div>
-                    </div>
-                    <div class="status-card status-cancelled">
-                        <div class="status-header">
-                            <div class="status-label">Cancelled</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg></div>
-                        </div>
-                        <div class="status-value" id="cancelled-jobs">0</div>
-                    </div>
-                    <div class="status-card status-overdue">
-                        <div class="status-header">
-                            <div class="status-label">Outstanding</div>
-                            <div class="status-icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></div>
-                        </div>
-                        <div class="status-value" id="overdue-jobs">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column -->
-            <div class="right-column">
-                <!-- Top Teams -->
-                <div class="section-card">
-                    <div class="section-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></svg>Top teams this month</div>
-                    <div id="top-teams"></div>
-                </div>
-
-                <!-- Today's Jobs -->
-                <div class="section-card">
-                    <div class="section-title"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Today's jobs</div>
-                    <div id="today-jobs-list"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Footer Stats -->
-        <div class="footer">
-            <div class="footer-stat">
-                <div class="footer-label">Total days</div>
-                <div class="footer-value" id="total-days">0</div>
-            </div>
-            <div class="footer-stat">
-                <div class="footer-label">Avg job length</div>
-                <div class="footer-value" id="avg-days">0</div>
-            </div>
-            <div class="footer-stat">
-                <div class="footer-label">Active teams</div>
-                <div class="footer-value" id="active-teams">0</div>
-            </div>
-            <div class="footer-stat">
-                <div class="footer-label">Completion rate</div>
-                <div class="footer-value" id="completion-rate">0%</div>
-            </div>
-        </div>
-    </div>
+<div class="loading-screen" id="loading"><span class="spinner"></span>Loading jobs…</div>
+<main class="board" id="board" style="display:none;"></main>
+<div class="foot" id="foot" style="display:none;">
+    <span>Jobs are counted in the week of their install day (Monday to Sunday). Solar survey jobs are not counted.</span>
+    <span id="updated"></span>
+</div>
 
 <script type="module">
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getFirestore, collection, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
-            authDomain: "pingu-solar.firebaseapp.com",
-            projectId: "pingu-solar",
-            storageBucket: "pingu-solar.firebasestorage.app",
-            messagingSenderId: "232764952866",
-            appId: "1:232764952866:web:5923b7f419de6355d6157b",
-            measurementId: "G-PFH059DZ64"
-        };
+    const cfg = {
+        apiKey: "AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain: "pingu-solar.firebaseapp.com",
+        projectId: "pingu-solar",
+        storageBucket: "pingu-solar.firebasestorage.app",
+        messagingSenderId: "232764952866",
+        appId: "1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId: "G-PFH059DZ64"
+    };
+    const db = getFirestore(initializeApp(cfg));
 
-        try {
-            const app = initializeApp(firebaseConfig);
-            window.db = getFirestore(app);
-            window.firebaseModules = { collection, onSnapshot, query, orderBy };
-            console.log('✅ Firebase initialized');
-
-            setupRealtimeListener();
-            updateClock();
-            setInterval(updateClock, 1000);
-        } catch (error) {
-            console.error('❌ Firebase error:', error);
+    // ── Helpers ────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const normJob = v => String(v ?? '').trim().replace(/^#/, '').toUpperCase();
+    const has = v => v != null && String(v).trim() !== '';
+    function parseDate(v) {
+        if (!v) return null;
+        if (typeof v.toDate === 'function') v = v.toDate();
+        if (typeof v === 'string' && v.includes('/')) {
+            const p = v.split('/');
+            if (p.length === 3) { const d = new Date(+p[2], +p[1] - 1, +p[0]); if (!isNaN(d)) { d.setHours(0, 0, 0, 0); return d; } }
         }
-    </script>
+        const d = new Date(v); if (isNaN(d)) return null; d.setHours(0, 0, 0, 0); return d;
+    }
+    const mondayOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+    const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+    const fmtDay = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    const fmtWeekday = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
 
-    <script>
-        let allJobs = [];
+    // Job rules (same as the job timeline)
+    function isSurvey(type) { return /survey/i.test(String(type || '').replace(/_/g, ' ')); }
+    function isSolarInstall(type) {
+        const t = String(type || '').toUpperCase().replace(/[^A-Z]+/g, '_');
+        if (t.includes('BATTERY') || t.includes('AFTERCARE') || t.includes('SURVEY')) return false;
+        return t.includes('INSTALL') && (t.includes('SOLAR') || t.includes('PV'));
+    }
+    function statusOf(j) {
+        const s = String(j['Status Update'] || j.status || '').trim().toLowerCase();
+        if (s === 'complete' || s === 'completed' || s === 'install-complete') return 'complete';
+        if (s === 'aborted') return 'aborted';
+        if (s === 'cancelled' || s === 'canceled') return 'cancelled';
+        if (s === 'short notice cancellation') return 'shortNotice';
+        return 'other';
+    }
 
-        function updateClock() {
-            const now = new Date();
-            const timeStr = now.toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false 
-            });
-            document.getElementById('current-time').textContent = timeStr;
-        }
+    // ── Live data ──────────────────────────────────────────────────────
+    const data = { jobs: null, projects: null, sheet: null };
+    let lastUpdate = null;
+    function listen(name, key) {
+        onSnapshot(collection(db, name), snap => {
+            data[key] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            lastUpdate = new Date();
+            $('live').className = 'live'; $('live').textContent = 'LIVE';
+            render();
+        }, err => {
+            console.error(name, err);
+            if (key === 'jobs') { $('live').className = 'live off'; $('live').textContent = 'OFFLINE'; showError(err); }
+            else { data[key] = []; render(); }   // erect dates are optional extras
+        });
+    }
 
-        function setupRealtimeListener() {
-            const { collection, onSnapshot, query, orderBy: orderByFn } = window.firebaseModules;
+    function showError(err) {
+        $('loading').innerHTML = `<div class="notice error err">Couldn't load jobs: ${esc(err.message)}</div>`;
+    }
 
-            const jobsQuery = query(
-                collection(window.db, 'Solar-jobs'),
-                orderByFn('uploadDate', 'desc')
-            );
+    function render() {
+        if (!data.jobs) return;
+        const erect = new Set();
+        (data.projects || []).forEach(p => { if (has(p.scaffolding?.erectionDate)) erect.add(normJob(p.jobNumber || p.id)); });
+        (data.sheet || []).forEach(r => { if (has(r.erectDateISO) || has(r.erectDate)) erect.add(normJob(r.jobNumber || r.id)); });
 
-            onSnapshot(jobsQuery, (snapshot) => {
-                allJobs = [];
-                snapshot.forEach((docSnap) => {
-                    allJobs.push({
-                        id: docSnap.id,
-                        ...docSnap.data()
-                    });
-                });
+        const jobs = data.jobs.map(j => ({
+            jobNumber: String(j['Job Number'] || '').trim(),
+            type: j['Job Type'] || '',
+            date: parseDate(j['Install Date'] || j['Booked Date']),
+            engineer: String(j['Lead Engineer'] || j['Engineer'] || '').replace(/^["']|["']$/g, '').trim(),
+            postcode: String(j['Postcode'] || '').trim(),
+            status: statusOf(j)
+        })).filter(j => j.date && !isSurvey(j.type));
 
-                console.log(`✅ Loaded ${allJobs.length} jobs`);
-                updateDashboard();
+        const thisMon = mondayOf(new Date());
+        const weeks = [
+            { key: 'last',  label: 'Last week',     start: addDays(thisMon, -7), kind: 'outcome' },
+            { key: 'this',  label: 'This week',     start: thisMon,              kind: 'outcome', current: true },
+            { key: 'next',  label: 'Next week',     start: addDays(thisMon, 7),  kind: 'pvf' },
+            { key: 'after', label: 'Week after',    start: addDays(thisMon, 14), kind: 'pvf' }
+        ];
+        $('board').innerHTML = weeks.map(w => {
+            const end = addDays(w.start, 6);
+            const list = jobs.filter(j => j.date >= w.start && j.date <= end);
+            return `<section class="week${w.current ? ' current' : ''}">
+                <div class="week-head">
+                    <div class="week-label">${w.label}${w.current ? '<span class="now-tag">NOW</span>' : ''}</div>
+                    <div class="week-range">${fmtDay(w.start)} – ${fmtDay(end)}</div>
+                </div>
+                <div class="week-body">${w.kind === 'outcome' ? outcomeBody(list) : pvfBody(list, erect)}</div>
+            </section>`;
+        }).join('');
 
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'grid';
-            });
-        }
+        $('loading').style.display = 'none';
+        $('board').style.display = 'grid';
+        $('foot').style.display = 'flex';
+        $('updated').textContent = lastUpdate ? 'Updated ' + lastUpdate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+    }
 
-        function parseDate(dateStr) {
-            if (!dateStr) return null;
+    function outcomeBody(list) {
+        const n = k => list.filter(j => j.status === k).length;
+        const c = { complete: n('complete'), aborted: n('aborted'), cancelled: n('cancelled') + n('shortNotice'), shortNotice: n('shortNotice') };
+        const other = list.length - c.complete - c.aborted - c.cancelled;
+        const pct = v => list.length ? (v / list.length * 100) + '%' : '0';
+        const stat = (label, num, col, sub = '') => `<div class="stat" style="--c:${col}"><span class="stat-name"><span class="dot"></span>${label}</span><span><span class="stat-num">${num}</span>${sub}</span></div>`;
+        return `
+            <div class="total"><span class="total-num">${list.length}</span><span class="total-lbl">job${list.length === 1 ? '' : 's'}</span></div>
+            <div class="bar" title="Completed / aborted / cancelled">
+                <span style="width:${pct(c.complete)};background:var(--complete)"></span>
+                <span style="width:${pct(c.aborted)};background:var(--aborted)"></span>
+                <span style="width:${pct(c.cancelled)};background:var(--cancelled)"></span>
+            </div>
+            <div class="stats">
+                ${stat('Completed', c.complete, 'var(--complete)')}
+                ${stat('Aborted', c.aborted, 'var(--aborted)')}
+                ${stat('Cancelled', c.cancelled, 'var(--cancelled)', c.shortNotice ? `<span class="stat-sub">incl. ${c.shortNotice} short notice</span>` : '')}
+                <div class="stat muted-stat"><span class="stat-name">Scheduled / in progress</span><span class="stat-num">${other}</span></div>
+            </div>`;
+    }
 
-            if (dateStr.includes('/')) {
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                    const day = parseInt(parts[0], 10);
-                    const month = parseInt(parts[1], 10) - 1;
-                    const year = parseInt(parts[2], 10);
-                    const parsed = new Date(year, month, day);
-                    if (!isNaN(parsed.getTime())) {
-                        parsed.setHours(0, 0, 0, 0);
-                        return parsed;
-                    }
-                }
-            }
+    function pvfBody(list, erect) {
+        const active = list.filter(j => j.status !== 'cancelled' && j.status !== 'shortNotice');
+        const solar = active.filter(j => isSolarInstall(j.type));
+        const missing = solar.filter(j => !erect.has(normJob(j.jobNumber))).sort((a, b) => a.date - b.date || a.jobNumber.localeCompare(b.jobNumber));
+        const MAX = 8;
+        return `
+            <div class="total"><span class="total-num">${list.length}</span><span class="total-lbl">job${list.length === 1 ? '' : 's'}${solar.length ? ` · ${solar.length} solar install${solar.length === 1 ? '' : 's'}` : ''}</span></div>
+            <div class="pvf${missing.length ? ' alert' : ''}">
+                <div class="pvf-top">
+                    <div><div class="pvf-title">Need PVF erection date</div><div class="pvf-sub">Solar installs with no scaffold erect date</div></div>
+                    <div class="pvf-num">${missing.length}</div>
+                </div>
+                ${missing.length ? `<div class="pvf-list">
+                    ${missing.slice(0, MAX).map(j => `<div class="pvf-item"><span class="jn">${esc(j.jobNumber)}</span><span class="who">${esc(j.engineer || j.postcode)}</span><span class="day">${fmtWeekday(j.date)}</span></div>`).join('')}
+                    ${missing.length > MAX ? `<div class="pvf-more">+ ${missing.length - MAX} more</div>` : ''}
+                </div>` : `<div class="pvf-ok">${solar.length ? 'All solar installs have an erect date.' : 'No solar installs this week.'}</div>`}
+            </div>`;
+    }
 
-            const parsed = new Date(dateStr);
-            if (!isNaN(parsed.getTime())) {
-                parsed.setHours(0, 0, 0, 0);
-                return parsed;
-            }
+    // ── Clock; re-draw at midnight so the weeks roll over ───────────────
+    let lastDay = new Date().toDateString();
+    function tick() {
+        const now = new Date();
+        $('clock-time').textContent = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        $('clock-date').textContent = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        if (now.toDateString() !== lastDay) { lastDay = now.toDateString(); render(); }
+    }
+    tick(); setInterval(tick, 1000);
 
-            return null;
-        }
+    window.toggleFullscreen = () => {
+        if (document.fullscreenElement) document.exitFullscreen?.();
+        else document.documentElement.requestFullscreen?.();
+    };
 
-        function getFieldValue(job, ...fieldNames) {
-            for (const fieldName of fieldNames) {
-                if (job[fieldName] !== undefined && job[fieldName] !== null && job[fieldName] !== '') {
-                    return job[fieldName];
-                }
-            }
-            return '';
-        }
-
-        function getStatusUpdate(job) {
-            const statusUpdate = job['Status Update'];
-            if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
-                return String(statusUpdate).toLowerCase();
-            }
-            return '';
-        }
-
-        function isOutstanding(job) {
-            const hasStatusUpdateField = 'Status Update' in job;
-            
-            if (hasStatusUpdateField) {
-                const statusUpdate = job['Status Update'];
-                
-                if (statusUpdate !== undefined && statusUpdate !== null && statusUpdate !== '') {
-                    const statusLower = String(statusUpdate).toLowerCase();
-                    
-                    if (statusLower === 'complete' || statusLower === 'aborted' || statusLower === 'cancelled') {
-                        return false;
-                    }
-                    
-                    if (statusLower !== 'in-progress') {
-                        return false;
-                    }
-                }
-            }
-
-            const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
-            if (!dateStr) return false;
-            
-            const jobDate = parseDate(dateStr);
-            if (!jobDate || isNaN(jobDate.getTime())) return false;
-            
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            
-            return jobDate < today;
-        }
-
-        function isComplete(job) {
-            const status = getStatusUpdate(job);
-            return status === 'complete';
-        }
-
-        function updateDashboard() {
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
-
-            // Month name
-            const monthName = now.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-            document.getElementById('month-name').textContent = monthName;
-
-            // Total jobs
-            document.getElementById('total-jobs').textContent = allJobs.length;
-
-            // This month
-            const monthJobs = allJobs.filter(job => {
-                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const jobDate = parseDate(dateStr);
-                return jobDate && jobDate.getMonth() === now.getMonth() && jobDate.getFullYear() === now.getFullYear();
-            });
-            document.getElementById('month-jobs').textContent = monthJobs.length;
-
-            // This week
-            const startOfWeek = new Date(now);
-            const day = startOfWeek.getDay();
-            const diff = startOfWeek.getDate() - day + (day === 0 ? -6 : 1);
-            startOfWeek.setDate(diff);
-            startOfWeek.setHours(0, 0, 0, 0);
-
-            const endOfWeek = new Date(startOfWeek);
-            endOfWeek.setDate(endOfWeek.getDate() + 6);
-            endOfWeek.setHours(23, 59, 59, 999);
-
-            const weekJobs = allJobs.filter(job => {
-                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const jobDate = parseDate(dateStr);
-                return jobDate && jobDate >= startOfWeek && jobDate <= endOfWeek;
-            });
-            document.getElementById('week-jobs').textContent = weekJobs.length;
-
-            // Status counts - REORDERED
-            const todayJobs = allJobs.filter(job => {
-                const dateStr = getFieldValue(job, 'Booked Date', 'Projected Completion Date', 'Install Date');
-                const jobDate = parseDate(dateStr);
-                return jobDate && jobDate.getTime() === now.getTime();
-            });
-            document.getElementById('today-jobs').textContent = todayJobs.length;
-
-            const progressJobs = allJobs.filter(job => getStatusUpdate(job) === 'in-progress');
-            document.getElementById('progress-jobs').textContent = progressJobs.length;
-
-            const completedJobs = allJobs.filter(isComplete);
-            document.getElementById('completed-jobs').textContent = completedJobs.length;
-
-            const abortedJobs = allJobs.filter(job => getStatusUpdate(job) === 'aborted');
-            document.getElementById('aborted-jobs').textContent = abortedJobs.length;
-
-            const cancelledJobs = allJobs.filter(job => getStatusUpdate(job) === 'cancelled');
-            document.getElementById('cancelled-jobs').textContent = cancelledJobs.length;
-
-            const overdueJobs = allJobs.filter(isOutstanding);
-            document.getElementById('overdue-jobs').textContent = overdueJobs.length;
-
-            // Footer stats
-            const totalDays = allJobs.reduce((sum, job) => {
-                const days = parseInt(job['Days'] || job['Job Length (days)'] || 1);
-                return sum + days;
-            }, 0);
-            document.getElementById('total-days').textContent = totalDays;
-
-            const avgDays = allJobs.length > 0 ? Math.round(totalDays / allJobs.length) : 0;
-            document.getElementById('avg-days').textContent = avgDays;
-
-            const teams = new Set();
-            monthJobs.forEach(job => {
-                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
-                if (team && team !== 'N/A' && team !== 'Unassigned' && team !== '') {
-                    teams.add(team);
-                }
-            });
-            document.getElementById('active-teams').textContent = teams.size;
-
-            const completionRate = allJobs.length > 0 
-                ? Math.round((completedJobs.length / allJobs.length) * 100) 
-                : 0;
-            document.getElementById('completion-rate').textContent = completionRate + '%';
-
-            // Top teams this month
-            updateTopTeams(monthJobs);
-
-            // Today's jobs list
-            updateTodaysList(todayJobs);
-        }
-
-        function updateTopTeams(monthJobs) {
-            const teamStats = {};
-            
-            monthJobs.forEach(job => {
-                const team = getFieldValue(job, 'Team Number', 'Team', 'team', 'team number');
-                
-                if (team && team !== 'N/A' && team !== 'Unassigned') {
-                    if (!teamStats[team]) {
-                        teamStats[team] = { total: 0, completed: 0 };
-                    }
-                    teamStats[team].total++;
-                    if (isComplete(job)) {
-                        teamStats[team].completed++;
-                    }
-                }
-            });
-
-            const sortedTeams = Object.entries(teamStats)
-                .map(([team, stats]) => ({
-                    team,
-                    stats,
-                    percentage: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-                }))
-                .sort((a, b) => b.percentage - a.percentage)
-                .slice(0, 5);
-
-            const html = sortedTeams.length > 0
-                ? sortedTeams.map(({ team, stats, percentage }) => `
-                    <div class="team-item">
-                        <div class="team-name">Team ${escapeHtml(team)}</div>
-                        <div class="team-stat">${percentage}% (${stats.completed}/${stats.total})</div>
-                    </div>
-                `).join('')
-                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No team data this month</div>';
-
-            document.getElementById('top-teams').innerHTML = html;
-        }
-
-        function updateTodaysList(todayJobs) {
-            const html = todayJobs.length > 0
-                ? todayJobs.slice(0, 4).map(job => `
-                    <div class="today-job">
-                        <div class="job-number">#${escapeHtml(job['Job Number'] || 'N/A')}</div>
-                        <div class="job-location">${escapeHtml(job['Address'] || 'No Address')}</div>
-                        <div class="job-lead">Lead: ${escapeHtml(job['Lead'] || 'Unassigned')}</div>
-                    </div>
-                `).join('')
-                : '<div style="color: #9A9AB0; text-align: center; padding: 2rem;">No jobs scheduled for today</div>';
-
-            document.getElementById('today-jobs-list').innerHTML = html;
-        }
-
-        function escapeHtml(unsafe) {
-            if (!unsafe) return '';
-            return String(unsafe)
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-    </script>
+    listen('Solar-jobs', 'jobs');
+    listen('pingu-projects', 'projects');
+    listen('Scafolding', 'sheet');
+</script>
 </body>
 </html>
