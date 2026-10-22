@@ -636,7 +636,41 @@
     const GOOGLE_CLIENT_ID = '232764952866-opud0c9acmmptr6mih33m95ds1lpjd57.apps.googleusercontent.com';
     const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
     let gToken = null, gTokenExpiry = 0, tokenClient = null, pendingToken = null;
+    const TOKEN_KEY = 'pinguSheetsToken', RETURN_KEY = 'pinguSheetsReturn', REDIRECT_PREF = 'pinguSheetsUseRedirect';
+    const ss = { get: k => { try { return JSON.parse(sessionStorage.getItem(k) || 'null'); } catch { return null; } },
+                 set: (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} },
+                 del: k => { try { sessionStorage.removeItem(k); } catch {} } };
+    function storeToken(token, expiresInSec) {
+        gToken = token; gTokenExpiry = Date.now() + expiresInSec * 1000;
+        ss.set(TOKEN_KEY, { t: gToken, exp: gTokenExpiry });
+    }
+    (function restoreToken() { const v = ss.get(TOKEN_KEY); if (v?.t && v.exp > Date.now()) { gToken = v.t; gTokenExpiry = v.exp; } })();
     const hasToken = () => gToken && Date.now() < gTokenExpiry - 60000;
+    const preferRedirect = () => { try { return localStorage.getItem(REDIRECT_PREF) === '1'; } catch { return false; } };
+
+    // Sign-in without a pop-up: this page goes to Google and Google sends you back here.
+    // Google only allows this for addresses listed under "Authorised redirect URIs" on the sign-in client.
+    const REDIRECT_URI = location.origin + location.pathname;
+    function redirectSignIn(importerId) {
+        const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        ss.set(RETURN_KEY, { nonce, id: importerId });
+        try { localStorage.setItem(REDIRECT_PREF, '1'); } catch {}
+        const q = new URLSearchParams({ client_id: GOOGLE_CLIENT_ID, redirect_uri: REDIRECT_URI, response_type: 'token',
+                                        scope: SHEETS_SCOPE, include_granted_scopes: 'true', state: nonce });
+        location.assign('https://accounts.google.com/o/oauth2/v2/auth?' + q.toString());
+    }
+    // Coming back from Google: pick the token out of the address and tidy the address.
+    let returnedFor = null, returnError = null;
+    (function readRedirectResult() {
+        if (!location.hash || !/access_token=|error=/.test(location.hash)) return;
+        const h = new URLSearchParams(location.hash.slice(1)), ret = ss.get(RETURN_KEY);
+        history.replaceState(null, '', location.pathname + location.search);
+        ss.del(RETURN_KEY);
+        if (!ret || h.get('state') !== ret.nonce) { returnError = 'Google sign-in could not be confirmed. Please click Load again.'; return; }
+        if (h.get('error')) { returnedFor = ret.id; returnError = h.get('error') === 'access_denied' ? 'Google sign-in was cancelled.' : 'Google sign-in failed: ' + h.get('error'); return; }
+        storeToken(h.get('access_token'), Number(h.get('expires_in') || 3600));
+        returnedFor = ret.id;
+    })();
     // Set up the Google sign-in client as soon as Google's script has loaded, so a click on
     // "Load from Google Sheet" can open the sign-in window straight away (browsers block
     // pop-ups that don't open directly from a click).
@@ -648,7 +682,7 @@
             callback: r => {
                 const p = pendingToken; pendingToken = null;
                 if (r.error) { p?.reject(new Error('Google sign-in failed: ' + r.error)); return; }
-                gToken = r.access_token; gTokenExpiry = Date.now() + r.expires_in * 1000; p?.resolve(gToken);
+                storeToken(r.access_token, r.expires_in); p?.resolve(gToken);
             },
             error_callback: e => {
                 const p = pendingToken; pendingToken = null;
@@ -672,12 +706,25 @@
             tokenClient.requestAccessToken();
         });
     }
-    const POPUP_HELP = 'Your browser blocked the Google sign-in window. Look for the blocked pop-up icon at the right-hand end of the address bar, '
-        + 'choose "Always allow pop-ups and redirects" from this site, then click Load from Google Sheet again.';
+    // Explain a blocked pop-up and offer the no-pop-up sign-in instead.
+    function signInProblemHtml(importerId) {
+        return `<div style="display:flex;flex-direction:column;gap:8px;">
+            <div><strong>Chrome didn't open the Google sign-in window.</strong> On work computers pop-ups are often blocked by IT settings. Sign in in this window instead: you'll go to Google and come straight back here.</div>
+            <div><button type="button" class="btn btn-primary btn-sm" data-redirect="${importerId}">Sign in without a pop-up</button></div>
+            <div class="muted" style="font-size:12px;">First time only: if Google shows "redirect_uri_mismatch", this page's address needs adding to the Google sign-in client
+            (Google Cloud console → APIs &amp; Services → Credentials → the OAuth client <span class="mono">232764952866-opud0c9a…</span> → Authorised redirect URIs):
+            <span class="mono" style="color:var(--text-strong);">${esc(REDIRECT_URI)}</span> <button type="button" class="link-btn" data-copy-uri>Copy</button></div>
+        </div>`;
+    }
+    document.addEventListener('click', e => {
+        const r = e.target.closest('[data-redirect]'); if (r) redirectSignIn(r.dataset.redirect);
+        const c = e.target.closest('[data-copy-uri]');
+        if (c) { navigator.clipboard?.writeText(REDIRECT_URI).then(() => { c.textContent = 'Copied'; setTimeout(() => c.textContent = 'Copy', 1500); }); }
+    });
     async function sheetsGet(url) {
         const token = await getGoogleToken();
         const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
-        if (res.status === 401) { gToken = null; throw new Error('Google sign-in expired. Click Load again.'); }
+        if (res.status === 401) { gToken = null; ss.del(TOKEN_KEY); throw new Error('Google sign-in expired. Click Load again.'); }
         if (res.status === 403) throw new Error("Your Google account doesn't have access to this sheet. Ask the owner to share it with you.");
         if (res.status === 404) throw new Error('The Google Sheet was not found.');
         if (!res.ok) { let m = ''; try { m = (await res.json()).error?.message || ''; } catch {} throw new Error(`Google Sheets error ${res.status}${m ? ': ' + m : ''}`); }
@@ -1011,6 +1058,11 @@
 
         /* ── Load straight from the Google Sheet ── */
         let weekTabs = [];
+        function showError(e) {
+            $('source').style.display = 'flex'; $('source').className = 'notice error';
+            if (e.message === 'POPUP_BLOCKED') $('source').innerHTML = signInProblemHtml(cfg.id);
+            else $('source').textContent = e.message;
+        }
         function setLoading(on, text) {
             $('load').disabled = on;
             $('load-label').textContent = on ? (text || 'Loading…') : 'Load from Google Sheet';
@@ -1041,6 +1093,7 @@
             $('week-chips').querySelectorAll('input').forEach(cb => cb.onchange = () => { weekTabs[cb.dataset.i].on = cb.checked; });
         }
         if (cfg.sheet) $('load').addEventListener('click', async () => {
+            if (!hasToken() && preferRedirect()) { redirectSignIn(cfg.id); return; }
             // Ask for sign-in first, inside the click, so the browser allows the Google window.
             const signIn = getGoogleToken();
             try {
@@ -1061,7 +1114,7 @@
             } catch (e) {
                 console.error(e);
                 $('source').style.display = 'flex'; $('source').className = 'notice error';
-                $('source').textContent = e.message === 'POPUP_BLOCKED' ? POPUP_HELP : e.message;
+                showError(e);
             } finally { setLoading(false); }
         });
         if (cfg.sheet?.weeklyTabs) {
@@ -1072,10 +1125,11 @@
             $('weeks-load').onclick = async () => {
                 const titles = weekTabs.filter(w => w.on).map(w => w.title);
                 if (!titles.length) { $('source').style.display = 'flex'; $('source').className = 'notice warning'; $('source').textContent = 'Tick at least one week to load.'; return; }
+                if (!hasToken() && preferRedirect()) { redirectSignIn(cfg.id); return; }
                 const signIn = getGoogleToken();   // in case the hour-long sign-in has run out
                 $('weeks-load').disabled = true; $('weeks-load').textContent = 'Loading…';
                 try { await signIn; $('source').className = 'notice info'; await loadTabs(titles); }
-                catch (e) { console.error(e); $('source').style.display = 'flex'; $('source').className = 'notice error'; $('source').textContent = e.message === 'POPUP_BLOCKED' ? POPUP_HELP : e.message; }
+                catch (e) { console.error(e); showError(e); }
                 finally { $('weeks-load').disabled = false; $('weeks-load').textContent = 'Load selected weeks'; }
             };
         }
@@ -1087,11 +1141,18 @@
             $('recon-copy').textContent = 'Copied';
             setTimeout(() => $('recon-copy').textContent = 'Copy job numbers', 1500);
         });
+        panel.afterSignIn = () => {
+            if (returnError) { $('source').style.display = 'flex'; $('source').className = 'notice error'; $('source').textContent = returnError; }
+            else $('load').click();   // signed in: carry on loading
+            panel.scrollIntoView({ block: 'start' });
+        };
         return panel;
     }
 
     const host = document.getElementById('paste-host');
     IMPORTERS.forEach(cfg => host.appendChild(buildImporter(cfg)));
+    // Back from Google's sign-in page: continue with the section that asked for it.
+    if (returnedFor) { const panel = document.getElementById(returnedFor + '-panel'); if (panel) setTimeout(() => panel.afterSignIn(), 300); }
 </script>
 
 <script>
