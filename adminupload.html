@@ -635,24 +635,45 @@
     /* ── Google Sheets (read-only), using the same Google sign-in as the job timeline ── */
     const GOOGLE_CLIENT_ID = '232764952866-opud0c9acmmptr6mih33m95ds1lpjd57.apps.googleusercontent.com';
     const SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets.readonly';
-    let gToken = null, gTokenExpiry = 0;
-    function getGoogleToken() {
-        if (gToken && Date.now() < gTokenExpiry - 60000) return Promise.resolve(gToken);
-        return new Promise((resolve, reject) => {
-            if (typeof google === 'undefined' || !google.accounts?.oauth2) {
-                reject(new Error('Google sign-in has not loaded yet. Wait a moment and try again.')); return;
+    let gToken = null, gTokenExpiry = 0, tokenClient = null, pendingToken = null;
+    const hasToken = () => gToken && Date.now() < gTokenExpiry - 60000;
+    // Set up the Google sign-in client as soon as Google's script has loaded, so a click on
+    // "Load from Google Sheet" can open the sign-in window straight away (browsers block
+    // pop-ups that don't open directly from a click).
+    function initGoogle() {
+        if (tokenClient) return true;
+        if (typeof google === 'undefined' || !google.accounts?.oauth2) return false;
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_CLIENT_ID, scope: SHEETS_SCOPE,
+            callback: r => {
+                const p = pendingToken; pendingToken = null;
+                if (r.error) { p?.reject(new Error('Google sign-in failed: ' + r.error)); return; }
+                gToken = r.access_token; gTokenExpiry = Date.now() + r.expires_in * 1000; p?.resolve(gToken);
+            },
+            error_callback: e => {
+                const p = pendingToken; pendingToken = null;
+                const err = new Error(e?.type === 'popup_failed_to_open' ? 'POPUP_BLOCKED'
+                    : e?.type === 'popup_closed' ? 'The Google sign-in window was closed before signing in. Click Load again.'
+                    : 'Google sign-in failed.');
+                p?.reject(err);
             }
-            const client = google.accounts.oauth2.initTokenClient({
-                client_id: GOOGLE_CLIENT_ID, scope: SHEETS_SCOPE,
-                callback: r => {
-                    if (r.error) { reject(new Error('Google sign-in failed: ' + r.error)); return; }
-                    gToken = r.access_token; gTokenExpiry = Date.now() + r.expires_in * 1000; resolve(gToken);
-                },
-                error_callback: e => reject(new Error(e?.type === 'popup_closed' ? 'The Google sign-in window was closed.' : e?.type === 'popup_failed_to_open' ? 'The Google sign-in window was blocked. Allow pop-ups for this site and try again.' : 'Google sign-in failed.'))
-            });
-            client.requestAccessToken();
+        });
+        return true;
+    }
+    (function waitForGoogle(tries = 0) { if (!initGoogle() && tries < 100) setTimeout(() => waitForGoogle(tries + 1), 150); })();
+
+    // Must be called directly inside a click handler (before any await) so the sign-in window isn't blocked.
+    function getGoogleToken() {
+        if (hasToken()) return Promise.resolve(gToken);
+        if (!initGoogle()) return Promise.reject(new Error('Google sign-in has not loaded yet. Wait a moment and try again.'));
+        if (pendingToken) pendingToken.reject(new Error('Sign-in restarted.'));
+        return new Promise((resolve, reject) => {
+            pendingToken = { resolve, reject };
+            tokenClient.requestAccessToken();
         });
     }
+    const POPUP_HELP = 'Your browser blocked the Google sign-in window. Look for the blocked pop-up icon at the right-hand end of the address bar, '
+        + 'choose "Always allow pop-ups and redirects" from this site, then click Load from Google Sheet again.';
     async function sheetsGet(url) {
         const token = await getGoogleToken();
         const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
@@ -1020,8 +1041,11 @@
             $('week-chips').querySelectorAll('input').forEach(cb => cb.onchange = () => { weekTabs[cb.dataset.i].on = cb.checked; });
         }
         if (cfg.sheet) $('load').addEventListener('click', async () => {
+            // Ask for sign-in first, inside the click, so the browser allows the Google window.
+            const signIn = getGoogleToken();
             try {
-                setLoading(true, 'Signing in…');
+                setLoading(true, hasToken() ? 'Loading…' : 'Signing in…');
+                await signIn;
                 if (cfg.sheet.weeklyTabs) {
                     const all = await listTabs(cfg.sheet.spreadsheetId);
                     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -1037,7 +1061,7 @@
             } catch (e) {
                 console.error(e);
                 $('source').style.display = 'flex'; $('source').className = 'notice error';
-                $('source').textContent = e.message;
+                $('source').textContent = e.message === 'POPUP_BLOCKED' ? POPUP_HELP : e.message;
             } finally { setLoading(false); }
         });
         if (cfg.sheet?.weeklyTabs) {
@@ -1048,9 +1072,10 @@
             $('weeks-load').onclick = async () => {
                 const titles = weekTabs.filter(w => w.on).map(w => w.title);
                 if (!titles.length) { $('source').style.display = 'flex'; $('source').className = 'notice warning'; $('source').textContent = 'Tick at least one week to load.'; return; }
+                const signIn = getGoogleToken();   // in case the hour-long sign-in has run out
                 $('weeks-load').disabled = true; $('weeks-load').textContent = 'Loading…';
-                try { $('source').className = 'notice info'; await loadTabs(titles); }
-                catch (e) { console.error(e); $('source').style.display = 'flex'; $('source').className = 'notice error'; $('source').textContent = e.message; }
+                try { await signIn; $('source').className = 'notice info'; await loadTabs(titles); }
+                catch (e) { console.error(e); $('source').style.display = 'flex'; $('source').className = 'notice error'; $('source').textContent = e.message === 'POPUP_BLOCKED' ? POPUP_HELP : e.message; }
                 finally { $('weeks-load').disabled = false; $('weeks-load').textContent = 'Load selected weeks'; }
             };
         }
