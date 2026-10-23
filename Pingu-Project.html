@@ -1025,9 +1025,9 @@
     }
 
     // ── Purchase orders in Purchase-to-Pay ────────────────────────────
-    // Pingu raises ONE request per job in the Purchase-to-Pay service: a Solar
-    // request with a line each for Labour (to the lead engineer), Edmundson and
-    // PVF. It's approved once there, then issued in Xero as one PO per supplier.
+    // Pingu raises a separate purchase order in the Purchase-to-Pay service for
+    // each cost: Labour (to the job's lead engineer), Edmundson and PVF. Each is
+    // approved and issued in Xero on its own, with the job number in its description.
     const PTP_SERVICE_URL = 'https://ptp-approval-service.onrender.com';
     // Pingu's own key for that service (the PINGU_API_KEY value set on Render).
     // It can only raise one PO request per job and read its status - nothing else.
@@ -1042,7 +1042,9 @@
         PAYMENT_REJECTED: ['Payment rejected', 'var(--error)'], PAID: ['Paid', 'var(--success)'], VOIDED: ['Voided', 'var(--text-dim)']
     };
     const poStatus = st => { const [label, c] = PO_STATUS[st] || [st || 'Not issued yet', 'var(--text-dim)']; return `<span class="badge" style="--c:${c}">${esc(label)}</span>`; };
-    const poActive = po => po && po.status !== 'REJECTED' && po.status !== 'VOIDED';
+    const poActive = p => p && p.status !== 'REJECTED' && p.status !== 'VOIDED';
+    // Raised POs saved on the project: { pos: [ {category, id, status, po_number, ...} ], checkedAt }
+    const raisedPos = () => Array.isArray(currentProject?.purchaseOrders?.pos) ? currentProject.purchaseOrders.pos : [];
 
     // The lines Pingu would raise right now, from the Costs tab
     function plannedPoLines(f) {
@@ -1063,50 +1065,56 @@
 
     function renderPurchaseOrders(f) {
         const jn = currentJob ? String(currentJob['Job Number'] ?? '').trim() : '';
-        const po = currentProject?.purchaseOrders || null;
         const planned = plannedPoLines(f);
+        const raised = raisedPos();
+        const byCat = Object.fromEntries(raised.map(p => [p.category, p]));
         const btn = $('po-raise'), refresh = $('po-refresh');
-        refresh.style.display = po ? '' : 'none';
+        refresh.style.display = raised.length ? '' : 'none';
 
-        if (poActive(po)) {
-            // Already raised: show what was raised and where it's got to
+        const cats = planned.map(p => p.category);
+        raised.forEach(p => { if (!cats.includes(p.category)) cats.push(p.category); });
+        $('po-lines').innerHTML = cats.map(cat => {
+            const p = planned.find(x => x.category === cat), r = byCat[cat];
+            if (r && poActive(r)) {
+                return `<div class="po-line"><span class="po-cat">${esc(cat)}</span>
+                    <span class="po-desc">${esc(r.supplier)}<small>${esc(r.description)} · ${poStatus(r.status)}${r.approver && r.status === 'PENDING_APPROVAL' ? ' with ' + esc(r.approver) : ''}</small></span>
+                    <span class="po-amt">${gbp(r.net_amount)}</span>
+                    <span class="po-ref">${r.po_number ? esc(r.po_number) : '<span class="muted">Request #' + esc(r.id) + '</span>'}</span></div>`;
+            }
+            const note = r ? ` · <span style="color:#FF8A8A">last one ${r.status === 'VOIDED' ? 'voided' : 'rejected'}${r.reject_reason ? ': ' + esc(r.reject_reason) : ''}</span>` : '';
+            return `<div class="po-line"><span class="po-cat">${esc(cat)}</span>
+                <span class="po-desc">${esc(p?.supplier || 'No lead engineer on the job')}<small>Job ${esc(jn)} - ${esc(cat)}${p?.detail ? ' (' + esc(p.detail) + ')' : ''}${note}</small></span>
+                <span class="po-amt${p?.net_amount ? '' : ' missing'}">${p?.net_amount ? gbp(p.net_amount) : 'Missing'}</span><span class="po-ref"><span class="muted">Not raised</span></span></div>`;
+        }).join('') || '<div class="po-line"><span class="po-desc">No purchase orders for this job type.</span></div>';
+
+        // What's still to raise (never raised, or rejected/voided)
+        const todo = planned.filter(p => !poActive(byCat[p.category]));
+        if (!todo.length && raised.length) {
             btn.style.display = 'none';
-            $('po-sub').innerHTML = `Request #${esc(po.id)} · ${poStatus(po.status)}${po.approver ? ' · approver ' + esc(po.approver) : ''}${po.checkedAt ? ' · checked ' + esc(fmtStamp(po.checkedAt)) : ''}`;
-            $('po-lines').innerHTML = (po.lines || []).map(l => `
-                <div class="po-line"><span class="po-cat">${esc(l.supplier)}</span>
-                    <span class="po-desc">${esc(l.description)}</span>
-                    <span class="po-amt">${gbp(l.net_amount)}</span>
-                    <span class="po-ref">${l.po_number ? esc(l.po_number) : '<span class="muted">No PO number yet</span>'}</span></div>`).join('');
-            // Flag costs that have moved since the POs were raised
-            const changed = planned.filter(p => {
-                const raised = (po.lines || []).find(l => l.description?.includes(' - ' + p.category));
-                return raised && p.net_amount != null && Math.abs(Number(raised.net_amount) - p.net_amount) > 0.005;
-            });
-            if (changed.length && !$('po-msg').dataset.busy)
-                $('po-msg').innerHTML = `<span style="color:var(--warning)">${changed.map(c => c.category).join(', ')} ${changed.length === 1 ? 'has' : 'have'} changed since the POs were raised. Update the cost on the PO in Purchase-to-Pay.</span>`;
-            return;
+            $('po-sub').innerHTML = `${raised.filter(poActive).length} purchase order${raised.filter(poActive).length === 1 ? '' : 's'} raised${currentProject?.purchaseOrders?.checkedAt ? ' · checked ' + esc(fmtStamp(currentProject.purchaseOrders.checkedAt)) : ''}`;
+        } else {
+            btn.style.display = '';
+            const reasons = [];
+            if (!PTP_PINGU_KEY) reasons.push('Purchase-to-Pay isn\'t connected yet');
+            if (!planned.length) reasons.push('no costs for this job type');
+            if (todo.some(l => !l.net_amount)) reasons.push('fill in every cost first');
+            if (todo.some(l => l.category === 'Labour' && !l.supplier)) reasons.push('the job has no lead engineer');
+            if (!currentProject) reasons.push('create the project first');
+            else if (dirty) reasons.push('save your changes first');
+            btn.disabled = reasons.length > 0;
+            btn.textContent = raised.length ? `Raise ${todo.length} remaining PO${todo.length === 1 ? '' : 's'}` : 'Raise POs in Purchase-to-Pay';
+            const total = todo.reduce((t, l) => t + (l.net_amount || 0), 0);
+            $('po-sub').innerHTML = reasons.length ? 'Not ready: ' + esc(reasons.join('; ')) + '.'
+                : `Ready to raise ${todo.length} separate PO${todo.length === 1 ? '' : 's'} totalling ${gbp(total)}. Each goes for approval on its own.`;
         }
 
-        btn.style.display = '';
-        $('po-lines').innerHTML = planned.map(l => `
-            <div class="po-line"><span class="po-cat">${esc(l.category)}</span>
-                <span class="po-desc">${esc(l.supplier || 'No lead engineer on the job')}<small>Job ${esc(jn)} - ${esc(l.category)}${l.detail ? ' (' + esc(l.detail) + ')' : ''}</small></span>
-                <span class="po-amt${l.net_amount ? '' : ' missing'}">${l.net_amount ? gbp(l.net_amount) : 'Missing'}</span><span class="po-ref"></span></div>`).join('')
-            || '<div class="po-line"><span class="po-desc">No purchase orders for this job type.</span></div>';
-
-        const reasons = [];
-        if (!PTP_PINGU_KEY) reasons.push('Purchase-to-Pay isn\'t connected yet');
-        if (!planned.length) reasons.push('no costs for this job type');
-        if (planned.some(l => !l.net_amount)) reasons.push('fill in every cost first');
-        if (planned.some(l => l.category === 'Labour' && !l.supplier)) reasons.push('the job has no lead engineer');
-        if (!currentProject) reasons.push('create the project first');
-        else if (dirty) reasons.push('save your changes first');
-        btn.disabled = reasons.length > 0;
-        const total = planned.reduce((t, l) => t + (l.net_amount || 0), 0);
-        $('po-sub').innerHTML = po && po.status === 'REJECTED'
-            ? `The last request (#${esc(po.id)}) was rejected${po.reject_reason ? ': ' + esc(po.reject_reason) : ''}. You can raise them again.`
-            : reasons.length ? 'Not ready: ' + esc(reasons.join('; ')) + '.'
-            : `Ready to raise ${planned.length} PO${planned.length === 1 ? '' : 's'} totalling ${gbp(total)}. They'll go for approval as one request.`;
+        // Flag costs that have moved since their PO was raised
+        if (!$('po-msg').dataset.busy) {
+            const changed = planned.filter(p => { const r = byCat[p.category]; return poActive(r) && p.net_amount != null && Math.abs(Number(r.net_amount) - p.net_amount) > 0.005; });
+            $('po-msg').innerHTML = changed.length
+                ? `<span style="color:var(--warning)">${changed.map(c => c.category).join(', ')} ${changed.length === 1 ? 'has' : 'have'} changed since the PO was raised. Update the cost on that PO in Purchase-to-Pay.</span>`
+                : ($('po-msg').dataset.keep ? $('po-msg').innerHTML : '');
+        }
     }
 
     async function ptpFetch(method, path, body) {
@@ -1128,9 +1136,9 @@
         } finally { clearTimeout(timer); }
     }
 
-    async function storePurchaseOrders(po) {
+    async function storePurchaseOrders(pos) {
         const jn = String(currentJob['Job Number'] ?? '').trim();
-        const rec = po ? { ...po, checkedAt: new Date().toISOString() } : null;
+        const rec = pos && pos.length ? { pos, checkedAt: new Date().toISOString() } : null;
         await setDoc(doc(db, PROJECTS, projectId(jn)), { purchaseOrders: rec }, { merge: true });
         if (currentProject) currentProject.purchaseOrders = rec;
         upsertProjectInList(projectId(jn), currentProject);
@@ -1138,42 +1146,45 @@
 
     async function raisePurchaseOrders() {
         const f = renderCosts();
-        const lines = plannedPoLines(f);
+        const byCat = Object.fromEntries(raisedPos().map(p => [p.category, p]));
+        const lines = plannedPoLines(f).filter(l => !poActive(byCat[l.category]));
         const jn = String(currentJob['Job Number'] ?? '').trim();
         const total = lines.reduce((t, l) => t + (l.net_amount || 0), 0);
-        if (!confirm(`Raise ${lines.length} purchase order${lines.length === 1 ? '' : 's'} for job ${jn}, totalling ${gbp(total)}?\n\n`
+        if (!lines.length) return;
+        if (!confirm(`Raise ${lines.length} separate purchase order${lines.length === 1 ? '' : 's'} for job ${jn}, totalling ${gbp(total)}?\n\n`
             + lines.map(l => `${l.category}: ${l.supplier} ${gbp(l.net_amount)}`).join('\n')
-            + `\n\nThey'll go to Purchase-to-Pay for approval as one request.`)) return;
+            + `\n\nEach goes to Purchase-to-Pay for approval on its own.`)) return;
         const btn = $('po-raise'), msg = $('po-msg');
-        btn.disabled = true; msg.dataset.busy = '1';
+        btn.disabled = true; msg.dataset.busy = '1'; delete msg.dataset.keep;
         msg.innerHTML = '<span class="muted">Sending to Purchase-to-Pay… this can take up to a minute if it hasn\'t been used for a while.</span>';
         try {
             const { status, data } = await ptpFetch('POST', '/api/pingu/pos', { job_number: jn, requester: adminName() || 'Pingu', lines });
-            if (data.ok || (status === 409 && data.po)) {
-                await storePurchaseOrders(data.po);
-                msg.innerHTML = data.ok
-                    ? `<span style="color:var(--success)">Raised as request #${esc(data.po.id)}, now awaiting approval${data.po.approver ? ' by ' + esc(data.po.approver) : ''}.</span>`
-                    : `<span style="color:var(--warning)">${esc(data.error)}</span>`;
-                toast(data.ok ? `POs raised for job ${jn}` : 'POs were already raised for this job');
+            if (Array.isArray(data.pos)) await storePurchaseOrders(data.pos);
+            if (data.ok) {
+                msg.innerHTML = `<span style="color:${data.error ? 'var(--warning)' : 'var(--success)'}">Raised ${data.created.length} PO${data.created.length === 1 ? '' : 's'} (${esc(data.created.join(', '))}), now awaiting approval.${data.error ? ' ' + esc(data.error) : ''}</span>`;
+                toast(`POs raised for job ${jn}`);
+            } else if (status === 409) {
+                msg.innerHTML = `<span style="color:var(--warning)">${esc(data.error)}</span>`;
             } else throw new Error(data.error || `Purchase-to-Pay error ${status}`);
+            msg.dataset.keep = '1';
         } catch (e) {
-            msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`;
+            msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`; msg.dataset.keep = '1';
         } finally { delete msg.dataset.busy; renderCosts(); }
     }
 
     async function refreshPurchaseOrders(quiet) {
         if (!PTP_PINGU_KEY || !currentJob) return;
         const jn = String(currentJob['Job Number'] ?? '').trim(), msg = $('po-msg');
-        if (!quiet) { msg.dataset.busy = '1'; msg.innerHTML = '<span class="muted">Checking Purchase-to-Pay…</span>'; }
+        if (!quiet) { msg.dataset.busy = '1'; delete msg.dataset.keep; msg.innerHTML = '<span class="muted">Checking Purchase-to-Pay…</span>'; }
         try {
             const { data } = await ptpFetch('GET', '/api/pingu/pos?job=' + encodeURIComponent(jn));
             if (!data.ok) throw new Error(data.error || 'Could not check the status.');
             if (currentJob && String(currentJob['Job Number'] ?? '').trim() === jn) {
-                await storePurchaseOrders(data.po);
-                if (!quiet) msg.innerHTML = data.po ? '' : '<span class="muted">No purchase orders found for this job in Purchase-to-Pay.</span>';
+                await storePurchaseOrders(data.pos || []);
+                if (!quiet) { msg.innerHTML = (data.pos || []).length ? '' : '<span class="muted">No purchase orders found for this job in Purchase-to-Pay.</span>'; msg.dataset.keep = '1'; }
             }
         } catch (e) {
-            if (!quiet) msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`;
+            if (!quiet) { msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`; msg.dataset.keep = '1'; }
         } finally { delete msg.dataset.busy; renderCosts(); }
     }
 
@@ -1280,7 +1291,7 @@
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
         // Opening Costs: quietly check where the job's POs have got to (at most every 2 minutes)
         const po = currentProject?.purchaseOrders;
-        if (name === 'costs' && isAdmin && po && po.status !== 'VOIDED' && (!po.checkedAt || Date.now() - new Date(po.checkedAt) > 120000))
+        if (name === 'costs' && isAdmin && po && (!po.checkedAt || Date.now() - new Date(po.checkedAt) > 120000))
             refreshPurchaseOrders(true);
     }
 
