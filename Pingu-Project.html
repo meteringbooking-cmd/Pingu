@@ -329,6 +329,23 @@
         .flag.money { color: var(--secondary); border-color: rgba(255,200,87,0.4); background: rgba(255,200,87,0.08); display: none; }
         body.is-admin .flag.money { display: inline-block; }
         .link-btn { background: none; border: 0; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: inherit; }
+        /* Purchase orders (Purchase-to-Pay) */
+        .po-box { margin-top: 18px; border: 1px solid var(--line-2); border-radius: 12px; overflow: hidden; }
+        .po-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--line); }
+        .po-title { font-weight: 700; color: var(--text-strong); font-size: 14px; }
+        .po-sub { font-size: 12.5px; color: var(--text-dim); margin-top: 2px; }
+        .po-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .po-line { display: grid; grid-template-columns: 110px 1fr auto auto; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 13px; }
+        .po-line:last-child { border-bottom: 0; }
+        .po-cat { font-weight: 700; color: var(--text-strong); }
+        .po-desc { color: var(--text-soft); min-width: 0; }
+        .po-desc small { display: block; color: var(--text-dim); font-size: 11.5px; }
+        .po-amt { font-family: var(--mono); color: var(--text-strong); white-space: nowrap; }
+        .po-amt.missing { color: var(--warning); font-family: var(--font); font-size: 12px; }
+        .po-ref { font-family: var(--mono); font-size: 12px; color: var(--text-soft); white-space: nowrap; text-align: right; min-width: 90px; }
+        .po-msg { padding: 10px 14px; border-top: 1px solid var(--line); font-size: 12.5px; }
+        .po-msg:empty { display: none; }
+        @media (max-width: 640px) { .po-line { grid-template-columns: 1fr auto; } .po-ref { grid-column: 1 / -1; text-align: left; } }
         .pin-input { font-family: var(--mono); font-size: 20px; letter-spacing: .4em; text-align: center; height: 48px; }
 
         @media (max-width: 1000px) {
@@ -543,6 +560,19 @@
                     <span><span class="m-value" id="margin-value">£0</span><span class="m-pct" id="margin-pct"></span></span>
                 </div>
                 <div class="cost-warnings" id="cost-warnings"></div>
+
+                <!-- Purchase orders in Purchase-to-Pay -->
+                <div class="po-box" id="po-box">
+                    <div class="po-head">
+                        <div><div class="po-title">Purchase orders</div><div class="po-sub" id="po-sub"></div></div>
+                        <div class="po-actions">
+                            <button type="button" class="btn btn-ghost btn-sm" id="po-refresh" style="display:none;">Refresh status</button>
+                            <button type="button" class="btn btn-primary btn-sm" id="po-raise" disabled>Raise POs in Purchase-to-Pay</button>
+                        </div>
+                    </div>
+                    <div id="po-lines"></div>
+                    <div class="po-msg" id="po-msg"></div>
+                </div>
             </div>
         </div>
 
@@ -990,7 +1020,161 @@
         $('margin-pct').textContent = f.margin == null ? 'Fill in the missing items' : (f.marginPct == null ? '' : f.marginPct.toFixed(1) + '%') + (f.provisional ? ' · provisional, supplier costs missing' : '');
         $('margin-strip').classList.toggle('neg', f.margin != null && f.margin < 0);
         $('cost-warnings').innerHTML = f.warnings.map(w => `<div class="notice warning">${esc(w)}</div>`).join('');
+        renderPurchaseOrders(f);
         return f;
+    }
+
+    // ── Purchase orders in Purchase-to-Pay ────────────────────────────
+    // Pingu raises ONE request per job in the Purchase-to-Pay service: a Solar
+    // request with a line each for Labour (to the lead engineer), Edmundson and
+    // PVF. It's approved once there, then issued in Xero as one PO per supplier.
+    const PTP_SERVICE_URL = 'https://ptp-approval-service.onrender.com';
+    // Pingu's own key for that service (the PINGU_API_KEY value set on Render).
+    // It can only raise one PO request per job and read its status - nothing else.
+    const PTP_PINGU_KEY = 'pingu_J9zV0HJymXGDW8S00z2F8fTW3v8MKEaF';
+    const PO_STATUS = {
+        PENDING_APPROVAL: ['Awaiting approval', 'var(--warning)'], APPROVED: ['Approved, ready to issue', 'var(--accent)'],
+        REJECTED: ['Rejected', 'var(--error)'], ISSUED: ['Issued', 'var(--accent)'], SPLIT: ['Issued as separate POs', 'var(--accent)'],
+        GOODS_RECEIVED: ['Goods received', 'var(--accent)'], PENDING_COST_APPROVAL: ['Awaiting cost approval', 'var(--warning)'],
+        COST_APPROVED: ['Cost approved', 'var(--accent)'], AWAITING_INVOICE: ['Awaiting invoice', 'var(--accent)'],
+        MATCHED: ['Matched to invoice', 'var(--accent)'], IN_PAYABLES: ['In payables', 'var(--accent)'],
+        PENDING_PAYMENT_APPROVAL: ['Awaiting payment approval', 'var(--warning)'], PAYMENT_APPROVED: ['Payment approved', 'var(--accent)'],
+        PAYMENT_REJECTED: ['Payment rejected', 'var(--error)'], PAID: ['Paid', 'var(--success)'], VOIDED: ['Voided', 'var(--text-dim)']
+    };
+    const poStatus = st => { const [label, c] = PO_STATUS[st] || [st || 'Not issued yet', 'var(--text-dim)']; return `<span class="badge" style="--c:${c}">${esc(label)}</span>`; };
+    const poActive = po => po && po.status !== 'REJECTED' && po.status !== 'VOIDED';
+
+    // The lines Pingu would raise right now, from the Costs tab
+    function plannedPoLines(f) {
+        const prof = currentJob ? profileFromJob(currentJob) : {};
+        const crew = f.pay.find(l => l.label === 'Crew labour');
+        const panels = numOrNull($('job-panels').value), hours = numOrNull($('job-hours').value), sides = numOrNull($('scaff-sides').value);
+        const lines = [];
+        if (currentKind === 'solar' || currentKind === 'battery' || currentKind === 'aftercare') {
+            lines.push({ category: 'Labour', supplier: prof.engineer || '', net_amount: crew?.amt ?? null,
+                         detail: currentKind === 'solar' ? (panels != null ? panels + ' panels' : '') : currentKind === 'battery' ? 'Battery only' : (hours != null ? hours + ' h aftercare' : '') });
+        }
+        if (currentKind === 'solar' || currentKind === 'battery')
+            lines.push({ category: 'Edmundson', supplier: 'Edmundson', net_amount: numOrNull($('cost-edmundson').value), detail: '' });
+        if (currentKind === 'solar')
+            lines.push({ category: 'PVF', supplier: 'PVF', net_amount: numOrNull($('cost-pvf').value), detail: sides ? sides + (sides === 1 ? ' side' : ' sides') : '' });
+        return lines;
+    }
+
+    function renderPurchaseOrders(f) {
+        const jn = currentJob ? String(currentJob['Job Number'] ?? '').trim() : '';
+        const po = currentProject?.purchaseOrders || null;
+        const planned = plannedPoLines(f);
+        const btn = $('po-raise'), refresh = $('po-refresh');
+        refresh.style.display = po ? '' : 'none';
+
+        if (poActive(po)) {
+            // Already raised: show what was raised and where it's got to
+            btn.style.display = 'none';
+            $('po-sub').innerHTML = `Request #${esc(po.id)} · ${poStatus(po.status)}${po.approver ? ' · approver ' + esc(po.approver) : ''}${po.checkedAt ? ' · checked ' + esc(fmtStamp(po.checkedAt)) : ''}`;
+            $('po-lines').innerHTML = (po.lines || []).map(l => `
+                <div class="po-line"><span class="po-cat">${esc(l.supplier)}</span>
+                    <span class="po-desc">${esc(l.description)}</span>
+                    <span class="po-amt">${gbp(l.net_amount)}</span>
+                    <span class="po-ref">${l.po_number ? esc(l.po_number) : '<span class="muted">No PO number yet</span>'}</span></div>`).join('');
+            // Flag costs that have moved since the POs were raised
+            const changed = planned.filter(p => {
+                const raised = (po.lines || []).find(l => l.description?.includes(' - ' + p.category));
+                return raised && p.net_amount != null && Math.abs(Number(raised.net_amount) - p.net_amount) > 0.005;
+            });
+            if (changed.length && !$('po-msg').dataset.busy)
+                $('po-msg').innerHTML = `<span style="color:var(--warning)">${changed.map(c => c.category).join(', ')} ${changed.length === 1 ? 'has' : 'have'} changed since the POs were raised. Update the cost on the PO in Purchase-to-Pay.</span>`;
+            return;
+        }
+
+        btn.style.display = '';
+        $('po-lines').innerHTML = planned.map(l => `
+            <div class="po-line"><span class="po-cat">${esc(l.category)}</span>
+                <span class="po-desc">${esc(l.supplier || 'No lead engineer on the job')}<small>Job ${esc(jn)} - ${esc(l.category)}${l.detail ? ' (' + esc(l.detail) + ')' : ''}</small></span>
+                <span class="po-amt${l.net_amount ? '' : ' missing'}">${l.net_amount ? gbp(l.net_amount) : 'Missing'}</span><span class="po-ref"></span></div>`).join('')
+            || '<div class="po-line"><span class="po-desc">No purchase orders for this job type.</span></div>';
+
+        const reasons = [];
+        if (!PTP_PINGU_KEY) reasons.push('Purchase-to-Pay isn\'t connected yet');
+        if (!planned.length) reasons.push('no costs for this job type');
+        if (planned.some(l => !l.net_amount)) reasons.push('fill in every cost first');
+        if (planned.some(l => l.category === 'Labour' && !l.supplier)) reasons.push('the job has no lead engineer');
+        if (!currentProject) reasons.push('create the project first');
+        else if (dirty) reasons.push('save your changes first');
+        btn.disabled = reasons.length > 0;
+        const total = planned.reduce((t, l) => t + (l.net_amount || 0), 0);
+        $('po-sub').innerHTML = po && po.status === 'REJECTED'
+            ? `The last request (#${esc(po.id)}) was rejected${po.reject_reason ? ': ' + esc(po.reject_reason) : ''}. You can raise them again.`
+            : reasons.length ? 'Not ready: ' + esc(reasons.join('; ')) + '.'
+            : `Ready to raise ${planned.length} PO${planned.length === 1 ? '' : 's'} totalling ${gbp(total)}. They'll go for approval as one request.`;
+    }
+
+    async function ptpFetch(method, path, body) {
+        const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 90000);
+        try {
+            const res = await fetch(PTP_SERVICE_URL + path, {
+                method, signal: ctl.signal,
+                headers: { 'X-Pingu-Key': PTP_PINGU_KEY, ...(body ? { 'Content-Type': 'application/json' } : {}) },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            let data = null; try { data = await res.json(); } catch {}
+            if (res.status === 401) throw new Error('Purchase-to-Pay refused Pingu\'s key. Check PTP_PINGU_KEY matches PINGU_API_KEY on Render.');
+            if (res.status === 503) throw new Error('Purchase-to-Pay hasn\'t been set up for Pingu yet (PINGU_API_KEY is not set on Render).');
+            return { status: res.status, data: data || {} };
+        } catch (e) {
+            if (e.name === 'AbortError') throw new Error('Purchase-to-Pay didn\'t answer within 90 seconds. Try again in a minute.');
+            if (e instanceof TypeError) throw new Error('Couldn\'t reach Purchase-to-Pay. Check this page\'s address is listed in PINGU_ALLOWED_ORIGINS on Render.');
+            throw e;
+        } finally { clearTimeout(timer); }
+    }
+
+    async function storePurchaseOrders(po) {
+        const jn = String(currentJob['Job Number'] ?? '').trim();
+        const rec = po ? { ...po, checkedAt: new Date().toISOString() } : null;
+        await setDoc(doc(db, PROJECTS, projectId(jn)), { purchaseOrders: rec }, { merge: true });
+        if (currentProject) currentProject.purchaseOrders = rec;
+        upsertProjectInList(projectId(jn), currentProject);
+    }
+
+    async function raisePurchaseOrders() {
+        const f = renderCosts();
+        const lines = plannedPoLines(f);
+        const jn = String(currentJob['Job Number'] ?? '').trim();
+        const total = lines.reduce((t, l) => t + (l.net_amount || 0), 0);
+        if (!confirm(`Raise ${lines.length} purchase order${lines.length === 1 ? '' : 's'} for job ${jn}, totalling ${gbp(total)}?\n\n`
+            + lines.map(l => `${l.category}: ${l.supplier} ${gbp(l.net_amount)}`).join('\n')
+            + `\n\nThey'll go to Purchase-to-Pay for approval as one request.`)) return;
+        const btn = $('po-raise'), msg = $('po-msg');
+        btn.disabled = true; msg.dataset.busy = '1';
+        msg.innerHTML = '<span class="muted">Sending to Purchase-to-Pay… this can take up to a minute if it hasn\'t been used for a while.</span>';
+        try {
+            const { status, data } = await ptpFetch('POST', '/api/pingu/pos', { job_number: jn, requester: adminName() || 'Pingu', lines });
+            if (data.ok || (status === 409 && data.po)) {
+                await storePurchaseOrders(data.po);
+                msg.innerHTML = data.ok
+                    ? `<span style="color:var(--success)">Raised as request #${esc(data.po.id)}, now awaiting approval${data.po.approver ? ' by ' + esc(data.po.approver) : ''}.</span>`
+                    : `<span style="color:var(--warning)">${esc(data.error)}</span>`;
+                toast(data.ok ? `POs raised for job ${jn}` : 'POs were already raised for this job');
+            } else throw new Error(data.error || `Purchase-to-Pay error ${status}`);
+        } catch (e) {
+            msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`;
+        } finally { delete msg.dataset.busy; renderCosts(); }
+    }
+
+    async function refreshPurchaseOrders(quiet) {
+        if (!PTP_PINGU_KEY || !currentJob) return;
+        const jn = String(currentJob['Job Number'] ?? '').trim(), msg = $('po-msg');
+        if (!quiet) { msg.dataset.busy = '1'; msg.innerHTML = '<span class="muted">Checking Purchase-to-Pay…</span>'; }
+        try {
+            const { data } = await ptpFetch('GET', '/api/pingu/pos?job=' + encodeURIComponent(jn));
+            if (!data.ok) throw new Error(data.error || 'Could not check the status.');
+            if (currentJob && String(currentJob['Job Number'] ?? '').trim() === jn) {
+                await storePurchaseOrders(data.po);
+                if (!quiet) msg.innerHTML = data.po ? '' : '<span class="muted">No purchase orders found for this job in Purchase-to-Pay.</span>';
+            }
+        } catch (e) {
+            if (!quiet) msg.innerHTML = `<span style="color:#FF8A8A">${esc(e.message)}</span>`;
+        } finally { delete msg.dataset.busy; renderCosts(); }
     }
 
     // ── Admin unlock ──────────────────────────────────────────────────
@@ -1088,11 +1272,16 @@
     function setDirty(v) {
         dirty = v;
         $('save-wrap').classList.toggle('dirty', v);
+        if (currentJob) renderCosts();   // the Raise POs button depends on unsaved changes
     }
 
     function showTab(name) {
         document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+        // Opening Costs: quietly check where the job's POs have got to (at most every 2 minutes)
+        const po = currentProject?.purchaseOrders;
+        if (name === 'costs' && isAdmin && po && po.status !== 'VOIDED' && (!po.checkedAt || Date.now() - new Date(po.checkedAt) > 120000))
+            refreshPurchaseOrders(true);
     }
 
     // ── Save ──────────────────────────────────────────────────────────
@@ -1157,6 +1346,7 @@
             costs,
             // Worked out from the rates at save time, for the margin report.
             financials: { jobKind: kind, receive: fin.totalReceive, payOut: fin.totalPay, margin: fin.margin, complete: fin.complete },
+            purchaseOrders: prev.purchaseOrders ?? null,   // set by "Raise POs"; kept on every save
             createdAt: prev.createdAt || now,
             createdBy: prev.createdBy || adminName(),
             updatedAt: now,
@@ -1176,6 +1366,7 @@
             SHEETS.forEach(sh => { if (sh.record()) $(sh.note).textContent = sheetNoteText(sh, []); });
             toast(wasNew ? `Project created for job #${jn}` : `Project #${jn} saved`);
             upsertProjectInList(projectId(jn), data);
+            renderCosts();
         } catch (e) {
             console.error(e);
             toast('Save failed: ' + e.message, true);
@@ -1255,6 +1446,8 @@
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && currentJob) { e.preventDefault(); saveProject(); }
     });
 
+    $('po-raise').addEventListener('click', raisePurchaseOrders);
+    $('po-refresh').addEventListener('click', () => refreshPurchaseOrders(false));
     Object.assign(window, { searchJob, saveProject, showTab, loadProjects, renderProjects, toggleAdmin, closeAdminModal, submitAdmin });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAdminModal(); });
     try { if (sessionStorage.getItem(ADMIN_KEY) === '1') setAdmin(true); } catch {}
