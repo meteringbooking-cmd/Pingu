@@ -292,6 +292,17 @@
         .gap { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 10px; background: var(--surface-2); font-size: 15px; font-weight: 600; color: var(--text-soft); }
         .gap b { font-size: 24px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
         .gap.wide { grid-column: 1 / -1; }
+        .gap[data-tip] { cursor: help; }
+        .gap[data-tip]:hover { outline: 2px solid rgba(255,255,255,0.35); outline-offset: -2px; }
+        /* Hover pop-up listing the jobs behind a count */
+        .tip { position: absolute; z-index: 50; display: none; width: 440px; background: #2a2a45; border: 1px solid var(--line-2); border-radius: 14px;
+               box-shadow: 0 24px 60px -20px rgba(0,0,0,0.85); padding: 14px 16px; pointer-events: none; }
+        .tip.show { display: block; }
+        .tip-title { font-size: 17px; font-weight: 800; color: var(--text-strong); margin-bottom: 8px; }
+        .tip-row { display: grid; grid-template-columns: 150px 80px 1fr; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); font-size: 15px; color: var(--text-soft); }
+        .tip-row .jn { font-family: var(--mono); font-weight: 700; color: var(--text-strong); }
+        .tip-row span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tip-more { font-size: 14px; color: var(--text-dim); padding-top: 6px; }
         .gap.bad { background: rgba(255,107,107,0.13); color: #FFB0B0; }
         .gap.bad b { color: #FF7A7A; }
 
@@ -354,6 +365,7 @@
             <div class="card" id="today"></div>
         </section>
     </main>
+    <div class="tip" id="tip"></div>
     <div class="loading-stage" id="loading"><span class="spinner"></span>Loading jobs…</div>
 </div>
 
@@ -566,9 +578,14 @@
                 : info);
         } else {
             const total = w.live.length, ready = total - w.notReady.length;
-            const by = k => w.notReady.filter(j => j.missing.includes(k)).length;
-            const gap = (lbl, n) => `<div class="gap${n ? ' bad' : ''}"><span>${lbl}</span><b>${n}</b></div>`;
-            const pvfNot = w.solar.filter(j => !j.pvfRequested).length;
+            const by = k => w.notReady.filter(j => j.missing.includes(k));
+            // Each count remembers its jobs, so hovering it can list them
+            const gap = (lbl, jobsList) => {
+                const n = jobsList.length;
+                const id = n ? addTip(`${lbl} · ${w.label.toLowerCase()}`, jobsList) : '';
+                return `<div class="gap${n ? ' bad' : ''}"${id ? ` data-tip="${id}"` : ''}><span>${lbl}</span><b>${n}</b></div>`;
+            };
+            const pvfNot = w.solar.filter(j => !j.pvfRequested);
             body = big([w.solarAll && plural(w.solarAll, 'solar install'), w.batteryAll && `${w.batteryAll} battery`].filter(Boolean).join(' · ')) + `
                 <div class="ready">
                     <div class="ready-top"><span class="ready-lbl">Ready to install</span><span class="ready-val">${ready}<small> / ${total}</small></span></div>
@@ -657,7 +674,31 @@
             ${todayPages.length > 1 ? `<div class="progress run" style="animation-duration:${ROTATE_SECONDS}s;background:var(--accent)"></div>` : ''}`;
     }
 
+    // ── Hover pop-ups for the readiness counts ────────────────────────────
+    let tips = {}, tipSeq = 0;
+    function addTip(title, list) { const id = 't' + (++tipSeq); tips[id] = { title, list: [...list].sort((a, b) => a.date - b.date || a.jobNumber.localeCompare(b.jobNumber)) }; return id; }
+    const TIP_MAX = 14;
+    function showTip(el) {
+        const t = tips[el.dataset.tip], tip = $('tip'), stage = $('stage');
+        if (!t) return;
+        tip.innerHTML = `<div class="tip-title">${esc(t.title.charAt(0).toUpperCase() + t.title.slice(1))}</div>`
+            + t.list.slice(0, TIP_MAX).map(j => `<div class="tip-row"><span class="jn">${esc(j.jobNumber)}</span><span>${fmtWd(j.date)}</span><span>${esc(j.engineer || j.postcode)}</span></div>`).join('')
+            + (t.list.length > TIP_MAX ? `<div class="tip-more">+ ${t.list.length - TIP_MAX} more</div>` : '');
+        tip.classList.add('show');
+        // Position under the box, in stage coordinates (the stage is scaled to fit the screen)
+        const scale = stage.getBoundingClientRect().width / 1920;
+        const r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+        let x = (r.left - sr.left) / scale, y = (r.bottom - sr.top) / scale + 8;
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        if (x + w > 1900) x = 1900 - w;
+        if (y + h > 1070) y = (r.top - sr.top) / scale - h - 8;
+        tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    }
+    function hideTip() { $('tip').classList.remove('show'); }
+    document.addEventListener('mouseover', e => { const g = e.target.closest('.gap[data-tip]'); g ? showTip(g) : hideTip(); });
+
     function rebuild() {
+        tips = {}; hideTip();
         if (!raw.jobs) return;
         model = buildModel();
         $('weeks').innerHTML = model.weeks.map(weekCard).join('');
