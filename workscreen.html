@@ -493,7 +493,11 @@
         };
 
         const thisMon = mondayOf(t);
-        const inWeek = (start) => { const end = addDays(start, 6); return jobs.filter(j => j.date >= start && j.date <= end); };
+        // The four week cards only count installs: Solar PV Install / Solar Install
+        // (SOLAR_PV_INSTALL_V2, PARTNER_SOLAR_PV_INSTALL) and Battery Install / Battery Only
+        // (SOLAR_PV_BATTERY_INSTALL). Aftercare and anything else is left out.
+        const COUNTED_KINDS = ['solar', 'battery'];
+        const inWeek = (start) => { const end = addDays(start, 6); return jobs.filter(j => COUNTED_KINDS.includes(j.kind) && j.date >= start && j.date <= end); };
         const weeks = [
             { label: 'Last week',  start: addDays(thisMon, -7), type: 'past' },
             { label: 'This week',  start: thisMon,              type: 'now' },
@@ -510,6 +514,7 @@
                 notUpdated: list.filter(j => j.end < t && ['scheduled', 'inProgress'].includes(j.status)).length,
                 toCome: list.filter(j => j.date > t && j.status === 'scheduled').length,
                 live, solar: live.filter(j => j.kind === 'solar'),
+                solarAll: list.filter(j => j.kind === 'solar').length, batteryAll: list.filter(j => j.kind === 'battery').length,
                 notReady: live.map(j => ({ ...j, missing: missingFor(j) })).filter(j => j.missing.length),
             };
         });
@@ -533,8 +538,8 @@
         const big = sub => `<div class="big"><span class="big-num">${w.list.length}</span><span class="big-lbl">job${w.list.length === 1 ? '' : 's'}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
         const mini = (n, lbl, c) => `<div class="mini" style="--c:${c}"><div class="mini-num${n ? '' : ' zero'}">${n}</div><div class="mini-lbl">${lbl}</div></div>`;
         const trio = `<div class="trio">${mini(w.complete, 'Completed', 'var(--complete)')}${mini(w.aborted, 'Aborted', 'var(--aborted)')}${mini(w.cancelled, 'Cancelled', 'var(--cancelled)')}</div>`;
-        // Completion % and open % - out of the jobs going ahead (cancelled jobs left out)
-        const base = w.list.length - w.cancelled;
+        // Completion % and open % - out of every job in the week, cancelled ones included
+        const base = w.list.length;
         const pct = n => base ? Math.round(n / base * 100) : null;
         const done = pct(w.complete), open = pct(w.open);
         const pcts = `<div class="pcts">
@@ -558,7 +563,7 @@
             const by = k => w.notReady.filter(j => j.missing.includes(k)).length;
             const gap = (lbl, n) => `<div class="gap${n ? ' bad' : ''}"><span>${lbl}</span><b>${n}</b></div>`;
             const pvfNot = w.solar.filter(j => !j.pvfRequested).length;
-            body = big(w.solar.length ? plural(w.solar.length, 'solar install') : '') + `
+            body = big([w.solarAll && plural(w.solarAll, 'solar install'), w.batteryAll && `${w.batteryAll} battery`].filter(Boolean).join(' · ')) + `
                 <div class="ready">
                     <div class="ready-top"><span class="ready-lbl">Ready to install</span><span class="ready-val">${ready}<small> / ${total}</small></span></div>
                     <div class="meter${total ? '' : ' empty'}"><span style="width:${total ? ready / total * 100 : 0}%"></span></div>
