@@ -253,6 +253,16 @@
         .now-tag { font-size: 13px; font-weight: 800; letter-spacing: .08em; padding: 4px 11px; border-radius: 999px; background: var(--primary); color: #fff; margin-left: 10px; }
         .card-body { padding: 8px 26px 24px; display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .big { display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px; }
+        .big-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .big-row .big { margin-bottom: 0; min-width: 0; }
+        .pcts { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+        .pct { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 168px; padding: 6px 12px 7px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+        .pct b { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+        .pct span { font-size: 15px; font-weight: 700; color: var(--text-soft); white-space: nowrap; }
+        .pct.good b { color: var(--success); }
+        .pct.warn b { color: var(--warning); }
+        .pct.bad b { color: #FF7A7A; }
+        .pct.none b { color: var(--text-dim); }
         .big-num { font-size: 120px; font-weight: 800; line-height: .9; letter-spacing: -0.05em; color: var(--text-strong); font-variant-numeric: tabular-nums; }
         .big-lbl { font-size: 22px; color: var(--text-soft); font-weight: 600; line-height: 1.2; }
         .big-lbl small { display: block; font-size: 16px; color: var(--text-dim); font-weight: 500; }
@@ -496,6 +506,7 @@
                 ...w, end: addDays(w.start, 6), list,
                 complete: count('complete'), aborted: count('aborted'), cancelled: count('cancelled') + count('shortNotice'),
                 inProgress: count('inProgress') + count('onHold'),
+                open: count('scheduled') + count('inProgress') + count('onHold'),
                 notUpdated: list.filter(j => j.end < t && ['scheduled', 'inProgress'].includes(j.status)).length,
                 toCome: list.filter(j => j.date > t && j.status === 'scheduled').length,
                 live, solar: live.filter(j => j.kind === 'solar'),
@@ -522,15 +533,24 @@
         const big = sub => `<div class="big"><span class="big-num">${w.list.length}</span><span class="big-lbl">job${w.list.length === 1 ? '' : 's'}${sub ? `<small>${sub}</small>` : ''}</span></div>`;
         const mini = (n, lbl, c) => `<div class="mini" style="--c:${c}"><div class="mini-num${n ? '' : ' zero'}">${n}</div><div class="mini-lbl">${lbl}</div></div>`;
         const trio = `<div class="trio">${mini(w.complete, 'Completed', 'var(--complete)')}${mini(w.aborted, 'Aborted', 'var(--aborted)')}${mini(w.cancelled, 'Cancelled', 'var(--cancelled)')}</div>`;
+        // Completion % and open % - out of the jobs going ahead (cancelled jobs left out)
+        const base = w.list.length - w.cancelled;
+        const pct = n => base ? Math.round(n / base * 100) : null;
+        const done = pct(w.complete), open = pct(w.open);
+        const pcts = `<div class="pcts">
+            <div class="pct ${done == null ? 'none' : 'good'}"><b>${done == null ? '—' : done + '%'}</b><span>complete</span></div>
+            <div class="pct ${open == null ? 'none' : open === 0 ? 'good' : w.type === 'past' ? 'bad' : 'warn'}"><b>${open == null ? '—' : open + '%'}</b><span>open</span></div>
+        </div>`;
+        const bigWithPcts = () => `<div class="big-row">${big()}${pcts}</div>`;
         let body = '';
         if (w.type === 'past') {
-            body = big() + trio + (w.notUpdated
+            body = bigWithPcts() + trio + (w.notUpdated
                 ? `<div class="foot-line bad">${ICON.alert}<span class="n">${w.notUpdated}</span> not updated yet</div>`
                 : `<div class="foot-line good">${ICON.check} All jobs updated</div>`);
         } else if (w.type === 'now') {
             const parts = [w.inProgress && `${w.inProgress} in progress`, w.toCome && `${w.toCome} still to come`].filter(Boolean);
             const info = `<div class="foot-line info">${parts.length ? parts.join(' · ') : 'All jobs have an outcome'}</div>`;
-            body = big() + trio + (w.notUpdated
+            body = bigWithPcts() + trio + (w.notUpdated
                 ? `<div style="margin-top:auto;display:flex;flex-direction:column;gap:10px;">${info.replace('foot-line info', 'foot-line info" style="margin-top:0')}<div class="foot-line bad" style="margin-top:0">${ICON.alert}<span class="n">${w.notUpdated}</span> finished job${w.notUpdated === 1 ? '' : 's'} not updated</div></div>`
                 : info);
         } else {
