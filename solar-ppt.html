@@ -1227,17 +1227,18 @@
                 ? firstRows.map((c, i) => {
                     const rowFill = i % 2 === 0 ? C.darkLight : C.darkLighter;
                     return [
-                        { text: c.key,               options: { color: C.accent,  fill: { color: rowFill }, fontSize: 8, bold: true } },
-                        { text: truncate(c.desc, 90), options: { color: C.text,   fill: { color: rowFill }, fontSize: 7.5 } },
-                        { text: c.count.toString(),  options: { color: C.primary, fill: { color: rowFill }, fontSize: 8, bold: true, align: 'right' } }
+                        { text: c.key,               options: { color: C.accent,  fill: { color: rowFill }, fontSize: 7.5, bold: true } },
+                        { text: truncate(c.desc, 68), options: { color: C.text,   fill: { color: rowFill }, fontSize: 7 } },
+                        { text: c.count.toString(),  options: { color: C.primary, fill: { color: rowFill }, fontSize: 7.5, bold: true, align: 'right' } }
                     ];
                   })
                 : [[{ text: 'No Cat codes selected in this range.', options: { color: C.textDim, colspan: 3, italic: true, fontSize: 8, fill: { color: C.darkLight } } }]];
 
             slide.addTable([headerRow, ...bodyRows], {
-                x: tableX, y: chartY, w: tableW, colW: [0.85, tableW - 1.55, 0.7],
+                // 15 single-line rows + header must fit above the Key Insight box (y = INSIGHT_Y)
+                x: tableX, y: chartY, w: tableW, colW: [0.85, tableW - 1.55, 0.7], rowH: 0.2,
                 fontFace: 'Calibri', border: { type: 'solid', color: C.line, pt: 0.5 },
-                autoPage: false, valign: 'middle', margin: [0.03, 0.06, 0.03, 0.06]
+                autoPage: false, valign: 'middle', margin: [0.02, 0.06, 0.02, 0.06]
             });
 
             addInsightBox(slide);
@@ -1245,7 +1246,7 @@
         }
 
         // Cat codes that didn't fit on slide 3 go onto full-width continuation slides.
-        const CAT_FIRST_ROWS = 8, CAT_CONT_ROWS = 18;
+        const CAT_FIRST_ROWS = 15, CAT_CONT_ROWS = 18;
         function catContinuationPageCount(data) {
             const rest = Math.max(0, data.catList.length - CAT_FIRST_ROWS);
             return Math.ceil(rest / CAT_CONT_ROWS);
