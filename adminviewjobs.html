@@ -2,7 +2,55 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <script src="auth-guard.js"></script>
+    <script>
+/* ═══════════════════════════════════════════════════════════════
+   Daily login guard — loaded first on every page (except the login page).
+   A login is valid until midnight (local time) on the day it was made.
+   Opening or refreshing any page on a new day sends you to the login page,
+   then back to the page you were on.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+    var LOGIN_PAGE   = 'adminlogin!&!.html';
+    var SESSION_KEY  = 'adminSession';
+    var REDIRECT_KEY = 'loginRedirect';
+
+    function expiry(loginTime) {           // midnight at the end of the login day
+        var d = new Date(loginTime); d.setHours(24, 0, 0, 0); return d.getTime();
+    }
+    function isValid() {
+        try {
+            var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+            return !!(s && s.loginTime && Date.now() < expiry(s.loginTime));
+        } catch (e) { return false; }
+    }
+    function currentPage() {
+        var p = location.pathname.split('/').pop() || 'index.html';
+        return p + location.search + location.hash;
+    }
+    var leaving = false;
+    function sendToLogin() {
+        if (leaving) return; leaving = true;
+        try {
+            localStorage.removeItem(SESSION_KEY);
+            sessionStorage.setItem(REDIRECT_KEY, currentPage());
+        } catch (e) {}
+        document.documentElement.style.visibility = 'hidden';
+        location.replace(LOGIN_PAGE);
+    }
+
+    if (!isValid()) { document.documentElement.style.visibility = 'hidden'; sendToLogin(); return; }
+
+    window.SolarSessionExpiry = expiry;
+
+    // Re-check: at midnight while the page is open, when the tab comes back into view,
+    // when the page is restored with the Back button, and when another tab signs out.
+    setInterval(function () { if (!isValid()) sendToLogin(); }, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && !isValid()) sendToLogin(); });
+    window.addEventListener('pageshow', function () { if (!isValid()) sendToLogin(); });
+    window.addEventListener('storage', function (e) { if (e.key === SESSION_KEY && !isValid()) sendToLogin(); });
+})();
+
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>View All Jobs | Pingu</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
