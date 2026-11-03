@@ -1069,6 +1069,12 @@
            EXPORT (PIN protected) – one row per job in the date range
         ══════════════════════════════════════════════ */
         const EXPORT_PIN = '9615';
+        // Crew labour pay rates – keep in step with RATES.pay in Pingu-Project.html
+        const EXPORT_RATES = {
+            solar: [{ max: 16, amt: 1400 }, { max: 24, amt: 2200 }],
+            battery: 600, aftercarePerHour: 100,
+            pvfBySides: { 1: 595, 2: 795, 3: 1350 }
+        };
         window.openExportModal = function() {
             const from = readStartDate(), to = new Date(from);
             to.setDate(to.getDate() + (parseInt(document.getElementById('days-count').value, 10) || 14) - 1);
@@ -1128,6 +1134,15 @@
                     const kind = code.includes('AFTERCARE') ? 'aftercare' : code.includes('BATTERY') ? 'battery' : 'solar';
                     const solar = kind === 'solar', octo = solar && !!ps.octopusArranged;
                     const sides = !solar ? NA : octo ? 'Octopus' : val(ps.sides, [1, 2, 3].includes(Number(scr.sides)) ? Number(scr.sides) : null);
+                    const panels = kind !== 'solar' ? NA : num(val(pj.panelQuantity, dbr.panels, job['Panel No.'], job['Panel Number']));
+                    const cost = v => has(v) && !isNaN(Number(v)) ? Number(v) : MISSING;
+                    // PVF: the saved cost, else the standard rate for the sides (as the project page pre-fills it)
+                    const pvf = !solar ? NA : octo ? 0 : has(p.costs?.pvf) ? cost(p.costs.pvf) : (EXPORT_RATES.pvfBySides[sides] ?? MISSING);
+                    const edmundson = kind === 'aftercare' ? NA : cost(p.costs?.edmundson);
+                    // Crew labour: worked out from the pay rates, the same way the project page's Costs tab does
+                    const labour = kind === 'battery' ? EXPORT_RATES.battery
+                        : kind === 'aftercare' ? (has(pj.aftercareHours) ? Number(pj.aftercareHours) * EXPORT_RATES.aftercarePerHour : MISSING)
+                        : typeof panels === 'number' ? (EXPORT_RATES.solar.find(b => panels <= b.max)?.amt ?? MISSING) : MISSING;
                     const erect = !solar ? NA : octo ? 'Arranged by Octopus' : asDate(has(ps.erectionDate) ? ps.erectionDate : (scr.erectDateISO || scr.erectDate));
                     return [
                         job.jobNumber && job.jobNumber !== 'N/A' ? job.jobNumber : MISSING,
@@ -1137,18 +1152,22 @@
                         val(job['Postcode']),
                         val(job.status),
                         num(sides),
+                        pvf,
                         erect,
                         kind === 'aftercare' ? NA : c.ordered ? 'Yes' : MISSING,
+                        edmundson,
                         val(pj.system, dbr.system),
                         solar ? num(val(pj.arrays, dbr.arrays)) : NA,
-                        kind === 'battery' ? NA : num(val(pj.panelQuantity, dbr.panels, job['Panel No.'], job['Panel Number']))
+                        panels,
+                        labour
                     ];
                 });
 
                 const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Jobs', { views: [{ state: 'frozen', ySplit: 1 }] });
-                const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Job Status', 'Scaffolding Number of Sides', 'Scaffold Erection Date',
-                               'Cable Ordered from Edmundsons', 'Job System', 'Jobs Number of Arrays', 'Number of Panels'];
-                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 18, 16, 26, 12, 12][i] }));
+                const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Job Status', 'Scaffolding Number of Sides', 'PVF Scaffold Cost (£)', 'Scaffold Erection Date',
+                               'Cable Ordered from Edmundsons', 'Edmundson Cost (£)', 'Job System', 'Jobs Number of Arrays', 'Number of Panels', 'Crew Labour (£)'];
+                const MONEY_COLS = [7, 10, 14];
+                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 14, 18, 16, 14, 26, 12, 12, 14][i] }));
                 const head = ws.getRow(1);
                 head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 head.alignment = { vertical: 'middle', wrapText: true };
@@ -1160,11 +1179,12 @@
                     r.forEach((v, i) => {
                         const cell = row.getCell(i + 1);
                         if (v instanceof Date) cell.numFmt = 'dd/mm/yyyy';
+                        if (typeof v === 'number' && MONEY_COLS.includes(i)) cell.numFmt = '"£"#,##0.00';
                         if (v === MISSING) { missingCount++;
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
                             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; }
                         if (v === NA) cell.font = { color: { argb: 'FF9CA3AF' } };
-                        cell.alignment = { horizontal: i === 0 || i === 2 || i === 3 || i === 9 ? 'left' : 'center' };
+                        cell.alignment = { horizontal: i === 0 || i === 2 || i === 3 || i === 11 ? 'left' : 'center' };
                     });
                 });
                 ws.autoFilter = { from: 'A1', to: { row: 1, column: heads.length } };
