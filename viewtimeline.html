@@ -1073,7 +1073,14 @@
         const EXPORT_RATES = {
             solar: [{ max: 16, amt: 1400 }, { max: 24, amt: 2200 }],
             battery: 600, aftercarePerHour: 100,
-            pvfBySides: { 1: 595, 2: 795, 3: 1350 }
+            pvfBySides: { 1: 595, 2: 795, 3: 1350 },
+            // What we receive – keep in step with RATES.receive in Pingu-Project.html
+            receive: {
+                solar: [{ max: 10, amt: 2150 }, { max: 16, amt: 2350 }, { max: 24, amt: 2500 }],
+                battery: 1000, aftercare: 600,
+                consumables: { solar: 1000, battery: 400 },
+                scaffold: { 1: 700, 2: 1000, 3: 1350 }
+            }
         };
         window.openExportModal = function() {
             const from = readStartDate(), to = new Date(from);
@@ -1143,6 +1150,11 @@
                     const labour = kind === 'battery' ? EXPORT_RATES.battery
                         : kind === 'aftercare' ? (has(pj.aftercareHours) ? Number(pj.aftercareHours) * EXPORT_RATES.aftercarePerHour : MISSING)
                         : typeof panels === 'number' ? (EXPORT_RATES.solar.find(b => panels <= b.max)?.amt ?? MISSING) : MISSING;
+                    const R = EXPORT_RATES.receive;
+                    const scaffRecv = !solar ? NA : octo ? 0 : (R.scaffold[sides] ?? MISSING);
+                    const consumables = kind === 'aftercare' ? NA : R.consumables[kind];
+                    const labourRecv = kind === 'battery' ? R.battery : kind === 'aftercare' ? R.aftercare
+                        : typeof panels === 'number' ? (R.solar.find(b => panels <= b.max)?.amt ?? MISSING) : MISSING;
                     const erect = !solar ? NA : octo ? 'Arranged by Octopus' : asDate(has(ps.erectionDate) ? ps.erectionDate : (scr.erectDateISO || scr.erectDate));
                     return [
                         job.jobNumber && job.jobNumber !== 'N/A' ? job.jobNumber : MISSING,
@@ -1153,26 +1165,30 @@
                         val(job.status),
                         num(sides),
                         pvf,
+                        scaffRecv,
                         erect,
                         kind === 'aftercare' ? NA : c.ordered ? 'Yes' : MISSING,
                         edmundson,
+                        consumables,
                         val(pj.system, dbr.system),
                         solar ? num(val(pj.arrays, dbr.arrays)) : NA,
                         panels,
-                        labour
+                        labour,
+                        labourRecv
                     ];
                 });
 
                 const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Jobs', { views: [{ state: 'frozen', ySplit: 1 }] });
-                const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Job Status', 'Scaffolding Number of Sides', 'PVF Scaffold Cost (£)', 'Scaffold Erection Date',
-                               'Cable Ordered from Edmundsons', 'Edmundson Cost (£)', 'Job System', 'Jobs Number of Arrays', 'Number of Panels', 'Crew Labour (£)'];
-                const MONEY_COLS = [7, 10, 14];
-                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 14, 18, 16, 14, 26, 12, 12, 14][i] }));
+                const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Job Status', 'Scaffolding Number of Sides', 'PVF Scaffold Cost (£)', 'We Receive Scaffolding (£)', 'Scaffold Erection Date',
+                               'Cable Ordered from Edmundsons', 'Edmundson Cost (£)', 'We Receive Consumables (£)', 'Job System', 'Jobs Number of Arrays', 'Number of Panels',
+                               'Crew Labour (£)', 'We Receive Labour (£)'];
+                const MONEY_COLS = [7, 8, 11, 12, 16, 17], GREEN_COLS = [8, 12, 17];   // green headers = money we receive
+                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 14, 15, 18, 16, 14, 15, 26, 12, 12, 14, 15][i] }));
                 const head = ws.getRow(1);
                 head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 head.alignment = { vertical: 'middle', wrapText: true };
                 head.height = 32;
-                head.eachCell(cell => cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } });
+                head.eachCell((cell, col) => cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN_COLS.includes(col - 1) ? 'FF15803D' : 'FF1F2937' } });
                 let missingCount = 0;
                 rows.forEach(r => {
                     const row = ws.addRow(r.map(v => v === MISSING ? 'Missing' : v === NA ? 'N/A' : v));
@@ -1184,7 +1200,7 @@
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
                             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; }
                         if (v === NA) cell.font = { color: { argb: 'FF9CA3AF' } };
-                        cell.alignment = { horizontal: i === 0 || i === 2 || i === 3 || i === 11 ? 'left' : 'center' };
+                        cell.alignment = { horizontal: i === 0 || i === 2 || i === 3 || i === 13 ? 'left' : 'center' };
                     });
                 });
                 ws.autoFilter = { from: 'A1', to: { row: 1, column: heads.length } };
