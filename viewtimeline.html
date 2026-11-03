@@ -1132,6 +1132,7 @@
                     return [
                         job.jobNumber && job.jobNumber !== 'N/A' ? job.jobNumber : MISSING,
                         xlDate(job.parsedDate),
+                        val(job['Job Type']),
                         val(job.originalEngineer !== 'Unassigned' ? job.originalEngineer : ''),
                         val(job['Postcode']),
                         num(sides),
@@ -1145,9 +1146,9 @@
                 });
 
                 const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Jobs', { views: [{ state: 'frozen', ySplit: 1 }] });
-                const heads = ['Job Number', 'Date', 'Engineer', 'Postcode', 'Scaffolding Number of Sides', 'Scaffold Erection Date',
+                const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Scaffolding Number of Sides', 'Scaffold Erection Date',
                                'Cable Ordered from Edmundsons', 'Job System', 'Job Inverter', 'Jobs Number of Arrays', 'Number of Panels'];
-                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 22, 11, 14, 18, 16, 26, 26, 12, 12][i] }));
+                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 14, 18, 16, 26, 26, 12, 12][i] }));
                 const head = ws.getRow(1);
                 head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
                 head.alignment = { vertical: 'middle', wrapText: true };
@@ -1163,7 +1164,7 @@
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
                             cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; }
                         if (v === NA) cell.font = { color: { argb: 'FF9CA3AF' } };
-                        cell.alignment = { horizontal: i === 0 || i === 2 || i >= 7 && i <= 8 ? 'left' : 'center' };
+                        cell.alignment = { horizontal: i === 0 || i === 2 || i === 3 || i >= 8 && i <= 9 ? 'left' : 'center' };
                     });
                 });
                 ws.autoFilter = { from: 'A1', to: { row: 1, column: heads.length } };
