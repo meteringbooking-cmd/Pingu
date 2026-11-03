@@ -175,6 +175,19 @@
             transition: background .15s ease;
         }
         .btn-primary:hover { background: var(--primary-dark); }
+        .btn-ghost {
+            height: 38px; padding: 0 14px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+            background: var(--surface); color: var(--text-strong); border: 1px solid var(--line-2); font-size: 13.5px; font-weight: 600;
+        }
+        .btn-ghost:hover { background: var(--surface-2); }
+        #export-modal .modal-content { max-width: 420px; }
+        .export-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .export-row .control-input, #export-pin { width: 100%; }
+        #export-pin { letter-spacing: .3em; }
+        .export-msg { font-size: 13px; min-height: 18px; color: var(--text-dim); }
+        .export-msg.err { color: var(--error); }
+        .export-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .export-actions .action-btn { padding: 0 16px; }
 
         /* ── KPI strip ───────────────────────────────────────── */
         .stats-row {
@@ -560,6 +573,9 @@
                     <input type="number" id="days-count" class="control-input" value="14" min="7" max="60">
                 </div>
                 <button type="button" onclick="updateTimeline()" class="btn-primary">Update</button>
+                <button type="button" onclick="openExportModal()" class="btn-ghost" title="Export jobs to Excel">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 21h14"/></svg>Export
+                </button>
             </div>
         </div>
 
@@ -609,6 +625,30 @@
                 </div>
             </div>
         </section>
+    </div>
+
+    <div class="modal" id="export-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Export jobs</h2>
+                <button class="close-btn" onclick="closeExportModal()" aria-label="Close">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="export-row">
+                    <div class="control-group"><label class="control-label" for="export-from">From</label><input type="date" id="export-from" class="control-input"></div>
+                    <div class="control-group"><label class="control-label" for="export-to">To</label><input type="date" id="export-to" class="control-input"></div>
+                </div>
+                <div class="control-group"><label class="control-label" for="export-pin">PIN</label>
+                    <input type="password" id="export-pin" class="control-input" inputmode="numeric" maxlength="8" autocomplete="off" onkeydown="if(event.key==='Enter')runExport()"></div>
+                <div class="export-msg" id="export-msg"></div>
+                <div class="export-actions">
+                    <button class="action-btn cancel" onclick="closeExportModal()">Cancel</button>
+                    <button class="action-btn confirm" id="export-go" onclick="runExport()">Export to Excel</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="modal" id="status-modal">
@@ -1026,6 +1066,122 @@
         function escapeHtml(text) { const div = document.createElement('div'); div.textContent = String(text ?? ''); return div.innerHTML; }
 
         /* ══════════════════════════════════════════════
+           EXPORT (PIN protected) – one row per job in the date range
+        ══════════════════════════════════════════════ */
+        const EXPORT_PIN = '9615';
+        window.openExportModal = function() {
+            const from = readStartDate(), to = new Date(from);
+            to.setDate(to.getDate() + (parseInt(document.getElementById('days-count').value, 10) || 14) - 1);
+            document.getElementById('export-from').value = toInputDate(from);
+            document.getElementById('export-to').value   = toInputDate(to);
+            document.getElementById('export-pin').value  = '';
+            setExportMsg('');
+            document.getElementById('export-modal').classList.add('show');
+            setTimeout(() => document.getElementById('export-pin').focus(), 50);
+        };
+        window.closeExportModal = () => document.getElementById('export-modal').classList.remove('show');
+        function setExportMsg(t, err) { const m = document.getElementById('export-msg'); m.textContent = t; m.classList.toggle('err', !!err); }
+
+        let excelJsLoading = null;
+        function loadExcelJs() {
+            if (window.ExcelJS) return Promise.resolve();
+            return excelJsLoading ??= new Promise((ok, fail) => {
+                const sc = document.createElement('script');
+                sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+                sc.onload = ok; sc.onerror = () => { excelJsLoading = null; fail(new Error('Could not load the Excel library. Check your internet connection.')); };
+                document.head.appendChild(sc);
+            });
+        }
+
+        window.runExport = async function() {
+            if (document.getElementById('export-pin').value.trim() !== EXPORT_PIN) { setExportMsg('Incorrect PIN.', true); return; }
+            const fv = document.getElementById('export-from').value, tv = document.getElementById('export-to').value;
+            if (!fv || !tv) { setExportMsg('Pick a from and to date.', true); return; }
+            const [fy, fm, fd] = fv.split('-').map(Number), [ty, tm, td] = tv.split('-').map(Number);
+            const from = new Date(fy, fm - 1, fd), to = new Date(ty, tm - 1, td, 23, 59, 59);
+            if (from > to) { setExportMsg('The from date is after the to date.', true); return; }
+            const jobs = allJobs.filter(j => j.parsedDate >= from && j.parsedDate <= to && !String(j['Job Type'] || j.jobType || '').toUpperCase().includes('SURVEY'))
+                .sort((a, b) => a.parsedDate - b.parsedDate || String(a.jobNumber).localeCompare(String(b.jobNumber)));
+            if (!jobs.length) { setExportMsg('No jobs in that date range.', true); return; }
+
+            const go = document.getElementById('export-go'); go.disabled = true;
+            setExportMsg('Building export for ' + jobs.length + ' jobs…');
+            try {
+                const { collection, getDocs } = window.firebaseModules;
+                const read = name => getDocs(collection(window.db, name)).catch(e => { console.warn('Could not read ' + name, e); return null; });
+                const [, projSnap, dbSnap, scSnap] = await Promise.all([loadExcelJs(), read('pingu-projects'), read('Databricks'), read('Scafolding')]);
+                const byJob = (snap, field) => { const m = {}; snap?.forEach(d => { const r = d.data(); m[normJob(r[field] || r.jobNumber || d.id)] = r; m[normJob(d.id)] ??= r; }); return m; };
+                const projects = byJob(projSnap, 'jobNumber'), dbrMap = byJob(dbSnap, 'jobNumber'), scMap = byJob(scSnap, 'jobNumber');
+
+                const MISSING = { missing: true }, NA = { na: true };
+                const has = v => v != null && String(v).trim() !== '';
+                const val = (...vs) => { for (const v of vs) if (has(v)) return v; return MISSING; };
+                const asDate = v => { if (!has(v)) return MISSING; const d = /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? new Date(String(v).slice(0, 10) + 'T00:00:00') : parseDate(v); return d && !isNaN(d) ? xlDate(d) : String(v); };
+                // Excel stores dates as UTC, so pin each one to midnight UTC (stops BST showing the day before)
+                const xlDate = d => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+                const num = v => (v === MISSING || v === NA || isNaN(Number(v))) ? v : Number(v);
+
+                const rows = jobs.map(job => {
+                    const key = normJob(job.jobNumber), p = projects[key] || {}, dbr = dbrMap[key] || {}, scr = scMap[key] || {};
+                    const ps = p.scaffolding || {}, pj = p.job || {}, c = p.cable || {};
+                    const code = String(job['Job Type'] || job.jobType || '').toUpperCase();
+                    const kind = code.includes('AFTERCARE') ? 'aftercare' : code.includes('BATTERY') ? 'battery' : 'solar';
+                    const solar = kind === 'solar', octo = solar && !!ps.octopusArranged;
+                    const sides = !solar ? NA : octo ? 'Octopus' : val(ps.sides, [1, 2, 3].includes(Number(scr.sides)) ? Number(scr.sides) : null);
+                    const erect = !solar ? NA : octo ? 'Arranged by Octopus' : asDate(has(ps.erectionDate) ? ps.erectionDate : (scr.erectDateISO || scr.erectDate));
+                    return [
+                        job.jobNumber && job.jobNumber !== 'N/A' ? job.jobNumber : MISSING,
+                        xlDate(job.parsedDate),
+                        val(job.originalEngineer !== 'Unassigned' ? job.originalEngineer : ''),
+                        val(job['Postcode']),
+                        num(sides),
+                        erect,
+                        kind === 'aftercare' ? NA : c.ordered ? 'Yes' : MISSING,
+                        val(pj.system, dbr.system),
+                        val(pj.inverter, dbr.inverter),
+                        solar ? num(val(pj.arrays, dbr.arrays)) : NA,
+                        kind === 'battery' ? NA : num(val(pj.panelQuantity, dbr.panels, job['Panel No.'], job['Panel Number']))
+                    ];
+                });
+
+                const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Jobs', { views: [{ state: 'frozen', ySplit: 1 }] });
+                const heads = ['Job Number', 'Date', 'Engineer', 'Postcode', 'Scaffolding Number of Sides', 'Scaffold Erection Date',
+                               'Cable Ordered from Edmundsons', 'Job System', 'Job Inverter', 'Jobs Number of Arrays', 'Number of Panels'];
+                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 22, 11, 14, 18, 16, 26, 26, 12, 12][i] }));
+                const head = ws.getRow(1);
+                head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                head.alignment = { vertical: 'middle', wrapText: true };
+                head.height = 32;
+                head.eachCell(cell => cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } });
+                let missingCount = 0;
+                rows.forEach(r => {
+                    const row = ws.addRow(r.map(v => v === MISSING ? 'Missing' : v === NA ? 'N/A' : v));
+                    r.forEach((v, i) => {
+                        const cell = row.getCell(i + 1);
+                        if (v instanceof Date) cell.numFmt = 'dd/mm/yyyy';
+                        if (v === MISSING) { missingCount++;
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF0000' } };
+                            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }; }
+                        if (v === NA) cell.font = { color: { argb: 'FF9CA3AF' } };
+                        cell.alignment = { horizontal: i === 0 || i === 2 || i >= 7 && i <= 8 ? 'left' : 'center' };
+                    });
+                });
+                ws.autoFilter = { from: 'A1', to: { row: 1, column: heads.length } };
+
+                const buf = await wb.xlsx.writeBuffer();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+                a.download = `Pingu-jobs_${fv}_to_${tv}.xlsx`;
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+                setExportMsg(`Exported ${rows.length} jobs (${missingCount} missing cells).`);
+            } catch (e) {
+                console.error('Export failed', e);
+                setExportMsg('Export failed: ' + e.message, true);
+            } finally { go.disabled = false; }
+        };
+
+        /* ══════════════════════════════════════════════
            INIT
         ══════════════════════════════════════════════ */
         window.initializeTimeline = async function() {
@@ -1070,7 +1226,8 @@
             const read = name => getDocs(collection(window.db, name)).catch(e => { console.warn('Could not read ' + name, e); return null; });
             const [projSnap, sheetSnap] = await Promise.all([read('pingu-projects'), read('Scafolding')]);
             const set = new Set(), has = v => v != null && String(v).trim() !== '';
-            projSnap?.forEach(d => { const p = d.data(); if (has(p.scaffolding?.erectionDate)) set.add(normJob(p.jobNumber || d.id)); });
+            // A job counts as sorted if it has an erect date, or Octopus are arranging the scaffold
+            projSnap?.forEach(d => { const p = d.data(); if (has(p.scaffolding?.erectionDate) || p.scaffolding?.octopusArranged) set.add(normJob(p.jobNumber || d.id)); });
             sheetSnap?.forEach(d => { const r = d.data(); if (has(r.erectDateISO) || has(r.erectDate)) set.add(normJob(r.jobNumber || d.id)); });
             erectSet = set;
         }
@@ -1611,7 +1768,7 @@
                 const s = { ...ps,
                     sides:        blankS(ps.sides)        ? ([1, 2, 3].includes(Number(scr?.sides)) ? Number(scr.sides) : null) : ps.sides,
                     erectionDate: blankS(ps.erectionDate) ? (scr?.erectDateISO || scr?.erectDate || '') : ps.erectionDate };
-                syncErectFlag(job, !blankS(s.erectionDate));
+                syncErectFlag(job, !blankS(s.erectionDate) || !!ps.octopusArranged);
                 // Job details: the project's saved values, falling back to the Databricks paste.
                 const pj = p.job || {}, blank = v => v == null || String(v).trim() === '';
                 const j = { ...pj,
@@ -1627,7 +1784,8 @@
                 body.innerHTML = erectAlertHtml(job) + noProject + `
                     <div class="project-sections">
                         <div class="project-sec">
-                            ${kind !== 'solar' ? '<div class="project-sec-title">Scaffolding <span class="project-flag">Not needed</span></div>' : `
+                            ${kind !== 'solar' ? '<div class="project-sec-title">Scaffolding <span class="project-flag">Not needed</span></div>'
+                              : ps.octopusArranged ? '<div class="project-sec-title">Scaffolding <span class="project-flag on">Arranged by Octopus</span></div><div class="project-kv">No scaffold details needed.</div>' : `
                             <div class="project-sec-title">Scaffolding ${flag(s.requested, 'Requested', 'Not requested')}</div>
                             <div class="project-kv"><b>Sides:</b> ${s.sides ? escapeHtml(s.sides) : '—'}</div>
                             <div class="project-kv"><b>Erection:</b> ${escapeHtml(projDate(s.erectionDate) || '—')}</div>
