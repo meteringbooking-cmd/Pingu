@@ -631,7 +631,8 @@
                 job.jobNumber && isAllowedInstallType(job) &&
                 job.status === 'complete' && job.completionDate &&
                 job.completionDate >= start && job.completionDate <= end
-            ).sort((a, b) => a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
+            // Earliest completed first (completedTimestamp, or the job date if there isn't one); same time → job number
+            ).sort((a, b) => (a.completionDate - b.completionDate) || a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
         }
 
         // Every job that can appear on the PPT for this range (audited or not) — the exact
