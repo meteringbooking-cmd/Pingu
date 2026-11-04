@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script>
+/* ═══════════════════════════════════════════════════════════════
+   Daily login guard — loaded first on every page (except the login page).
+   A login is valid until midnight (local time) on the day it was made.
+   Opening or refreshing any page on a new day sends you to the login page,
+   then back to the page you were on.
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+    var LOGIN_PAGE   = 'adminlogin!&!.html';
+    var SESSION_KEY  = 'adminSession';
+    var REDIRECT_KEY = 'loginRedirect';
+
+    function expiry(loginTime) {           // midnight at the end of the login day
+        var d = new Date(loginTime); d.setHours(24, 0, 0, 0); return d.getTime();
+    }
+    function isValid() {
+        try {
+            var s = JSON.parse(localStorage.getItem(SESSION_KEY));
+            return !!(s && s.loginTime && Date.now() < expiry(s.loginTime));
+        } catch (e) { return false; }
+    }
+    function currentPage() {
+        var p = location.pathname.split('/').pop() || 'index.html';
+        return p + location.search + location.hash;
+    }
+    var leaving = false;
+    function sendToLogin() {
+        if (leaving) return; leaving = true;
+        try {
+            localStorage.removeItem(SESSION_KEY);
+            sessionStorage.setItem(REDIRECT_KEY, currentPage());
+        } catch (e) {}
+        document.documentElement.style.visibility = 'hidden';
+        location.replace(LOGIN_PAGE);
+    }
+
+    if (!isValid()) { document.documentElement.style.visibility = 'hidden'; sendToLogin(); return; }
+
+    window.SolarSessionExpiry = expiry;
+
+    // Re-check: at midnight while the page is open, when the tab comes back into view,
+    // when the page is restored with the Back button, and when another tab signs out.
+    setInterval(function () { if (!isValid()) sendToLogin(); }, 30000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && !isValid()) sendToLogin(); });
+    window.addEventListener('pageshow', function () { if (!isValid()) sendToLogin(); });
+    window.addEventListener('storage', function (e) { if (e.key === SESSION_KEY && !isValid()) sendToLogin(); });
+})();
+
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Summary | Pingu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF6B35; --primary-dark: #E55A2B; --accent: #00D9FF;
+            --success: #4ECCA3; --error: #FF6B6B; --warning: #FFC857;
+            --bg: #161628; --surface: #1F1F35; --surface-2: #252541; --surface-3: #2F2F4A;
+            --line: rgba(255,255,255,0.07); --line-2: rgba(255,255,255,0.12);
+            --text: #EAEAEA; --text-dim: #9A9AB0; --text-strong: #F4F4F8; --text-soft: #C8C8D6;
+            --g-job: #9A9AB0; --g-scaff: #FFC857; --g-cable: #00D9FF; --g-jobinfo: #B794F6; --g-cost: #4ECCA3;
+            --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: var(--font); font-size: 13px; line-height: 1.45; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+        button, input, select { font-family: inherit; }
+        .ico { width: 16px; height: 16px; flex: 0 0 auto; }
+
+        .appbar { position: sticky; top: 0; z-index: 60; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+            height: 64px; padding: 0 24px; background: rgba(22,22,40,0.94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+        .logo { display: inline-flex; align-items: center; text-decoration: none; }
+        .wordmark { font-weight: 800; font-size: 28px; letter-spacing: -0.045em; line-height: 1; color: var(--text-strong); padding-top: 6px; }
+        .i-stem { position: relative; display: inline-block; }
+        .i-paw { position: absolute; left: 50%; top: -0.17em; transform: translateX(-50%) rotate(-10deg); width: 0.5em; height: 0.5em; fill: var(--primary); }
+        .back-btn { display: inline-flex; align-items: center; gap: 6px; color: var(--text-soft); text-decoration: none; font-size: 13px; font-weight: 500;
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line-2); }
+        .back-btn:hover { background: var(--surface-2); color: var(--text-strong); }
+
+        .container { padding: 20px 20px 120px; }
+        .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+        h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--text-strong); }
+        .subtitle { color: var(--text-dim); font-size: 13px; margin-top: 2px; }
+        .toolbar { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+        .control-group { display: flex; flex-direction: column; gap: 4px; }
+        .control-label { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
+        .control-input { height: 38px; background: var(--surface); border: 1px solid var(--line-2); color: var(--text-strong); padding: 0 12px; border-radius: 8px; font-size: 13.5px; }
+        .control-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,107,53,0.22); }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+        .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; height: 38px; }
+        .seg button { background: var(--surface); color: var(--text-soft); border: 0; padding: 0 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+        .seg button + button { border-left: 1px solid var(--line-2); }
+        .seg button:hover { background: var(--surface-2); color: var(--text-strong); }
+        .btn { height: 38px; padding: 0 16px; border-radius: 8px; cursor: pointer; font-size: 13.5px; font-weight: 600; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-primary:disabled { opacity: .45; cursor: default; }
+        .check-filter { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); color: var(--text-soft); cursor: pointer; user-select: none; }
+        .check-filter input { accent-color: var(--primary); width: 15px; height: 15px; }
+
+        .stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+        .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 120px; }
+        .stat .l { color: var(--text-dim); font-size: 11.5px; font-weight: 500; }
+        .stat .v { font-size: 20px; font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+        .stat .v.neg { color: var(--error); } .stat .v.pos { color: var(--success); }
+        .stat .v.warn { color: var(--warning); }
+
+        /* ── Grid ── */
+        .grid-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: auto; max-height: calc(100vh - 250px); }
+        table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1700px; }
+        th, td { border-bottom: 1px solid var(--line); padding: 6px 5px; vertical-align: middle; text-align: left; white-space: nowrap; }
+        thead th { position: sticky; background: #22223A; z-index: 3; color: var(--text-dim); font-size: 11px; font-weight: 600; }
+        thead tr.groups th { top: 0; height: 30px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-strong); border-bottom: 2px solid var(--gc); }
+        thead tr.cols th { top: 30px; }
+        th.g-start, td.g-start { border-left: 1px solid var(--line-2); }
+        .sticky-col { position: sticky; left: 0; z-index: 2; background: var(--surface); }
+        thead .sticky-col { z-index: 5; background: #22223A; }
+        tbody tr:hover td { background: #24243C; }
+        tbody tr.dirty td.sticky-col { box-shadow: inset 3px 0 0 var(--warning); }
+        tbody tr.saved td.sticky-col { box-shadow: inset 3px 0 0 var(--success); }
+        tbody tr.err td.sticky-col { box-shadow: inset 3px 0 0 var(--error); }
+        tbody tr.week-break td { border-top: 2px solid var(--line-2); }
+
+        .jn { font-family: var(--mono); font-weight: 700; color: var(--text-strong); text-decoration: none; font-size: 12.5px; }
+        .jn:hover { color: var(--primary); text-decoration: underline; }
+        .sub { color: var(--text-dim); font-size: 11px; }
+        .type { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--surface-3); color: var(--text-soft); }
+        .type.solar { background: rgba(255,200,87,.14); color: #FFD98A; }
+        .type.battery { background: rgba(0,217,255,.12); color: #7FE9FF; }
+        .type.aftercare { background: rgba(183,148,246,.15); color: #CDB6FA; }
+        .type.cancelled { text-decoration: line-through; opacity: .6; }
+        .status-chip { font-size: 10.5px; color: var(--text-dim); display: block; }
+
+        .in { height: 30px; width: 100%; background: var(--bg); border: 1px solid var(--line-2); border-radius: 6px; color: var(--text-strong); padding: 0 7px; font-size: 12.5px; }
+        .in:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(255,107,53,0.25); }
+        .in:disabled { opacity: .35; }
+        .in.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .in.need { border-color: rgba(255,107,107,.75); background: rgba(255,107,107,.08); }
+        .in.from-sheet { border-color: rgba(0,217,255,.7); background: rgba(0,217,255,.08); }
+        .in.auto { color: var(--text-soft); font-style: italic; }
+        select.in { padding: 0 4px; }
+        .w-date { width: 122px; } .w-xs { width: 50px; } .w-s { width: 60px; } .w-m { width: 78px; } .w-l { width: 108px; } .w-xl { width: 128px; }
+        .tick { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg); cursor: pointer; }
+        .tick input { width: 16px; height: 16px; accent-color: var(--success); cursor: pointer; }
+        .tick.need { border-color: rgba(255,107,107,.75); background: rgba(255,107,107,.08); }
+        .tick.late { border-color: var(--error); background: rgba(255,107,107,.22); }
+        .tick.octo input { accent-color: var(--primary); }
+        .na { color: var(--text-dim); font-size: 11.5px; font-style: italic; }
+        .money { font-variant-numeric: tabular-nums; text-align: right; font-weight: 600; color: var(--text-soft); }
+        .money.missing { color: var(--error); font-weight: 700; }
+        .money.pos { color: var(--success); } .money.neg { color: var(--error); }
+        .money .pct { display: block; font-size: 10.5px; color: var(--text-dim); font-weight: 500; }
+        .prov { color: var(--warning); }
+        td.c { text-align: center; }
+
+        .empty { padding: 50px 20px; text-align: center; color: var(--text-dim); }
+        .spinner { width: 22px; height: 22px; border: 3px solid var(--line-2); border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--text-dim); font-size: 11.5px; margin: 10px 2px 0; }
+        .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; border: 1px solid; }
+
+        .savebar { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(140%); z-index: 70; transition: transform .2s ease;
+            display: flex; align-items: center; gap: 14px; padding: 10px 12px 10px 18px; border-radius: 12px; background: #2A2A46; border: 1px solid var(--line-2); box-shadow: 0 20px 50px -10px rgba(0,0,0,.7); }
+        .savebar.show { transform: translateX(-50%) translateY(0); }
+        .savebar .msg { color: var(--text-strong); font-weight: 600; }
+
+        .toast { position: fixed; top: 76px; right: 24px; z-index: 90; background: var(--surface-2); border: 1px solid var(--success); color: var(--text-strong);
+            padding: 12px 16px; border-radius: 10px; opacity: 0; transform: translateY(-8px); transition: all .2s ease; pointer-events: none; max-width: 420px; }
+        .toast.show { opacity: 1; transform: none; }
+        .toast.error { border-color: var(--error); }
+
+        /* ── PIN gate ── */
+        .gate { position: fixed; inset: 0; z-index: 100; background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        .gate.hide { display: none; }
+        .gate-card { width: 100%; max-width: 360px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 14px; padding: 26px; text-align: center; }
+        .gate-card h2 { color: var(--text-strong); font-size: 18px; margin-bottom: 4px; }
+        .gate-card p { color: var(--text-dim); margin-bottom: 16px; }
+        .gate-card input { width: 100%; text-align: center; letter-spacing: .4em; font-size: 20px; height: 46px; margin-bottom: 10px; }
+        .gate-card .btn { width: 100%; justify-content: center; }
+        .gate-err { color: var(--error); min-height: 20px; margin-bottom: 6px; }
+        .locked .appbar, .locked .container { filter: blur(6px); pointer-events: none; }
+    </style>
+</head>
+<body class="locked">
+    <div class="gate" id="gate">
+        <form class="gate-card" onsubmit="event.preventDefault(); unlock();">
+            <h2>Weekly summary</h2>
+            <p>Enter the PIN to open this page.</p>
+            <input type="password" id="gate-pin" class="control-input" inputmode="numeric" maxlength="8" autocomplete="off" autofocus>
+            <div class="gate-err" id="gate-err"></div>
+            <button class="btn btn-primary" type="submit">Open</button>
+        </form>
+    </div>
+
+    <header class="appbar">
+        <a href="index.html" class="logo" aria-label="Pingu home">
+            <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
+        </a>
+        <a href="admin.html" class="back-btn">
+            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            Back to Admin
+        </a>
+    </header>
+
+    <div class="container">
+        <div class="page-head">
+            <div>
+                <h1>Weekly summary</h1>
+                <div class="subtitle" id="week-label">Pick a week to load its jobs.</div>
+            </div>
+            <div class="toolbar">
+                <div class="seg" role="group" aria-label="Move by week">
+                    <button type="button" onclick="shiftWeek(-1)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>Prev</button>
+                    <button type="button" onclick="thisWeek()">This week</button>
+                    <button type="button" onclick="shiftWeek(1)">Next<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+                </div>
+                <div class="control-group">
+                    <label class="control-label" for="wc">Week commencing</label>
+                    <input type="date" id="wc" class="control-input" onchange="loadWeek()">
+                </div>
+                <label class="check-filter"><input type="checkbox" id="only-missing" onchange="applyFilter()">Only jobs with gaps</label>
+            </div>
+        </div>
+
+        <div class="stats" id="stats"></div>
+
+        <div class="grid-wrap" id="grid-wrap">
+            <div class="empty"><span class="spinner"></span></div>
+        </div>
+        <div class="legend">
+            <span><i style="border-color:rgba(255,107,107,.75);background:rgba(255,107,107,.08)"></i>Needs filling in</span>
+            <span><i style="border-color:rgba(0,217,255,.7);background:rgba(0,217,255,.08)"></i>Filled in from the Google Sheet pastes, not saved yet</span>
+            <span><i style="border-color:var(--error);background:rgba(255,107,107,.22)"></i>Past the order-by date (scaffold 4 weeks, cable 3 days before install)</span>
+            <span><i style="border-color:var(--warning);background:var(--warning)"></i>Row has unsaved changes</span>
+        </div>
+    </div>
+
+    <div class="savebar" id="savebar">
+        <span class="msg" id="save-msg">0 jobs changed</span>
+        <button class="btn btn-primary" id="save-btn" onclick="saveAll()">Save changes</button>
+    </div>
+    <div class="toast" id="toast"></div>
+
+<script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, getDocs, doc, getDoc, setDoc }
+        from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+    const cfg = {
+        apiKey:"AIzaSyAc_yJQ_rkzuOBh-Yxg0Q4eooXtB-tQjm0",
+        authDomain:"pingu-solar.firebaseapp.com",
+        projectId:"pingu-solar",
+        storageBucket:"pingu-solar.firebasestorage.app",
+        messagingSenderId:"232764952866",
+        appId:"1:232764952866:web:5923b7f419de6355d6157b",
+        measurementId:"G-PFH059DZ64"
+    };
+    const PROJECTS = 'pingu-projects', DATABRICKS = 'Databricks', SCAFFOLD_SHEET = 'Scafolding', JOBS = 'Solar-jobs';
+    const PAGE_PIN = '9615', PIN_KEY = 'pinguSummaryUnlocked';
+    let db;
+    try { db = getFirestore(initializeApp(cfg)); } catch (e) { console.error(e); }
+
+    // ── Job types & rates: kept in step with Pingu-Project.html ─────────
+    const JOB_TYPES = {
+        SOLAR_PV_INSTALL_V2:      { label: 'Solar Install', kind: 'solar' },
+        PARTNER_SOLAR_PV_INSTALL: { label: 'Solar Install', kind: 'solar' },
+        SOLAR_PV_BATTERY_INSTALL: { label: 'Battery Only',  kind: 'battery' },
+        SOLAR_PV_AFTERCARE:       { label: 'Aftercare',     kind: 'aftercare' }
+    };
+    function jobTypeInfo(raw) {
+        const code = String(raw || '').trim().toUpperCase();
+        if (JOB_TYPES[code]) return { code, ...JOB_TYPES[code] };
+        if (code.includes('AFTERCARE')) return { code, label: 'Aftercare', kind: 'aftercare' };
+        if (code.includes('BATTERY'))   return { code, label: 'Battery Only', kind: 'battery' };
+        if (code.includes('SOLAR') || code.includes('INSTALL')) return { code, label: 'Solar Install', kind: 'solar' };
+        return { code, label: raw || 'Unknown', kind: 'unknown' };
+    }
+    const RATES = {
+        pay: {
+            solar:     [{ max: 16, amt: 1400 }, { max: 24, amt: 2200 }],
+            battery:   600,
+            aftercarePerHour: 100,
+            pvfBySides: { 1: 595, 2: 795, 3: 1350 }
+        },
+        receive: {
+            solar:     [{ max: 10, amt: 2150 }, { max: 16, amt: 2350 }, { max: 24, amt: 2500 }],
+            battery:   1000,
+            aftercare: 600,
+            consumables: { solar: 1000, battery: 400 },
+            scaffold:  { 1: 700, 2: 1000, 3: 1350 }
+        }
+    };
+    const band = (bands, n) => bands.find(b => n <= b.max) || null;
+    const gbp = n => '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 });
+    const numOrNull = v => { const t = String(v ?? '').trim(); if (t === '') return null; const n = Number(t); return isNaN(n) ? null : n; };
+
+    // Same sums as the Costs tab on Pingu-Project.html
+    function calcFinancials(kind, panels, hours, sides, edmundson, pvf, octopus = false) {
+        const receive = [], pay = [];
+        if (kind === 'solar') {
+            const ok = panels != null && panels <= 24;
+            receive.push({ amt: ok ? band(RATES.receive.solar, panels).amt : null });
+            pay.push({ amt: ok ? band(RATES.pay.solar, panels).amt : null });
+            receive.push({ amt: RATES.receive.consumables.solar });
+            receive.push({ amt: octopus ? 0 : sides ? RATES.receive.scaffold[sides] : null });
+            pay.push({ amt: edmundson, supplier: true });
+            pay.push({ amt: octopus ? 0 : pvf, supplier: true });
+        } else if (kind === 'battery') {
+            receive.push({ amt: RATES.receive.battery }, { amt: RATES.receive.consumables.battery });
+            pay.push({ amt: RATES.pay.battery }, { amt: edmundson, supplier: true });
+        } else if (kind === 'aftercare') {
+            receive.push({ amt: RATES.receive.aftercare });
+            pay.push({ amt: hours == null ? null : hours * RATES.pay.aftercarePerHour });
+        }
+        const sum = arr => arr.reduce((t, l) => t + (l.amt || 0), 0);
+        const totalReceive = sum(receive), totalPay = sum(pay), margin = totalReceive - totalPay, all = receive.concat(pay);
+        const calculable = kind !== 'unknown' && !all.some(l => l.amt == null && !l.supplier);
+        const complete = calculable && !all.some(l => l.amt == null);
+        return { totalReceive, totalPay, margin: calculable ? margin : null,
+                 marginPct: calculable && totalReceive ? margin / totalReceive * 100 : null,
+                 complete, provisional: calculable && !complete };
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const pick = (obj, keys) => { for (const k of keys) { const v = obj?.[k]; if (v !== undefined && v !== null && String(v).trim() !== '') return v; } return ''; };
+    const blank = v => v === null || v === undefined || String(v).trim() === '';
+    const projectId = jn => String(jn).trim().replace(/\//g, '-');
+    function parseDate(v) {
+        if (!v) return null;
+        if (typeof v.toDate === 'function') v = v.toDate();
+        if (typeof v === 'string' && v.includes('/')) {
+            const p = v.split('/');
+            if (p.length === 3) { const d = new Date(+p[2], +p[1] - 1, +p[0]); if (!isNaN(d)) return d; }
+        }
+        const d = new Date(v);
+        return isNaN(d) ? null : d;
+    }
+    const toISO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); x.setHours(0, 0, 0, 0); return x; };
+    const mondayOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
+    const fmtDay = d => d.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' });
+    function adminName() { try { return (JSON.parse(localStorage.getItem('adminSession') || '{}').name) || ''; } catch { return ''; } }
+    function toast(msg, isError) {
+        const t = $('toast'); t.textContent = msg; t.className = 'toast show' + (isError ? ' error' : '');
+        clearTimeout(t._h); t._h = setTimeout(() => t.className = 'toast', 4000);
+    }
+    function profileFromJob(j) {
+        const address = [pick(j, ['Address', '1st line of address', 'address']), pick(j, ['2nd line of address'])].filter(Boolean).join(', ');
+        return {
+            jobType:   pick(j, ['Job Type', 'jobType']),
+            engineer:  String(pick(j, ['Lead Engineer', 'lead engineer', 'Lead', 'Engineer', 'engineer'])).replace(/^["']|["']$/g, '').trim(),
+            installDay: pick(j, ['Install Date', 'Booked Date', 'installedDate', 'bookingDate']),
+            jobLength: pick(j, ['Job Length', 'Days', 'Job Length (days)', 'jobLength', 'Duration']),
+            name:      pick(j, ['Name', 'Customer Name', 'customerName']),
+            address,
+            postcode:  pick(j, ['Postcode', 'postcode']),
+            phone:     pick(j, ['Phone Number', 'Phone', 'Contact Number', 'Mobile']),
+            email:     pick(j, ['Email Address', 'Email', 'Customer Email'])
+        };
+    }
+
+    // ── PIN gate (remembered for this browser tab) ──────────────────────
+    window.unlock = function () {
+        if ($('gate-pin').value.trim() !== PAGE_PIN) { $('gate-err').textContent = 'Incorrect PIN.'; $('gate-pin').select(); return; }
+        try { sessionStorage.setItem(PIN_KEY, '1'); } catch {}
+        openPage();
+    };
+    function openPage() {
+        $('gate').classList.add('hide');
+        document.body.classList.remove('locked');
+        if (!$('wc').value) { $('wc').value = toISO(mondayOf(new Date())); loadWeek(); }
+    }
+
+    // ── State ───────────────────────────────────────────────────────────
+    let rows = [];          // one per job in the week
+    let allJobsCache = null;
+    let loadedWeek = '';
+
+    const dirtyCount = () => rows.filter(r => r.dirty).length;
+    function confirmDiscard() { return !dirtyCount() || confirm(`You have unsaved changes on ${dirtyCount()} job(s). Discard them?`); }
+    window.addEventListener('beforeunload', e => { if (dirtyCount()) { e.preventDefault(); e.returnValue = ''; } });
+
+    window.shiftWeek = n => {
+        const cur = $('wc').value ? new Date($('wc').value + 'T00:00:00') : new Date();
+        if (!confirmDiscard()) return;
+        $('wc').value = toISO(addDays(mondayOf(cur), 7 * n)); loadWeek(true);
+    };
+    window.thisWeek = () => { if (!confirmDiscard()) return; $('wc').value = toISO(mondayOf(new Date())); loadWeek(true); };
+
+    // ── Load ────────────────────────────────────────────────────────────
+    window.loadWeek = async function (confirmed) {
+        if (!$('wc').value) return;
+        if (!confirmed && $('wc').value !== loadedWeek && !confirmDiscard()) { $('wc').value = loadedWeek; return; }
+        const start = mondayOf(new Date($('wc').value + 'T00:00:00')), end = addDays(start, 7);
+        $('wc').value = toISO(start); loadedWeek = $('wc').value;
+        $('week-label').textContent = `Jobs installing ${fmtDay(start)} – ${fmtDay(addDays(start, 6))} ${addDays(start, 6).getFullYear()}`;
+        $('grid-wrap').innerHTML = '<div class="empty"><span class="spinner"></span> Loading jobs…</div>';
+        $('stats').innerHTML = '';
+        rows = []; updateSavebar();
+        try {
+            if (!allJobsCache) allJobsCache = (await getDocs(collection(db, JOBS))).docs.map(d => ({ id: d.id, ...d.data() }));
+            // Jobs whose first install day is in the week. Same job number uploaded twice: newest upload wins.
+            const byJn = {};
+            allJobsCache.forEach(j => {
+                const jn = String(j['Job Number'] ?? '').trim();
+                if (!jn) return;
+                const prof = profileFromJob(j), d = parseDate(prof.installDay);
+                if (!d || d < start || d >= end) return;
+                if (String(prof.jobType).toUpperCase().includes('SURVEY')) return;
+                if (!byJn[jn] || String(j.uploadDate || '') > String(byJn[jn].job.uploadDate || '')) byJn[jn] = { job: j, prof, date: d };
+            });
+            const list = Object.entries(byJn);
+            const read = (col, id) => getDoc(doc(db, col, id)).then(s => s.exists() ? s.data() : null).catch(e => { console.warn(col, id, e); return null; });
+            const extra = await Promise.all(list.map(([jn]) => Promise.all([read(PROJECTS, projectId(jn)), read(DATABRICKS, projectId(jn)), read(SCAFFOLD_SHEET, projectId(jn))])));
+            if (loadedWeek !== toISO(start)) return;   // another week was picked meanwhile
+            rows = list.map(([jn, x], i) => makeRow(jn, x, ...extra[i]));
+            rows.sort((a, b) => a.date - b.date || a.prof.engineer.localeCompare(b.prof.engineer) || a.jn.localeCompare(b.jn));
+            render();
+        } catch (e) {
+            console.error(e);
+            $('grid-wrap').innerHTML = `<div class="empty">Couldn't load jobs: ${esc(e.message)}</div>`;
+        }
+    };
+
+    function makeRow(jn, x, project, dbr, scr) {
+        const p = project || {}, s = p.scaffolding || {}, c = p.cable || {}, j = p.job || {}, co = p.costs || {};
+        const t = jobTypeInfo(x.prof.jobType);
+        const r = {
+            jn, job: x.job, prof: x.prof, date: x.date, kind: t.kind, label: t.label, prev: project, dirty: false, fromSheet: new Set(),
+            status: String(x.job['Status Update'] || x.job.status || 'Scheduled'),
+            v: {
+                octo: !!s.octopusArranged, sides: s.sides ? String(s.sides) : '', requested: !!s.requested,
+                erect: s.erectionDate || '', dismantle: s.dismantleDate || '',
+                cableOrdered: !!c.ordered, cableNotes: c.notes || '',
+                system: j.system || '', inverter: j.inverter || '', arrays: j.arrays ?? '', panels: j.panelQuantity ?? '', hours: j.aftercareHours ?? '',
+                edm: co.edmundson ?? '', pvf: co.pvf ?? ''
+            },
+            pvfAuto: co.pvf == null || co.pvfSource === 'sides' || co.pvfSource === 'octopus'
+        };
+        // Blank fields are filled from the Google Sheet pastes, as on the project page
+        const fill = (field, val) => { if (val == null || blank(val) || !blank(r.v[field])) return; r.v[field] = String(val); r.fromSheet.add(field); };
+        if (dbr) { fill('panels', dbr.panels); fill('system', dbr.system); fill('inverter', dbr.inverter); fill('arrays', dbr.arrays); }
+        if (scr) {
+            if (scaffApplies(r) && !r.v.octo) {
+                fill('sides', [1, 2, 3].includes(Number(scr.sides)) ? String(Number(scr.sides)) : null);
+                fill('erect', /^\d{4}-\d{2}-\d{2}$/.test(String(scr.erectDateISO || '')) ? scr.erectDateISO : null);
+            }
+        }
+        if (r.kind === 'battery' || r.kind === 'aftercare') ['panels', 'arrays'].forEach(f => { if (r.fromSheet.delete(f)) r.v[f] = j[f === 'panels' ? 'panelQuantity' : 'arrays'] ?? ''; });
+        if (r.pvfAuto && scaffApplies(r) && !r.v.octo) r.v.pvf = RATES.pay.pvfBySides[r.v.sides] ?? '';
+        if (r.fromSheet.size) r.dirty = true;
+        const install = new Date(x.date); install.setHours(0, 0, 0, 0);
+        r.deadlines = { scaffold: addDays(install, -28), cable: addDays(install, -3) };
+        return r;
+    }
+    const scaffApplies = r => r.kind === 'solar' || r.kind === 'unknown';
+    const cableApplies = r => r.kind !== 'aftercare';
+
+    // ── Render ──────────────────────────────────────────────────────────
+    const TICK = (f, r, extra = '') => `<label class="tick ${extra}" data-tick="${f}"><input type="checkbox" data-f="${f}" ${r.v[f] ? 'checked' : ''}></label>`;
+    const INPUT = (f, r, cls, type = 'text', attrs = '') => `<input class="in ${cls}${r.fromSheet.has(f) ? ' from-sheet' : ''}" type="${type}" data-f="${f}" value="${esc(r.v[f])}" ${attrs}>`;
+    const NA = txt => `<span class="na">${txt}</span>`;
+
+    function rowHtml(r, i) {
+        const sc = scaffApplies(r), cab = cableApplies(r), cancelled = /cancel/i.test(r.status);
+        const sidesOpts = ['', '1', '2', '3'].map(o => `<option value="${o}" ${String(r.v.sides) === o ? 'selected' : ''}>${o || '–'}</option>`).join('');
+        return `<tr data-i="${i}">
+            <td class="sticky-col"><a class="jn" href="Pingu-Project.html?job=${encodeURIComponent(r.jn)}" target="_blank" title="Open the project">#${esc(r.jn)}</a>
+                <span class="status-chip">${esc(r.status)}</span></td>
+            <td>${esc(fmtDay(r.date))}</td>
+            <td><span class="type ${r.kind}${cancelled ? ' cancelled' : ''}" title="${esc(r.prof.jobType)}">${esc(r.label)}</span></td>
+            <td>${esc(r.prof.engineer || '—')}<span class="sub" style="display:block">${esc(r.prof.postcode || '')}</span></td>
+
+            ${sc ? `<td class="g-start c">${TICK('octo', r, 'octo')}</td>
+            <td><select class="in w-xs" data-f="sides">${sidesOpts}</select></td>
+            <td class="c">${TICK('requested', r)}</td>
+            <td>${INPUT('erect', r, 'w-date', 'date')}</td>
+            <td>${INPUT('dismantle', r, 'w-date', 'date')}</td>`
+            : `<td class="g-start" colspan="5">${NA('Scaffolding not needed')}</td>`}
+
+            ${cab ? `<td class="g-start c">${TICK('cableOrdered', r)}</td>
+            <td>${INPUT('cableNotes', r, 'w-xl', 'text', 'placeholder="Notes"')}</td>`
+            : `<td class="g-start" colspan="2">${NA('Cable not needed')}</td>`}
+
+            <td class="g-start">${INPUT('system', r, 'w-l')}</td>
+            <td>${INPUT('inverter', r, 'w-l')}</td>
+            <td>${r.kind === 'solar' || r.kind === 'unknown' ? INPUT('arrays', r, 'w-xs num', 'number', 'min="0" step="1"') : NA('–')}</td>
+            <td>${r.kind === 'aftercare' ? INPUT('hours', r, 'w-s num', 'number', 'min="0" step="0.5" placeholder="hrs" title="Aftercare hours"')
+                 : r.kind === 'battery' ? NA('–') : INPUT('panels', r, 'w-s num', 'number', 'min="0" step="1"')}</td>
+
+            <td class="g-start">${cab ? INPUT('edm', r, 'w-m num', 'number', 'min="0" step="0.01" placeholder="£"') : NA('–')}</td>
+            <td>${sc ? INPUT('pvf', r, 'w-m num', 'number', 'min="0" step="0.01" placeholder="£"') : NA('–')}</td>
+            <td class="money" data-out="pay"></td>
+            <td class="money" data-out="recv"></td>
+            <td class="money" data-out="margin"></td>
+        </tr>`;
+    }
+
+    function render() {
+        if (!rows.length) {
+            $('grid-wrap').innerHTML = '<div class="empty">No jobs installing this week.</div>';
+            renderStats(); return;
+        }
+        $('grid-wrap').innerHTML = `<table>
+            <thead>
+                <tr class="groups">
+                    <th class="sticky-col" style="--gc:var(--g-job)" colspan="1">Job</th>
+                    <th colspan="3" style="--gc:var(--g-job)"></th>
+                    <th colspan="5" class="g-start" style="--gc:var(--g-scaff)">Scaffolding</th>
+                    <th colspan="2" class="g-start" style="--gc:var(--g-cable)">Cable (Edmundson)</th>
+                    <th colspan="4" class="g-start" style="--gc:var(--g-jobinfo)">Job info</th>
+                    <th colspan="5" class="g-start" style="--gc:var(--g-cost)">Costs</th>
+                </tr>
+                <tr class="cols">
+                    <th class="sticky-col">Job number</th><th>Install date</th><th>Job type</th><th>Engineer</th>
+                    <th class="g-start" title="Scaffolding arranged by Octopus">Octopus</th><th>Sides</th><th>Requested</th><th>Erect date</th><th>Dismantle date</th>
+                    <th class="g-start">Ordered</th><th>Notes</th>
+                    <th class="g-start">System</th><th>Inverter</th><th>Arrays</th><th>Panels / hrs</th>
+                    <th class="g-start">Edmundson £</th><th>PVF £</th><th style="text-align:right">We pay</th><th style="text-align:right">We receive</th><th style="text-align:right">Margin</th>
+                </tr>
+            </thead>
+            <tbody id="tbody">${rows.map(rowHtml).join('')}</tbody>
+        </table>`;
+        const tb = $('tbody');
+        tb.addEventListener('input', onEdit);
+        tb.addEventListener('change', onEdit);
+        rows.forEach((r, i) => refreshRow(i));
+        applyFilter();
+        renderStats();
+    }
+
+    function onEdit(e) {
+        const el = e.target, f = el.dataset.f, tr = el.closest('tr');
+        if (!f || !tr) return;
+        const i = +tr.dataset.i, r = rows[i];
+        const val = el.type === 'checkbox' ? el.checked : el.value;
+        const refillPvf = f === 'pvf' && e.type === 'change' && blank(val);   // PVF cleared and left: back to the standard rate
+        if (r.v[f] === val && !refillPvf) return;
+        r.v[f] = val;
+        r.fromSheet.delete(f); el.classList.remove('from-sheet');
+        if (f === 'pvf') r.pvfAuto = String(val).trim() === '';         // typing a PVF figure overrides the standard rate; clearing it goes back to the rate
+        if (f === 'sides' || f === 'octo' || refillPvf) applyPvfRate(r, tr);
+        r.dirty = true; tr.classList.remove('saved', 'err');
+        refreshRow(i);
+        renderStats();
+    }
+
+    function applyPvfRate(r, tr) {
+        if (!scaffApplies(r) || r.v.octo || !r.pvfAuto) return;
+        r.v.pvf = RATES.pay.pvfBySides[r.v.sides] ?? '';
+        const el = tr.querySelector('[data-f="pvf"]'); if (el) el.value = r.v.pvf;
+    }
+
+    // Per-row: work out what's missing, disabled states and the money columns
+    function gaps(r) {
+        const g = {}, sc = scaffApplies(r) && !r.v.octo, today = new Date(); today.setHours(0, 0, 0, 0);
+        if (sc) { if (!r.v.sides) g.sides = 1; if (!r.v.erect) g.erect = 1; if (!r.v.requested) g.requested = today > r.deadlines.scaffold ? 'late' : 1; if (blank(r.v.pvf)) g.pvf = 1; }
+        if (cableApplies(r)) { if (!r.v.cableOrdered) g.cableOrdered = today > r.deadlines.cable ? 'late' : 1; if (blank(r.v.edm)) g.edm = 1; }
+        if (r.kind !== 'aftercare') { if (blank(r.v.system)) g.system = 1; if (blank(r.v.inverter)) g.inverter = 1; }
+        if (r.kind === 'solar') { if (blank(r.v.panels)) g.panels = 1; if (blank(r.v.arrays)) g.arrays = 1; }
+        if (r.kind === 'aftercare' && blank(r.v.hours)) g.hours = 1;
+        return g;
+    }
+    function finOf(r) {
+        return calcFinancials(r.kind, numOrNull(r.v.panels), numOrNull(r.v.hours), numOrNull(r.v.sides), numOrNull(r.v.edm), numOrNull(r.v.pvf), scaffApplies(r) && r.v.octo);
+    }
+
+    function refreshRow(i) {
+        const r = rows[i], tr = document.querySelector(`#tbody tr[data-i="${i}"]`);
+        if (!tr) return;
+        const octo = scaffApplies(r) && r.v.octo, g = gaps(r);
+        ['sides', 'requested', 'erect', 'dismantle', 'pvf'].forEach(f => { const el = tr.querySelector(`[data-f="${f}"]`); if (el) el.disabled = octo; });
+        if (octo) { const p = tr.querySelector('[data-f="pvf"]'); if (p) p.value = 0; }
+        else if (scaffApplies(r)) { const p = tr.querySelector('[data-f="pvf"]'); if (p && String(p.value) !== String(r.v.pvf)) p.value = r.v.pvf; }
+        tr.querySelectorAll('[data-f]').forEach(el => {
+            const f = el.dataset.f, holder = el.type === 'checkbox' ? el.closest('.tick') : el;
+            holder.classList.toggle('need', g[f] === 1);
+            holder.classList.toggle('late', g[f] === 'late');
+        });
+        const pvfEl = tr.querySelector('[data-f="pvf"]');
+        if (pvfEl) { pvfEl.classList.toggle('auto', r.pvfAuto && !octo && !blank(r.v.pvf));
+            pvfEl.title = octo ? 'Arranged by Octopus: £0' : r.pvfAuto ? 'Standard rate for the sides. Type over it to enter the actual PVF cost.' : 'Entered by hand. Clear it to go back to the standard rate.'; }
+        const reqTick = tr.querySelector('[data-tick="requested"]'), cabTick = tr.querySelector('[data-tick="cableOrdered"]');
+        if (reqTick) reqTick.title = 'Request scaffold by ' + fmtDay(r.deadlines.scaffold);
+        if (cabTick) cabTick.title = 'Order cable by ' + fmtDay(r.deadlines.cable);
+
+        const f = finOf(r), out = k => tr.querySelector(`[data-out="${k}"]`);
+        out('pay').textContent = gbp(f.totalPay);
+        out('recv').textContent = gbp(f.totalReceive);
+        const m = out('margin');
+        m.className = 'money ' + (f.margin == null ? 'missing' : f.margin < 0 ? 'neg' : 'pos');
+        m.innerHTML = f.margin == null ? 'Missing<span class="pct">fill in the gaps</span>'
+            : `${f.margin < 0 ? '-' : ''}${gbp(Math.abs(f.margin))}<span class="pct">${f.marginPct == null ? '' : f.marginPct.toFixed(1) + '%'}${f.provisional ? ' <span class="prov">· provisional</span>' : ''}</span>`;
+        m.title = f.provisional ? 'Provisional: an Edmundson or PVF cost is missing' : '';
+        tr.classList.toggle('dirty', r.dirty);
+        tr.dataset.gaps = Object.keys(g).length;
+        updateSavebar();
+    }
+
+    window.applyFilter = function () {
+        const only = $('only-missing').checked;
+        document.querySelectorAll('#tbody tr').forEach(tr => tr.style.display = only && tr.dataset.gaps === '0' ? 'none' : '');
+    };
+
+    function renderStats() {
+        const fins = rows.map(finOf), withGaps = rows.filter(r => Object.keys(gaps(r)).length).length;
+        const counted = fins.filter(f => f.margin != null);
+        const recv = counted.reduce((t, f) => t + f.totalReceive, 0), pay = counted.reduce((t, f) => t + f.totalPay, 0), margin = recv - pay;
+        const stat = (l, v, cls = '', title = '') => `<div class="stat" title="${esc(title)}"><div class="l">${l}</div><div class="v ${cls}">${v}</div></div>`;
+        $('stats').innerHTML = rows.length ? [
+            stat('Jobs', rows.length),
+            stat('Jobs with gaps', withGaps, withGaps ? 'warn' : 'pos'),
+            stat('We receive', gbp(recv), '', 'Jobs whose margin can be worked out'),
+            stat('We pay', gbp(pay), '', 'Jobs whose margin can be worked out'),
+            stat('Margin', (margin < 0 ? '-' : '') + gbp(Math.abs(margin)) + (recv ? ` <span style="font-size:13px;color:var(--text-dim)">${(margin / recv * 100).toFixed(1)}%</span>` : ''), margin < 0 ? 'neg' : 'pos',
+                 counted.length < rows.length ? `${rows.length - counted.length} job(s) left out: missing panels/hours` : ''),
+            counted.some(f => f.provisional) ? stat('Provisional', counted.filter(f => f.provisional).length + ' jobs', 'warn', 'Margin includes jobs with an Edmundson or PVF cost still missing') : ''
+        ].join('') : '';
+    }
+
+    function updateSavebar() {
+        const n = dirtyCount();
+        $('savebar').classList.toggle('show', n > 0);
+        $('save-msg').textContent = `${n} job${n === 1 ? '' : 's'} changed`;
+    }
+
+    // ── Save (same record shape as Pingu-Project.html) ─────────────────
+    function validate(r) {
+        const int = f => { if (blank(r.v[f])) return null; const n = Number(r.v[f]); return Number.isInteger(n) && n >= 0 ? n : NaN; };
+        const out = { panels: int('panels'), arrays: int('arrays'), hours: numOrNull(r.v.hours), edm: numOrNull(r.v.edm), pvf: numOrNull(r.v.pvf), sides: numOrNull(r.v.sides) };
+        if (Number.isNaN(out.panels)) return 'panels must be a whole number';
+        if (Number.isNaN(out.arrays)) return 'arrays must be a whole number';
+        if (out.hours != null && out.hours < 0) return 'hours cannot be negative';
+        if ((out.edm != null && out.edm < 0) || (out.pvf != null && out.pvf < 0)) return 'costs cannot be negative';
+        return out;
+    }
+
+    async function saveRow(r) {
+        const n = validate(r);
+        if (typeof n === 'string') throw new Error(n);
+        // Re-read the project so anything saved elsewhere since loading (notes, POs) is kept
+        const snap = await getDoc(doc(db, PROJECTS, projectId(r.jn)));
+        const prev = snap.exists() ? snap.data() : {};
+        const now = new Date().toISOString();
+        const sc = scaffApplies(r), octo = sc && r.v.octo, cab = cableApplies(r);
+        const kind = r.kind;
+        const ps = prev.scaffolding || {}, pc = prev.cable || {}, pj = prev.job || {}, pco = prev.costs || {};
+        const panels = kind === 'battery' || kind === 'aftercare' ? (pj.panelQuantity ?? null) : n.panels;
+        const arrays = kind === 'battery' || kind === 'aftercare' ? (pj.arrays ?? null) : n.arrays;
+        const sReq = sc ? !!r.v.requested : !!ps.requested, cOrd = cab ? !!r.v.cableOrdered : !!pc.ordered;
+        const costs = {
+            edmundson: cab ? n.edm : (pco.edmundson ?? null),
+            pvf: sc ? n.pvf : (pco.pvf ?? null),
+            pvfSource: sc ? (r.pvfAuto ? 'sides' : 'manual') : (pco.pvfSource || 'sides')
+        };
+        if (octo) { costs.pvf = 0; costs.pvfSource = 'octopus'; }
+        const sides = sc ? n.sides : (ps.sides ?? null);
+        const fin = calcFinancials(kind, panels, n.hours, sides, costs.edmundson, costs.pvf, octo);
+        const data = {
+            jobNumber: r.jn,
+            solarJobId: r.job.id,
+            profile: { ...r.prof, installDay: String(r.prof.installDay || '') },
+            scaffolding: {
+                octopusArranged: octo,
+                sides,
+                requested: sReq,
+                requestedAt: sReq ? (ps.requested && ps.requestedAt ? ps.requestedAt : now) : null,
+                erectionDate: sc ? (r.v.erect || '') : (ps.erectionDate || ''),
+                dismantleDate: sc ? (r.v.dismantle || '') : (ps.dismantleDate || ''),
+                notes: ps.notes || ''
+            },
+            cable: {
+                ordered: cOrd,
+                orderedAt: cOrd ? (pc.ordered && pc.orderedAt ? pc.orderedAt : now) : null,
+                notes: cab ? String(r.v.cableNotes).trim() : (pc.notes || '')
+            },
+            job: {
+                panelQuantity: panels,
+                aftercareHours: n.hours,
+                system: String(r.v.system).trim(),
+                inverter: String(r.v.inverter).trim(),
+                arrays,
+                notes: pj.notes || ''
+            },
+            costs,
+            financials: { jobKind: kind, receive: fin.totalReceive, payOut: fin.totalPay, margin: fin.margin, complete: fin.complete },
+            purchaseOrders: prev.purchaseOrders ?? null,
+            createdAt: prev.createdAt || now,
+            createdBy: prev.createdBy || adminName(),
+            updatedAt: now,
+            updatedBy: adminName()
+        };
+        await setDoc(doc(db, PROJECTS, projectId(r.jn)), data);
+        r.prev = data; r.dirty = false; r.fromSheet.clear();
+    }
+
+    window.saveAll = async function () {
+        const todo = rows.map((r, i) => [r, i]).filter(([r]) => r.dirty);
+        if (!todo.length) return;
+        const btn = $('save-btn'); btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px"></span> Saving…';
+        const failed = [];
+        for (const [r, i] of todo) {
+            const tr = document.querySelector(`#tbody tr[data-i="${i}"]`);
+            try {
+                await saveRow(r);
+                tr?.classList.add('saved'); tr?.classList.remove('err');
+                tr?.querySelectorAll('.from-sheet').forEach(el => el.classList.remove('from-sheet'));
+            } catch (e) {
+                console.error('Save failed for', r.jn, e);
+                failed.push(`#${r.jn}: ${e.message}`);
+                tr?.classList.add('err');
+            }
+            refreshRow(i);
+        }
+        btn.disabled = false; btn.textContent = 'Save changes';
+        renderStats();
+        if (failed.length) toast(`Saved ${todo.length - failed.length} of ${todo.length}. Not saved: ${failed.join('; ')}`, true);
+        else toast(`Saved ${todo.length} job${todo.length === 1 ? '' : 's'}`);
+    };
+
+    // ── Start ───────────────────────────────────────────────────────────
+    let unlocked = false;
+    try { unlocked = sessionStorage.getItem(PIN_KEY) === '1'; } catch {}
+    if (unlocked) openPage(); else setTimeout(() => $('gate-pin').focus(), 50);
+</script>
+</body>
+</html>
