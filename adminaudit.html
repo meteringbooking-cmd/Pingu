@@ -479,6 +479,10 @@
             <span class="wordmark">P<span class="i-stem">ı<svg class="i-paw" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="16.2" rx="5.6" ry="4.6"/><ellipse cx="4.6" cy="10.4" rx="2.2" ry="2.7" transform="rotate(-18 4.6 10.4)"/><ellipse cx="9.2" cy="5.6" rx="2.3" ry="2.9" transform="rotate(-6 9.2 5.6)"/><ellipse cx="14.8" cy="5.6" rx="2.3" ry="2.9" transform="rotate(6 14.8 5.6)"/><ellipse cx="19.4" cy="10.4" rx="2.2" ry="2.7" transform="rotate(18 19.4 10.4)"/></svg></span>ngu</span>
         </a>
         <div class="appbar-actions header-actions">
+            <button class="btn btn-secondary" onclick="openFailExportModal()" title="Download audited jobs with fail codes, ready to upload to the Audit Fail Tracker">
+                <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
+                Fail tracker CSV
+            </button>
             <button class="btn btn-secondary" onclick="openExportModal()">
                 <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5M8 17v-3"/></svg>
                 Export report
@@ -628,6 +632,44 @@
                     <button class="btn btn-primary" onclick="generateExportCSV()">
                         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
                         Generate spreadsheet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="fail-export-modal">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2 class="modal-title">Export for the Audit Fail Tracker</h2>
+                <button class="close-btn" onclick="closeFailExportModal()" aria-label="Close"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <p class="muted" style="font-size: 13px;">Audited jobs with fail codes, by audit date. Each job gets one row per trade with codes (Electrician for E codes, Roofer for R codes), in the same layout as the Audit Fail Tracker CSV.</p>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="control-group filter-group">
+                        <label class="control-label filter-label" for="fail-export-from">Audit date from</label>
+                        <input type="date" id="fail-export-from" class="control-input filter-input">
+                    </div>
+                    <div class="control-group filter-group">
+                        <label class="control-label filter-label" for="fail-export-to">Audit date to</label>
+                        <input type="date" id="fail-export-to" class="control-input filter-input">
+                    </div>
+                </div>
+                <div class="control-group filter-group">
+                    <label class="control-label filter-label" for="fail-export-incident">First incident number (optional)</label>
+                    <input type="text" id="fail-export-incident" class="control-input filter-input" placeholder="e.g. NGU 00307">
+                    <span class="muted" style="font-size:12px;">Numbers each row on from this. Leave blank to use the job number instead.</span>
+                </div>
+                <div class="control-group filter-group">
+                    <label class="control-label filter-label" for="fail-export-omit">Omit job numbers (comma separated)</label>
+                    <input type="text" id="fail-export-omit" class="control-input filter-input" placeholder="e.g. J-1234, J-5678">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-ghost" onclick="closeFailExportModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="generateFailTrackerCSV()">
+                        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
+                        Download CSV
                     </button>
                 </div>
             </div>
@@ -893,7 +935,7 @@
             { id: "q18", text: "Electric Meter Location", options: ["Yes", "No"], triggers: "No", codes: [{val: "CAT 4 - E53", text: "CAT 4 E53 - Missing non safety critical photos.", cat: 4, action: "Need pre photo of meter location. Must be clear full photo."}] },
             { id: "q19", text: "CCU Location", options: ["Yes", "No"], triggers: "No", codes: [{val: "CAT 4 - E53", text: "CAT 4 E53 - Missing non safety critical photos.", cat: 4, action: "Need clear photo of CCU before install begins."}] },
             { id: "q20", text: "Existing damage detail", options: ["Yes", "No", "N/A"], triggers: "No", codes: [{val: "CAT 4 - E53", text: "CAT 4 E53 - Missing non safety critical photos.", cat: 4, action: "All existing damage must have clear photos uploaded to job card."}] },
-            { id: "q21", text: "Is the PV array bonding up to standard?", options: ["Yes", "No"], triggers: "No", codes: [{val: "CAT 2 - E27", text: "CAT 2 E27 - Bonding not up to standards.", cat: 2, action: "Where bonding is required clear photos must be provided."}] },
+            { id: "q21", text: "Referencing OES-TBT-119 does the PV array require bonding?", options: ["Yes", "No"], triggers: "No", codes: [{val: "CAT 2 - E27", text: "CAT 2 E27 - Bonding not up to standards.", cat: 2, action: "Where bonding is required clear photos must be provided."}] },
             
             // Installation
             { id: "h3", isHeader: true, text: "Installation" },
@@ -1148,7 +1190,7 @@
                 {val: "CAT 3 - E41", text: "CAT 3 E41 - Testing results different to recorded details but within limits.", cat: 3, action: "All recorded testing results must match photographed results."},
                 {val: "CAT 4 - E51", text: "CAT 4 E51 - Testing on MFT using incorrect setting.", cat: 4, action: "Need clear photos of all tesing showing testers on correct setting for test."}
             ]},
-            { id: "q78", text: "Is all evidence complete on required system.", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
+            { id: "q78", text: "Is all evidene complete on required system.", options: ["Yes", "No"], triggers: "No", ifNoAction: "If Kracken Field is not complete the install is not complete! Send email." }
         ];
 
         window.deleteUploadedPhoto = function(qId, urlIndex) {
@@ -2610,8 +2652,6 @@
             });
         }
 
-        const auditStatusUpdatesInFlight = new Set();
-
         // Update Audit Status buttons save immediately on click — no staging, no separate
         // Confirm step (matches the Clients Outcome buttons below). Note: this means the
         // client notification email fires right away on the very first click.
@@ -2619,17 +2659,9 @@
         // selected clears it back to Pending (no email is sent when clearing).
         async function setPartAuditStatus(part, status) {
             if (!currentJob) return;
-            const jobKey = currentJob.id || currentJob.jobNumber;
-            if (auditStatusUpdatesInFlight.has(jobKey)) {
-                showToast('An audit status update is already in progress', 'error');
-                return;
-            }
-            auditStatusUpdatesInFlight.add(jobKey);
-
             const other     = part === 'Elec' ? 'Roof' : 'Elec';
             const partName  = part === 'Elec' ? 'Electrical' : 'Roofing';
             const highlight = part === 'Elec' ? highlightAuditStatusButtonElec : highlightAuditStatusButtonRoof;
-            const wasPending = getOverallAuditStatus(currentJob) === 'pending';
             const current   = getPartAuditStatus(currentJob, part);
             const clearing  = current === status;
             if (clearing) status = 'pending';
@@ -2659,7 +2691,7 @@
                     ? 'Pending Audit'
                     : `Audit Completed — Electrical: ${lbl(getPartAuditStatus(currentJob, 'Elec'))} · Roofing: ${lbl(getPartAuditStatus(currentJob, 'Roof'))}`;
 
-                if (!clearing && wasPending && jobShouldEmail(currentJob)) {
+                if (!clearing && jobShouldEmail(currentJob)) {
                     await sendAuditNotificationEmail(currentJob, overall, document.getElementById('audit-notes').value.trim());
                 }
                 showToast(clearing ? `${partName} audit status cleared` : `${partName} audit status updated`, 'success');
@@ -2669,8 +2701,6 @@
                 console.error(e);
                 highlight(getPartAuditStatus(currentJob, part));
                 showToast(`Failed to save ${partName.toLowerCase()} audit status`, 'error');
-            } finally {
-                auditStatusUpdatesInFlight.delete(jobKey);
             }
         }
         window.setAuditStatusElec = status => setPartAuditStatus('Elec', status);
@@ -3356,6 +3386,137 @@
             closeExportModal();
             if (typeof showToast === 'function') showToast('Spreadsheet downloaded successfully!', 'success');
         }
+
+        /* ═══════════════════════════════════════════════
+           AUDIT FAIL TRACKER CSV — same layout as the "Audit Fail tracker" sheet,
+           so it uploads straight into auditfailtracker.html
+        ═══════════════════════════════════════════════ */
+        // Engineer → team number, from the Audit Fail tracker sheet's lookup list. Add new starters here.
+        const TEAM_NUMBERS = {
+            'Alex Chudiakov': 'NGU 05', 'Alex Jackson': 'NGU 02', 'Antonio Castillo': 'NGU 04', 'Ashley Haithwaite': 'NGU 07',
+            'Brian Blewitt': 'NGU 18', 'Cameron Bradley': 'NGU 07', 'Chris Heslop': 'NGU 05', 'Colin Rourke': 'NGU 12',
+            'Craig Kick': 'NGU 02', 'Craig Smith': 'NGU 21', 'Dan Rees': 'NGU 10', 'Dan Standeven': 'NGU 15',
+            'Daniel Standeven': 'NGU 15', 'Daniel Unwin': 'NGU 13', 'David Adamson': 'N/A', 'Grady Nathaniel': 'NGU 09',
+            'Graeme Haswell': 'NGU 05', 'Harvey Evans': 'NGU 14', 'Jack Bates': 'NGU 08', 'Jay Gray': 'NGU 05',
+            'John Weight': 'NGU 09', 'Johnny Thompson': 'NGU 05', 'Joseph Aristide': 'NGU 17', 'Josh Moore': 'NGU 15',
+            'Josh Weight': 'NGU 17', 'Kai Bergstrom': 'NGU 19', 'Kain Bell': 'NGU 03', 'Keiran Wood': 'NGU 10',
+            'Kyle Paul': 'NGU 06', 'Lee Slater': 'NGU 05', 'Liam Childs': 'NGU 11', 'Liam Harriet': 'NGU 13',
+            'Logan Phelps': 'NGU 15', 'Luke Hewitt': 'NGU 16', 'Marc Woodward': 'NGU 11', 'Martin Jones': 'NGU 01',
+            'Martin Wigan': 'NGU 12', 'Neil Ledsham': 'NGU 16', 'Owen Millar': 'NGU 03', 'Paul Johnson': 'NGU 06',
+            'Paul Meadows': 'NGU 12', 'Rhys Wigan': 'NGU 12', 'Riley Stephens': 'NGU 17', 'Rodger Hodgman': 'NGU 18',
+            'Scott Bainbridge': 'NGU 04', 'Sean Pearson': 'NGU 08', 'Seyi Oshin': 'NGU 01', 'Shaun Hunnam': 'NGU 05',
+            'Taylor Heslop': 'NGU 03', 'Tony Middlemiss': 'NGU 06', 'Trevor Savage': 'NGU 07', 'Zak Haines': 'NGU 01'
+        };
+        // The tracker hides rows with no team number, so unknown engineers get a visible placeholder.
+        const NO_TEAM_NUMBER = 'Not set';
+        const teamNumberFor = name => {
+            const key = String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            const hit = Object.keys(TEAM_NUMBERS).find(n => n.toLowerCase() === key);
+            return hit ? TEAM_NUMBERS[hit] : NO_TEAM_NUMBER;
+        };
+
+        window.openFailExportModal = function () {
+            const toIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const today = new Date();
+            document.getElementById('fail-export-from').value = toIso(new Date(today.getFullYear(), today.getMonth(), 1));
+            document.getElementById('fail-export-to').value = toIso(today);
+            document.getElementById('fail-export-modal').classList.add('show');
+        };
+        window.closeFailExportModal = () => document.getElementById('fail-export-modal').classList.remove('show');
+        document.getElementById('fail-export-modal').addEventListener('click', e => { if (e.target.id === 'fail-export-modal') closeFailExportModal(); });
+
+        // "CAT 1 E18 - System has not…" → { cat: 1, code: 'E18', desc: 'System has not…' }
+        function parseFailCode(text) {
+            const m = String(text || '').match(/^\s*CAT\s*(\d)\s*-?\s*([A-Z]{1,2}\d+|[A-Z]X\d*)\b\s*-?\s*(.*)$/i);
+            return m ? { cat: +m[1], code: m[2].toUpperCase(), desc: m[3].trim() } : null;
+        }
+
+        window.generateFailTrackerCSV = function () {
+            const fromVal = document.getElementById('fail-export-from').value, toVal = document.getElementById('fail-export-to').value;
+            if (!fromVal || !toVal) { showToast('Pick an audit date range', 'error'); return; }
+            const from = new Date(fromVal + 'T00:00:00'), to = new Date(toVal + 'T23:59:59');
+            if (from > to) { showToast('The from date is after the to date', 'error'); return; }
+            const omit = (document.getElementById('fail-export-omit').value || '').split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+
+            // Optional running incident number, e.g. "NGU 00307" → NGU 00307, NGU 00308…
+            const incInput = document.getElementById('fail-export-incident').value.trim();
+            const incMatch = incInput.match(/^(.*?)(\d+)\s*$/);
+            if (incInput && !incMatch) { showToast('The incident number must end in a number, e.g. NGU 00307', 'error'); return; }
+            let incNext = incMatch ? parseInt(incMatch[2], 10) : 0;
+            const incWidth = incMatch ? incMatch[2].length : 0;
+
+            // Job fields can hold the raw stored value (ISO text or a Firestore Timestamp), so turn them into dates here
+            const asDate = v => !v ? null : v instanceof Date ? v : typeof v.toDate === 'function' ? v.toDate() : parseDate(v);
+            const auditOf = job => asDate(job.auditDate);
+            const d2 = d => d ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}` : '';
+            const MAX_CODES = 14;
+            const jobs = allJobs.filter(job =>
+                !isSolarSurvey(job) && job.jobNumber && job.jobNumber !== 'N/A' &&
+                !omit.includes(job.jobNumber.toUpperCase()) &&
+                getOverallAuditStatus(job) !== 'pending' &&
+                auditOf(job) && auditOf(job) >= from && auditOf(job) <= to
+            ).sort((a, b) => auditOf(a) - auditOf(b) || a.jobNumber.localeCompare(b.jobNumber, undefined, { numeric: true }));
+
+            const rows = [];
+            let unknownTeams = new Set(), tooMany = 0;
+            jobs.forEach(job => {
+                // Every code ticked on the checklist, de-duplicated, split by trade
+                const seen = new Map();
+                Object.values(job.auditChecklistData || {}).forEach(q => (q && q.codesSelected || []).forEach(t => {
+                    const c = parseFailCode(t);
+                    if (c && !seen.has(c.code)) seen.set(c.code, c);
+                }));
+                if (!seen.size) return;
+                const byTrade = { Electrician: [], Roofer: [] };
+                seen.forEach(c => (c.code.startsWith('R') ? byTrade.Roofer : byTrade.Electrician).push(c));
+                const order = (a, b) => (a.code.replace(/\d+$/, '') + '').localeCompare(b.code.replace(/\d+$/, '')) || (parseInt(a.code.replace(/\D/g, ''), 10) || 0) - (parseInt(b.code.replace(/\D/g, ''), 10) || 0);
+
+                Object.entries(byTrade).forEach(([trade, codes]) => {
+                    if (!codes.length) return;
+                    codes.sort(order);
+                    if (codes.length > MAX_CODES) tooMany++;
+                    const team = job.engineer && job.engineer !== 'Unassigned' ? job.engineer : '';
+                    const teamNo = teamNumberFor(team);
+                    if (teamNo === NO_TEAM_NUMBER) unknownTeams.add(team || '(no engineer)');
+                    const severe = codes.some(c => c.cat <= 2);
+                    const notes = codes.map(c => `CAT ${c.cat} - ${c.code} - ${c.desc}`).join('\n')
+                        + (job.auditResolvedNotes ? `\n\nResolution: ${job.auditResolvedNotes}` : '');
+                    const fail = codes.slice(0, MAX_CODES).map(c => c.code);
+                    while (fail.length < MAX_CODES) fail.push('');
+                    rows.push([
+                        incMatch ? incMatch[1] + String(incNext++).padStart(incWidth, '0') : `${job.jobNumber} ${trade === 'Roofer' ? 'R' : 'E'}`,
+                        job.jobNumber,
+                        job.postcode && job.postcode !== 'N/A' ? job.postcode : '',
+                        d2(auditOf(job)),                                                   // Date received
+                        d2(asDate(job.completedTimestamp) || asDate(job.bookedDate)),        // Date of install
+                        d2(auditOf(job)),                                                   // Date of OES Audit
+                        '',                                        // Revisit date
+                        team, teamNo, trade,
+                        ...fail,
+                        severe ? 'Yes' : 'No',                     // Revisit required? (CAT 1/2 = Yes)
+                        job.auditResolved === true ? 'Yes' : '',   // Revisit completed
+                        notes
+                    ]);
+                });
+            });
+            if (!rows.length) { showToast('No audited jobs with fail codes in that date range', 'error'); return; }
+
+            const header = ['Incident Number', 'J Ref', 'Post Code', 'Date received', 'Date of install ', 'Date of OES Audit ', 'Revisit date', 'Team', 'Team Number', 'Work Type',
+                ...Array.from({ length: MAX_CODES }, (_, i) => `Fail Code ${i + 1}`), 'Revisit required?', 'Revisit completed', 'Notes from revisit'];
+            const title = header.map((_, i) => i === 0 ? 'ILS' : i === 10 ? 'Failure reasons' : '');   // first row of the tracker sheet
+            const cell = v => { const t = String(v ?? ''); return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+            const csv = '﻿' + [title, header, ...rows].map(r => r.map(cell).join(',')).join('\r\n') + '\r\n';
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+            a.download = `Audit_Fail_tracker_${fromVal}_to_${toVal}.csv`;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+            closeFailExportModal();
+            let msg = `Downloaded ${rows.length} row${rows.length === 1 ? '' : 's'} from ${new Set(rows.map(r => r[1])).size} job(s)`;
+            if (unknownTeams.size) msg += `. No team number for: ${[...unknownTeams].join(', ')}`;
+            if (tooMany) msg += `. ${tooMany} row(s) had more than ${MAX_CODES} codes; the extra codes are only in the notes`;
+            showToast(msg, unknownTeams.size || tooMany ? 'error' : 'success');
+        };
 
         document.getElementById('export-modal').addEventListener('click', e => {
             if (e.target.id === 'export-modal') closeExportModal();
