@@ -1173,6 +1173,7 @@
                         val(pj.system, dbr.system),
                         solar ? num(val(pj.arrays, dbr.arrays)) : NA,
                         panels,
+                        kind === 'solar' ? (pj.birdMesh ? 'Yes' : 'No') : NA,
                         labour,
                         labourRecv
                     ];
@@ -1180,13 +1181,13 @@
 
                 const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Jobs', { views: [{ state: 'frozen', ySplit: 1 }] });
                 const heads = ['Job Number', 'Date', 'Job Type', 'Engineer', 'Postcode', 'Job Status', 'Scaffolding Number of Sides', 'PVF Scaffold Cost (£)', 'We Receive Scaffolding (£)', 'Scaffold Erection Date',
-                               'Cable Ordered from Edmundsons', 'Edmundson Cost (£)', 'We Receive Consumables (£)', 'Job System', 'Jobs Number of Arrays', 'Number of Panels',
+                               'Cable Ordered from Edmundsons', 'Edmundson Cost (£)', 'We Receive Consumables (£)', 'Job System', 'Jobs Number of Arrays', 'Number of Panels', 'Bird Mesh Included',
                                'Crew Labour (£)', 'We Receive Labour (£)',
                                'Total We Pay (£)', 'Total We Receive (£)', 'Profit (£)', 'Margin %', 'Figures Check'];
-                const MONEY_COLS = [7, 8, 11, 12, 16, 17], GREEN_COLS = [8, 12, 17, 19], BLUE_COLS = [20, 21];   // green = money we receive
-                const PAY_COLS = [7, 11, 16], RECV_COLS = [8, 12, 17];
-                const L = i => String.fromCharCode(65 + i);   // column index -> letter (A–W)
-                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 14, 15, 18, 16, 14, 15, 26, 12, 12, 14, 15, 15, 15, 14, 11, 16][i] }));
+                const MONEY_COLS = [7, 8, 11, 12, 17, 18], GREEN_COLS = [8, 12, 18, 20], BLUE_COLS = [21, 22];   // green = money we receive
+                const PAY_COLS = [7, 11, 17], RECV_COLS = [8, 12, 18];
+                const L = i => String.fromCharCode(65 + i);   // column index -> letter (A–X)
+                ws.columns = heads.map((h, i) => ({ header: h, width: [14, 12, 28, 22, 11, 16, 14, 14, 15, 18, 16, 14, 15, 26, 12, 12, 11, 14, 15, 15, 15, 14, 11, 16][i] }));
                 const GBP = '"£"#,##0.00;[Red]-"£"#,##0.00';
                 const head = ws.getRow(1);
                 head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
@@ -1211,17 +1212,17 @@
                     // Totals for this job, as live Excel formulas (text like Missing / N/A counts as nothing)
                     const n = row.number, add = cols => cols.reduce((t, i) => t + (typeof r[i] === 'number' ? r[i] : 0), 0);
                     const pay = add(PAY_COLS), recv = add(RECV_COLS), gaps = MONEY_COLS.filter(i => r[i] === MISSING).length;
-                    MONEY_COLS.forEach(i => tally(i, r[i])); tally(18, pay); tally(19, recv); tally(20, recv - pay);
+                    MONEY_COLS.forEach(i => tally(i, r[i])); tally(19, pay); tally(20, recv); tally(21, recv - pay);
                     const sumF = cols => 'SUM(' + cols.map(i => L(i) + n).join(',') + ')';
-                    row.getCell(19).value = { formula: sumF(PAY_COLS), result: pay };
-                    row.getCell(20).value = { formula: sumF(RECV_COLS), result: recv };
-                    row.getCell(21).value = { formula: `T${n}-S${n}`, result: recv - pay };
-                    row.getCell(22).value = { formula: `IF(T${n}=0,"",U${n}/T${n})`, result: recv ? (recv - pay) / recv : '' };
-                    row.getCell(23).value = gaps ? `Incomplete (${gaps} missing)` : 'Complete';
-                    [19, 20, 21].forEach(c => row.getCell(c).numFmt = GBP);
-                    row.getCell(22).numFmt = '0.0%';
-                    for (let c = 19; c <= 23; c++) row.getCell(c).alignment = { horizontal: 'center' };
-                    if (gaps) row.getCell(23).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
+                    row.getCell(20).value = { formula: sumF(PAY_COLS), result: pay };
+                    row.getCell(21).value = { formula: sumF(RECV_COLS), result: recv };
+                    row.getCell(22).value = { formula: `U${n}-T${n}`, result: recv - pay };
+                    row.getCell(23).value = { formula: `IF(U${n}=0,"",V${n}/U${n})`, result: recv ? (recv - pay) / recv : '' };
+                    row.getCell(24).value = gaps ? `Incomplete (${gaps} missing)` : 'Complete';
+                    [20, 21, 22].forEach(c => row.getCell(c).numFmt = GBP);
+                    row.getCell(23).numFmt = '0.0%';
+                    for (let c = 20; c <= 24; c++) row.getCell(c).alignment = { horizontal: 'center' };
+                    if (gaps) row.getCell(24).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFDE68A' } };
                 });
                 ws.autoFilter = { from: 'A1', to: { row: 1, column: heads.length } };
 
@@ -1230,13 +1231,13 @@
                 const last = rows.length + 1, tr = ws.getRow(last + 2);
                 tr.getCell(1).value = 'TOTALS';
                 tr.getCell(2).value = { formula: `SUBTOTAL(103,A2:A${last})&" jobs"`, result: rows.length + ' jobs' };
-                [...MONEY_COLS, 18, 19, 20].forEach(i => {
+                [...MONEY_COLS, 19, 20, 21].forEach(i => {
                     const c = tr.getCell(i + 1), col = L(i);
                     c.value = { formula: `SUBTOTAL(109,${col}2:${col}${last})`, result: colTotals[i] || 0 };
                     c.numFmt = GBP;
                 });
-                tr.getCell(22).value = { formula: `IF(T${last + 2}=0,"",U${last + 2}/T${last + 2})`, result: colTotals[19] ? colTotals[20] / colTotals[19] : '' };
-                tr.getCell(22).numFmt = '0.0%';
+                tr.getCell(23).value = { formula: `IF(U${last + 2}=0,"",V${last + 2}/U${last + 2})`, result: colTotals[20] ? colTotals[21] / colTotals[20] : '' };
+                tr.getCell(23).numFmt = '0.0%';
                 tr.font = { bold: true };
                 tr.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } }; c.alignment = { horizontal: 'center' }; });
                 wb.calcProperties = { fullCalcOnLoad: true };
@@ -1877,6 +1878,7 @@
                             ${kind === 'solar' ? `<div class="project-kv"><b>Arrays:</b> ${j.arrays != null && j.arrays !== '' ? escapeHtml(j.arrays) : '—'}</div>` : ''}
                             ${kind === 'aftercare' ? `<div class="project-kv"><b>Aftercare hours:</b> ${j.aftercareHours != null ? escapeHtml(j.aftercareHours) : '—'}</div>`
                               : kind === 'battery' ? '' : `<div class="project-kv"><b>Panel quantity:</b> ${j.panelQuantity != null && j.panelQuantity !== '' ? escapeHtml(j.panelQuantity) : '—'}</div>`}
+                            ${kind === 'solar' ? `<div class="project-kv"><b>Bird mesh:</b> ${j.birdMesh ? 'Included' : 'Not included'}</div>` : ''}
                             ${note(j.notes)}
                         </div>
                     </div>`;

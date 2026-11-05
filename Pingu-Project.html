@@ -447,6 +447,13 @@
             <!-- Scaffolding -->
             <div class="tab-panel" id="tab-scaffolding">
                 <div class="not-needed" id="scaff-not-needed" style="display:none;"></div>
+                <label class="check-card" id="octo-card" style="margin-bottom:14px;">
+                    <input type="checkbox" id="scaff-octopus">
+                    <span class="check-text">
+                        <span class="check-title">Scaffolding arranged by Octopus</span>
+                        <span class="check-sub" id="octo-sub">Tick if Octopus are sorting the scaffold for this job. No scaffold details are needed and it counts as £0.</span>
+                    </span>
+                </label>
                 <div class="notice info db-note" id="sc-note" style="display:none;"></div>
                 <div class="form-grid" id="scaff-form">
                     <div class="deadline full" id="scaff-deadline" style="display:none;"></div>
@@ -527,6 +534,13 @@
                         <input type="number" class="control-input panel-qty" id="job-panels" min="0" step="1" placeholder="0">
                         <span class="db-hint" id="hint-panels"></span>
                     </div>
+                    <label class="check-card full" id="birdmesh-card">
+                        <input type="checkbox" id="job-birdmesh">
+                        <span class="check-text">
+                            <span class="check-title">Bird mesh included</span>
+                            <span class="check-sub">Tick if bird mesh is part of this install</span>
+                        </span>
+                    </label>
                     <div class="control-group full" id="hours-group" style="display:none;">
                         <label class="control-label" for="job-hours">Aftercare hours</label>
                         <input type="number" class="control-input panel-qty" id="job-hours" min="0" step="0.25" placeholder="0">
@@ -675,7 +689,7 @@
     const numOrNull = v => { const t = String(v ?? '').trim(); if (t === '') return null; const n = Number(t); return isNaN(n) ? null : n; };
 
     // Returns { receive: [...], pay: [...], totals, warnings }. A line with amt === null is missing information.
-    function calcFinancials(kind, panels, hours, sides, edmundson, pvf) {
+    function calcFinancials(kind, panels, hours, sides, edmundson, pvf, octopus = false) {
         const receive = [], pay = [], warnings = [];
         if (kind === 'solar') {
             if (panels == null) {
@@ -691,12 +705,13 @@
                 pay.push({ label: 'Crew labour', sub: 'Solar install, ' + bandLabel(RATES.pay.solar, panels), amt: band(RATES.pay.solar, panels).amt });
             }
             receive.push({ label: 'Consumables', sub: 'Per solar install', amt: RATES.receive.consumables.solar });
-            if (sides) receive.push({ label: 'Scaffolding', sub: sides + (sides === 1 ? ' side' : ' sides'), amt: RATES.receive.scaffold[sides] });
+            if (octopus) receive.push({ label: 'Scaffolding', sub: 'Arranged by Octopus', amt: 0 });
+            else if (sides) receive.push({ label: 'Scaffolding', sub: sides + (sides === 1 ? ' side' : ' sides'), amt: RATES.receive.scaffold[sides] });
             else { receive.push({ label: 'Scaffolding', sub: 'Needs number of sides', amt: null }); warnings.push('Choose the number of scaffold sides on the Scaffolding tab.'); }
             pay.push({ label: 'Edmundson', sub: 'Consumables / cable', amt: edmundson, supplier: true });
-            pay.push({ label: 'PVF', sub: 'Scaffold', amt: pvf, supplier: true });
+            pay.push({ label: 'PVF', sub: octopus ? 'Arranged by Octopus' : 'Scaffold', amt: octopus ? 0 : pvf, supplier: true });
             if (edmundson == null) warnings.push('Edmundson cost not entered yet.');
-            if (pvf == null) warnings.push('PVF scaffold cost not entered yet.');
+            if (!octopus && pvf == null) warnings.push('PVF scaffold cost not entered yet.');
         } else if (kind === 'battery') {
             receive.push({ label: 'Labour', sub: 'Battery only', amt: RATES.receive.battery });
             receive.push({ label: 'Consumables', sub: 'Per battery only', amt: RATES.receive.consumables.battery });
@@ -868,6 +883,7 @@
 
         const s = p.scaffolding || {}, c = p.cable || {}, j = p.job || {};
         $('scaff-requested').checked = !!s.requested;
+        $('scaff-octopus').checked   = !!s.octopusArranged;
         $('scaff-erect').value       = s.erectionDate || '';
         $('scaff-dismantle').value   = s.dismantleDate || '';
         $('scaff-notes').value       = s.notes || '';
@@ -880,12 +896,13 @@
         $('job-system').value        = j.system || '';
         $('job-arrays').value        = j.arrays ?? '';
         $('job-inverter').value      = j.inverter || '';
+        $('job-birdmesh').checked    = !!j.birdMesh;
         applySheets(prof, p);
         const co = p.costs || {};
         $('cost-edmundson').value    = co.edmundson ?? '';
         $('cost-pvf').value          = co.pvf ?? '';
         // A PVF figure typed in by hand is kept; otherwise it follows the sides.
-        pvfAuto = co.pvf == null || co.pvfSource === 'sides';
+        pvfAuto = co.pvf == null || co.pvfSource === 'sides' || co.pvfSource === 'octopus';
         applyJobType(prof);
 
         refreshIndicators();
@@ -978,6 +995,7 @@
         const t = jobTypeInfo(prof.jobType);
         currentKind = t.kind;
         const scaffNeeded = t.kind === 'solar' || t.kind === 'unknown';
+        scaffApplies = scaffNeeded;
         const cableNeeded = t.kind !== 'aftercare';
         $('scaff-form').style.display = scaffNeeded ? '' : 'none';
         $('scaff-not-needed').style.display = scaffNeeded ? 'none' : 'block';
@@ -989,7 +1007,8 @@
         $('panels-group').style.display = t.kind === 'battery' || t.kind === 'aftercare' ? 'none' : '';
         $('arrays-group').style.display = t.kind === 'battery' || t.kind === 'aftercare' ? 'none' : '';
         $('hours-group').style.display = t.kind === 'aftercare' ? '' : 'none';
-        $('pvf-group').style.display = scaffNeeded ? '' : 'none';
+        $('birdmesh-card').style.display = t.kind === 'battery' || t.kind === 'aftercare' ? 'none' : 'flex';
+        updateOctopusView();
         $('edm-group').style.display = cableNeeded ? '' : 'none';
 
         const install = parseDate(prof.installDay);
@@ -997,6 +1016,21 @@
         currentDeadlines = install ? { scaffold: addDays(install, -28), cable: addDays(install, -3) } : null;
     }
     let currentDeadlines = null;
+    let scaffApplies = false;   // scaffolding is relevant for this job type
+    const octopusArranged = () => scaffApplies && $('scaff-octopus').checked;
+
+    // "Arranged by Octopus" hides the scaffold details and the PVF cost - none of it is needed.
+    function updateOctopusView() {
+        const octo = octopusArranged();
+        $('octo-card').style.display = scaffApplies ? 'flex' : 'none';
+        $('octo-card').classList.toggle('on', octo);
+        $('octo-sub').textContent = octo
+            ? 'Octopus are arranging the scaffold. No scaffold details or PVF cost needed; scaffolding counts as £0.'
+            : 'Tick if Octopus are sorting the scaffold for this job. No scaffold details are needed and it counts as £0.';
+        $('scaff-form').style.display = scaffApplies && !octo ? '' : 'none';
+        if (octo) $('sc-note').style.display = 'none';
+        $('pvf-group').style.display = scaffApplies && !octo ? '' : 'none';
+    }
 
     function renderDeadline(el, due, done, doneText, upcomingText, lateText) {
         if (!currentDeadlines) { el.style.display = 'none'; return; }
@@ -1011,7 +1045,7 @@
         const panels = numOrNull($('job-panels').value);
         const hours  = numOrNull($('job-hours').value);
         const sides  = numOrNull($('scaff-sides').value);
-        const f = calcFinancials(currentKind, panels, hours, sides, numOrNull($('cost-edmundson').value), numOrNull($('cost-pvf').value));
+        const f = calcFinancials(currentKind, panels, hours, sides, numOrNull($('cost-edmundson').value), numOrNull($('cost-pvf').value), octopusArranged());
         const line = l => `<div class="cost-line"><div><span class="lbl">${esc(l.label)}</span><span class="sub">${esc(l.sub || '')}</span></div><div class="amt${l.amt == null ? ' missing' : ''}">${l.amt == null ? 'Missing' : gbp(l.amt)}</div></div>`;
         const total = (label, amt) => `<div class="cost-line total"><div><span class="lbl">${label}</span></div><div class="amt">${gbp(amt)}</div></div>`;
         $('receive-lines').innerHTML = f.receive.map(line).join('') + total('Total', f.totalReceive);
@@ -1059,7 +1093,7 @@
         }
         if (currentKind === 'solar' || currentKind === 'battery')
             lines.push({ category: 'Edmundson', supplier: 'Edmundson', net_amount: numOrNull($('cost-edmundson').value), detail: '' });
-        if (currentKind === 'solar')
+        if (currentKind === 'solar' && !octopusArranged())
             lines.push({ category: 'PVF', supplier: 'PVF', net_amount: numOrNull($('cost-pvf').value), detail: sides ? sides + (sides === 1 ? ' side' : ' sides') : '' });
         return lines;
     }
@@ -1233,6 +1267,7 @@
 
     function refreshIndicators() {
         const p = currentProject || {};
+        updateOctopusView();
         const sReq = $('scaff-requested').checked, cOrd = $('cable-ordered').checked;
         $('scaff-card').classList.toggle('on', sReq);
         $('cable-card').classList.toggle('on', cOrd);
@@ -1245,7 +1280,7 @@
         const e = $('scaff-erect').value, d = $('scaff-dismantle').value;
         $('scaff-date-warn').style.display = (e && d && d < e) ? 'block' : 'none';
 
-        document.querySelector('.tab[data-tab="scaffolding"]').classList.toggle('done', sReq);
+        document.querySelector('.tab[data-tab="scaffolding"]').classList.toggle('done', sReq || octopusArranged());
         document.querySelector('.tab[data-tab="cable"]').classList.toggle('done', cOrd);
         const jobDone = currentKind === 'aftercare' ? $('job-hours').value !== '' : currentKind === 'battery' ? true : $('job-panels').value !== '';
         document.querySelector('.tab[data-tab="job"]').classList.toggle('done', jobDone);
@@ -1267,6 +1302,7 @@
     }
 
     function applyPvfRate() {
+        if (octopusArranged()) { $('pvf-hint').innerHTML = ''; return; }   // no PVF cost when Octopus arrange it
         const sides = numOrNull($('scaff-sides').value);
         const rate = RATES.pay.pvfBySides[sides] ?? null;
         const hint = $('pvf-hint'), el = $('cost-pvf');
@@ -1319,22 +1355,25 @@
 
         // Costs can only be changed while unlocked; otherwise keep what was saved before.
         // The PVF cost still follows the sides when it's on the standard rate, even when locked.
+        const octo = octopusArranged();
         const costs = isAdmin
             ? { edmundson: numOrNull($('cost-edmundson').value), pvf: numOrNull($('cost-pvf').value), pvfSource: pvfAuto ? 'sides' : 'manual' }
             : { edmundson: prev.costs?.edmundson ?? null,
                 pvf: pvfAuto ? numOrNull($('cost-pvf').value) : (prev.costs?.pvf ?? null),
                 pvfSource: pvfAuto ? 'sides' : (prev.costs?.pvfSource || 'manual') };
+        if (octo) { costs.pvf = 0; costs.pvfSource = 'octopus'; }   // Octopus arrange the scaffold: nothing to pay PVF
         if ((costs.edmundson != null && costs.edmundson < 0) || (costs.pvf != null && costs.pvf < 0)) { toast('Costs cannot be negative.', true); showTab('costs'); return; }
 
         const prof = profileFromJob(currentJob);
         const kind = jobTypeInfo(prof.jobType).kind;
-        const fin = calcFinancials(kind, panels, hours, sides, costs.edmundson, costs.pvf);
+        const fin = calcFinancials(kind, panels, hours, sides, costs.edmundson, costs.pvf, octo);
         const data = {
             jobNumber: jn,
             solarJobId: currentJob.id,
             // Snapshot of the profile at save time, so the project list can show it without reloading every job.
             profile: { ...prof, installDay: String(prof.installDay || '') },
             scaffolding: {
+                octopusArranged: octo,
                 sides: sides,
                 requested: sReq,
                 requestedAt: sReq ? (prev.scaffolding?.requested && prev.scaffolding?.requestedAt ? prev.scaffolding.requestedAt : now) : null,
@@ -1352,6 +1391,7 @@
                 aftercareHours: hours,
                 system: $('job-system').value.trim(),
                 inverter: $('job-inverter').value.trim(),
+                birdMesh: $('job-birdmesh').checked,
                 arrays: arrays,
                 notes: $('job-notes').value.trim()
             },
@@ -1429,7 +1469,7 @@
                 <div class="proj-flags">
                     ${(k => `
                     <span class="flag">${esc(jobTypeInfo(p.profile?.jobType).label)}</span>
-                    ${k === 'solar' || k === 'unknown' ? `<span class="flag${p.scaffolding?.requested ? ' on' : ''}">Scaffold${p.scaffolding?.requested ? ' ✓' : ''}</span>` : ''}
+                    ${k === 'solar' || k === 'unknown' ? (p.scaffolding?.octopusArranged ? '<span class="flag on">Scaffold: Octopus</span>' : `<span class="flag${p.scaffolding?.requested ? ' on' : ''}">Scaffold${p.scaffolding?.requested ? ' ✓' : ''}</span>`) : ''}
                     ${k !== 'aftercare' ? `<span class="flag${p.cable?.ordered ? ' on' : ''}">Cable${p.cable?.ordered ? ' ✓' : ''}</span>` : ''}
                     ${k === 'solar' || k === 'unknown' ? `<span class="flag${p.job?.panelQuantity != null ? ' on' : ''}">${p.job?.panelQuantity != null ? esc(p.job.panelQuantity) + ' panels' : 'Panels'}</span>` : ''}`)(jobTypeInfo(p.profile?.jobType).kind)}
                     ${p.financials && p.financials.margin != null ? `<span class="flag money">${(p.financials.margin < 0 ? '-' : '') + gbp(Math.abs(p.financials.margin))}${p.financials.complete ? '' : '*'}</span>` : ''}
@@ -1438,7 +1478,8 @@
     }
 
     // ── Wire up ───────────────────────────────────────────────────────
-    ['scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-inverter', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
+    $('scaff-octopus').addEventListener('change', () => { if (!$('scaff-octopus').checked) pvfAuto = true; });
+    ['scaff-octopus', 'scaff-requested', 'scaff-sides', 'scaff-erect', 'scaff-dismantle', 'scaff-notes', 'cable-ordered', 'cable-notes', 'job-system', 'job-inverter', 'job-birdmesh', 'job-arrays', 'job-panels', 'job-hours', 'job-notes', 'cost-edmundson', 'cost-pvf']
         .forEach(id => {
             $(id).addEventListener('input', () => {
                 if (id === 'cost-pvf') pvfAuto = false;   // typed by hand: keep it
