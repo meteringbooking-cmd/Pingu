@@ -137,6 +137,21 @@
         .seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; height: 38px; }
         .seg button { background: var(--surface); color: var(--text-soft); border: 0; padding: 0 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
         .seg button + button { border-left: 1px solid var(--line-2); }
+        .audit-type-pick { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 14px;
+            border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); }
+        .audit-type-pick .lbl { color: var(--text-strong); font-weight: 600; font-size: 14px; }
+        .audit-type-pick .opts { display: inline-flex; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+        .audit-type-pick label { position: relative; cursor: pointer; }
+        .audit-type-pick input { position: absolute; opacity: 0; pointer-events: none; }
+        .audit-type-pick .opts label > span { display: inline-block; padding: 8px 18px; font-size: 13.5px; font-weight: 600; color: var(--text-soft); background: var(--surface); }
+        .audit-type-pick label + label > span { border-left: 1px solid var(--line-2); }
+        .audit-type-pick label:hover > span { color: var(--text-strong); }
+        .audit-type-pick input:checked + span { background: var(--primary); color: #fff; }
+        .audit-type-pick input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: -2px; }
+        .audit-type-pick .hint { color: var(--text-dim); font-size: 12.5px; }
+        .audit-type-pick.need { border-color: var(--error); background: rgba(255,107,107,0.10); }
+        .audit-type-pick.need .hint { color: var(--error); font-weight: 600; }
+        .audit-type-pick .lbl::after { content: ' *'; color: var(--error); }
         .seg button:hover, .seg button.active { background: var(--surface-2); color: var(--text-strong); }
 
         /* ── KPI tiles ── */
@@ -699,6 +714,15 @@
                 </div>
 
                 <div class="modal-section" id="audit-checklist-section">
+                    <div class="audit-type-pick" role="radiogroup" aria-label="Type of audit">
+                        <span class="lbl">Type of audit</span>
+                        <span class="opts">
+                            <label><input type="radio" name="audit-type" value="Desktop" onchange="onAuditTypeChange()"><span>Desktop</span></label>
+                            <label><input type="radio" name="audit-type" value="PC" onchange="onAuditTypeChange()"><span>PC</span></label>
+                            <label><input type="radio" name="audit-type" value="WIP" onchange="onAuditTypeChange()"><span>WIP</span></label>
+                        </span>
+                        <span class="hint" id="audit-type-hint">Required: select one</span>
+                    </div>
                     <div class="section-head">
                         <h3 class="section-h"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 12h6M9 16h6"/></svg>Audit questionnaire</h3>
                         <div class="auto-save-indicator" id="checklist-auto-save-indicator"></div>
@@ -1302,6 +1326,7 @@
             // Also store emails and general additional notes
             draft['email_target'] = document.getElementById('audit-target-email').value;
             draft['additional_notes'] = document.getElementById('additional-email-notes').value;
+            draft['audit_type'] = getAuditTypeChoice();
             
             localStorage.setItem('audit_draft_' + currentJob.id, JSON.stringify(draft));
             
@@ -1310,6 +1335,19 @@
             ind.classList.add('show');
             setTimeout(() => ind.classList.remove('show'), 2000);
         }
+
+        // ── Type of audit (Desktop / PC / WIP), saved on the job as auditType ──
+        window.getAuditTypeChoice = () => document.querySelector('input[name="audit-type"]:checked')?.value || '';
+        window.setAuditTypeChoice = function (val) {
+            document.querySelectorAll('input[name="audit-type"]').forEach(r => r.checked = r.value === val);
+            const hint = document.getElementById('audit-type-hint');
+            if (hint) hint.textContent = val ? '' : 'Required: select one';
+            document.querySelector('.audit-type-pick')?.classList.remove('need');   // red only appears when they try to save without one
+        };
+        window.onAuditTypeChange = function () {
+            setAuditTypeChoice(getAuditTypeChoice());
+            triggerAutoSave();
+        };
 
         window.renderAuditChecklist = function() {
             const container = document.getElementById('audit-questions-container');
@@ -1572,6 +1610,14 @@
 
 
         window.submitAuditChecklist = async function(sendEmail = true) {
+            // Type of audit is required before saving or sending
+            if (!getAuditTypeChoice()) {
+                const pick = document.querySelector('.audit-type-pick');
+                pick.classList.add('need');
+                pick.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast('Select the type of audit (Desktop, PC or WIP) first', 'error');
+                return;
+            }
             let rawEmails = document.getElementById('audit-target-email').value.trim();
             if (sendEmail && !rawEmails) {
                 showToast("Please enter an email address to send the results", "error");
@@ -1670,6 +1716,7 @@
                     <div style="font-family:Arial,sans-serif;color:#333;padding:15px;background:#f5f5f5;">
                         <div style="background:white;padding:20px;border-radius:8px;max-width:800px;margin:0 auto;border-top:4px solid #FF6B35;">
                             <h2 style="color:#FF6B35;margin:0 0 10px 0;">Audit Report - #${escapeHtml(safeJobNumber)}</h2>
+                            ${getAuditTypeChoice() ? `<p style="margin:0 0 6px 0;"><strong>Audit type:</strong> ${escapeHtml(getAuditTypeChoice())}</p>` : ''}
                             <p style="margin:0 0 15px 0;"><strong>Outcome:</strong> ${calculatedOutcome}</p>
                             ${pdfReportUrl ? `<a href="${pdfReportUrl}" target="_blank" style="display:inline-block;background:#28a745;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;margin-right:10px;">View Full PDF Report (incl. photos)</a>` : `<p style="color:#d9534f;font-size:13px;">PDF report could not be generated — please check the dashboard.</p>`}
                             <a href="${uploadLink}" target="_blank" style="display:inline-block;background:#FF6B35;color:white;text-decoration:none;padding:10px 20px;border-radius:5px;font-weight:bold;">Upload Missing Photos</a>
@@ -1763,6 +1810,7 @@
                         auditChecklistData: firebaseChecklistData,
                         auditChecklistOutcome: calculatedOutcome,
                         additionalEmailNotes: additionalNotes,
+                        auditType: getAuditTypeChoice() || currentJob.auditType || '',
                         checklistSentTo: sendEmail ? formattedEmails
                             : ((currentJob.checklistSentTo && currentJob.checklistSentTo !== "Saved Only - Not Sent") ? currentJob.checklistSentTo : "Saved Only - Not Sent"),
                         checklistSentAt: new Date().toISOString(),
@@ -1780,6 +1828,7 @@
                     currentJob.auditChecklistData = firebaseChecklistData;
                     currentJob.auditChecklistOutcome = calculatedOutcome;
                     currentJob.additionalEmailNotes = additionalNotes;
+                    currentJob.auditType = getAuditTypeChoice() || currentJob.auditType || '';
                     if (sendEmail) currentJob.checklistSentTo = formattedEmails;
 
                     // Clear local draft upon successful cloud save
@@ -2431,6 +2480,7 @@
             document.getElementById('calculated-outcome').style.display = 'none';
             document.getElementById('audit-target-email').value = '';
             document.getElementById('additional-email-notes').value = '';
+            setAuditTypeChoice(job.auditType || '');
 
             // --- RESTORE PREVIOUSLY SAVED AUDIT CHECKLIST PROGRESS FROM FIREBASE ---
             if (job.auditChecklistData) {
@@ -2514,6 +2564,7 @@
                         
                         if (qId === 'email_target') { document.getElementById('audit-target-email').value = d; continue; }
                         if (qId === 'additional_notes') { document.getElementById('additional-email-notes').value = d; continue; }
+                        if (qId === 'audit_type') { if (d) setAuditTypeChoice(d); continue; }
                         
                         if (d.answer) {
                             let q = auditQuestionsData.find(x => x.id === qId);
@@ -2999,6 +3050,7 @@
                         [{ text: 'Postcode', bold: true, color: '#444' }, currentJob.postcode || ''],
                         [{ text: 'Engineer', bold: true, color: '#444' }, currentJob.engineer || ''],
                         [{ text: 'Job Type', bold: true, color: '#444' }, currentJob.jobType || ''],
+                        [{ text: 'Audit Type', bold: true, color: '#444' }, getAuditTypeChoice() || currentJob.auditType || 'Not set'],
                         [{ text: 'Elec Audit', bold: true, color: '#444' }, getPartAuditStatus(currentJob, 'Elec')],
                         [{ text: 'Roof Audit', bold: true, color: '#444' }, getPartAuditStatus(currentJob, 'Roof')],
                         [{ text: 'Outcome', bold: true, color: '#444' }, { text: outcomeText, bold: true, color: outcomeText.includes('Fail') ? '#d9534f' : '#28a745' }]
